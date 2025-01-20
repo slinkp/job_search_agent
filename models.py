@@ -183,6 +183,8 @@ class CompaniesSheetRow(BaseSheetRow):
 
     notes: Optional[str] = Field(default=None)
 
+    email_thread_link: Optional[str] = Field(default="")
+
     @model_validator(mode="before")
     @classmethod
     def normalize_fields(cls, data: Any) -> dict:
@@ -297,7 +299,11 @@ class CompanyRepository:
             with self._get_connection() as conn:
                 try:
                     conn.execute(
-                        "INSERT INTO companies (name, details, initial_message, reply_message) VALUES (?, ?, ?, ?)",
+                        """
+                        INSERT INTO companies (
+                            name, details, initial_message, reply_message
+                        ) VALUES (?, ?, ?, ?)
+                        """,
                         (
                             company.name,
                             json.dumps(
@@ -377,6 +383,7 @@ SAMPLE_COMPANIES = [
             total_size=10000,
             headquarters="Ottawa",
             remote_policy="Remote",
+            email_thread_link="",
         ),
         initial_message="Hi Paul, are you interested in working as a staff developer at Shopify? Regards, Bobby Bobberson",
     ),
@@ -389,6 +396,7 @@ SAMPLE_COMPANIES = [
             url="https://rippling.com",
             updated=datetime.date(2024, 10, 10),
             headquarters="New York",
+            email_thread_link="https://mail.google.com/mail/u/0/#label/jobs+2024%2Frippling/QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",
         ),
         initial_message="Hi Paul! Interested in a senior backend role at Rippling? - Mark Marker",
     ),

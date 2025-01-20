@@ -222,6 +222,15 @@ class GmailRepliesSearcher:
             # TODO: Linkedin subjects may be redundant copy of message content,
             # but that's probably ok
             subject = self.get_subject(msg_list[0][-1]).strip()
+
+            # Get the actual label path from the message data
+            # Note: We have to assume u/0 since the Gmail API doesn't indicate which user number,
+            # as that's a browser UI concept, not an API one
+            label_path = msg_list[-1][-1].get("labelIds", ["INBOX"])[0].lower()
+            email_thread_link = (
+                f"https://mail.google.com/mail/u/0/#{label_path}/{thread_id}"
+            )
+            combined_msg["email_thread_link"] = email_thread_link
             combined_content = []
             if subject:
                 subject = subject.strip() + "\n\n"
