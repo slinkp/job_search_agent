@@ -23,7 +23,9 @@
 
       <template x-for="company in companies" :key="company.name">
         <article>
-          <header x-text="company.name"></header>
+          <header>
+            <a href="#" @click.prevent="document.getElementById(company.name).scrollIntoView({behavior: 'smooth'})" x-text="company.name" :id="company.name"></a>
+          </header>
           <div class="research-status">
             <button
               @click="research(company)"
