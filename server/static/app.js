@@ -7,6 +7,10 @@ document.addEventListener("alpine:init", () => {
     researchingCompanies: new Set(),
     generatingMessages: new Set(),
 
+    isUrl(value) {
+      return typeof value === "string" && value.startsWith("http");
+    },
+
     async init() {
       this.loading = true;
       try {

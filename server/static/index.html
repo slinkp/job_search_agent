@@ -95,7 +95,13 @@
                 <template x-if="value">
                   <span>
                     <span x-text="key + ': '"></span>
-                    <span x-text="value"></span><br />
+                    <template x-if="isUrl(value)">
+                      <a :href="value" x-text="value"></a>
+                    </template>
+                    <template x-if="!isUrl(value)">
+                      <span x-text="value"></span>
+                    </template>
+                    <br />
                   </span>
                 </template>
               </template>
