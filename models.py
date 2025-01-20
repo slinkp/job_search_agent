@@ -215,6 +215,7 @@ class CompaniesSheetRow(BaseSheetRow):
 
 class Company(BaseModel):
     name: str
+    updated_at: Optional[datetime.datetime] = None
     details: CompaniesSheetRow
     initial_message: Optional[str] = None
     reply_message: str = ""
@@ -257,6 +258,7 @@ class CompanyRepository:
                     """
                     CREATE TABLE IF NOT EXISTS companies (
                         name TEXT PRIMARY KEY,
+                        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                         details TEXT NOT NULL,
                         initial_message TEXT,
                         reply_message TEXT NOT NULL DEFAULT ''
@@ -280,7 +282,7 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT name, details, initial_message, reply_message FROM companies WHERE name = ?",
+                "SELECT name, updated_at, details, initial_message, reply_message FROM companies WHERE name = ?",
                 (name,),
             )
             row = cursor.fetchone()
@@ -290,7 +292,7 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT name, details, initial_message, reply_message FROM companies"
+                "SELECT name, updated_at, details, initial_message, reply_message FROM companies"
             )
             return [self._deserialize_company(row) for row in cursor.fetchall()]
 
@@ -314,7 +316,11 @@ class CompanyRepository:
                         ),
                     )
                     conn.commit()
-                    return company
+                    refreshed_company = self.get(
+                        company.name
+                    )  # To include generated timestamp
+                    assert refreshed_company is not None
+                    return refreshed_company
                 except sqlite3.IntegrityError:
                     raise ValueError(f"Company {company.name} already exists")
 
@@ -324,7 +330,10 @@ class CompanyRepository:
                 cursor = conn.execute(
                     """
                     UPDATE companies 
-                    SET details = ?, initial_message = ?, reply_message = ?
+                    SET details = ?, 
+                        initial_message = ?, 
+                        reply_message = ?,
+                        updated_at = datetime('now')
                     WHERE name = ?
                     """,
                     (
@@ -337,7 +346,11 @@ class CompanyRepository:
                 if cursor.rowcount == 0:
                     raise ValueError(f"Company {company.name} not found")
                 conn.commit()
-                return company
+                refreshed_company = self.get(
+                    company.name
+                )  # To include generated timestamp
+                assert refreshed_company is not None
+                return refreshed_company
 
     def delete(self, name: str) -> None:
         with self.lock:  # Lock for writes
@@ -347,11 +360,16 @@ class CompanyRepository:
                     raise ValueError(f"Company {name} not found")
                 conn.commit()
 
-    def _deserialize_company(self, row: tuple[str, str, str, str]) -> Company:
+    def _deserialize_company(self, row: tuple) -> Company:
         """Convert a database row into a Company object."""
         assert row is not None
-        name, details_json, initial_message, reply_message = row
+        name, updated_at, details_json, initial_message, reply_message = row
         details_dict = json.loads(details_json)
+
+        # Parse updated_at as UTC timezone-aware datetime
+        updated_at_dt = dateutil.parser.parse(updated_at).replace(
+            tzinfo=datetime.timezone.utc
+        )
 
         # Convert ISO format dates back to datetime.date
         for key, value in details_dict.items():
@@ -363,6 +381,7 @@ class CompanyRepository:
 
         return Company(
             name=name,
+            updated_at=updated_at_dt,
             details=CompaniesSheetRow(**details_dict),
             initial_message=initial_message,
             reply_message=reply_message,
