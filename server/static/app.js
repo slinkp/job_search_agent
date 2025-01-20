@@ -11,7 +11,12 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             try {
                 const response = await fetch('/api/companies');
-                this.companies = await response.json();
+                const data = await response.json();
+                // Make the entire companies array and its contents reactive from the start
+                this.companies = data.map(company => ({
+                    ...company,
+                    details: company.details || {},
+                }));
             } catch (err) {
                 console.error('Failed to load companies:', err);
             } finally {
@@ -136,22 +141,43 @@ document.addEventListener('alpine:init', () => {
             const statusField = isMessage ? 'message_status' : 'research_status';
             const errorField = isMessage ? 'message_error' : 'research_error';
 
+            console.log(`Starting poll for ${taskType}`, { 
+                companyName: company.name, 
+                taskId: company[taskIdField] 
+            });
+
             while (trackingSet.has(company.name)) {
                 try {
                     const response = await fetch(`/api/tasks/${company[taskIdField]}`);
                     const task = await response.json();
                     
+                    console.log(`Poll response for ${company.name}:`, task);
+                    
+                    // Update the status immediately so we can check it
                     company[statusField] = task.status;
                     
                     if (task.status === 'completed') {
-                        if (isMessage && task.result?.message) {
-                            company.reply_message = task.result.message;
-                        } else if (!isMessage && task.result) {
-                            Object.assign(company, task.result);
+                        // Fetch fresh company data from the server
+                        const companyResponse = await fetch('/api/companies');
+                        const companies = await companyResponse.json();
+                        const updatedCompany = companies.find(c => c.name === company.name);
+                        
+                        if (updatedCompany) {
+                            console.log(`Updating company with fresh data:`, {
+                                before: company,
+                                after: updatedCompany
+                            });
+                            
+                            // Find and replace the company in our array
+                            const index = this.companies.findIndex(c => c.name === company.name);
+                            if (index !== -1) {
+                                this.companies[index] = updatedCompany;
+                            }
                         }
                         trackingSet.delete(company.name);
                         break;
                     } else if (task.status === 'failed') {
+                        console.log(`Task failed for ${company.name}:`, task.error);
                         company[errorField] = task.error;
                         trackingSet.delete(company.name);
                         break;

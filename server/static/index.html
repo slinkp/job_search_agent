@@ -57,9 +57,11 @@
                     </div>
                 </template>
                 <details>
-                    <summary>Details...</summary>
+                    <summary>Details... <span x-text="'(' + Object.keys(company.details || {}).length + ' items)'"></span></summary>
                     <p>
-                        <template x-for="[key, value] in Object.entries(company.details)" :key="key">
+                        <!-- Add debug info -->
+                        <small x-text="'Last updated: ' + (company.research_status || 'never')"></small><br>
+                        <template x-for="[key, value] in Object.entries(company.details || {})" :key="key">
                             <template x-if="value">
                                 <span>
                                     <span x-text="key + ': '"></span>
