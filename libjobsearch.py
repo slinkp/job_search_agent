@@ -16,6 +16,7 @@ from multiprocessing import Process, Queue
 from typing import Any, Callable
 
 from diskcache import Cache
+from pydantic import BaseModel, ValidationError
 
 import company_researcher
 import email_client
@@ -87,6 +88,23 @@ def disk_cache(step: CacheStep):
                     logger.debug(f"Cache miss for {key}")
                 else:
                     logger.debug(f"Cache hit for {key}")
+                    # Validate cached Pydantic models
+                    if isinstance(result, BaseModel):
+                        try:
+                            # Try to re-validate the model
+                            # This will catch missing fields and type mismatches
+                            result = result.__class__.model_validate(
+                                result.model_dump()
+                            )
+                            logger.debug(
+                                f"Validated cached model: {result.__class__.__name__}"
+                            )
+                        except ValidationError as e:
+                            logger.warning(
+                                f"Cache validation failed, clearing entry: {e}"
+                            )
+                            cache.delete(key)
+                            result = None
 
             if result is None:
                 logger.debug(f"No cached result, running function for {key}...")

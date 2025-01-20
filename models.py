@@ -34,6 +34,12 @@ class BaseSheetRow(BaseModel):
         """Pre-process fields before Pydantic validation"""
         if isinstance(data, dict):
             for field_name, field in cls.model_fields.items():
+                # First ensure all fields exist with defaults
+                # (this prevents attribute errors when loading from eg old pickles that are missing fields)
+                if field_name not in data:
+                    data[field_name] = field.default
+
+                # Then process type conversions.
                 # Hacky, is there a better way to handle eg Optional[date]?
                 val = data.get(field_name)
                 if "date" in str(field.annotation) and isinstance(val, str):
