@@ -25,7 +25,8 @@
         <article>
           <header>
             <a href="#" @click.prevent="document.getElementById(company.name).scrollIntoView({behavior: 'smooth'})" x-text="company.name" :id="company.name"></a>
-          </header>
+            <span x-text="company.updated_at"></span>
+        </header>
           <div class="research-status">
             <button
               @click="research(company)"
