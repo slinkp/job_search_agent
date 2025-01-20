@@ -1,94 +1,124 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Companies Dashboard</title>
-    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@1/css/pico.min.css">
-    <link rel="stylesheet" href="/static/styles.css">
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@picocss/pico@1/css/pico.min.css"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script
+      defer
+      src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
     <script src="/static/app.js"></script>
-</head>
-<body>
+  </head>
+  <body>
     <main class="container" x-data="companyList">
-        <h1>Companies Dashboard</h1>
-        
-        <div x-show="loading">Loading...</div>
-        
-        <template x-for="company in companies" :key="company.name">
-            <article>
-                <header x-text="company.name"></header>
-                <div class="research-status">
-                    <button 
-                        @click="research(company)" 
-                        :disabled="isResearching(company)"
-                        class="research-button"
-                    >
-                        <span x-text="isResearching(company) ? 'Researching...' : 'Research!'">Research!</span>
-                        <span x-show="isResearching(company)" class="loading-spinner"></span>
-                    </button>
-                    <span x-show="company.research_status" 
-                          x-text="getResearchStatusText(company)"
-                          :class="getResearchStatusClass(company)">
-                    </span>
-                </div>
-                <template x-if="!company.reply_message">
-                    <button 
-                        @click="generateReply(company)"
-                        :disabled="isGeneratingMessage(company)"
-                    >
-                        <span x-text="isGeneratingMessage(company) ? 'Generating...' : 'Generate reply'"></span>
-                        <span x-show="isGeneratingMessage(company)" class="loading-spinner"></span>
-                    </button>
+      <h1>Companies Dashboard</h1>
+
+      <div x-show="loading">Loading...</div>
+
+      <template x-for="company in companies" :key="company.name">
+        <article>
+          <header x-text="company.name"></header>
+          <div class="research-status">
+            <button
+              @click="research(company)"
+              :disabled="isResearching(company)"
+              class="research-button"
+            >
+              <span
+                x-text="isResearching(company) ? 'Researching...' : 'Research!'"
+                >Research!</span
+              >
+              <span
+                x-show="isResearching(company)"
+                class="loading-spinner"
+              ></span>
+            </button>
+            <span
+              x-show="company.research_status"
+              x-text="getResearchStatusText(company)"
+              :class="getResearchStatusClass(company)"
+            >
+            </span>
+          </div>
+          <template x-if="!company.reply_message">
+            <button
+              @click="generateReply(company)"
+              :disabled="isGeneratingMessage(company)"
+            >
+              <span
+                x-text="isGeneratingMessage(company) ? 'Generating...' : 'Generate reply'"
+              ></span>
+              <span
+                x-show="isGeneratingMessage(company)"
+                class="loading-spinner"
+              ></span>
+            </button>
+          </template>
+          <template x-if="company.message_status">
+            <span
+              x-text="getMessageStatusText(company)"
+              :class="{'status-pending': company.message_status === 'pending',
+                       'status-running': company.message_status === 'running',
+                       'status-completed': company.message_status === 'completed',
+                       'status-failed': company.message_status === 'failed'}"
+            ></span>
+          </template>
+          <template x-if="company.reply_message">
+            <div style="display: flex; gap: 1rem">
+              <button @click="editReply(company)">Edit reply</button>
+              <button @click="generateReply(company)">Regenerate reply</button>
+            </div>
+          </template>
+          <details>
+            <summary>
+              Details...
+              <span
+                x-text="'(' + Object.keys(company.details || {}).length + ' items)'"
+              ></span>
+            </summary>
+            <p>
+              <!-- Add debug info -->
+              <small
+                x-text="'Last updated: ' + (company.research_status || 'never')"
+              ></small
+              ><br />
+              <template
+                x-for="[key, value] in Object.entries(company.details || {})"
+                :key="key"
+              >
+                <template x-if="value">
+                  <span>
+                    <span x-text="key + ': '"></span>
+                    <span x-text="value"></span><br />
+                  </span>
                 </template>
-                <template x-if="company.message_status">
-                    <span 
-                        x-text="getMessageStatusText(company)"
-                        :class="{'status-pending': company.message_status === 'pending', 
-                                'status-running': company.message_status === 'running',
-                                'status-completed': company.message_status === 'completed',
-                                'status-failed': company.message_status === 'failed'}"
-                    ></span>
-                </template>
-                <template x-if="company.reply_message">
-                    <div style="display: flex; gap: 1rem;">
-                        <button @click="editReply(company)">Edit reply</button>
-                        <button @click="generateReply(company)">Regenerate reply</button>
-                    </div>
-                </template>
-                <details>
-                    <summary>Details... <span x-text="'(' + Object.keys(company.details || {}).length + ' items)'"></span></summary>
-                    <p>
-                        <!-- Add debug info -->
-                        <small x-text="'Last updated: ' + (company.research_status || 'never')"></small><br>
-                        <template x-for="[key, value] in Object.entries(company.details || {})" :key="key">
-                            <template x-if="value">
-                                <span>
-                                    <span x-text="key + ': '"></span>
-                                    <span x-text="value"></span><br>
-                                </span>
-                            </template>
-                        </template>
-                    </p>
-                </details>
-            </article>
-        </template>
-        
-        <!-- Modal for editing replies -->
-        <dialog id="editModal" x-show="editingCompany" x-cloak>
-            <article>
-                <header>
-                    <h3>Edit Reply</h3>
-                </header>
-                <form @submit.prevent="saveReply">
-                    <textarea x-model="editingReply" rows="5"></textarea>
-                    <footer>
-                        <button type="button" @click="cancelEdit">Cancel</button>
-                        <button type="submit">Save</button>
-                    </footer>
-                </form>
-            </article>
-        </dialog>
+              </template>
+            </p>
+          </details>
+        </article>
+      </template>
+
+      <!-- Modal for editing replies -->
+      <dialog id="editModal" x-show="editingCompany" x-cloak>
+        <article>
+          <header>
+            <h3>Edit Reply</h3>
+          </header>
+          <form @submit.prevent="saveReply">
+            <textarea x-model="editingReply" rows="5"></textarea>
+            <footer>
+              <button type="button" @click="cancelEdit">Cancel</button>
+              <button type="submit">Save</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
     </main>
-</body>
+  </body>
 </html>
