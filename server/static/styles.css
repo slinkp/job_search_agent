@@ -92,4 +92,9 @@ dialog .original-message pre {
     word-wrap: break-word;
     background: none;
     padding: 0;
+}
+
+.reply-actions {
+    display: flex;
+    gap: 1rem;
 } 

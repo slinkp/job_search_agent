@@ -98,9 +98,18 @@
             ></span>
           </template>
           <template x-if="company.reply_message">
-            <div style="display: flex; gap: 1rem">
-              <button @click="editReply(company)">Edit reply</button>
-              <button @click="generateReply(company)">Regenerate reply</button>
+            <div class="reply-actions">
+              <button 
+                @click="editReply(company)" 
+                :disabled="isGeneratingMessage(company)"
+              >Edit reply</button>
+              <button 
+                @click="generateReply(company)"
+                :disabled="isGeneratingMessage(company)"
+              >
+                <span x-text="isGeneratingMessage(company) ? 'Generating...' : 'Regenerate reply'"></span>
+                <span x-show="isGeneratingMessage(company)" class="loading-spinner"></span>
+              </button>
             </div>
           </template>
           <details>
