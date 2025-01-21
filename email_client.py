@@ -68,17 +68,16 @@ class GmailRepliesSearcher:
         self._service = build("gmail", "v1", credentials=self.creds)
 
     def search_messages(self, query, max_results: int = 10) -> list:
-        results = (
-            self.service.users()
-            .messages()
-            .list(userId="me", q=query, maxResults=max_results)
-            .execute()
-        )
+        messages_resource = self.service.users().messages()  # type: ignore
+        results: dict = messages_resource.list(
+            userId="me", q=query, maxResults=max_results
+        ).execute()
         messages = results.get("messages", [])
         return messages
 
-    def get_message_details(self, msg_id):
-        message = self.service.users().messages().get(userId="me", id=msg_id).execute()
+    def get_message_details(self, msg_id) -> dict:
+        messages_resource = self.service.users().messages()  # type: ignore
+        message: dict = messages_resource.get(userId="me", id=msg_id).execute()
         return message
 
     def search_and_get_details(self, query, max_results: int = 10):
