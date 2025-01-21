@@ -121,24 +121,19 @@ class ResearchDaemon:
         max_messages = args.get("max_messages", 100)
         logger.info(f"Finding companies in up to {max_messages} recruiter messages")
 
-        messages: list[str] = self.jobsearch.get_new_recruiter_messages(
-            max_results=max_messages
-        )
+        messages = self.jobsearch.get_new_recruiter_messages(max_results=max_messages)
         for i, message in enumerate(messages):
             logger.info(
                 f"Processing message {i+1} of {len(messages)} [max {max_messages}]..."
             )
             try:
                 company_row = self.jobsearch.research_company(
-                    # TODO we want to email_thread_link here
                     message,
                     model=self.ai_model,
                     do_advanced=False,
                 )
                 if company_row.name is None:
-                    logger.warning(
-                        f"No company extracted from message: {message[:400]}"
-                    )
+                    logger.warning(f"No company extracted from message, skipping")
                     continue
 
                 if self.company_repo.get(company_row.name) is not None:
@@ -148,7 +143,7 @@ class ResearchDaemon:
                 company = models.Company(
                     name=company_row.name,
                     details=company_row,
-                    initial_message=message,
+                    initial_message=message.message,
                 )
                 self.company_repo.create(company)
                 logger.info(

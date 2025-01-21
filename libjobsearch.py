@@ -44,6 +44,12 @@ class CacheStep(IntEnum):
 
 
 @dataclasses.dataclass
+class RecruiterMessage:
+    message: str
+    email_thread_link: str = ""
+
+
+@dataclasses.dataclass
 class CacheSettings:
     no_cache: bool = False
     clear_cache: list[CacheStep] = dataclasses.field(default_factory=list)
@@ -289,10 +295,15 @@ class EmailResponder:
         return result
 
     @disk_cache(CacheStep.GET_MESSAGES)
-    def get_new_recruiter_messages(self, max_results: int = 100) -> list[str]:
+    def get_new_recruiter_messages(
+        self, max_results: int = 100
+    ) -> list[RecruiterMessage]:
         logger.info(f"Getting {max_results} new recruiter messages")
         return [
-            msg["combined_content"].strip()
+            RecruiterMessage(
+                message=msg["combined_content"].strip(),
+                email_thread_link=msg["email_thread_link"],
+            )
             for msg in self.email_client.get_new_recruiter_messages(
                 max_results=max_results
             )
@@ -348,20 +359,19 @@ class JobSearch:
 
         for i, msg in enumerate(new_recruiter_email):
             logger.info(f"Processing message {i+1} of {len(new_recruiter_email)}...")
-            content = msg.strip()
-            if not content:
+            if not msg.message.strip():
                 logger.warning("Empty message, skipping")
                 continue
 
             logger.info(
-                f"==============================\n\nProcessing message:\n\n{content}\n"
+                f"==============================\n\nProcessing message:\n\n{msg.message}\n"
             )
             # TODO: pass subject too?
 
-            company_info = self.research_company(content, model=args.model)
+            company_info = self.research_company(msg, model=args.model)
             logger.info(f"------- RESEARCHED COMPANY:\n{company_info}\n\n")
 
-            generated_reply = self.generate_reply(content)
+            generated_reply = self.generate_reply(msg.message)
             logger.info(f"------ GENERATED REPLY:\n{generated_reply[:400]}\n\n")
 
             reply = maybe_edit_reply(generated_reply)
@@ -375,12 +385,13 @@ class JobSearch:
         return self.email_responder.generate_reply(content)
 
     def research_company(
-        self, content: str, model: str, do_advanced=True
+        self, message: str | RecruiterMessage, model: str, do_advanced=True
     ) -> CompaniesSheetRow:
         """
         Builds a CompaniesSheetRow from raw text about the company, eg could be from a recruiter email.
         """
-        company_info = self.initial_research_company(content, model=model)
+
+        company_info = self.initial_research_company(message, model=model)
         logger.debug(f"Company info after initial research: {company_info}\n\n")
 
         if do_advanced and self.is_good_fit(company_info):
@@ -390,13 +401,21 @@ class JobSearch:
         return company_info
 
     @disk_cache(CacheStep.BASIC_RESEARCH)
-    def initial_research_company(self, message: str, model: str) -> CompaniesSheetRow:
+    def initial_research_company(
+        self, message: str | RecruiterMessage, model: str
+    ) -> CompaniesSheetRow:
         logger.info("Starting initial research...")
+
+        email_thread_link = ""
+        if isinstance(message, RecruiterMessage):
+            email_thread_link = message.email_thread_link
+            message = message.message
+
         # TODO: Implement this:
         # - If there are attachments to the message (eg .doc or .pdf), extract the text from them
         #   and pass that to company_researcher.py too
-        # - use levels_searcher.py to find salary data
         row = company_researcher.main(url_or_message=message, model=model, is_url=False)
+        row.email_thread_link = email_thread_link
 
         if not row.name:
             logger.warning(f"Company name not found: {row}, nothing else to do")
@@ -486,7 +505,9 @@ class JobSearch:
         logger.info(f"Checking if {company_info.name} is a good fit...")
         return True
 
-    def get_new_recruiter_messages(self, max_results: int = 100) -> list[str]:
+    def get_new_recruiter_messages(
+        self, max_results: int = 100
+    ) -> list[RecruiterMessage]:
         return self.email_responder.get_new_recruiter_messages(max_results=max_results)
 
 
