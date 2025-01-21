@@ -144,6 +144,10 @@
           <header>
             <h3>Edit Reply</h3>
           </header>
+          <div class="original-message" x-show="editingCompany?.initial_message">
+            <h4>Original Message:</h4>
+            <pre x-text="editingCompany?.initial_message"></pre>
+          </div>
           <form @submit.prevent="saveReply">
             <textarea x-model="editingReply" rows="5"></textarea>
             <footer>

@@ -70,4 +70,26 @@ dialog footer {
 
 .input-group input[type="number"] {
   width: 5rem;
+}
+
+dialog .original-message {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background-color: var(--card-background-color);
+    border: 1px solid var(--card-border-color);
+    border-radius: var(--border-radius);
+}
+
+dialog .original-message h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+dialog .original-message pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: none;
+    padding: 0;
 } 
