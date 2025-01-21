@@ -32,12 +32,23 @@ document.addEventListener("alpine:init", () => {
       }
     },
 
+    showError(message) {
+      alert(message); // We can make this fancier later with a toast or custom modal
+    },
+
     async generateReply(company, updateModal = false) {
       try {
         this.generatingMessages.add(company.name);
         const response = await fetch(`/api/${company.name}/reply_message`, {
           method: "POST",
         });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(
+            error.error || `Failed to generate reply: ${response.status}`
+          );
+        }
 
         const data = await response.json();
         company.message_task_id = data.task_id;
@@ -56,6 +67,10 @@ document.addEventListener("alpine:init", () => {
         }
       } catch (err) {
         console.error("Failed to generate reply:", err);
+        this.showError(
+          err.message || "Failed to generate reply. Please try again."
+        );
+      } finally {
         this.generatingMessages.delete(company.name);
       }
     },
@@ -86,20 +101,21 @@ document.addEventListener("alpine:init", () => {
             }
           );
 
-          const data = await response.json();
-          if (response.ok) {
-            // Use the server response data directly
-            Object.assign(this.editingCompany, data);
-            // Force Alpine to recognize the change
-            // this.companies = [...this.companies];
-            this.cancelEdit();
-          } else {
-            console.error("Failed to save reply:", data.error);
-            alert(data.error || "Failed to save reply");
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(
+              error.error || `Failed to save reply: ${response.status}`
+            );
           }
+
+          const data = await response.json();
+          Object.assign(this.editingCompany, data);
+          this.cancelEdit();
         } catch (err) {
           console.error("Failed to save reply:", err);
-          alert("Failed to save reply");
+          this.showError(
+            err.message || "Failed to save reply. Please try again."
+          );
         }
       }
     },
@@ -111,14 +127,24 @@ document.addEventListener("alpine:init", () => {
           method: "POST",
         });
 
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(
+            error.error || `Failed to start research: ${response.status}`
+          );
+        }
+
         const data = await response.json();
         company.research_task_id = data.task_id;
         company.research_status = data.status;
 
-        // Start polling for updates
-        this.pollResearchStatus(company);
+        await this.pollResearchStatus(company);
       } catch (err) {
         console.error("Failed to research company:", err);
+        this.showError(
+          err.message || "Failed to start research. Please try again."
+        );
+      } finally {
         this.researchingCompanies.delete(company.name);
       }
     },
@@ -264,18 +290,23 @@ document.addEventListener("alpine:init", () => {
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.error || "Failed to scan recruiter emails");
+          throw new Error(
+            error.error || `Failed to scan emails: ${response.status}`
+          );
         }
 
         const data = await response.json();
         this.emailScanTaskId = data.task_id;
         this.emailScanStatus = data.status;
 
-        // Use existing pollTaskStatus with null company and "scan_emails" type
         await this.pollTaskStatus(null, "scan_emails");
       } catch (err) {
         console.error("Failed to scan recruiter emails:", err);
+        this.showError(
+          err.message || "Failed to scan emails. Please try again."
+        );
         this.emailScanError = err.message;
+      } finally {
         this.scanningEmails = false;
       }
     },
