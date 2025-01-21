@@ -17,11 +17,16 @@ CREDENTIALS_FILE = os.path.join(AUTH_DIR, "credentials.json")
 TOKEN_FILE = os.path.join(AUTH_DIR, "token.json")
 
 
-RECRUITER_REPLIES_QUERY = "label:jobs-2024/recruiter-pings-archived from:me"
-RECRUITER_MESSAGES_QUERY = "label:jobs-2024/recruiter-pings"
-
+ARCHIVED_LABEL = "jobs-2024/recruiter-pings-archived"
+RECRUITER_REPLIES_QUERY = f"label:{ARCHIVED_LABEL} from:me"
+RECRUITER_MESSSAGES_LABEL = "jobs-2024/recruiter-pings"
+RECRUITER_MESSAGES_QUERY = f"label:{RECRUITER_MESSSAGES_LABEL}"
+RECRUITER_MESSAGES_LINK_TEMPLATE = (
+    "https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/{thread_id}"
+)
 
 logger = logging.getLogger(__name__)
+
 class GmailRepliesSearcher:
     """
     Searches for user's previous replies to recruiter emails.
@@ -222,21 +227,7 @@ class GmailRepliesSearcher:
             # but that's probably ok
             subject = self.get_subject(msg_list[0][-1]).strip()
 
-            # Get the actual label path from the message data
-            label_path = ""
-            for label_name in msg_list[-1][-1].get("labelIds", []):
-                if "unread" in label_name:
-                    continue
-                label_path = label_name.lower()
-                break
-            if not label_path:
-                # TODO: can we fall back to the configured label? Do we need to quote it?
-                logger.warning(f"No label path found for thread {thread_id}")
-            # Note: We have to assume u/0 since the Gmail API doesn't indicate which user number,
-            # as that's a browser UI concept, not an API one
-            email_thread_link = (
-                f"https://mail.google.com/mail/u/0/#{label_path}/{thread_id}"
-            )
+            email_thread_link = self._get_email_thread_link(msg_list)
             combined_msg["email_thread_link"] = email_thread_link
             combined_content = []
             if subject:
@@ -264,6 +255,11 @@ class GmailRepliesSearcher:
             f"Got {len(message_dicts)} new recruiter messages in {len(combined_messages)} threads"
         )
         return combined_messages
+
+    def _get_email_thread_link(self, msg_list) -> str:
+        thread_id = msg_list[-1][-1]["threadId"]
+        email_thread_link = RECRUITER_MESSAGES_LINK_TEMPLATE.format(thread_id=thread_id)
+        return email_thread_link
 
 
 def main_demo(
