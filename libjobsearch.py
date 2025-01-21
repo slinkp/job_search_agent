@@ -398,9 +398,11 @@ class JobSearch:
         # - use levels_searcher.py to find salary data
         row = company_researcher.main(url_or_message=message, model=model, is_url=False)
 
-        now = datetime.datetime.now()
-        # TODO: handle case of company not found
+        if not row.name:
+            logger.warning(f"Company name not found: {row}, nothing else to do")
+            return row
 
+        now = datetime.datetime.now()
         logger.info("Finding equivalent job levels ...")
         equivalent_levels = list(
             run_in_process(levels_searcher.extract_levels, row.name) or []
@@ -461,6 +463,12 @@ class JobSearch:
     def followup_research_company(
         self, company_info: CompaniesSheetRow
     ) -> CompaniesSheetRow:
+        if not company_info.name:
+            logger.warning(
+                f"Company name not found: {company_info}, nothing else to do"
+            )
+            return company_info
+
         logger.info(f"Doing followup research on: {company_info}")
 
         linkedin_contacts = (
