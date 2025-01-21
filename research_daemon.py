@@ -39,6 +39,7 @@ class ResearchDaemon:
         self.running = False
         self.task_mgr = task_manager()
         self.company_repo = models.company_repository()
+        self.ai_model = args.model
         self.jobsearch = libjobsearch.JobSearch(
             args, loglevel=logging.DEBUG, cache_settings=cache_settings
         )
@@ -74,6 +75,8 @@ class ResearchDaemon:
                     self.do_research(task_args)
                 elif task_type == TaskType.GENERATE_REPLY:
                     self.do_generate_reply(task_args)
+                elif task_type == TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES:
+                    self.do_find_companies_in_recruiter_messages(task_args)
                 else:
                     logger.error(f"Ignoring unsupported task type: {task_type}")
                 logger.info(f"Task {task_id} completed")
@@ -93,8 +96,7 @@ class ResearchDaemon:
             self.company_repo.delete(existing.name)
         logger.info(f"Creating company {company_name}")
         # TODO: Pass more context from email, etc.
-        MODEL = "claude-3-5-sonnet-latest"  # TODO: Make this configurable
-        company_row = self.jobsearch.research_company(content, model=MODEL)
+        company_row = self.jobsearch.research_company(content, model=self.ai_model)
         company = models.Company(
             name=company_name,
             details=company_row,
@@ -114,6 +116,48 @@ class ResearchDaemon:
         company.reply_message = reply
         self.company_repo.update(company)
         logger.info(f"Updated reply for {args['company_name']}")
+
+    def do_find_companies_in_recruiter_messages(self, args: dict):
+        max_messages = args.get("max_messages", 100)
+        logger.info(f"Finding companies in up to {max_messages} recruiter messages")
+
+        messages: list[str] = self.jobsearch.get_new_recruiter_messages(
+            max_results=max_messages
+        )
+        for i, message in enumerate(messages):
+            logger.info(
+                f"Processing message {i+1} of {len(messages)} [max {max_messages}]..."
+            )
+            try:
+                company_row = self.jobsearch.research_company(
+                    # TODO we want to email_thread_link here
+                    message,
+                    model=self.ai_model,
+                    do_advanced=False,
+                )
+                if company_row.name is None:
+                    logger.warning(
+                        f"No company extracted from message: {message[:400]}"
+                    )
+                    continue
+
+                if self.company_repo.get(company_row.name) is not None:
+                    logger.info(f"Company {company_row.name} already exists, skipping")
+                    continue
+
+                company = models.Company(
+                    name=company_row.name,
+                    details=company_row,
+                    initial_message=message,
+                )
+                self.company_repo.create(company)
+                logger.info(
+                    f"Created company {company_row.name} from recruiter message"
+                )
+            except Exception:
+                logger.exception("Error processing recruiter message")
+                continue
+        logger.info("Finished processing recruiter messages")
 
 
 if __name__ == "__main__":

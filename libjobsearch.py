@@ -341,7 +341,7 @@ class JobSearch:
             new_recruiter_email = args.test_messages
         else:
             logger.debug("Getting new recruiter messages...")
-            new_recruiter_email = self.email_responder.get_new_recruiter_messages(
+            new_recruiter_email = self.get_new_recruiter_messages(
                 max_results=args.limit
             )
             logger.debug("...Got new recruiter messages")
@@ -374,11 +374,16 @@ class JobSearch:
     def generate_reply(self, content: str) -> str:
         return self.email_responder.generate_reply(content)
 
-    def research_company(self, content: str, model: str) -> CompaniesSheetRow:
+    def research_company(
+        self, content: str, model: str, do_advanced=True
+    ) -> CompaniesSheetRow:
+        """
+        Builds a CompaniesSheetRow from raw text about the company, eg could be from a recruiter email.
+        """
         company_info = self.initial_research_company(content, model=model)
         logger.debug(f"Company info after initial research: {company_info}\n\n")
 
-        if self.is_good_fit(company_info):
+        if do_advanced and self.is_good_fit(company_info):
             company_info = self.followup_research_company(company_info)
             logger.debug(f"Company info after followup research: {company_info}\n\n")
 
@@ -472,6 +477,9 @@ class JobSearch:
         # TODO: basic heuristic for now
         logger.info(f"Checking if {company_info.name} is a good fit...")
         return True
+
+    def get_new_recruiter_messages(self, max_results: int = 100) -> list[str]:
+        return self.email_responder.get_new_recruiter_messages(max_results=max_results)
 
 
 def arg_parser():
