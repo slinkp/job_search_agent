@@ -1,11 +1,39 @@
 /* Reduce spacing around details element */
 details {
-    margin: 0.5rem 0;
+    margin: 0.5rem 0 0 0;
+    font-size: 0.85em;
 }
 
 /* Adjust the summary spacing if needed */
 details summary {
-    margin-bottom: 0.5rem;
+    color: var(--primary) !important;
+    cursor: pointer;
+    padding: 0.2rem 0;
+}
+
+details summary:hover {
+    opacity: 0.8;
+}
+
+details p {
+    margin: var(--typography-spacing-vertical) 0;
+    padding-left: var(--spacing);
+    color: var(--muted-color);
+    font-size: 0.85em;  /* Make the content text smaller */
+}
+
+details small {
+    font-size: 0.85em;  /* Ensure consistent size for small text */
+}
+
+details span {
+    font-size: inherit;  /* Ensure spans inherit the smaller size */
+}
+
+/* Status indicators - use Pico's color system */
+[class^="status-"] {
+    font-size: 0.85em;
+    color: var(--muted-color);
 }
 
 [x-cloak] {
@@ -140,11 +168,44 @@ dialog .original-message pre {
 }
 
 .reply-actions {
-    display: flex;
-    gap: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 h1 {
   font-size: 1.5em;
   margin: 0.5rem 0;  /* Reduced from default margins */
+}
+
+/* Company styling - work with Pico's article defaults */
+article {
+    margin: 0 0 0.75rem 0;
+    padding: 0.5rem;       /* Reduced padding further */
+}
+
+/* Use Pico's grid system for layouts */
+article header {
+    margin: 0 0 1rem 0;
+    font-size: 0.85em;
+    padding: 0;            /* Remove header padding */
+}
+
+/* Buttons - respect Pico's button styling */
+article button {
+    padding: 0.2rem 0.5rem;
+    min-width: auto;
+    font-size: 0.85em;
+    margin: 0;
+    white-space: nowrap;
+    width: auto;  /* Prevent full-width buttons */
+    display: inline-flex;  /* Help with alignment */
+    align-items: center;
+}
+
+/* Action groups - keep on one line */
+.research-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 } 
