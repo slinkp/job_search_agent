@@ -254,6 +254,12 @@ class TavilyRAGResearchAgent:
             company_info.recruit_contact = data.get("recruiter_name", "")
             print(f"Company info: {company_info}")
 
+        if not (company_info.name or company_info.url):
+            logger.warning(
+                f"Not enough company info to proceed with research: {company_info.company_identifier}"
+            )
+            return company_info
+
         for prompt, format_prompt in COMPANY_PROMPTS_WITH_FORMAT_PROMPT:
             try:
                 context = self.get_search_context(
