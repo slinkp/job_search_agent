@@ -12,6 +12,7 @@ document.addEventListener("alpine:init", () => {
     emailScanError: null,
     sortField: "name",
     sortAsc: true,
+    filterMode: "all", // "all", "with-replies", "without-replies"
 
     isUrl(value) {
       return typeof value === "string" && value.startsWith("http");
@@ -365,8 +366,22 @@ document.addEventListener("alpine:init", () => {
       }
     },
 
-    get sortedCompanies() {
-      return [...this.companies].sort((a, b) => {
+    get filteredCompanies() {
+      const filtered = this.companies.filter((company) => {
+        switch (this.filterMode) {
+          case "with-replies":
+            return company.reply_message;
+          case "without-replies":
+            return !company.reply_message;
+          default:
+            return true;
+        }
+      });
+      return filtered;
+    },
+
+    get sortedAndFilteredCompanies() {
+      return [...this.filteredCompanies].sort((a, b) => {
         const aVal =
           this.sortField === "updated_at"
             ? new Date(a.updated_at).getTime()

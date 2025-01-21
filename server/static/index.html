@@ -45,20 +45,36 @@
         ></span>
       </div>
 
-      <!-- Move sort controls here -->
-      <div class="sort-controls">
-        <span class="sort-label">Sort by:</span>
-        <button @click="toggleSort('name')" class="sort-button outline" :class="{ 'active': sortField === 'name' }">
-          Name
-          <span x-show="sortField === 'name'" x-text="sortAsc ? '↑' : '↓'"></span>
-        </button>
-        <button @click="toggleSort('updated_at')" class="sort-button outline" :class="{ 'active': sortField === 'updated_at' }">
-          Last Updated
-          <span x-show="sortField === 'updated_at'" x-text="sortAsc ? '↑' : '↓'"></span>
-        </button>
+      <div class="list-controls">
+        <div class="filter-controls">
+          <span class="filter-label">Show:</span>
+          <button @click="filterMode = 'all'" class="filter-button outline" :class="{ 'active': filterMode === 'all' }">
+            All Companies
+          </button>
+          <button @click="filterMode = 'with-replies'" class="filter-button outline" :class="{ 'active': filterMode === 'with-replies' }">
+            With Replies
+          </button>
+          <button @click="filterMode = 'without-replies'" class="filter-button outline" :class="{ 'active': filterMode === 'without-replies' }">
+            Without Replies
+          </button>
+        </div>
+
+        <div class="sort-controls">
+          <span class="sort-label">Sort by:</span>
+          <button @click="toggleSort('name')" class="sort-button outline" :class="{ 'active': sortField === 'name' }">
+            Name <span x-text="sortField === 'name' ? (sortAsc ? '↑' : '↓') : ''"></span>
+          </button>
+          <button @click="toggleSort('updated_at')" class="sort-button outline" :class="{ 'active': sortField === 'updated_at' }">
+            Last Updated <span x-text="sortField === 'updated_at' ? (sortAsc ? '↑' : '↓') : ''"></span>
+          </button>
+        </div>
+
+        <div class="list-stats">
+          Showing <span x-text="sortedAndFilteredCompanies.length"></span> of <span x-text="companies.length"></span> companies
+        </div>
       </div>
 
-      <template x-for="company in sortedCompanies" :key="company.name">
+      <template x-for="company in sortedAndFilteredCompanies" :key="company.name">
         <article>
           <header>
             <a href="#" @click.prevent="document.getElementById(company.name).scrollIntoView({behavior: 'smooth'})" x-text="company.name" :id="company.name"></a>
