@@ -164,10 +164,10 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] chose sqlite db
       - [x] models.py
       - [x] simple repository implementation
-  - [ ] Manually trigger checking email (with optional max)
+  - [x] Manually trigger checking email (with optional max)
   - [x] List pending companies
     - [x] Display known data
-    - [ ] Link to original message, if any (maybe just gmail link?)
+    - [x] Link to original message, if any (maybe just gmail link?)
   - [x] Research button
   - [x] "Generate reply" button (and "regenerate")
     - [x] "Edit reply" button
