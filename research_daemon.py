@@ -123,6 +123,9 @@ class ResearchDaemon:
 
         messages = self.jobsearch.get_new_recruiter_messages(max_results=max_messages)
         for i, message in enumerate(messages):
+            if not self.running:
+                logger.warning("Research daemon stopping, skipping remaining messages")
+                return
             logger.info(
                 f"Processing message {i+1} of {len(messages)} [max {max_messages}]..."
             )
