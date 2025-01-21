@@ -243,10 +243,18 @@ class GmailRepliesSearcher:
             if subject:
                 subject = subject.strip() + "\n\n"
                 combined_content.append(subject)
-            combined_content.extend([mdict[1] for mdict in msg_list])
+
+            combined_content.extend(
+                [self.extract_message_content(mdict[2]) for mdict in msg_list]
+            )
+
             if len(combined_content) > 1:
-                for i, content in enumerate(combined_content):
-                    logger.debug(f"Thread {thread_id} content {i}:\n{content[:200]}...")
+                # We drop the subject if it's redundant.
+                if combined_content[1].startswith(combined_content[0].rstrip()):
+                    combined_content = combined_content[1:]
+
+            for i, content in enumerate(combined_content):
+                logger.debug(f"Thread {thread_id} content {i}:\n{content[:200]}...")
 
             # TODO: Add text extracted from attached PDFs, docx, etc.
             combined_msg["combined_content"] = "\n\n".join(combined_content)
