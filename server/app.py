@@ -153,6 +153,17 @@ def get_task_status(request):
     return task
 
 
+@view_config(route_name="scan_recruiter_emails", renderer="json", request_method="POST")
+def scan_recruiter_emails(request):
+    max_messages = request.json_body.get("max_messages", 10)
+    task_id = tasks.task_manager().create_task(
+        tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
+        {"max_messages": max_messages},
+    )
+    logger.info(f"Email scan requested, task_id: {task_id}")
+    return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
+
+
 def main(global_config, **settings):
     with Configurator(settings=settings) as config:
         # Enable debugtoolbar for development
@@ -171,6 +182,7 @@ def main(global_config, **settings):
         config.add_route('companies', '/api/companies')
         config.add_route("generate_message", "/api/{company_name}/reply_message")
         config.add_route("research", "/api/{company_name}/research")
+        config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
         config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_static_view(name='static', path='static')
         config.scan()
