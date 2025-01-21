@@ -8,6 +8,8 @@ import logging
 import os
 from typing import Optional
 
+import requests
+from bs4 import BeautifulSoup
 from langchain_anthropic import ChatAnthropic
 from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
@@ -229,6 +231,14 @@ class TavilyRAGResearchAgent:
         )
         return context
 
+    def _plaintext_from_url(self, url: str) -> str:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        text = soup.get_text(separator="\n", strip=True)
+        return text
+
     def main(self, *, url: str = "", message: str = "") -> CompaniesSheetRow:
         """
         Research a company based on either a URL or a recruiter message.
@@ -247,12 +257,14 @@ class TavilyRAGResearchAgent:
             current_state="10. consider applying",  # Default initial state
         )
 
-        if message:
-            data = self.extract_initial_company_info(message)
-            company_info.name = data.get("company_name", "")
-            company_info.url = data.get("company_url", "")
-            company_info.recruit_contact = data.get("recruiter_name", "")
-            print(f"Company info: {company_info}")
+        content = message if message else self._plaintext_from_url(url)
+
+        data = self.extract_initial_company_info(content)
+        company_info.name = data.get("company_name", "")
+        company_info.url = data.get("company_url", url)
+        company_info.recruit_contact = data.get("recruiter_name", "")
+
+        logger.info(f"Initial company info: {company_info}")
 
         if not (company_info.name or company_info.url):
             logger.warning(
