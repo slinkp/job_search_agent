@@ -92,9 +92,7 @@
               @click="generateReply(company)"
               :disabled="isGeneratingMessage(company)"
             >
-              <span
-                x-text="isGeneratingMessage(company) ? 'Generating...' : 'Generate reply'"
-              ></span>
+              <span x-text="isGeneratingMessage(company) ? 'Generating...' : company.reply_message ? 'Regenerate' : 'Generate'"></span>
               <span
                 x-show="isGeneratingMessage(company)"
                 class="loading-spinner"
@@ -120,7 +118,7 @@
                 @click="generateReply(company)"
                 :disabled="isGeneratingMessage(company)"
               >
-                <span x-text="isGeneratingMessage(company) ? 'Generating...' : 'Regenerate reply'"></span>
+                <span x-text="isGeneratingMessage(company) ? 'Generating...' : company.reply_message ? 'Regenerate' : 'Generate'"></span>
                 <span x-show="isGeneratingMessage(company)" class="loading-spinner"></span>
               </button>
             </div>
