@@ -56,4 +56,18 @@ dialog footer {
 .research-button:disabled {
     opacity: 0.7;
     cursor: not-allowed;
+}
+
+.scan-recruiter-emails {
+  margin: 1rem 0;
+}
+
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.input-group input[type="number"] {
+  width: 5rem;
 } 

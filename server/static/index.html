@@ -21,6 +21,31 @@
 
       <div x-show="loading">Loading...</div>
 
+      
+      <div class="scan-recruiter-emails">
+        <div class="input-group">
+          <input 
+            x-ref="numEmails"
+            type="number" 
+            value="10"
+            min="1"
+            max="100"
+          />
+          <button
+            @click="scanRecruiterEmails($refs.numEmails.value)"
+            :disabled="scanningEmails"
+          >
+            <span x-text="scanningEmails ? 'Scanning...' : 'Scan Recruiter Emails'"></span>
+            <span x-show="scanningEmails" class="loading-spinner"></span>
+          </button>
+        </div>
+        <span
+          x-show="emailScanStatus"
+          x-text="getEmailScanStatusText()"
+          :class="getEmailScanStatusClass()"
+        ></span>
+      </div>
+
       <template x-for="company in companies" :key="company.name">
         <article>
           <header>
