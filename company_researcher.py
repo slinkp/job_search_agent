@@ -190,8 +190,9 @@ class TavilyRAGResearchAgent:
                 format_prompt,
             ]
         )
-
-        return "\n".join(parts)
+        full_prompt = "\n".join(parts)
+        logger.debug(f"Made full prompt:\n\n{full_prompt}\n\n")
+        return full_prompt
 
     def extract_initial_company_info(self, message: str) -> dict:
         """Extract basic company info from recruiter message"""
