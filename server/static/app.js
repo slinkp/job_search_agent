@@ -32,7 +32,7 @@ document.addEventListener("alpine:init", () => {
       }
     },
 
-    async generateReply(company) {
+    async generateReply(company, updateModal = false) {
       try {
         this.generatingMessages.add(company.name);
         const response = await fetch(`/api/${company.name}/reply_message`, {
@@ -44,7 +44,16 @@ document.addEventListener("alpine:init", () => {
         company.message_status = data.status;
 
         // Start polling for updates
-        this.pollMessageStatus(company);
+        await this.pollMessageStatus(company);
+        // After polling completes, get the fresh company data
+        if (updateModal && this.editingCompany) {
+          const updatedCompany = this.companies.find(
+            (c) => c.name === company.name
+          );
+          if (updatedCompany) {
+            this.editingReply = updatedCompany.reply_message;
+          }
+        }
       } catch (err) {
         console.error("Failed to generate reply:", err);
         this.generatingMessages.delete(company.name);
