@@ -224,9 +224,17 @@ class GmailRepliesSearcher:
             subject = self.get_subject(msg_list[0][-1]).strip()
 
             # Get the actual label path from the message data
+            label_path = ""
+            for label_name in msg_list[-1][-1].get("labelIds", []):
+                if "unread" in label_name:
+                    continue
+                label_path = label_name.lower()
+                break
+            if not label_path:
+                # TODO: can we fall back to the configured label? Do we need to quote it?
+                logger.warning(f"No label path found for thread {thread_id}")
             # Note: We have to assume u/0 since the Gmail API doesn't indicate which user number,
             # as that's a browser UI concept, not an API one
-            label_path = msg_list[-1][-1].get("labelIds", ["INBOX"])[0].lower()
             email_thread_link = (
                 f"https://mail.google.com/mail/u/0/#{label_path}/{thread_id}"
             )
