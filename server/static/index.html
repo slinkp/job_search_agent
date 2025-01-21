@@ -21,56 +21,41 @@
 
       <div x-show="loading">Loading...</div>
 
-      <div class="scan-recruiter-emails">
-        <div class="input-group">
-          <input 
-            x-ref="numEmails"
-            type="number" 
-            value="10"
-            min="1"
-            max="100"
-          />
-          <button
-            @click="scanRecruiterEmails($refs.numEmails.value)"
-            :disabled="scanningEmails"
-          >
-            <span x-text="scanningEmails ? 'Scanning...' : 'Scan Recruiter Emails'"></span>
-            <span x-show="scanningEmails" class="loading-spinner"></span>
-          </button>
-        </div>
-        <span
-          x-show="emailScanStatus"
-          x-text="getEmailScanStatusText()"
-          :class="getEmailScanStatusClass()"
-        ></span>
-      </div>
-
-      <div class="list-controls">
-        <div class="filter-controls">
-          <span class="filter-label">Show:</span>
-          <button @click="filterMode = 'all'" class="filter-button outline" :class="{ 'active': filterMode === 'all' }">
-            All Companies
-          </button>
-          <button @click="filterMode = 'with-replies'" class="filter-button outline" :class="{ 'active': filterMode === 'with-replies' }">
-            With Replies
-          </button>
-          <button @click="filterMode = 'without-replies'" class="filter-button outline" :class="{ 'active': filterMode === 'without-replies' }">
-            Without Replies
-          </button>
+      <div class="top-controls">
+        <div class="scan-recruiter-emails">
+          <div class="input-group">
+            <input type="number" value="10" id="maxMessages">
+            <button @click="scanRecruiterEmails($el.previousElementSibling.value)" :disabled="scanningEmails">
+              <span class="loading-spinner" x-show="scanningEmails"></span>
+              Scan Emails
+            </button>
+          </div>
+          <div x-show="emailScanStatus" x-text="getEmailScanStatusText()" :class="getEmailScanStatusClass()"></div>
         </div>
 
-        <div class="sort-controls">
-          <span class="sort-label">Sort by:</span>
-          <button @click="toggleSort('name')" class="sort-button outline" :class="{ 'active': sortField === 'name' }">
-            Name <span x-text="sortField === 'name' ? (sortAsc ? '↑' : '↓') : ''"></span>
-          </button>
-          <button @click="toggleSort('updated_at')" class="sort-button outline" :class="{ 'active': sortField === 'updated_at' }">
-            Last Updated <span x-text="sortField === 'updated_at' ? (sortAsc ? '↑' : '↓') : ''"></span>
-          </button>
-        </div>
+        <div class="list-controls">
+          <div class="filter-controls">
+            <button @click="filterMode = 'all'" class="filter-button outline" :class="{ 'active': filterMode === 'all' }">
+              All
+            </button>
+            <button @click="filterMode = 'with-replies'" class="filter-button outline" :class="{ 'active': filterMode === 'with-replies' }">
+              Has Reply
+            </button>
+            <button @click="filterMode = 'without-replies'" class="filter-button outline" :class="{ 'active': filterMode === 'without-replies' }">
+              No Reply
+            </button>
+          </div>
 
-        <div class="list-stats">
-          Showing <span x-text="sortedAndFilteredCompanies.length"></span> of <span x-text="companies.length"></span> companies
+          <div class="sort-controls">
+            <button @click="toggleSort('name')" class="sort-button outline" :class="{ 'active': sortField === 'name' }">
+              Name <span x-text="sortField === 'name' ? (sortAsc ? '↑' : '↓') : ''"></span>
+            </button>
+            <button @click="toggleSort('updated_at')" class="sort-button outline" :class="{ 'active': sortField === 'updated_at' }">
+              Updated <span x-text="sortField === 'updated_at' ? (sortAsc ? '↑' : '↓') : ''"></span>
+            </button>
+          </div>
+
+          <span class="list-stats" x-text="`${sortedAndFilteredCompanies.length}/${companies.length}`"></span>
         </div>
       </div>
 

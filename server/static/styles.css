@@ -58,18 +58,63 @@ dialog footer {
     cursor: not-allowed;
 }
 
+.top-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
 .scan-recruiter-emails {
-  margin: 1rem 0;
+  font-size: 0.85em;
+}
+
+.scan-recruiter-emails button {
+  padding: 0.2rem 0.5rem;
+  min-width: auto;
+}
+
+.list-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7em;
+}
+
+.filter-controls, .sort-controls {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.filter-button, .sort-button {
+  padding: 0.15rem 0.3rem;
+  min-width: auto;
+  background: none;
+  margin: 0;
+}
+
+.filter-button.active, .sort-button.active {
+  background: var(--primary);
+  color: var(--primary-inverse);
+  border-color: var(--primary);
+}
+
+.list-stats {
+  margin-left: 0.35rem;
+  color: var(--muted-color);
 }
 
 .input-group {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.35rem;
   align-items: center;
 }
 
 .input-group input[type="number"] {
-  width: 5rem;
+  width: 3.5rem;
+  padding: 0.2rem;
+  font-size: inherit;
 }
 
 dialog .original-message {
@@ -99,47 +144,7 @@ dialog .original-message pre {
     gap: 1rem;
 }
 
-.list-controls {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-  font-size: 0.85em;
-}
-
-.filter-controls, .sort-controls {
-  display: flex;
-  gap: 0.35rem;
-  align-items: center;
-  padding: 0.35rem;
-  background: var(--card-background-color);
-  border-radius: var(--border-radius);
-  flex-wrap: wrap;
-}
-
-.filter-label, .sort-label {
-  color: var(--muted-color);
-  margin-right: 0.2rem;
-}
-
-.filter-button, .sort-button {
-  padding: 0.25rem 0.5rem;
-  min-width: auto;
-  background: none;
-  font-size: inherit;
-  margin: 0;
-}
-
-.filter-button.active, .sort-button.active {
-  background: var(--primary);
-  color: var(--primary-inverse);
-  border-color: var(--primary);
-}
-
-.list-stats {
-  margin-left: auto;
-  color: var(--muted-color);
-  font-size: inherit;
+h1 {
+  font-size: 1.5em;
+  margin: 0.5rem 0;  /* Reduced from default margins */
 } 
