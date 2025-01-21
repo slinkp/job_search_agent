@@ -5,6 +5,7 @@ from typing import List, Tuple
 from langchain_anthropic import ChatAnthropic
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -103,18 +104,18 @@ class RecruitmentRAG:
         TEMPERATURE = 0.2  # Lowish because we're writing email to real people.
         TIMEOUT = 120
         if llm_type.lower() == "openai":
-            llm = ChatOpenAI(temperature=TEMPERATURE, timeout=TIMEOUT)
+            llm: BaseChatModel = ChatOpenAI(temperature=TEMPERATURE, timeout=TIMEOUT)
         elif llm_type.lower() == "claude":
-            llm = ChatAnthropic(
-                model="claude-3-5-sonnet-20240620",
+            llm: BaseChatModel = ChatAnthropic(
+                model="claude-3-5-sonnet-20240620",  # type: ignore[call-arg]
                 temperature=TEMPERATURE,
                 timeout=TIMEOUT,
             )
         elif llm_type.startswith("gpt"):
-            llm = ChatOpenAI(model=llm_type, temperature=TEMPERATURE)
+            llm: BaseChatModel = ChatOpenAI(model=llm_type, temperature=TEMPERATURE)
         elif llm_type.startswith("claude"):
-            llm = ChatAnthropic(
-                model=llm_type,
+            llm: BaseChatModel = ChatAnthropic(
+                model=llm_type,  # type: ignore[call-arg]
                 temperature=TEMPERATURE,
                 timeout=TIMEOUT,
             )

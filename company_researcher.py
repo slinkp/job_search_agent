@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from langchain_anthropic import ChatAnthropic
 from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
+from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 from tavily import TavilyClient
 
@@ -157,7 +158,9 @@ TIMEOUT = 120
 
 class TavilyRAGResearchAgent:
 
-    def __init__(self, verbose: bool = False, llm: Optional[object] = None):
+    llm: BaseChatModel
+
+    def __init__(self, verbose: bool = False, llm: Optional[BaseChatModel] = None):
         # set up the agent
         self.llm = llm or ChatOpenAI(
             model="gpt-4", temperature=TEMPERATURE, timeout=TIMEOUT
@@ -370,9 +373,16 @@ def main(
     """
     TEMPERATURE = 0.7  # TBD what's a good range for this use case? Is this high?
     if model.startswith("gpt-"):
-        llm = ChatOpenAI(model=model, temperature=TEMPERATURE, timeout=TIMEOUT)
+        llm: BaseChatModel = ChatOpenAI(
+            model=model, temperature=TEMPERATURE, timeout=TIMEOUT
+        )
     elif model.startswith("claude"):
-        llm = ChatAnthropic(model=model, temperature=TEMPERATURE, timeout=TIMEOUT)
+        llm: BaseChatModel = ChatAnthropic(
+            # This is 100% correct but pylance expects model_name instead
+            model=model,  # type: ignore[call-arg]
+            temperature=TEMPERATURE,
+            timeout=TIMEOUT,
+        )
     else:
         raise ValueError(f"Unknown model: {model}")
 
