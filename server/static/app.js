@@ -10,6 +10,8 @@ document.addEventListener("alpine:init", () => {
     emailScanTaskId: null,
     emailScanStatus: null,
     emailScanError: null,
+    sortField: "name",
+    sortAsc: true,
 
     isUrl(value) {
       return typeof value === "string" && value.startsWith("http");
@@ -360,6 +362,31 @@ document.addEventListener("alpine:init", () => {
           return `${action} failed`;
         default:
           return "";
+      }
+    },
+
+    get sortedCompanies() {
+      return [...this.companies].sort((a, b) => {
+        const aVal =
+          this.sortField === "updated_at"
+            ? new Date(a.updated_at).getTime()
+            : a[this.sortField];
+        const bVal =
+          this.sortField === "updated_at"
+            ? new Date(b.updated_at).getTime()
+            : b[this.sortField];
+
+        const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+        return this.sortAsc ? comparison : -comparison;
+      });
+    },
+
+    toggleSort(field) {
+      if (this.sortField === field) {
+        this.sortAsc = !this.sortAsc;
+      } else {
+        this.sortField = field;
+        this.sortAsc = true;
       }
     },
   }));

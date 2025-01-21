@@ -97,4 +97,40 @@ dialog .original-message pre {
 .reply-actions {
     display: flex;
     gap: 1rem;
+}
+
+.sort-controls {
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  background: var(--card-background-color);
+  border-radius: var(--border-radius);
+}
+
+.sort-label {
+  color: var(--muted-color);
+  font-size: 0.9em;
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.9em;
+  min-width: auto;
+  background: none;
+}
+
+.sort-button.active {
+  background: var(--primary);
+  color: var(--primary-inverse);
+  border-color: var(--primary);
+}
+
+.sort-button span {
+  font-size: 0.8em;
+  margin-left: 0.25rem;
 } 

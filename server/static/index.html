@@ -21,7 +21,6 @@
 
       <div x-show="loading">Loading...</div>
 
-      
       <div class="scan-recruiter-emails">
         <div class="input-group">
           <input 
@@ -46,7 +45,20 @@
         ></span>
       </div>
 
-      <template x-for="company in companies" :key="company.name">
+      <!-- Move sort controls here -->
+      <div class="sort-controls">
+        <span class="sort-label">Sort by:</span>
+        <button @click="toggleSort('name')" class="sort-button outline" :class="{ 'active': sortField === 'name' }">
+          Name
+          <span x-show="sortField === 'name'" x-text="sortAsc ? '↑' : '↓'"></span>
+        </button>
+        <button @click="toggleSort('updated_at')" class="sort-button outline" :class="{ 'active': sortField === 'updated_at' }">
+          Last Updated
+          <span x-show="sortField === 'updated_at'" x-text="sortAsc ? '↑' : '↓'"></span>
+        </button>
+      </div>
+
+      <template x-for="company in sortedCompanies" :key="company.name">
         <article>
           <header>
             <a href="#" @click.prevent="document.getElementById(company.name).scrollIntoView({behavior: 'smooth'})" x-text="company.name" :id="company.name"></a>
