@@ -22,3 +22,4 @@ pyramid==2.0.2
 pyramid_debugtoolbar==4.12.1
 requests==2.32.3
 bs4==0.0.2
+pydantic==2.10.4
