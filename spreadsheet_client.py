@@ -11,7 +11,7 @@ import os
 import os.path
 import sys
 from decimal import Decimal
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, cast
 
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
@@ -71,7 +71,7 @@ def authorize() -> Credentials:
 
     logger.info("New credentials needed, forcing auth via browser")
     flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-    creds = flow.run_local_server(port=0)
+    creds = cast(Credentials, flow.run_local_server(port=0))
 
     assert creds is not None and creds.valid
     # Save the credentials for the next run
