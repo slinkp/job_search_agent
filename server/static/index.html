@@ -131,11 +131,6 @@
               ></span>
             </summary>
             <p>
-              <!-- Add debug info -->
-              <small
-                x-text="'Last updated: ' + (company.research_status || 'never')"
-              ></small
-              ><br />
               <template
                 x-for="[key, value] in Object.entries(company.details || {})"
                 :key="key"

@@ -1,3 +1,7 @@
+main.container {
+    padding-top: 1em;
+}
+
 /* Reduce spacing around details element */
 details {
     margin: 0.5rem 0 0 0;
@@ -92,6 +96,10 @@ dialog footer {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.top-controls button {
+  font-size: 0.85em;
 }
 
 .scan-recruiter-emails {
