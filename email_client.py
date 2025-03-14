@@ -260,6 +260,67 @@ class GmailRepliesSearcher:
         thread_id = msg_list[-1][-1]["threadId"]
         email_thread_link = RECRUITER_MESSAGES_LINK_TEMPLATE.format(thread_id=thread_id)
         return email_thread_link
+        
+    def send_reply(self, thread_id: str, message_id: str, reply_text: str) -> bool:
+        """
+        Send a reply to a specific message in a thread.
+        
+        Args:
+            thread_id: The Gmail thread ID
+            message_id: The specific message ID to reply to
+            reply_text: The content of the reply
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        import base64
+        from email.mime.text import MIMEText
+        
+        try:
+            # Get the original message to extract headers
+            original_message = self.service.users().messages().get(
+                userId='me', id=message_id
+            ).execute()
+            
+            # Extract headers from original message
+            headers = {}
+            for header in original_message['payload']['headers']:
+                headers[header['name']] = header['value']
+            
+            # Create reply subject (Re: original subject)
+            original_subject = headers.get('Subject', '')
+            if original_subject.startswith('Re:'):
+                subject = original_subject
+            else:
+                subject = f"Re: {original_subject}"
+            
+            # Create message
+            message = MIMEText(reply_text)
+            message['To'] = headers.get('From', '')
+            message['Subject'] = subject
+            message['In-Reply-To'] = headers.get('Message-ID', '')
+            message['References'] = headers.get('Message-ID', '')
+            
+            # Encode the message
+            raw_message = base64.urlsafe_b64encode(
+                message.as_bytes()
+            ).decode('utf-8')
+            
+            # Send the message
+            sent_message = self.service.users().messages().send(
+                userId='me',
+                body={
+                    'raw': raw_message,
+                    'threadId': thread_id
+                }
+            ).execute()
+            
+            logger.info(f"Reply sent successfully. Message ID: {sent_message['id']}")
+            return True
+            
+        except Exception as error:
+            logger.error(f"Error sending reply: {error}")
+            return False
 
 
 def main_demo(
