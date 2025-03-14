@@ -4,21 +4,21 @@ from unittest.mock import MagicMock, patch
 from email_client import GmailRepliesSearcher
 
 
-@patch("email_client.build")
+@patch("email_client.build", autospec=True)
 def test_send_reply(mock_build):
     """Test that send_reply correctly formats and sends an email reply."""
-    # Setup mock service
-    mock_service = MagicMock()
-    mock_messages = MagicMock()
-    mock_users = MagicMock()
-
+    # Setup mock service with proper specs
+    mock_service = MagicMock(spec=["users"])
+    mock_users = MagicMock(spec=["messages"])
+    mock_messages = MagicMock(spec=["get", "send"])
+    
     # Setup the chain of mocks to match the API structure
     mock_build.return_value = mock_service
     mock_service.users.return_value = mock_users
     mock_users.messages.return_value = mock_messages
-
+    
     # Mock the get method to return a message with headers
-    mock_get = MagicMock()
+    mock_get = MagicMock(spec=["execute"])
     mock_get.execute.return_value = {
         "payload": {
             "headers": [
@@ -29,9 +29,9 @@ def test_send_reply(mock_build):
         }
     }
     mock_messages.get.return_value = mock_get
-
+    
     # Mock the send method
-    mock_send = MagicMock()
+    mock_send = MagicMock(spec=["execute"])
     mock_send.execute.return_value = {"id": "new-message-id"}
     mock_messages.send.return_value = mock_send
 
