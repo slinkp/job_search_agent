@@ -25,7 +25,7 @@ import linkedin_searcher
 import spreadsheet_client
 from logsetup import setup_logging
 from models import CompaniesSheetRow
-from rag import RecruitmentRAG
+from message_generation_rag import RecruitmentRAG
 from spreadsheet_client import MainTabCompaniesClient
 
 logger = logging.getLogger(__name__)
