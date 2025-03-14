@@ -149,9 +149,7 @@ class ResearchDaemon:
                     initial_message=message.message,
                 )
                 self.company_repo.create(company)
-                logger.info(
-                    f"Created company {company_row.name} from recruiter message"
-                )
+                logger.info(f"Created company {company_row.name} from recruiter message")
             except Exception:
                 logger.exception("Error processing recruiter message")
                 continue

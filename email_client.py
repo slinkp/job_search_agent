@@ -28,6 +28,7 @@ RECRUITER_MESSAGES_LINK_TEMPLATE = (
 
 logger = logging.getLogger(__name__)
 
+
 class GmailRepliesSearcher:
     """
     Searches for user's previous replies to recruiter emails.
@@ -154,7 +155,9 @@ class GmailRepliesSearcher:
         return "\n".join(cleaned_lines)
 
     def split_message(self, content):
-        pattern = r"\nOn .+?(?:\d{1,2}:\d{2}(?: [AP]M)?|\d{4}).*?(?:\S+@\S+|<\S+@\S+>)\s+wrote:"
+        pattern = (
+            r"\nOn .+?(?:\d{1,2}:\d{2}(?: [AP]M)?|\d{4}).*?(?:\S+@\S+|<\S+@\S+>)\s+wrote:"
+        )
         match = re.split(pattern, content, flags=re.DOTALL | re.IGNORECASE)
         if len(match) > 1:
             reply_text = self.clean_reply(match[0])
@@ -188,9 +191,7 @@ class GmailRepliesSearcher:
             date = full_msg["internalDate"]
             my_reply, recruiter_message = self.split_message(content)
             if my_reply and recruiter_message:
-                processed_messages.append(
-                    (date, (subject, recruiter_message, my_reply))
-                )
+                processed_messages.append((date, (subject, recruiter_message, my_reply)))
             else:
                 print(f"Skipping message with no useful content: {subject}")
 
@@ -205,9 +206,7 @@ class GmailRepliesSearcher:
         Includes latest subject.
         """
         logger.info(f"Getting {max_results} new recruiter messages...")
-        message_dicts = self.search_and_get_details(
-            RECRUITER_MESSAGES_QUERY, max_results
-        )
+        message_dicts = self.search_and_get_details(RECRUITER_MESSAGES_QUERY, max_results)
         logger.info(f"...Got {len(message_dicts)} raw recruiter messages")
         content_by_thread = defaultdict(list)
         for msg_dict in message_dicts:
@@ -261,64 +260,61 @@ class GmailRepliesSearcher:
         thread_id = msg_list[-1][-1]["threadId"]
         email_thread_link = RECRUITER_MESSAGES_LINK_TEMPLATE.format(thread_id=thread_id)
         return email_thread_link
-        
+
     def send_reply(self, thread_id: str, message_id: str, reply_text: str) -> bool:
         """
         Send a reply to a specific message in a thread.
-        
+
         Args:
             thread_id: The Gmail thread ID
             message_id: The specific message ID to reply to
             reply_text: The content of the reply
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
         import base64
         from email.mime.text import MIMEText
-        
+
         try:
             # Get the original message to extract headers
-            original_message = self.service.users().messages().get(
-                userId='me', id=message_id
-            ).execute()
-            
+            original_message = (
+                self.service.users().messages().get(userId="me", id=message_id).execute()
+            )
+
             # Extract headers from original message
             headers = {}
-            for header in original_message['payload']['headers']:
-                headers[header['name']] = header['value']
-            
+            for header in original_message["payload"]["headers"]:
+                headers[header["name"]] = header["value"]
+
             # Create reply subject (Re: original subject)
-            original_subject = headers.get('Subject', '')
-            if original_subject.startswith('Re:'):
+            original_subject = headers.get("Subject", "")
+            if original_subject.startswith("Re:"):
                 subject = original_subject
             else:
                 subject = f"Re: {original_subject}"
-            
+
             # Create message
             message = MIMEText(reply_text)
-            message['To'] = headers.get('From', '')
-            message['Subject'] = subject
-            message['In-Reply-To'] = headers.get('Message-ID', '')
-            message['References'] = headers.get('Message-ID', '')
-            
+            message["To"] = headers.get("From", "")
+            message["Subject"] = subject
+            message["In-Reply-To"] = headers.get("Message-ID", "")
+            message["References"] = headers.get("Message-ID", "")
+
             # Encode the message
-            raw_message = base64.urlsafe_b64encode(
-                message.as_bytes()
-            ).decode('utf-8')
-            
+            raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
+
             # Send the message
-            sent_message = self.service.users().messages().send(
-                userId='me',
-                body={
-                    'raw': raw_message,
-                    'threadId': thread_id
-                }
-            ).execute()
-            
+            sent_message = (
+                self.service.users()
+                .messages()
+                .send(userId="me", body={"raw": raw_message, "threadId": thread_id})
+                .execute()
+            )
+
             logger.info(f"Reply sent successfully. Message ID: {sent_message['id']}")
             return True
-            
+
         except Exception as error:
             logger.error(f"Error sending reply: {error}")
             return False
@@ -327,20 +323,16 @@ class GmailRepliesSearcher:
         """
         Archive a message by removing the INBOX label,
         and add appropriate label.
-        
+
         Args:
             message_id: The message ID to archive
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
         try:
             self.service.users().messages().modify(
-                userId='me',
-                id=message_id,
-                body={
-                    'removeLabelIds': ['INBOX']
-                }
+                userId="me", id=message_id, body={"removeLabelIds": ["INBOX"]}
             ).execute()
             self.add_label(message_id, ARCHIVED_LABEL)
             logger.info(f"Message {message_id} archived successfully")
@@ -348,16 +340,16 @@ class GmailRepliesSearcher:
         except Exception as error:
             logger.error(f"Error archiving message: {error}")
             return False
-    
+
     def add_label(self, message_id: str, label_name: str = ARCHIVED_LABEL) -> bool:
         """
         Add a label to a message.
         Creates the label if it doesn't exist.
-        
+
         Args:
             message_id: The message ID
             label_name: The name of the label to add
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
@@ -365,11 +357,7 @@ class GmailRepliesSearcher:
         try:
             # Add label to message
             self.service.users().messages().modify(
-                userId='me',
-                id=message_id,
-                body={
-                    'addLabelIds': [label_id]
-                }
+                userId="me", id=message_id, body={"addLabelIds": [label_id]}
             ).execute()
 
             logger.info(f"Added label {label_name} to message {message_id}")
@@ -382,29 +370,33 @@ class GmailRepliesSearcher:
     @functools.cache
     def _get_or_create_label_id(self, label_name: str):
         # Get all labels
-        labels = self.service.users().labels().list(userId='me').execute()
+        labels = self.service.users().labels().list(userId="me").execute()
         label_id = None
 
         # Check if label exists
-        for label in labels.get('labels', []):
-            if label['name'] == label_name:
-                label_id = label['id']
+        for label in labels.get("labels", []):
+            if label["name"] == label_name:
+                label_id = label["id"]
                 logger.debug(f"Found existing label {label_name}")
                 break
 
         if not label_id:
-            created_label = self.service.users().labels().create(
-                userId='me',
-                body={
-                    'name': label_name,
-                    'labelListVisibility': 'labelShow',
-                    'messageListVisibility': 'show'
-                }
-            ).execute()
-            label_id = created_label['id']
+            created_label = (
+                self.service.users()
+                .labels()
+                .create(
+                    userId="me",
+                    body={
+                        "name": label_name,
+                        "labelListVisibility": "labelShow",
+                        "messageListVisibility": "show",
+                    },
+                )
+                .execute()
+            )
+            label_id = created_label["id"]
             logger.info(f"Created new label: {label_name}")
         return label_id
-
 
 
 def main_demo(
@@ -424,9 +416,7 @@ def main_demo(
         processed_messages = processed_messages[:max_results]
 
     if do_recruiter_messages:
-        recruiter_messages = searcher.get_new_recruiter_messages(
-            max_results=max_results
-        )
+        recruiter_messages = searcher.get_new_recruiter_messages(max_results=max_results)
 
     for i, msg in enumerate(recruiter_messages):
         print(f"Recruiter Message {i}:")

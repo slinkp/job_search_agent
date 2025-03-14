@@ -99,9 +99,7 @@ def disk_cache(step: CacheStep):
                         try:
                             # Try to re-validate the model
                             # This will catch missing fields and type mismatches
-                            result = result.__class__.model_validate(
-                                result.model_dump()
-                            )
+                            result = result.__class__.model_validate(result.model_dump())
                             logger.debug(
                                 f"Validated cached model: {result.__class__.__name__}"
                             )
@@ -190,24 +188,24 @@ def run_in_process(func: Callable, *args, timeout=120, **kwargs) -> Any:
 def send_reply_and_archive(message_id: str, thread_id: str, reply: str) -> bool:
     """
     Send a reply to a recruiter email.
-    
+
     Args:
         message_id: The Gmail message ID to reply to
         thread_id: The Gmail thread ID
         reply: The reply text to send
-        
+
     Returns:
         bool: True if successful, False otherwise
     """
     logger.info(f"Sending reply: {reply[:200]}...")
-    
+
     try:
         email_searcher = email_client.GmailRepliesSearcher()
         email_searcher.authenticate()
-        
+
         # Send the reply
         success = email_searcher.send_reply(thread_id, message_id, reply)
-        
+
         if success:
             # Add label and archive
             email_searcher.add_label(message_id, "Replied-Automated")
@@ -260,7 +258,6 @@ def maybe_edit_reply(reply: str) -> str:
         os.unlink(temp_path)
 
 
-
 class EmailResponseGenerator:
 
     def __init__(
@@ -286,9 +283,7 @@ class EmailResponseGenerator:
     ) -> RecruitmentRAG:  # Set up the RAG pipeline
         logger.info("Building RAG...")
         rag = RecruitmentRAG(old_messages, loglevel=self.loglevel)
-        clear_rag_context = self.cache_settings.should_clear_cache(
-            CacheStep.RAG_CONTEXT
-        )
+        clear_rag_context = self.cache_settings.should_clear_cache(CacheStep.RAG_CONTEXT)
         if clear_rag_context:
             logger.info("Rebuilding RAG data from scratch...")
         else:
@@ -331,9 +326,7 @@ class EmailResponseGenerator:
         ]
 
 
-def add_company_to_spreadsheet(
-    company_info: CompaniesSheetRow, args: argparse.Namespace
-):
+def add_company_to_spreadsheet(company_info: CompaniesSheetRow, args: argparse.Namespace):
     logger.info(f"Adding company to spreadsheet: {company_info.name}")
     if args.sheet == "test":
         config = spreadsheet_client.TestConfig
@@ -373,9 +366,7 @@ class JobSearch:
             new_recruiter_email = args.test_messages
         else:
             logger.debug("Getting new recruiter messages...")
-            new_recruiter_email = self.get_new_recruiter_messages(
-                max_results=args.limit
-            )
+            new_recruiter_email = self.get_new_recruiter_messages(max_results=args.limit)
             logger.debug("...Got new recruiter messages")
 
         for i, msg in enumerate(new_recruiter_email):
@@ -469,9 +460,7 @@ class JobSearch:
             # Calculate averages from all salary entries.
             # TODO: We don't actually want an average, we want the best fit.
             total_comps = [entry["total_comp"] for entry in salary_data]
-            base_salaries = [
-                entry["salary"] for entry in salary_data if entry["salary"]
-            ]
+            base_salaries = [entry["salary"] for entry in salary_data if entry["salary"]]
             equities = [entry["equity"] for entry in salary_data if entry["equity"]]
             bonuses = [entry["bonus"] for entry in salary_data if entry["bonus"]]
 
@@ -486,9 +475,7 @@ class JobSearch:
                 else None
             )
             row.rsu = (
-                decimal.Decimal(int(sum(equities) / len(equities)))
-                if equities
-                else None
+                decimal.Decimal(int(sum(equities) / len(equities))) if equities else None
             )
             row.bonus = (
                 decimal.Decimal(int(sum(bonuses) / len(bonuses))) if bonuses else None
@@ -503,9 +490,7 @@ class JobSearch:
         self, company_info: CompaniesSheetRow
     ) -> CompaniesSheetRow:
         if not company_info.name:
-            logger.warning(
-                f"Company name not found: {company_info}, nothing else to do"
-            )
+            logger.warning(f"Company name not found: {company_info}, nothing else to do")
             return company_info
 
         logger.info(f"Doing followup research on: {company_info}")

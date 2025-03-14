@@ -298,9 +298,7 @@ class TavilyRAGResearchAgent:
                     content = json.loads(result.content)
                     logger.debug(f"  Content returned from llm:\n\n {content}\n\n")
                 except Exception as e:
-                    logger.error(
-                        f"Error parsing JSON raw string:\n'{result.content}'\n"
-                    )
+                    logger.error(f"Error parsing JSON raw string:\n'{result.content}'\n")
                     raise
 
                 # Map the API response fields to CompaniesSheetRow fields

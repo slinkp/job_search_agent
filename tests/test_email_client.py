@@ -56,8 +56,8 @@ class TestGmailRepliesSearcher:
 
     def test_send_reply_error(self, gmail_searcher):
         # Setup
-        gmail_searcher.service.users().messages().get.return_value.execute.side_effect = Exception(
-            "API Error"
+        gmail_searcher.service.users().messages().get.return_value.execute.side_effect = (
+            Exception("API Error")
         )
 
         # Call the method
@@ -133,7 +133,9 @@ class TestGmailRepliesSearcher:
         label_name = "test-label"
 
         # Mock the _get_or_create_label_id method
-        with patch.object(gmail_searcher, "_get_or_create_label_id", return_value="label123"):
+        with patch.object(
+            gmail_searcher, "_get_or_create_label_id", return_value="label123"
+        ):
             # Make the modify call raise an exception
             gmail_searcher.service.users().messages().modify.return_value.execute.side_effect = Exception(
                 "API Error"

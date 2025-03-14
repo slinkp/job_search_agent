@@ -97,9 +97,7 @@ class TaskManager:
 
     def get_task(self, task_id: str) -> Optional[dict]:
         with sqlite3.connect(self.db_path) as conn:
-            row = conn.execute(
-                "SELECT * FROM tasks WHERE id = ?", (task_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
 
         if row:
             return {
@@ -170,6 +168,7 @@ def task_manager() -> TaskManager:
     if _task_manager is None:
         _task_manager = TaskManager()
     return _task_manager
+
 
 if __name__ == "__main__":
     import argparse

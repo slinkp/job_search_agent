@@ -388,9 +388,7 @@ class BaseGoogleSheetClient:
 
             col_letter = self.column_letter(col_index)
             cell_range = f"{col_letter}{row_index + 1}"
-            batch_data.append(
-                {"range": f"{range_name}{cell_range}", "values": [[value]]}
-            )
+            batch_data.append({"range": f"{range_name}{cell_range}", "values": [[value]]})
 
         body = {"valueInputOption": "USER_ENTERED", "data": batch_data}
 

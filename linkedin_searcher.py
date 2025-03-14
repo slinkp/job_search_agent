@@ -100,9 +100,7 @@ class LinkedInSearcher:
             except PlaywrightTimeout:
                 # If no 2FA prompt is found, check if we're already logged in
                 try:
-                    self.page.wait_for_url(
-                        "https://www.linkedin.com/feed/", timeout=3000
-                    )
+                    self.page.wait_for_url("https://www.linkedin.com/feed/", timeout=3000)
                     print("Login successful (no 2FA required)!")
                 except PlaywrightTimeout:
                     self.screenshot("login_state_with_timeout")

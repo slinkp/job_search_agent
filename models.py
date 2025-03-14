@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 
 DEFAULT_CURRENT_STATE = "25. consider applying"
 
+
 class BaseSheetRow(BaseModel):
     """Base class for spreadsheet rows."""
 

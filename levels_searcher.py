@@ -152,9 +152,7 @@ class LevelsFyiSearcher:
 
             # Check for login button
             try:
-                login_button = self.page.get_by_role(
-                    "button", name="Sign in with Google"
-                )
+                login_button = self.page.get_by_role("button", name="Sign in with Google")
                 if login_button.is_visible(timeout=1000):
                     logger.info("Found login button, not logged in")
                     return False
@@ -177,9 +175,7 @@ class LevelsFyiSearcher:
                 return
 
             logger.info("Opening login page")
-            self.page.goto(
-                "https://www.levels.fyi/login", wait_until="domcontentloaded"
-            )
+            self.page.goto("https://www.levels.fyi/login", wait_until="domcontentloaded")
             time.sleep(3)
 
             logger.info("Looking for Google login button")
@@ -725,9 +721,7 @@ class LevelsExtractor:
             return []
         company_cols = self.level_container.locator(".level-col").all()
         if len(company_cols) != 2:
-            raise NotFoundError(
-                f"Expected 2 company columns, found {len(company_cols)}"
-            )
+            raise NotFoundError(f"Expected 2 company columns, found {len(company_cols)}")
 
         results = []
         for col in company_cols:
@@ -867,9 +861,7 @@ def main(company_name: str = "", company_salary_url: str = ""):
             logger.info("Directly extracting salaries from url")
             results = list(searcher.test_company_salary(company_salary_url))
         else:
-            raise ValueError(
-                "Either company name or company salary URL must be provided"
-            )
+            raise ValueError("Either company name or company salary URL must be provided")
         return results
     finally:
         searcher.cleanup()
