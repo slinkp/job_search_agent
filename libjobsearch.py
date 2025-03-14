@@ -187,7 +187,7 @@ def run_in_process(func: Callable, *args, timeout=120, **kwargs) -> Any:
                 process.kill()
 
 
-def send_reply(message_id: str, thread_id: str, reply: str) -> bool:
+def send_reply_and_archive(message_id: str, thread_id: str, reply: str) -> bool:
     """
     Send a reply to a recruiter email.
     
@@ -211,7 +211,7 @@ def send_reply(message_id: str, thread_id: str, reply: str) -> bool:
         if success:
             # Add label and archive
             email_searcher.add_label(message_id, "Replied-Automated")
-            email_searcher.archive_message(message_id)
+            email_searcher.label_and_archive_message(message_id)
             logger.info(f"Reply sent and archived successfully")
             return True
         else:
@@ -259,48 +259,6 @@ def maybe_edit_reply(reply: str) -> str:
         # Clean up temporary file
         os.unlink(temp_path)
 
-
-def archive_message(msg: RecruiterMessage, company_name: str = ""):
-    """
-    Archive a message and add appropriate labels.
-    
-    Args:
-        msg: The recruiter message
-        company_name: Optional company name for labeling
-    """
-    # Extract thread_id and message_id from the email_thread_link
-    if not msg.email_thread_link:
-        logger.warning("No thread link available, cannot archive message")
-        return
-    
-    # In a real implementation, you would extract these from the link
-    # or store them when initially retrieving the message
-    try:
-        # Extract thread ID from the link
-        thread_id = msg.email_thread_link.split('/')[-1]
-        
-        email_searcher = email_client.GmailRepliesSearcher()
-        email_searcher.authenticate()
-        
-        # Get the message ID from the thread
-        messages = email_searcher.search_messages(f"threadId:{thread_id}", max_results=1)
-        if not messages:
-            logger.warning(f"No messages found for thread {thread_id}")
-            return
-            
-        message_id = messages[0]['id']
-        
-        # Add labels
-        email_searcher.add_label(message_id, "Replied-Automated")
-        if company_name:
-            company_label = f"Company/{company_name}"
-            email_searcher.add_label(message_id, company_label)
-            
-        # Archive the message
-        email_searcher.archive_message(message_id)
-        logger.info(f"Message archived and labeled for {company_name}")
-    except Exception as e:
-        logger.exception(f"Error archiving message: {e}")
 
 
 class EmailResponseGenerator:
@@ -439,8 +397,7 @@ class JobSearch:
 
             reply = maybe_edit_reply(generated_reply)
             logger.info(f"------ EDITED REPLY:\n{reply}\n\n")
-            send_reply(reply)
-            archive_message(msg)
+            send_reply_and_archive(reply)
             add_company_to_spreadsheet(company_info, args)
             logger.info(f"Processed message {i+1} of {len(new_recruiter_email)}")
 

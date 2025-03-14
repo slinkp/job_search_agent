@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import textwrap
+import functools
 from collections import defaultdict
 
 from google.auth.exceptions import RefreshError
@@ -321,10 +322,11 @@ class GmailRepliesSearcher:
         except Exception as error:
             logger.error(f"Error sending reply: {error}")
             return False
-            
-    def archive_message(self, message_id: str) -> bool:
+
+    def label_and_archive_message(self, message_id: str) -> bool:
         """
-        Archive a message by removing the INBOX label.
+        Archive a message by removing the INBOX label,
+        and add appropriate label.
         
         Args:
             message_id: The message ID to archive
@@ -340,15 +342,14 @@ class GmailRepliesSearcher:
                     'removeLabelIds': ['INBOX']
                 }
             ).execute()
-            
+            self.add_label(message_id, ARCHIVED_LABEL)
             logger.info(f"Message {message_id} archived successfully")
             return True
-            
         except Exception as error:
             logger.error(f"Error archiving message: {error}")
             return False
     
-    def add_label(self, message_id: str, label_name: str) -> bool:
+    def add_label(self, message_id: str, label_name: str = ARCHIVED_LABEL) -> bool:
         """
         Add a label to a message.
         Creates the label if it doesn't exist.
@@ -360,30 +361,8 @@ class GmailRepliesSearcher:
         Returns:
             bool: True if successful, False otherwise
         """
+        label_id = self._get_or_create_label_id(label_name)
         try:
-            # Get all labels
-            labels = self.service.users().labels().list(userId='me').execute()
-            label_id = None
-            
-            # Check if label exists
-            for label in labels.get('labels', []):
-                if label['name'] == label_name:
-                    label_id = label['id']
-                    break
-            
-            # Create label if it doesn't exist
-            if not label_id:
-                created_label = self.service.users().labels().create(
-                    userId='me',
-                    body={
-                        'name': label_name,
-                        'labelListVisibility': 'labelShow',
-                        'messageListVisibility': 'show'
-                    }
-                ).execute()
-                label_id = created_label['id']
-                logger.info(f"Created new label: {label_name}")
-            
             # Add label to message
             self.service.users().messages().modify(
                 userId='me',
@@ -392,13 +371,40 @@ class GmailRepliesSearcher:
                     'addLabelIds': [label_id]
                 }
             ).execute()
-            
+
             logger.info(f"Added label {label_name} to message {message_id}")
             return True
-            
+
         except Exception as error:
-            logger.error(f"Error adding label: {error}")
+            logger.exception(f"Error adding label: {error}")
             return False
+
+    @functools.cache
+    def _get_or_create_label_id(self, label_name: str):
+        # Get all labels
+        labels = self.service.users().labels().list(userId='me').execute()
+        label_id = None
+
+        # Check if label exists
+        for label in labels.get('labels', []):
+            if label['name'] == label_name:
+                label_id = label['id']
+                logger.debug(f"Found existing label {label_name}")
+                break
+
+        if not label_id:
+            created_label = self.service.users().labels().create(
+                userId='me',
+                body={
+                    'name': label_name,
+                    'labelListVisibility': 'labelShow',
+                    'messageListVisibility': 'show'
+                }
+            ).execute()
+            label_id = created_label['id']
+            logger.info(f"Created new label: {label_name}")
+        return label_id
+
 
 
 def main_demo(

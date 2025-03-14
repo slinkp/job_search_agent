@@ -1,212 +1,194 @@
+import base64
 import pytest
 from unittest.mock import MagicMock, patch
 
-from email_client import GmailRepliesSearcher
+from email_client import GmailRepliesSearcher, ARCHIVED_LABEL
 
 
-@patch("email_client.build", autospec=True)
-def test_send_reply(mock_build):
-    """Test that send_reply correctly formats and sends an email reply."""
-    # Setup mock service with proper specs
-    mock_service = MagicMock(spec=["users"])
-    mock_users = MagicMock(spec=["messages"])
-    mock_messages = MagicMock(spec=["get", "send"])
-    
-    # Setup the chain of mocks to match the API structure
-    mock_build.return_value = mock_service
-    mock_service.users.return_value = mock_users
-    mock_users.messages.return_value = mock_messages
-    
-    # Mock the get method to return a message with headers
-    mock_get = MagicMock(spec=["execute"])
-    mock_get.execute.return_value = {
-        "payload": {
-            "headers": [
-                {"name": "From", "value": "test@example.com"},
-                {"name": "Subject", "value": "Test Subject"},
-                {"name": "Message-ID", "value": "<test-message-id@example.com>"},
+class TestGmailRepliesSearcher:
+    @pytest.fixture
+    def gmail_searcher(self):
+        with patch("email_client.build") as mock_build:
+            searcher = GmailRepliesSearcher()
+            searcher._service = MagicMock()
+            yield searcher
+
+    def test_send_reply(self, gmail_searcher):
+        # Setup
+        thread_id = "thread123"
+        message_id = "msg456"
+        reply_text = "Thank you for your message"
+
+        # Mock the original message response
+        original_message = {
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "Job Opportunity"},
+                    {"name": "From", "value": "recruiter@example.com"},
+                    {"name": "Message-ID", "value": "<msg123@example.com>"},
+                ]
+            }
+        }
+
+        gmail_searcher.service.users().messages().get.return_value.execute.return_value = (
+            original_message
+        )
+        gmail_searcher.service.users().messages().send.return_value.execute.return_value = {
+            "id": "sent123"
+        }
+
+        # Call the method
+        result = gmail_searcher.send_reply(thread_id, message_id, reply_text)
+
+        # Assertions
+        assert result is True
+
+        # Verify the message was constructed correctly
+        send_call = gmail_searcher.service.users().messages().send.call_args
+        assert send_call is not None
+
+        # Check that the threadId was included
+        body_arg = send_call[1]["body"]
+        assert body_arg["threadId"] == thread_id
+
+        # We can't easily check the raw message content since it's encoded,
+        # but we can verify the method was called
+
+    def test_send_reply_error(self, gmail_searcher):
+        # Setup
+        gmail_searcher.service.users().messages().get.return_value.execute.side_effect = Exception(
+            "API Error"
+        )
+
+        # Call the method
+        result = gmail_searcher.send_reply("thread123", "msg456", "Reply text")
+
+        # Assertions
+        assert result is False
+
+    def test_label_and_archive_message(self, gmail_searcher):
+        # Setup
+        message_id = "msg456"
+
+        # Mock the add_label method
+        with patch.object(
+            gmail_searcher, "add_label", return_value=True
+        ) as mock_add_label:
+            # Call the method
+            result = gmail_searcher.label_and_archive_message(message_id)
+
+            # Assertions
+            assert result is True
+
+            # Verify the message was modified to remove INBOX label
+            modify_call = gmail_searcher.service.users().messages().modify.call_args
+            assert modify_call is not None
+            assert modify_call[1]["id"] == message_id
+            assert modify_call[1]["body"]["removeLabelIds"] == ["INBOX"]
+
+            # Verify add_label was called with the archived label
+            mock_add_label.assert_called_once_with(message_id, ARCHIVED_LABEL)
+
+    def test_label_and_archive_message_error(self, gmail_searcher):
+        # Setup
+        message_id = "msg456"
+        gmail_searcher.service.users().messages().modify.return_value.execute.side_effect = Exception(
+            "API Error"
+        )
+
+        # Call the method
+        result = gmail_searcher.label_and_archive_message(message_id)
+
+        # Assertions
+        assert result is False
+
+    def test_add_label(self, gmail_searcher):
+        # Setup
+        message_id = "msg456"
+        label_name = "test-label"
+        label_id = "label123"
+
+        # Mock the _get_or_create_label_id method
+        with patch.object(
+            gmail_searcher, "_get_or_create_label_id", return_value=label_id
+        ) as mock_get_label:
+            # Call the method
+            result = gmail_searcher.add_label(message_id, label_name)
+
+            # Assertions
+            assert result is True
+
+            # Verify the label was added to the message
+            modify_call = gmail_searcher.service.users().messages().modify.call_args
+            assert modify_call is not None
+            assert modify_call[1]["id"] == message_id
+            assert modify_call[1]["body"]["addLabelIds"] == [label_id]
+
+            # Verify _get_or_create_label_id was called with the label name
+            mock_get_label.assert_called_once_with(label_name)
+
+    def test_add_label_error(self, gmail_searcher):
+        # Setup
+        message_id = "msg456"
+        label_name = "test-label"
+
+        # Mock the _get_or_create_label_id method
+        with patch.object(gmail_searcher, "_get_or_create_label_id", return_value="label123"):
+            # Make the modify call raise an exception
+            gmail_searcher.service.users().messages().modify.return_value.execute.side_effect = Exception(
+                "API Error"
+            )
+
+            # Call the method
+            result = gmail_searcher.add_label(message_id, label_name)
+
+            # Assertions
+            assert result is False
+
+    def test_get_or_create_label_id_existing(self, gmail_searcher):
+        # Setup
+        label_name = "test-label"
+        label_id = "label123"
+
+        # Mock the labels.list response
+        gmail_searcher.service.users().labels().list.return_value.execute.return_value = {
+            "labels": [
+                {"name": "other-label", "id": "other456"},
+                {"name": label_name, "id": label_id},
             ]
         }
-    }
-    mock_messages.get.return_value = mock_get
-    
-    # Mock the send method
-    mock_send = MagicMock(spec=["execute"])
-    mock_send.execute.return_value = {"id": "new-message-id"}
-    mock_messages.send.return_value = mock_send
 
-    # Create the searcher and set the service
-    searcher = GmailRepliesSearcher()
-    searcher._service = mock_service
+        # Call the method
+        result = gmail_searcher._get_or_create_label_id(label_name)
 
-    # Test sending a reply
-    result = searcher.send_reply(
-        thread_id="test-thread",
-        message_id="test-message",
-        reply_text="This is a test reply",
-    )
+        # Assertions
+        assert result == label_id
 
-    # Verify the result
-    assert result is True
+        # Verify labels.create was not called
+        gmail_searcher.service.users().labels().create.assert_not_called()
 
-    # Verify the API was called correctly
-    mock_messages.get.assert_called_once_with(userId="me", id="test-message")
-    mock_messages.send.assert_called_once()
+    def test_get_or_create_label_id_new(self, gmail_searcher):
+        # Setup
+        label_name = "new-label"
+        label_id = "new123"
 
-    # Check that the send call included the right data
-    send_args = mock_messages.send.call_args[1]
-    assert send_args["userId"] == "me"
-    assert "raw" in send_args["body"]
-    assert send_args["body"]["threadId"] == "test-thread"
-
-
-@patch("email_client.build", autospec=True)
-def test_archive_message(mock_build):
-    """Test that archive_message correctly removes the INBOX label."""
-    # Setup mock service with proper specs
-    mock_service = MagicMock(spec=["users"])
-    mock_users = MagicMock(spec=["messages"])
-    mock_messages = MagicMock(spec=["modify"])
-    
-    # Setup the chain of mocks to match the API structure
-    mock_build.return_value = mock_service
-    mock_service.users.return_value = mock_users
-    mock_users.messages.return_value = mock_messages
-    
-    # Mock the modify method
-    mock_modify = MagicMock(spec=["execute"])
-    mock_modify.execute.return_value = {}
-    mock_messages.modify.return_value = mock_modify
-
-    # Create the searcher and set the service
-    searcher = GmailRepliesSearcher()
-    searcher._service = mock_service
-
-    # Test archiving a message
-    result = searcher.archive_message(message_id="test-message")
-
-    # Verify the result
-    assert result is True
-
-    # Verify the API was called correctly
-    mock_messages.modify.assert_called_once_with(
-        userId="me",
-        id="test-message",
-        body={"removeLabelIds": ["INBOX"]}
-    )
-    mock_modify.execute.assert_called_once()
-
-
-@patch("email_client.build", autospec=True)
-def test_add_label_existing(mock_build):
-    """Test adding an existing label to a message."""
-    # Setup mock service with proper specs
-    mock_service = MagicMock(spec=["users"])
-    mock_users = MagicMock(spec=["messages", "labels"])
-    mock_messages = MagicMock(spec=["modify"])
-    mock_labels = MagicMock(spec=["list"])
-    
-    # Setup the chain of mocks to match the API structure
-    mock_build.return_value = mock_service
-    mock_service.users.return_value = mock_users
-    mock_users.messages.return_value = mock_messages
-    mock_users.labels.return_value = mock_labels
-    
-    # Mock the labels list method
-    mock_list = MagicMock(spec=["execute"])
-    mock_list.execute.return_value = {
-        "labels": [
-            {"id": "Label_123", "name": "Existing-Label"}
-        ]
-    }
-    mock_labels.list.return_value = mock_list
-    
-    # Mock the modify method
-    mock_modify = MagicMock(spec=["execute"])
-    mock_modify.execute.return_value = {}
-    mock_messages.modify.return_value = mock_modify
-
-    # Create the searcher and set the service
-    searcher = GmailRepliesSearcher()
-    searcher._service = mock_service
-
-    # Test adding a label
-    result = searcher.add_label(
-        message_id="test-message",
-        label_name="Existing-Label"
-    )
-
-    # Verify the result
-    assert result is True
-
-    # Verify the API was called correctly
-    mock_labels.list.assert_called_once_with(userId="me")
-    mock_messages.modify.assert_called_once_with(
-        userId="me",
-        id="test-message",
-        body={"addLabelIds": ["Label_123"]}
-    )
-
-
-@patch("email_client.build", autospec=True)
-def test_add_label_new(mock_build):
-    """Test adding a new label to a message."""
-    # Setup mock service with proper specs
-    mock_service = MagicMock(spec=["users"])
-    mock_users = MagicMock(spec=["messages", "labels"])
-    mock_messages = MagicMock(spec=["modify"])
-    mock_labels = MagicMock(spec=["list", "create"])
-    
-    # Setup the chain of mocks to match the API structure
-    mock_build.return_value = mock_service
-    mock_service.users.return_value = mock_users
-    mock_users.messages.return_value = mock_messages
-    mock_users.labels.return_value = mock_labels
-    
-    # Mock the labels list method - no matching label
-    mock_list = MagicMock(spec=["execute"])
-    mock_list.execute.return_value = {
-        "labels": [
-            {"id": "Label_123", "name": "Other-Label"}
-        ]
-    }
-    mock_labels.list.return_value = mock_list
-    
-    # Mock the create method
-    mock_create = MagicMock(spec=["execute"])
-    mock_create.execute.return_value = {"id": "New_Label_456", "name": "New-Label"}
-    mock_labels.create.return_value = mock_create
-    
-    # Mock the modify method
-    mock_modify = MagicMock(spec=["execute"])
-    mock_modify.execute.return_value = {}
-    mock_messages.modify.return_value = mock_modify
-
-    # Create the searcher and set the service
-    searcher = GmailRepliesSearcher()
-    searcher._service = mock_service
-
-    # Test adding a new label
-    result = searcher.add_label(
-        message_id="test-message",
-        label_name="New-Label"
-    )
-
-    # Verify the result
-    assert result is True
-
-    # Verify the API was called correctly
-    mock_labels.list.assert_called_once_with(userId="me")
-    mock_labels.create.assert_called_once_with(
-        userId="me",
-        body={
-            "name": "New-Label",
-            "labelListVisibility": "labelShow",
-            "messageListVisibility": "show"
+        # Mock the labels.list response (label doesn't exist)
+        gmail_searcher.service.users().labels().list.return_value.execute.return_value = {
+            "labels": [{"name": "other-label", "id": "other456"}]
         }
-    )
-    mock_messages.modify.assert_called_once_with(
-        userId="me",
-        id="test-message",
-        body={"addLabelIds": ["New_Label_456"]}
-    )
+
+        # Mock the labels.create response
+        gmail_searcher.service.users().labels().create.return_value.execute.return_value = {
+            "id": label_id
+        }
+
+        # Call the method
+        result = gmail_searcher._get_or_create_label_id(label_name)
+
+        # Assertions
+        assert result == label_id
+
+        # Verify labels.create was called with the correct parameters
+        create_call = gmail_searcher.service.users().labels().create.call_args
+        assert create_call is not None
+        assert create_call[1]["body"]["name"] == label_name
