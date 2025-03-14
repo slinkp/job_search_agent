@@ -321,6 +321,84 @@ class GmailRepliesSearcher:
         except Exception as error:
             logger.error(f"Error sending reply: {error}")
             return False
+            
+    def archive_message(self, message_id: str) -> bool:
+        """
+        Archive a message by removing the INBOX label.
+        
+        Args:
+            message_id: The message ID to archive
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            self.service.users().messages().modify(
+                userId='me',
+                id=message_id,
+                body={
+                    'removeLabelIds': ['INBOX']
+                }
+            ).execute()
+            
+            logger.info(f"Message {message_id} archived successfully")
+            return True
+            
+        except Exception as error:
+            logger.error(f"Error archiving message: {error}")
+            return False
+    
+    def add_label(self, message_id: str, label_name: str) -> bool:
+        """
+        Add a label to a message.
+        Creates the label if it doesn't exist.
+        
+        Args:
+            message_id: The message ID
+            label_name: The name of the label to add
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Get all labels
+            labels = self.service.users().labels().list(userId='me').execute()
+            label_id = None
+            
+            # Check if label exists
+            for label in labels.get('labels', []):
+                if label['name'] == label_name:
+                    label_id = label['id']
+                    break
+            
+            # Create label if it doesn't exist
+            if not label_id:
+                created_label = self.service.users().labels().create(
+                    userId='me',
+                    body={
+                        'name': label_name,
+                        'labelListVisibility': 'labelShow',
+                        'messageListVisibility': 'show'
+                    }
+                ).execute()
+                label_id = created_label['id']
+                logger.info(f"Created new label: {label_name}")
+            
+            # Add label to message
+            self.service.users().messages().modify(
+                userId='me',
+                id=message_id,
+                body={
+                    'addLabelIds': [label_id]
+                }
+            ).execute()
+            
+            logger.info(f"Added label {label_name} to message {message_id}")
+            return True
+            
+        except Exception as error:
+            logger.error(f"Error adding label: {error}")
+            return False
 
 
 def main_demo(
