@@ -9,3 +9,4 @@ token.json
 debug*html
 debug*png
 playwright-*-chrome
+.aider*
