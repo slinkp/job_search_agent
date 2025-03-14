@@ -303,7 +303,7 @@ def archive_message(msg: RecruiterMessage, company_name: str = ""):
         logger.exception(f"Error archiving message: {e}")
 
 
-class EmailResponder:
+class EmailResponseGenerator:
 
     def __init__(
         self,
@@ -401,7 +401,7 @@ class JobSearch:
         self, args: argparse.Namespace, loglevel: int, cache_settings: CacheSettings
     ):
         self.args = args
-        self.email_responder = EmailResponder(
+        self.email_responder = EmailResponseGenerator(
             reply_rag_model=args.model,
             reply_rag_limit=args.limit,
             loglevel=loglevel,
