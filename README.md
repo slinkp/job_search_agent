@@ -105,6 +105,11 @@ Won't work if follow-ups are not threaded, but that can't be helped.
 - [x] Build main end-to-end script that integrates all of the below
 - [x] Email client
   - [x] Retrieve recruiter messages (and my replies) from gmail
+  - [ ] Support extracting and researching companies that aren't from recruiter
+        mail
+    - [ ] Manually add company name and/or URL
+    - [ ] Companies from linkedin job alert email
+    - [ ] Companies from "welcome to the jungle" alert email
   - [x] Build a RAG chain trained on those messages
     - [x] Understand the parts of the chain that I don't yet!
     - [x] What is RunnablePassThrough?
@@ -117,7 +122,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [ ] Extract data from attachments if any (eg .doc or .pdf)
   - [x] Extract subject from message too
 - [ ] Actually send email replies
-- [ ] Re-label replied messages (so we know they don't need looking at again)
+- [x] Re-label replied messages (so we know they don't need looking at again)
 - [ ] Company research: general info
   - [x] Formalize my research steps:
   - [x] Try langchain with both anthropic and openai
@@ -156,7 +161,6 @@ Won't work if follow-ups are not threaded, but that can't be helped.
     - [x] Chose command line for first pass (running libjobsearch.py as a script)
     - [x] Edit reply via texteditor
 - [ ] **UX!** 
-  - [ ] Companies should be batched! See "Notes on workflow"
   - [x] Decide on framework for this.
     - [x] Chose SPWA using Alpine.js and Pico.css frontend
     - [x] Chose pyramid for simple REST API backend
@@ -168,6 +172,9 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [x] List pending companies
     - [x] Display known data
     - [x] Link to original message, if any (maybe just gmail link?)
+  - [ ] List companies that already have been replied to
+    - [ ] show whether reply was sent and date it was sent
+    - [ ] "send and archive" should effectively update this
   - [x] Research button
   - [x] "Generate reply" button (and "regenerate")
     - [x] "Edit reply" button
@@ -179,7 +186,13 @@ Won't work if follow-ups are not threaded, but that can't be helped.
     - [ ] "--dry-run" command line flag to server/app, to not actually send
           messages
     - [ ] similar option to research daemon to not actually send messages
-  - [ ] Richer data display with links
+  - [ ] List companies that are from non-recruiter sources
+     - [ ] distinguish these from recruiter companies in the company list
+     - [ ] add button to research these
+     - [ ] support manually adding by name or URL
+     - [ ] support linkedin job alert email
+     - [ ] support "welcome to the jungle" job alert email
+  - [ ] Richer company data display, with links
   - [x] Async updates from backend
     - [x] Polling the API is fine
     - [x] Run research in a separate process (research_daemon.py)
