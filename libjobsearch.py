@@ -354,7 +354,7 @@ class JobSearch:
         self.args = args
         self.email_responder = EmailResponseGenerator(
             reply_rag_model=args.model,
-            reply_rag_limit=args.limit,
+            reply_rag_limit=args.rag_message_limit,
             loglevel=loglevel,
             cache_settings=cache_settings,
         )
@@ -534,11 +534,13 @@ def arg_parser():
             "claude-3-5-sonnet-latest",
         ],
     )
+    DEFAULT_RAG_LIMIT = 20
     parser.add_argument(
-        "--limit",
+        "--rag-message-limit",
         action="store",
         type=int,
-        default=10,
+        default=DEFAULT_RAG_LIMIT,
+    help=f"Max number of old replies for training generated replies (default {DEFAULT_RAG_LIMIT})",
     )
     parser.add_argument(
         "--no-cache",
