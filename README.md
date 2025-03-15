@@ -202,6 +202,13 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] app uses task.py to create and check on tasks
       - [x] research_daemon.py uses task.py to run and update tasks
       - [x] Chose sqlite for task db
+    - [ ] Support processing old unprocessed tasks
+      - [ ] Not sure if this should be the default
+      - [ ] Probably should have a sensible cutoff age, eg don't auto-apply
+            a task older than 2 days
+      - [ ] Also support cleaning up / discarding
+      - [ ] Maybe all this should be shown in the UX.
+            Think of it kind of like the print job queue on eg MacOS.
 - [ ] Work through the existing backlog with this tool
 - [ ] Keep it at inbox zero until I get a job
 - [ ] Profit
