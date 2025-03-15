@@ -24,7 +24,7 @@ import levels_searcher
 import linkedin_searcher
 import spreadsheet_client
 from logsetup import setup_logging
-from models import CompaniesSheetRow
+from models import CompaniesSheetRow, RecruiterMessage
 from message_generation_rag import RecruitmentRAG
 from spreadsheet_client import MainTabCompaniesClient
 
@@ -43,11 +43,6 @@ class CacheStep(IntEnum):
     REPLY = 4
 
 
-@dataclasses.dataclass
-class RecruiterMessage:
-    message: str
-    email_thread_link: str = ""
-    message_id: str = ""
 
 
 @dataclasses.dataclass
@@ -320,6 +315,11 @@ class EmailResponseGenerator:
             RecruiterMessage(
                 message=msg["combined_content"].strip(),
                 email_thread_link=msg["email_thread_link"],
+                message_id=msg.get("id", ""),
+                thread_id=msg.get("thread_id", ""),
+                subject=msg.get("subject", ""),
+                combined_content=msg.get("combined_content", ""),
+                content=msg.get("content", "")
             )
             for msg in self.email_client.get_new_recruiter_messages(
                 max_results=max_results

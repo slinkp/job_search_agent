@@ -229,6 +229,7 @@ class GmailRepliesSearcher:
 
             email_thread_link = self._get_email_thread_link(msg_list)
             combined_msg["email_thread_link"] = email_thread_link
+
             combined_content = []
             if subject:
                 subject = subject.strip() + "\n\n"

@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import decimal
 import enum
@@ -219,6 +220,20 @@ class CompaniesSheetRow(BaseSheetRow):
         elif self.url:
             return f"with unknown name at {self.url}"
         return ""
+
+
+@dataclasses.dataclass
+class RecruiterMessage:
+    """
+    Represents a recruiter message with its content and metadata.
+    """
+    message: str = ""
+    email_thread_link: str = ""
+    message_id: str = ""
+    thread_id: str = ""
+    subject: str = ""
+    combined_content: str = ""
+
 
 
 class Company(BaseModel):
