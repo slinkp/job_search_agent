@@ -47,6 +47,7 @@ class CacheStep(IntEnum):
 class RecruiterMessage:
     message: str
     email_thread_link: str = ""
+    message_id: str = ""
 
 
 @dataclasses.dataclass
