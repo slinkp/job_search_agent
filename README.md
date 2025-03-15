@@ -152,6 +152,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [x] Search for 1st degree connections currently at company
   - [x] Integrate with end-to-end flow, add to spreadsheet
   - [x] Skip if company not a good fit
+- [ ] Browser-driven research: Run headless?
 - [ ] Company research: Find contacts in recurse
   - [ ] Is there an API? Or drive browser? Is there TOS?
   - [ ] Search for 1st degree connections currently at company
@@ -168,7 +169,11 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] chose sqlite db
       - [x] models.py
       - [x] simple repository implementation
-  - [x] Manually trigger checking email (with optional max)
+  - [ ] Manually trigger checking email (with optional max)
+      - [x] Button to scan email and select how many
+      - [ ] Make it optional whether we do research automatically (default: no)
+      - [ ] Show more detailed progress info?
+      - [ ] Make sure we only pull in new companies
   - [x] List pending companies
     - [x] Display known data
     - [x] Link to original message, if any (maybe just gmail link?)
@@ -176,12 +181,14 @@ Won't work if follow-ups are not threaded, but that can't be helped.
     - [ ] show whether reply was sent and date it was sent
     - [ ] "send and archive" should effectively update this
   - [x] Research button
+    - [ ] If already researched, label it "Re-do research"
   - [x] "Generate reply" button (and "regenerate")
     - [x] "Edit reply" button
     - [x] Display reply
       - [x] Show recruiter message below generated reply
       - [ ] Show date of recruiter message above their message,
             formatted like  "YYYY/MM/DD 3:42pm (X days ago)"
+      - [ ] Add link to email thread from the reply page
     - [x] "Send and archive" button
     - [ ] "--dry-run" command line flag to server/app, to not actually send
           messages
