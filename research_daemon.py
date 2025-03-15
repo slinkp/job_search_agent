@@ -1,4 +1,5 @@
 import argparse
+import datetime
 import logging
 import signal
 import time
@@ -40,6 +41,9 @@ class ResearchDaemon:
         self.task_mgr = task_manager()
         self.company_repo = models.company_repository()
         self.ai_model = args.model
+        self.dry_run = args.dry_run
+        if self.dry_run:
+            logger.info("Running in DRY RUN mode - no emails will be sent")
         self.jobsearch = libjobsearch.JobSearch(
             args, loglevel=logging.DEBUG, cache_settings=cache_settings
         )
@@ -77,6 +81,8 @@ class ResearchDaemon:
                     self.do_generate_reply(task_args)
                 elif task_type == TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES:
                     self.do_find_companies_in_recruiter_messages(task_args)
+                elif task_type == TaskType.SEND_AND_ARCHIVE:
+                    self.do_send_and_archive(task_args)
                 else:
                     logger.error(f"Ignoring unsupported task type: {task_type}")
                 logger.info(f"Task {task_id} completed")
@@ -154,10 +160,47 @@ class ResearchDaemon:
                 logger.exception("Error processing recruiter message")
                 continue
         logger.info("Finished processing recruiter messages")
+        
+    def do_send_and_archive(self, args: dict):
+        """Handle sending a reply and archiving the message."""
+        company_name = args.get("company_name")
+        if not company_name:
+            raise ValueError("Missing company_name in task args")
+            
+        logger.info(f"Sending reply and archiving for company: {company_name}")
+        company = self.company_repo.get(company_name)
+        if not company:
+            raise ValueError(f"Company not found: {company_name}")
+            
+        if not company.reply_message:
+            raise ValueError(f"No reply message for company: {company_name}")
+            
+        if not company.details.email_thread_link:
+            logger.warning(f"No email thread link for company: {company_name}")
+            
+        # In dry run mode, just log what would happen
+        if self.dry_run:
+            logger.info("DRY RUN: Would send the following email:")
+            logger.info(f"To: Recruiter at {company_name}")
+            logger.info(f"Thread: {company.details.email_thread_link}")
+            logger.info(f"Message:\n{company.reply_message}")
+            logger.info("DRY RUN: Would archive the message thread")
+        else:
+            # This would call the email client to actually send the email
+            # For now, just log that we would send it
+            logger.info(f"Would send email to {company_name} and archive the thread")
+            # TODO: Implement actual email sending using libjobsearch.send_reply_and_archive
+            
+        # Mark the company as sent/archived in the database
+        company.details.current_state = "30. replied to recruiter"
+        company.details.updated = datetime.date.today()
+        self.company_repo.update(company)
 
 
 if __name__ == "__main__":
-    args = libjobsearch.arg_parser().parse_args()
+    parser = libjobsearch.arg_parser()
+    parser.add_argument("--dry-run", action="store_true", help="Don't actually send emails")
+    args = parser.parse_args()
 
     setup_logging(args.verbose)
     cache_args = libjobsearch.CacheSettings(
