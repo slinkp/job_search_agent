@@ -164,6 +164,29 @@ def scan_recruiter_emails(request):
     return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
 
 
+@view_config(route_name="send_and_archive", renderer="json", request_method="POST")
+def send_and_archive(request):
+    company_name = request.matchdict["company_name"]
+    company = models.company_repository().get(company_name)
+
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found"}
+
+    if not company.reply_message:
+        request.response.status = 400
+        return {"error": "No reply message to send"}
+
+    # Create a new task for sending and archiving
+    task_id = tasks.task_manager().create_task(
+        tasks.TaskType.SEND_AND_ARCHIVE,
+        {"company_name": company_name},
+    )
+    logger.info(f"Send and archive requested for {company_name}, task_id: {task_id}")
+
+    return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value, "sent_at": datetime.now().isoformat()}
+
+
 def main(global_config, **settings):
     with Configurator(settings=settings) as config:
         # Enable debugtoolbar for development
@@ -183,6 +206,7 @@ def main(global_config, **settings):
         config.add_route("generate_message", "/api/{company_name}/reply_message")
         config.add_route("research", "/api/{company_name}/research")
         config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
+        config.add_route("send_and_archive", "/api/{company_name}/send_and_archive")
         config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_static_view(name='static', path='static')
         config.scan()

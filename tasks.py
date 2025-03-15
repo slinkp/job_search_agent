@@ -42,6 +42,7 @@ class TaskType(Enum):
     COMPANY_RESEARCH = "company_research"
     GENERATE_REPLY = "generate_reply"
     FIND_COMPANIES_FROM_RECRUITER_MESSAGES = "find_companies_from_recruiter_messages"
+    SEND_AND_ARCHIVE = "send_and_archive"
 
 
 class TaskManager:

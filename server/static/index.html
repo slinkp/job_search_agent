@@ -172,6 +172,14 @@
                 <span x-text="isGeneratingMessage(editingCompany) ? 'Generating...' : 'Regenerate reply'"></span>
                 <span x-show="isGeneratingMessage(editingCompany)" class="loading-spinner"></span>
               </button>
+              <button 
+                type="button" 
+                @click="sendAndArchive(editingCompany)"
+                :disabled="isGeneratingMessage(editingCompany) || !editingCompany?.reply_message"
+                class="primary"
+              >
+                Send & Archive
+              </button>
             </footer>
           </form>
           <div class="original-message" x-show="editingCompany?.initial_message">

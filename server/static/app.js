@@ -39,6 +39,10 @@ document.addEventListener("alpine:init", () => {
       alert(message); // We can make this fancier later with a toast or custom modal
     },
 
+    showSuccess(message) {
+      alert(message); // Simple success notification, can be improved later
+    },
+
     async generateReply(company, updateModal = false) {
       try {
         this.generatingMessages.add(company.name);
