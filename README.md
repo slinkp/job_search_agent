@@ -172,7 +172,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [x] "Generate reply" button (and "regenerate")
     - [x] "Edit reply" button
     - [x] Display reply
-      - [ ] Show recruiter message above reply
+      - [x] Show recruiter message below generated reply
     - [ ] "Send and archive" button
   - [ ] Richer data display with links
   - [x] Async updates from backend
