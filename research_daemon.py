@@ -186,10 +186,32 @@ class ResearchDaemon:
             logger.info(f"Message:\n{company.reply_message}")
             logger.info("DRY RUN: Would archive the message thread")
         else:
-            # This would call the email client to actually send the email
-            # For now, just log that we would send it
-            logger.info(f"Would send email to {company_name} and archive the thread")
-            # TODO: Implement actual email sending using libjobsearch.send_reply_and_archive
+            # Extract thread_id and message_id from the email_thread_link
+            thread_id = None
+            if company.details.email_thread_link:
+                # Extract thread_id from the URL format like:
+                # https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread-id
+                parts = company.details.email_thread_link.split('/')
+                if len(parts) > 0:
+                    thread_id = parts[-1]
+                    logger.info(f"Extracted thread_id: {thread_id}")
+                    
+                    # Use libjobsearch to send the reply and archive
+                    success = libjobsearch.send_reply_and_archive(
+                        message_id=thread_id,  # Using thread_id as message_id
+                        thread_id=thread_id,
+                        reply=company.reply_message
+                    )
+                    
+                    if success:
+                        logger.info(f"Successfully sent reply to {company_name} and archived the thread")
+                    else:
+                        logger.error(f"Failed to send reply to {company_name}")
+                        raise RuntimeError(f"Failed to send reply to {company_name}")
+                else:
+                    logger.warning(f"Could not extract thread_id from email link: {company.details.email_thread_link}")
+            else:
+                logger.warning(f"No email thread link for {company_name}, cannot send reply")
             
         # Mark the company as sent/archived in the database
         company.details.current_state = "30. replied to recruiter"

@@ -182,10 +182,10 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] Show recruiter message below generated reply
       - [ ] Show date of recruiter message above their message,
             formatted like  "YYYY/MM/DD 3:42pm (X days ago)"
-    - [ ] "Send and archive" button
+    - [x] "Send and archive" button
     - [ ] "--dry-run" command line flag to server/app, to not actually send
           messages
-    - [ ] similar option to research daemon to not actually send messages
+    - [x] similar option to research daemon to not actually send messages
   - [ ] List companies that are from non-recruiter sources
      - [ ] distinguish these from recruiter companies in the company list
      - [ ] add button to research these
