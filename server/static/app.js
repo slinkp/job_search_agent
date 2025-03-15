@@ -127,6 +127,50 @@ document.addEventListener("alpine:init", () => {
       }
     },
 
+    async sendAndArchive(company) {
+      if (!company || !company.reply_message) {
+        this.showError("No reply message to send");
+        return;
+      }
+
+      try {
+        // First save any edits to the reply
+        if (this.editingCompany && this.editingReply !== company.reply_message) {
+          company.reply_message = this.editingReply;
+          await this.saveReply();
+        }
+
+        // Send the reply and archive
+        const response = await fetch(`/api/${company.name}/send_and_archive`, {
+          method: "POST",
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(
+            error.error || `Failed to send and archive: ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+        
+        // Update the company data
+        const updatedCompany = this.companies.find(c => c.name === company.name);
+        if (updatedCompany) {
+          updatedCompany.sent_at = data.sent_at;
+          updatedCompany.archived = true;
+        }
+        
+        this.showSuccess("Reply sent and message archived");
+        this.cancelEdit();
+      } catch (err) {
+        console.error("Failed to send and archive:", err);
+        this.showError(
+          err.message || "Failed to send and archive. Please try again."
+        );
+      }
+    },
+
     async research(company) {
       try {
         this.researchingCompanies.add(company.name);
