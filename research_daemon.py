@@ -149,10 +149,26 @@ class ResearchDaemon:
                     logger.info(f"Company {company_row.name} already exists, skipping")
                     continue
 
+                # Extract message_id and thread_id from the RecruiterMessage
+                message_id = None
+                thread_id = None
+                if hasattr(message, 'email_thread_link') and message.email_thread_link:
+                    # Extract thread_id from the URL format like:
+                    # https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread-id
+                    parts = message.email_thread_link.split('/')
+                    if len(parts) > 0:
+                        thread_id = parts[-1]
+                
+                # If we have a message object with a message_id attribute, use it
+                if hasattr(message, 'message_id'):
+                    message_id = message.message_id
+                
                 company = models.Company(
                     name=company_row.name,
                     details=company_row,
                     initial_message=message.message,
+                    message_id=message_id,
+                    thread_id=thread_id,
                 )
                 self.company_repo.create(company)
                 logger.info(f"Created company {company_row.name} from recruiter message")
@@ -175,30 +191,47 @@ class ResearchDaemon:
         if not company.reply_message:
             raise ValueError(f"No reply message for company: {company_name}")
             
-        if not company.details.email_thread_link:
-            logger.warning(f"No email thread link for company: {company_name}")
-            
         # In dry run mode, just log what would happen
         if self.dry_run:
             logger.info("DRY RUN: Would send the following email:")
             logger.info(f"To: Recruiter at {company_name}")
-            logger.info(f"Thread: {company.details.email_thread_link}")
+            logger.info(f"Thread: {company.thread_id}")
+            logger.info(f"Message ID: {company.message_id}")
             logger.info(f"Message:\n{company.reply_message}")
             logger.info("DRY RUN: Would archive the message thread")
         else:
-            # Extract thread_id and message_id from the email_thread_link
-            thread_id = None
-            if company.details.email_thread_link:
-                # Extract thread_id from the URL format like:
-                # https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread-id
-                parts = company.details.email_thread_link.split('/')
-                if len(parts) > 0:
-                    thread_id = parts[-1]
-                    logger.info(f"Extracted thread_id: {thread_id}")
-                    
+            # Check if we have the necessary IDs
+            if not company.message_id:
+                logger.warning(f"No message ID for {company_name}, trying to use thread ID")
+                if not company.thread_id:
+                    logger.error(f"No thread ID for {company_name}, cannot send reply")
+                    raise ValueError(f"No message ID or thread ID for {company_name}")
+                
+                # Try to get the message ID from the thread ID
+                import libjobsearch
+                try:
                     # Use libjobsearch to send the reply and archive
                     success = libjobsearch.send_reply_and_archive(
-                        message_id=thread_id,  # Using thread_id as message_id
+                        message_id=company.thread_id,  # Fallback to thread_id if no message_id
+                        thread_id=company.thread_id,
+                        reply=company.reply_message
+                    )
+                    
+                    if success:
+                        logger.info(f"Successfully sent reply to {company_name} and archived the thread")
+                    else:
+                        logger.error(f"Failed to send reply to {company_name}")
+                        raise RuntimeError(f"Failed to send reply to {company_name}")
+                except Exception as e:
+                    logger.error(f"Error sending reply: {e}")
+                    raise RuntimeError(f"Failed to send reply to {company_name}: {e}")
+            else:
+                # We have a message ID, use it
+                try:
+                    # Use libjobsearch to send the reply and archive
+                    thread_id = company.thread_id or company.message_id
+                    success = libjobsearch.send_reply_and_archive(
+                        message_id=company.message_id,
                         thread_id=thread_id,
                         reply=company.reply_message
                     )
@@ -208,10 +241,9 @@ class ResearchDaemon:
                     else:
                         logger.error(f"Failed to send reply to {company_name}")
                         raise RuntimeError(f"Failed to send reply to {company_name}")
-                else:
-                    logger.warning(f"Could not extract thread_id from email link: {company.details.email_thread_link}")
-            else:
-                logger.warning(f"No email thread link for {company_name}, cannot send reply")
+                except Exception as e:
+                    logger.error(f"Error sending reply: {e}")
+                    raise RuntimeError(f"Failed to send reply to {company_name}: {e}")
             
         # Mark the company as sent/archived in the database
         company.details.current_state = "30. replied to recruiter"

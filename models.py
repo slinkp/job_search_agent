@@ -191,6 +191,7 @@ class CompaniesSheetRow(BaseSheetRow):
     notes: Optional[str] = Field(default=None)
 
     email_thread_link: Optional[str] = Field(default="")
+    message_id: Optional[str] = Field(default="")
 
     @model_validator(mode="before")
     @classmethod
@@ -226,6 +227,8 @@ class Company(BaseModel):
     details: CompaniesSheetRow
     initial_message: Optional[str] = None
     reply_message: str = ""
+    message_id: Optional[str] = None
+    thread_id: Optional[str] = None
 
 
 class CustomJSONEncoder(json.JSONEncoder):
@@ -268,7 +271,9 @@ class CompanyRepository:
                         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                         details TEXT NOT NULL,
                         initial_message TEXT,
-                        reply_message TEXT NOT NULL DEFAULT ''
+                        reply_message TEXT NOT NULL DEFAULT '',
+                        message_id TEXT,
+                        thread_id TEXT
                     )
                 """
                 )
@@ -289,7 +294,7 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT name, updated_at, details, initial_message, reply_message FROM companies WHERE name = ?",
+                "SELECT name, updated_at, details, initial_message, reply_message, message_id, thread_id FROM companies WHERE name = ?",
                 (name,),
             )
             row = cursor.fetchone()
@@ -299,7 +304,7 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT name, updated_at, details, initial_message, reply_message FROM companies"
+                "SELECT name, updated_at, details, initial_message, reply_message, message_id, thread_id FROM companies"
             )
             return [self._deserialize_company(row) for row in cursor.fetchall()]
 
@@ -310,8 +315,8 @@ class CompanyRepository:
                     conn.execute(
                         """
                         INSERT INTO companies (
-                            name, details, initial_message, reply_message
-                        ) VALUES (?, ?, ?, ?)
+                            name, details, initial_message, reply_message, message_id, thread_id
+                        ) VALUES (?, ?, ?, ?, ?, ?)
                         """,
                         (
                             company.name,
@@ -320,6 +325,8 @@ class CompanyRepository:
                             ),
                             company.initial_message,
                             company.reply_message,
+                            company.message_id,
+                            company.thread_id,
                         ),
                     )
                     conn.commit()
@@ -340,6 +347,8 @@ class CompanyRepository:
                     SET details = ?, 
                         initial_message = ?, 
                         reply_message = ?,
+                        message_id = ?,
+                        thread_id = ?,
                         updated_at = datetime('now')
                     WHERE name = ?
                     """,
@@ -347,6 +356,8 @@ class CompanyRepository:
                         json.dumps(company.details.model_dump(), cls=CustomJSONEncoder),
                         company.initial_message,
                         company.reply_message,
+                        company.message_id,
+                        company.thread_id,
                         company.name,
                     ),
                 )
@@ -370,7 +381,7 @@ class CompanyRepository:
     def _deserialize_company(self, row: tuple) -> Company:
         """Convert a database row into a Company object."""
         assert row is not None
-        name, updated_at, details_json, initial_message, reply_message = row
+        name, updated_at, details_json, initial_message, reply_message, message_id, thread_id = row
         details_dict = json.loads(details_json)
 
         # Parse updated_at as UTC timezone-aware datetime
@@ -392,6 +403,8 @@ class CompanyRepository:
             details=CompaniesSheetRow(**details_dict),
             initial_message=initial_message,
             reply_message=reply_message,
+            message_id=message_id,
+            thread_id=thread_id,
         )
 
 
