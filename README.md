@@ -173,7 +173,12 @@ Won't work if follow-ups are not threaded, but that can't be helped.
     - [x] "Edit reply" button
     - [x] Display reply
       - [x] Show recruiter message below generated reply
+      - [ ] Show date of recruiter message above their message,
+            formatted like  "YYYY/MM/DD 3:42pm (X days ago)"
     - [ ] "Send and archive" button
+    - [ ] "--dry-run" command line flag to server/app, to not actually send
+          messages
+    - [ ] similar option to research daemon to not actually send messages
   - [ ] Richer data display with links
   - [x] Async updates from backend
     - [x] Polling the API is fine
