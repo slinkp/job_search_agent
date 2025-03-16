@@ -12,6 +12,8 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
 
+from models import RecruiterMessage
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 AUTH_DIR = os.path.join(HERE, "secrets")
 CREDENTIALS_FILE = os.path.join(AUTH_DIR, "credentials.json")
@@ -198,7 +200,7 @@ class GmailRepliesSearcher:
         processed_messages.sort(reverse=True)
         return [msg for _, msg in processed_messages]
 
-    def get_new_recruiter_messages(self, max_results: int = 10) -> list[dict]:
+    def get_new_recruiter_messages(self, max_results: int = 10) -> list[RecruiterMessage]:
         """
         Get new messages from recruiters that we haven't replied to yet.
         Combines messages in each thread and returns a list of dicts.
@@ -228,7 +230,6 @@ class GmailRepliesSearcher:
             subject = self.get_subject(msg_list[0][-1]).strip()
 
             email_thread_link = self._get_email_thread_link(msg_list)
-            combined_msg["email_thread_link"] = email_thread_link
 
             combined_content = []
             if subject:
@@ -247,11 +248,24 @@ class GmailRepliesSearcher:
             for i, content in enumerate(combined_content):
                 logger.debug(f"Thread {thread_id} content {i}:\n{content[:200]}...")
 
-            # TODO: Add text extracted from attached PDFs, docx, etc.
-            combined_msg["combined_content"] = "\n\n".join(combined_content)
-            combined_messages.append(combined_msg)
+            thread_id = ""
+            link_parts = email_thread_link.split('/')
+            if len(link_parts) > 0:
+                thread_id = link_parts[-1]
 
-        combined_messages.sort(key=lambda x: int(x["internalDate"]), reverse=True)
+            # TODO: Add text extracted from attached PDFs, docx, etc.
+            recruiter_message = RecruiterMessage(
+                message_id=combined_msg["id"],
+                email_thread_link=email_thread_link,
+                thread_id=thread_id,
+                subject=subject,
+                date=combined_msg["internalDate"],
+                message="\n\n".join(combined_content),
+
+                )
+            combined_messages.append(recruiter_message)
+
+        combined_messages.sort(key=lambda x: x.date, reverse=True)
         logger.info(
             f"Got {len(message_dicts)} new recruiter messages in {len(combined_messages)} threads"
         )

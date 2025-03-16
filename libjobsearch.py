@@ -311,20 +311,7 @@ class EmailResponseGenerator:
         self, max_results: int = 100
     ) -> list[RecruiterMessage]:
         logger.info(f"Getting {max_results} new recruiter messages")
-        return [
-            RecruiterMessage(
-                message=msg["combined_content"].strip(),
-                email_thread_link=msg["email_thread_link"],
-                message_id=msg.get("id", ""),
-                thread_id=msg.get("thread_id", ""),
-                subject=msg.get("subject", ""),
-                combined_content=msg.get("combined_content", ""),
-                content=msg.get("content", "")
-            )
-            for msg in self.email_client.get_new_recruiter_messages(
-                max_results=max_results
-            )
-        ]
+        return self.email_client.get_new_recruiter_messages(max_results=max_results)
 
 
 def add_company_to_spreadsheet(company_info: CompaniesSheetRow, args: argparse.Namespace):

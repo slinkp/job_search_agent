@@ -232,7 +232,7 @@ class RecruiterMessage:
     message_id: str = ""
     thread_id: str = ""
     subject: str = ""
-    combined_content: str = ""
+    date: str = ""
 
 
 
