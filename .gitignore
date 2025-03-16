@@ -10,3 +10,5 @@ debug*html
 debug*png
 playwright-*-chrome
 .aider*
+.coverage
+htmlcov

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+coverage run -m pytest || exit 1
+coverage report || exit 1
+coverage html
