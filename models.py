@@ -3,6 +3,7 @@ import datetime
 import decimal
 import enum
 import json
+import logging
 import multiprocessing
 import os
 import sqlite3
@@ -11,6 +12,8 @@ from typing import Any, ClassVar, Iterator, List, Optional
 
 import dateutil.parser
 from pydantic import BaseModel, Field, ValidationError, model_validator
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_CURRENT_STATE = "25. consider applying"
 
