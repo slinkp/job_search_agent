@@ -224,6 +224,15 @@ class CompaniesSheetRow(BaseSheetRow):
 class RecruiterMessage(BaseModel):
     """
     Represents a recruiter message with its content and metadata.
+    
+    Attributes:
+        message_id: Unique Gmail message ID for this specific message
+        message: The content of the message
+        subject: Email subject line
+        sender: Email sender (recruiter's email address)
+        email_thread_link: URL to the email thread in Gmail
+        thread_id: Gmail thread ID
+        date: Timestamp of the message
     """
     message_id: str = ""
     message: str = ""
@@ -262,10 +271,10 @@ class Company(BaseModel):
         return self.recruiter_message.message or ""
 
     @initial_message.setter
-    def set_initial_message(self, message: str):
-
+    def initial_message(self, message: str):
         if self.recruiter_message is None:
-            raise ValueError("Can't set without a RecruiterMessage")
+            # Create a minimal RecruiterMessage if none exists
+            self.recruiter_message = RecruiterMessage(message=message)
         else:
             self.recruiter_message.message = message
 
@@ -427,6 +436,13 @@ class CompanyRepository:
         with self.lock:
             with self._get_connection() as conn:
                 try:
+                    # Store message_id from recruiter_message if available
+                    message_id = None
+                    if company.recruiter_message and company.recruiter_message.message_id:
+                        message_id = company.recruiter_message.message_id
+                    elif company.message_id:
+                        message_id = company.message_id
+                        
                     conn.execute(
                         """
                         INSERT INTO companies (
@@ -439,11 +455,17 @@ class CompanyRepository:
                                 company.details.model_dump(), cls=CustomJSONEncoder
                             ),
                             company.reply_message,
-                            company.message_id,
+                            message_id,
                         ),
                     )
-                    if company.recruiter_message:
-                        self._create_recruiter_message(company.recruiter_message, conn)
+                    
+                    # Save the recruiter message if it exists
+                    if company.recruiter_message and company.recruiter_message.message_id:
+                        try:
+                            self._create_recruiter_message(company.recruiter_message, conn)
+                        except ValueError as e:
+                            logger.warning(f"Could not create recruiter message: {e}")
+                            
                     conn.commit()
                     refreshed_company = self.get(
                         company.name

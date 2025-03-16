@@ -203,9 +203,9 @@ class GmailRepliesSearcher:
     def get_new_recruiter_messages(self, max_results: int = 10) -> list[RecruiterMessage]:
         """
         Get new messages from recruiters that we haven't replied to yet.
-        Combines messages in each thread and returns a list of dicts.
+        Combines messages in each thread and returns a list of RecruiterMessage objects.
 
-        Includes latest subject.
+        Includes latest subject and all metadata needed for processing.
         """
         logger.info(f"Getting {max_results} new recruiter messages...")
         message_dicts = self.search_and_get_details(RECRUITER_MESSAGES_QUERY, max_results)
@@ -248,21 +248,29 @@ class GmailRepliesSearcher:
             for i, content in enumerate(combined_content):
                 logger.debug(f"Thread {thread_id} content {i}:\n{content[:200]}...")
 
-            thread_id = ""
+            # Extract thread_id from the email link
+            extracted_thread_id = ""
             link_parts = email_thread_link.split('/')
             if len(link_parts) > 0:
-                thread_id = link_parts[-1]
+                extracted_thread_id = link_parts[-1]
+
+            # Get sender from the original message
+            sender = ""
+            for header in msg_list[0][-1]["payload"]["headers"]:
+                if header["name"].lower() == "from":
+                    sender = header["value"].strip()
+                    break
 
             # TODO: Add text extracted from attached PDFs, docx, etc.
             recruiter_message = RecruiterMessage(
                 message_id=combined_msg["id"],
                 email_thread_link=email_thread_link,
-                thread_id=thread_id,
-                subject=subject,
+                thread_id=extracted_thread_id,
+                subject=subject.strip() if subject else "",  # Remove the newlines we added for combined content
+                sender=sender,
                 date=combined_msg["internalDate"],
                 message="\n\n".join(combined_content),
-
-                )
+            )
             combined_messages.append(recruiter_message)
 
         combined_messages.sort(key=lambda x: x.date, reverse=True)

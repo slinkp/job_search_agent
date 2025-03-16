@@ -3,6 +3,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from email_client import GmailRepliesSearcher, ARCHIVED_LABEL
+from models import RecruiterMessage
 
 
 class TestGmailRepliesSearcher:
@@ -194,3 +195,43 @@ class TestGmailRepliesSearcher:
         create_call = gmail_searcher.service.users().labels().create.call_args
         assert create_call is not None
         assert create_call[1]["body"]["name"] == label_name
+        
+    def test_get_new_recruiter_messages(self, gmail_searcher):
+        """Test getting new recruiter messages."""
+        # Setup mock messages
+        message1 = {
+            "id": "msg123",
+            "threadId": "thread123",
+            "internalDate": "1617235200000",
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "Job Opportunity"},
+                    {"name": "From", "value": "recruiter@example.com"},
+                ],
+                "body": {"data": base64.b64encode(b"Message content").decode()},
+            },
+        }
+        
+        # Mock the search_and_get_details method
+        with patch.object(
+            gmail_searcher, "search_and_get_details", return_value=[message1]
+        ) as mock_search:
+            # Mock the _get_email_thread_link method
+            with patch.object(
+                gmail_searcher, "_get_email_thread_link", return_value="https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread123"
+            ):
+                # Call the method
+                result = gmail_searcher.get_new_recruiter_messages(max_results=1)
+                
+                # Assertions
+                assert len(result) == 1
+                assert isinstance(result[0], RecruiterMessage)
+                assert result[0].message_id == "msg123"
+                assert result[0].thread_id == "thread123"
+                assert result[0].subject == "Job Opportunity"
+                assert result[0].sender == "recruiter@example.com"
+                assert "Message content" in result[0].message
+                assert result[0].email_thread_link == "https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread123"
+                
+                # Verify search_and_get_details was called with the correct parameters
+                mock_search.assert_called_once()
