@@ -1,5 +1,7 @@
 """
-State management for company research and other actions as asynhronous"tasks".
+State management for company research and other actions as asynhronous "tasks".
+
+This module is pretty generic and knows nothing of the rest of the application.
 
 The TaskManager class is designed to be used as a singleton, and the task_manager()
 function is provided to get the singleton instance.
