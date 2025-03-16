@@ -362,7 +362,7 @@ class CompanyRepository:
             )
             row = cursor.fetchone()
             company = self._deserialize_company(row) if row else None
-            if company.message_id:
+            if company and company.message_id:
                 message = self._get_recruiter_message(company.message_id, conn)
                 company.recruiter_message = message
         return company
@@ -481,32 +481,64 @@ class CompanyRepository:
     def update(self, company: Company) -> Company:
         with self.lock:  # Lock for writes
             with self._get_connection() as conn:
+                # Get message_id from recruiter_message if available
+                message_id = None
+                if company.recruiter_message and company.recruiter_message.message_id:
+                    message_id = company.recruiter_message.message_id
+                elif company.message_id:
+                    message_id = company.message_id
+                
                 cursor = conn.execute(
                     """
                     UPDATE companies 
                     SET details = ?, 
-                        initial_message = ?, 
                         reply_message = ?,
                         message_id = ?,
-                        thread_id = ?,
                         updated_at = datetime('now')
                     WHERE name = ?
                     """,
                     (
                         json.dumps(company.details.model_dump(), cls=CustomJSONEncoder),
-                        company.initial_message,
                         company.reply_message,
-                        company.message_id,
-                        company.thread_id,
+                        message_id,
                         company.name,
                     ),
                 )
+                
                 if cursor.rowcount == 0:
                     raise ValueError(f"Company {company.name} not found")
+                
+                # Update or create the recruiter message if it exists
+                if company.recruiter_message and company.recruiter_message.message_id:
+                    try:
+                        # Check if the recruiter message already exists
+                        existing_message = self._get_recruiter_message(company.recruiter_message.message_id, conn)
+                        if existing_message:
+                            # Update the existing message
+                            conn.execute(
+                                """
+                                UPDATE recruiter_messages
+                                SET subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?
+                                WHERE message_id = ?
+                                """,
+                                (
+                                    company.recruiter_message.subject,
+                                    company.recruiter_message.sender,
+                                    company.recruiter_message.message,
+                                    company.recruiter_message.thread_id,
+                                    company.recruiter_message.email_thread_link,
+                                    company.recruiter_message.date,
+                                    company.recruiter_message.message_id,
+                                ),
+                            )
+                        else:
+                            # Create a new recruiter message
+                            self._create_recruiter_message(company.recruiter_message, conn)
+                    except ValueError as e:
+                        logger.warning(f"Could not update recruiter message: {e}")
+                
                 conn.commit()
-                refreshed_company = self.get(
-                    company.name, include_messages=True
-                )  # To include generated timestamp
+                refreshed_company = self.get(company.name)  # To include generated timestamp
                 assert refreshed_company is not None
                 return refreshed_company
 
