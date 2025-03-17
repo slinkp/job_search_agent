@@ -118,7 +118,7 @@ class ResearchDaemon:
         assert "company_name" in args
         company = self.company_repo.get(args["company_name"])
         assert company is not None
-        assert company.initial_message is not None
+        assert company.recruiter_message is not None
         logger.info(f"Generating reply for {args['company_name']}")
         # TODO: Include more company info context in reply args
         reply = self.jobsearch.generate_reply(company.initial_message)

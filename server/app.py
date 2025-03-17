@@ -87,7 +87,14 @@ def create_stub_message(company_name: str) -> str:
 @view_config(route_name="generate_message", renderer="json", request_method="POST")
 def generate_message(request):
     company_name = request.matchdict["company_name"]
-    # Create a new task
+    company = models.company_repository().get(company_name)
+    if company is None:
+        request.response.status = 404
+        return {"error": "Company not found"}
+    if not company.recruiter_message:
+        request.response.status = 400
+        return {"error": "No recruiter message to reply to"}
+
     task_id = tasks.task_manager().create_task(
         tasks.TaskType.GENERATE_REPLY,
         {"company_name": company_name},
