@@ -220,6 +220,53 @@ class TestCompanyRepository:
         # Clean up
         if os.path.exists(TEST_DB_PATH):
             os.remove(TEST_DB_PATH)
+            
+    def test_update_company_with_recruiter_message(self, clean_test_db):
+        """Test updating a company that has a recruiter message."""
+        repo = clean_test_db
+        
+        # Create a test recruiter message
+        recruiter_message = RecruiterMessage(
+            message_id="test123",
+            message="Hello, we have a job opportunity for you.",
+            subject="Job Opportunity",
+            sender="recruiter@example.com",
+            email_thread_link="https://mail.example.com/thread123",
+            thread_id="thread123",
+            date="2023-01-01T12:00:00Z",
+        )
+        
+        # Create a test company with the recruiter message
+        company = Company(
+            name="TestCompany",
+            details=CompaniesSheetRow(
+                name="TestCompany",
+                type="Private",
+            ),
+            recruiter_message=recruiter_message,
+        )
+        
+        # Save it to the database
+        created_company = repo.create(company)
+        
+        # Modify the recruiter message
+        created_company.recruiter_message.subject = "Updated Job Opportunity"
+        created_company.recruiter_message.message = "Updated message content"
+        created_company.details.type = "Public"
+        
+        # Update the company
+        updated_company = repo.update(created_company)
+        
+        # Retrieve the company again
+        retrieved_company = repo.get("TestCompany")
+        
+        # Verify the company and recruiter message were updated correctly
+        assert retrieved_company is not None
+        assert retrieved_company.details.type == "Public"
+        assert retrieved_company.recruiter_message is not None
+        assert retrieved_company.recruiter_message.subject == "Updated Job Opportunity"
+        assert retrieved_company.recruiter_message.message == "Updated message content"
+        assert retrieved_company.recruiter_message.message_id == "test123"
 
 
 class TestCompaniesSheetRow:

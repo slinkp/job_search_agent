@@ -396,11 +396,16 @@ class CompanyRepository:
     def create_recruiter_message(self, message: RecruiterMessage) -> None:
         with self.lock:
             with self._get_connection() as conn:
-                self._create_recruiter_message(message)
+                self._upsert_recruiter_message(message, conn)
                 conn.commit()
 
-    def _create_recruiter_message(self, message: RecruiterMessage, conn: sqlite3.Connection) -> None:
+    def _upsert_recruiter_message(self, message: RecruiterMessage, conn: sqlite3.Connection) -> None:
+        """
+        Insert or update a recruiter message.
+        If a message with the same ID already exists, it will be updated.
+        """
         try:
+            # Try to insert first
             conn.execute(
                 """
                 INSERT INTO recruiter_messages (
@@ -418,7 +423,23 @@ class CompanyRepository:
                 ),
             )
         except sqlite3.IntegrityError:
-            raise ValueError(f"Recruiter message {message.message_id} already exists")
+            # If it already exists, update it
+            conn.execute(
+                """
+                UPDATE recruiter_messages
+                SET subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?
+                WHERE message_id = ?
+                """,
+                (
+                    message.subject,
+                    message.sender,
+                    message.message,
+                    message.thread_id,
+                    message.email_thread_link,
+                    message.date,
+                    message.message_id,
+                ),
+            )
 
     def get_all(self, include_messages=False) -> List[Company]:
         # Reads can happen without the lock
@@ -464,10 +485,7 @@ class CompanyRepository:
                     
                     # Save the recruiter message if it exists
                     if company.recruiter_message and company.recruiter_message.message_id:
-                        try:
-                            self._create_recruiter_message(company.recruiter_message, conn)
-                        except ValueError as e:
-                            logger.warning(f"Could not create recruiter message: {e}")
+                        self._upsert_recruiter_message(company.recruiter_message, conn)
                             
                     conn.commit()
                     refreshed_company = self.get(
@@ -510,32 +528,8 @@ class CompanyRepository:
                 
                 # Update or create the recruiter message if it exists
                 if company.recruiter_message and company.recruiter_message.message_id:
-                    try:
-                        # Check if the recruiter message already exists
-                        existing_message = self._get_recruiter_message(company.recruiter_message.message_id, conn)
-                        if existing_message:
-                            # Update the existing message
-                            conn.execute(
-                                """
-                                UPDATE recruiter_messages
-                                SET subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?
-                                WHERE message_id = ?
-                                """,
-                                (
-                                    company.recruiter_message.subject,
-                                    company.recruiter_message.sender,
-                                    company.recruiter_message.message,
-                                    company.recruiter_message.thread_id,
-                                    company.recruiter_message.email_thread_link,
-                                    company.recruiter_message.date,
-                                    company.recruiter_message.message_id,
-                                ),
-                            )
-                        else:
-                            # Create a new recruiter message
-                            self._create_recruiter_message(company.recruiter_message, conn)
-                    except ValueError as e:
-                        logger.warning(f"Could not update recruiter message: {e}")
+                    # Use the upsert method to handle both new and existing messages
+                    self._upsert_recruiter_message(company.recruiter_message, conn)
                 
                 conn.commit()
                 refreshed_company = self.get(company.name)  # To include generated timestamp
