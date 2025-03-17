@@ -182,7 +182,7 @@ def run_in_process(func: Callable, *args, timeout=120, **kwargs) -> Any:
                 process.kill()
 
 
-def send_reply_and_archive(message_id: str, thread_id: str, reply: str) -> bool:
+def send_reply_and_archive(message_id: str, thread_id: str, reply: str, company_name: str = None) -> bool:
     """
     Send a reply to a recruiter email.
 
@@ -190,6 +190,7 @@ def send_reply_and_archive(message_id: str, thread_id: str, reply: str) -> bool:
         message_id: The Gmail message ID to reply to
         thread_id: The Gmail thread ID
         reply: The reply text to send
+        company_name: Optional company name to create an event for
 
     Returns:
         bool: True if successful, False otherwise
@@ -207,6 +208,18 @@ def send_reply_and_archive(message_id: str, thread_id: str, reply: str) -> bool:
             # Add label and archive
             email_searcher.label_and_archive_message(message_id)
             logger.info(f"Reply sent and archived successfully")
+            
+            # Create a REPLY_SENT event if company_name is provided
+            if company_name:
+                from models import Event, EventType
+                event = Event(
+                    company_name=company_name,
+                    event_type=EventType.REPLY_SENT,
+                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                )
+                models.company_repository().create_event(event)
+                logger.info(f"Created REPLY_SENT event for {company_name}")
+                
             return True
         else:
             logger.error(f"Failed to send reply")
@@ -378,7 +391,7 @@ class JobSearch:
             reply = maybe_edit_reply(generated_reply)
             logger.info(f"------ EDITED REPLY:\n{reply}\n\n")
             send_reply_and_archive(
-                message_id=msg.message_id, thread_id=msg.thread_id, reply=reply
+                message_id=msg.message_id, thread_id=msg.thread_id, reply=reply, company_name=company_info.name
                 )
             add_company_to_spreadsheet(company_info, args)
             logger.info(f"Processed message {i+1} of {len(new_recruiter_email)}")
@@ -407,6 +420,17 @@ class JobSearch:
         if self.is_good_fit(company_info):
             company_info = self.followup_research_company(company_info)
             logger.debug(f"Company info after followup research: {company_info}\n\n")
+
+        # Create a RESEARCH_COMPLETED event
+        if company_info.name:
+            from models import Event, EventType
+            event = Event(
+                company_name=company_info.name,
+                event_type=EventType.RESEARCH_COMPLETED,
+                timestamp=datetime.datetime.now(datetime.timezone.utc)
+            )
+            models.company_repository().create_event(event)
+            logger.info(f"Created RESEARCH_COMPLETED event for {company_info.name}")
 
         return company_info
 

@@ -69,30 +69,28 @@ logger = logging.getLogger(__name__)
 
 @view_config(route_name="companies", renderer="json", request_method="GET")
 def get_companies(request):
-    companies = models.company_repository().get_all()
+    repo = models.company_repository()
+    companies = repo.get_all()
     
-    # Mock data for sent_at and research_completed_at
     company_data = []
     for company in companies:
         company_dict = models.serialize_company(company)
         
-        # Add mock sent_at for some companies (about 40%)
-        if company.reply_message and random.random() < 0.4:
-            # Random date within the last 30 days
-            days_ago = random.randint(1, 30)
-            sent_at = datetime.now() - timedelta(days=days_ago, 
-                                                hours=random.randint(0, 23),
-                                                minutes=random.randint(0, 59))
-            company_dict['sent_at'] = sent_at
+        # Get the latest reply_sent event for this company
+        reply_events = repo.get_events(
+            company_name=company.name, 
+            event_type=models.EventType.REPLY_SENT
+        )
+        if reply_events:
+            company_dict['sent_at'] = reply_events[0].timestamp
         
-        # Add mock research_completed_at for some companies (about 60%)
-        if random.random() < 0.6:
-            # Random date within the last 60 days
-            days_ago = random.randint(1, 60)
-            research_completed_at = datetime.now() - timedelta(days=days_ago,
-                                                             hours=random.randint(0, 23),
-                                                             minutes=random.randint(0, 59))
-            company_dict['research_completed_at'] = research_completed_at
+        # Get the latest research_completed event for this company
+        research_events = repo.get_events(
+            company_name=company.name, 
+            event_type=models.EventType.RESEARCH_COMPLETED
+        )
+        if research_events:
+            company_dict['research_completed_at'] = research_events[0].timestamp
         
         company_data.append(company_dict)
     
