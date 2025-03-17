@@ -783,12 +783,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--clear-data", action="store_true", help="Clear existing data")
     parser.add_argument("--sample-data", action="store_true", help="Load sample data")
-    parser.add_argument("--dump", action="store_true", help="Dump data to stdout")
+    parser.add_argument("--dump", action="store_true", help="Dump company data to stdout")
+    parser.add_argument("--dump-events", action="store_true", help="Dump events data to stdout")
+    parser.add_argument("--company", help="Filter events by company name")
+    parser.add_argument("--event-type", choices=[e.value for e in EventType], 
+                        help="Filter events by type")
     args = parser.parse_args()
 
     repo = company_repository(
         clear_data=args.clear_data, load_sample_data=args.sample_data
     )
+    
     if args.dump:
         for company in repo.get_all(include_messages=True):
             print(f"Company: {company.name}")
@@ -796,3 +801,21 @@ if __name__ == "__main__":
             if company.recruiter_message:
                 print(company.recruiter_message.model_dump_json(indent=4))
             print()
+            
+    if args.dump_events:
+        # Convert string event type to enum if provided
+        event_type = None
+        if args.event_type:
+            event_type = EventType(args.event_type)
+            
+        events = repo.get_events(company_name=args.company, event_type=event_type)
+        if not events:
+            print("No events found matching the criteria")
+        else:
+            print(f"Found {len(events)} events:")
+            for event in events:
+                print(f"ID: {event.id}")
+                print(f"Company: {event.company_name}")
+                print(f"Type: {event.event_type.value}")
+                print(f"Timestamp: {event.timestamp}")
+                print("-" * 40)
