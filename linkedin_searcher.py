@@ -10,7 +10,7 @@ from playwright.sync_api import sync_playwright
 
 class LinkedInSearcher:
 
-    def __init__(self, debug: bool = False):
+    def __init__(self, debug: bool = False, headless: bool = True):
         # Fetch credentials from environment
         self.email: str = os.environ.get("LINKEDIN_EMAIL", "")
         self.password: str = os.environ.get("LINKEDIN_PASSWORD", "")
@@ -22,10 +22,15 @@ class LinkedInSearcher:
 
         # Define path for persistent context
         user_data_dir = os.path.abspath("./playwright-linkedin-chrome")
+        
+        if headless:
+            viewport={"width": 1200, "height": 1400}
+        else:
+            viewport={"width": 1000, "height": 1000}
 
         self.context = playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=False,
+            headless=headless,
             channel="chrome",  # Use regular Chrome instead of Chromium
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -33,7 +38,11 @@ class LinkedInSearcher:
                 "--enable-sandbox",
             ],
             ignore_default_args=["--enable-automation", "--no-sandbox"],
+            # Use new headless mode instead of the deprecated old headless mode
+            chromium_sandbox=True,
+            viewport=viewport,
         )
+        print(f"Browser context launched in {'headless' if headless else 'headed'} mode")
         self.page = self.context.new_page()
 
         # Add webdriver detection bypass
@@ -259,8 +268,8 @@ class LinkedInSearcher:
             print(f"Error during cleanup: {e}")
 
 
-def main(company: str, debug: bool = False):
-    searcher = LinkedInSearcher(debug=debug)
+def main(company: str, debug: bool = False, headless: bool = True):
+    searcher = LinkedInSearcher(debug=debug, headless=headless)
     try:
         searcher.login()
 
@@ -283,7 +292,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--debug", action="store_true", help="Enable debug mode screenshots"
     )
+    parser.add_argument(
+        "--no-headless", action="store_true", help="Run browser in visible mode (not headless)"
+    )
     args = parser.parse_args()
-    results = main(args.company, debug=args.debug)
+    headless = not args.no_headless
+    results = main(args.company, debug=args.debug, headless=headless)
     for result in results:
         print(result)
