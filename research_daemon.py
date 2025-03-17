@@ -111,6 +111,9 @@ class ResearchDaemon:
                 details=company_row,
             )
             self.company_repo.create(company)
+        
+        # Update the spreadsheet with the researched company data
+        libjobsearch.upsert_company_in_spreadsheet(company_row, self.args)
 
 
     def do_generate_reply(self, args: dict):

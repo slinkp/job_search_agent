@@ -327,7 +327,7 @@ class EmailResponseGenerator:
         return self.email_client.get_new_recruiter_messages(max_results=max_results)
 
 
-def add_company_to_spreadsheet(company_info: CompaniesSheetRow, args: argparse.Namespace):
+def upsert_company_in_spreadsheet(company_info: CompaniesSheetRow, args: argparse.Namespace):
     logger.info(f"Processing company for spreadsheet: {company_info.name}")
     if args.sheet == "test":
         config = spreadsheet_client.TestConfig
@@ -414,7 +414,7 @@ class JobSearch:
             send_reply_and_archive(
                 message_id=msg.message_id, thread_id=msg.thread_id, reply=reply, company_name=company_info.name
                 )
-            add_company_to_spreadsheet(company_info, args)
+            upsert_company_in_spreadsheet(company_info, args)
             logger.info(f"Processed message {i+1} of {len(new_recruiter_email)}")
 
     def generate_reply(self, content: str) -> str:
