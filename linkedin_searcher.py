@@ -235,23 +235,73 @@ class LinkedInSearcher:
                         print(f"Skipping non-profile result at index {i}")
                         continue
 
-                    name = result.get_by_role("link").first.inner_text()
-                    name = name.split("\n")[0]
+                    # Get the name from the heading element which contains the person's name
+                    name_element = result.locator("span.entity-result__title-text").first
+                    
+                    # The actual name is in a span inside the title-text element
+                    name = name_element.locator("span:not(.visually-hidden)").first.inner_text().strip()
+                    
+                    # If name is empty or contains "Status is", try alternative selector
+                    if not name or "Status is" in name:
+                        # Try alternative selector for name
+                        name = result.locator("span.entity-result__title-text a span[aria-hidden='true']").first.inner_text().strip()
+                    
                     title = result.locator("div.t-black.t-normal").first.inner_text()
+                    # Get profile URL
+                    profile_url = result.get_by_role("link").first.get_attribute("href")
+                    
                     connection = {
                         "name": name,
                         "title": title,
-                        "profile_url": result.get_by_role("link").first.get_attribute(
-                            "href"
-                        ),
+                        "profile_url": profile_url,
                     }
+                    
+                    # If we still don't have a name, extract it from the profile URL
+                    if not name or "Status is" in name:
+                        # Extract name from URL (format: /in/username)
+                        url_parts = profile_url.split("/in/")
+                        if len(url_parts) > 1:
+                            username = url_parts[1].split("?")[0]
+                            name = f"[Name not visible: {username}]"
+                    
                     connections.append(connection)
-                    print(f"Found connection: {connection['name']}")
+                    print(f"Found connection: {connection['name']} - {connection['title']}")
                 except Exception as e:
                     dumpfile = f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.html"
                     print(f"Error parsing result {i}: {e}, writing to {dumpfile}")
                     with open(dumpfile, "w", encoding="utf-8") as f:
                         f.write(result.evaluate("el => el.outerHTML"))
+                    
+                    if self.debug:
+                        # Save screenshot of this specific result for visual debugging
+                        try:
+                            result.screenshot(path=f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.png")
+                            # Also dump the inner HTML structure for detailed analysis
+                            with open(f"debug_result_{i}_structure_{datetime.now():%Y%m%d_%H%M%S}.txt", "w", encoding="utf-8") as f:
+                                # Get element structure with classes
+                                structure = result.evaluate("""el => {
+                                    function getElementInfo(element, depth = 0) {
+                                        let info = '  '.repeat(depth) + element.tagName.toLowerCase();
+                                        if (element.id) info += '#' + element.id;
+                                        if (element.className) info += '.' + element.className.replace(/\\s+/g, '.');
+                                        if (element.innerText && element.innerText.trim()) 
+                                            info += ' -> "' + element.innerText.trim().substring(0, 50) + '"';
+                                        return info;
+                                    }
+                                    
+                                    function getElementTree(element, depth = 0) {
+                                        let result = getElementInfo(element, depth) + '\\n';
+                                        for (const child of element.children) {
+                                            result += getElementTree(child, depth + 1);
+                                        }
+                                        return result;
+                                    }
+                                    
+                                    return getElementTree(el);
+                                }""")
+                                f.write(structure)
+                        except Exception as screenshot_err:
+                            print(f"Error capturing debug info: {screenshot_err}")
 
             return connections
 
