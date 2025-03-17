@@ -282,6 +282,12 @@ document.addEventListener("alpine:init", () => {
                   before: company,
                   after: updatedCompany,
                 });
+                
+                // For research tasks, set research_completed_at if not already set
+                if (taskType === "research" && !updatedCompany.research_completed_at) {
+                  updatedCompany.research_completed_at = new Date().toISOString();
+                }
+                
                 // Find and replace the company in our array
                 const index = this.companies.findIndex(
                   (c) => c.name === company.name

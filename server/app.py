@@ -1,7 +1,8 @@
 import json
 import logging
 import os
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
 
 import colorama
 from colorama import Fore, Style
@@ -69,7 +70,33 @@ logger = logging.getLogger(__name__)
 @view_config(route_name="companies", renderer="json", request_method="GET")
 def get_companies(request):
     companies = models.company_repository().get_all()
-    return [models.serialize_company(company) for company in companies]
+    
+    # Mock data for sent_at and research_completed_at
+    company_data = []
+    for company in companies:
+        company_dict = models.serialize_company(company)
+        
+        # Add mock sent_at for some companies (about 40%)
+        if company.reply_message and random.random() < 0.4:
+            # Random date within the last 30 days
+            days_ago = random.randint(1, 30)
+            sent_at = datetime.now() - timedelta(days=days_ago, 
+                                                hours=random.randint(0, 23),
+                                                minutes=random.randint(0, 59))
+            company_dict['sent_at'] = sent_at
+        
+        # Add mock research_completed_at for some companies (about 60%)
+        if random.random() < 0.6:
+            # Random date within the last 60 days
+            days_ago = random.randint(1, 60)
+            research_completed_at = datetime.now() - timedelta(days=days_ago,
+                                                             hours=random.randint(0, 23),
+                                                             minutes=random.randint(0, 59))
+            company_dict['research_completed_at'] = research_completed_at
+        
+        company_data.append(company_dict)
+    
+    return company_data
 
 
 @view_config(route_name="home")
@@ -145,7 +172,13 @@ def research_company(request):
     )
     logger.info(f"Research requested for {company_name}, task_id: {task_id}")
 
-    return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
+    # When research is completed, we'll set this timestamp
+    # For now, just return the task info
+    return {
+        "task_id": task_id, 
+        "status": tasks.TaskStatus.PENDING.value,
+        # We'll set research_completed_at when the task completes
+    }
 
 
 @view_config(route_name="task_status", renderer="json", request_method="GET")
