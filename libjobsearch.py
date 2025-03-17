@@ -204,7 +204,6 @@ def send_reply_and_archive(message_id: str, thread_id: str, reply: str) -> bool:
 
         if success:
             # Add label and archive
-            email_searcher.add_label(message_id, "Replied-Automated")
             email_searcher.label_and_archive_message(message_id)
             logger.info(f"Reply sent and archived successfully")
             return True
