@@ -17,8 +17,8 @@ class NotFoundError(RuntimeError):
 
 
 class LevelsFyiSearcher:
-    def __init__(self):
-        logger.info("Initializing LevelsFyiSearcher")
+    def __init__(self, headless=True):
+        logger.info(f"Initializing LevelsFyiSearcher (headless={headless})")
         playwright = sync_playwright().start()
 
         # Create a persistent context with a user data directory
@@ -27,7 +27,7 @@ class LevelsFyiSearcher:
 
         self.browser = playwright.chromium.launch_persistent_context(
             user_data_dir=str(user_data_dir),
-            headless=False,
+            headless=headless,
             channel="chrome",
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -36,7 +36,7 @@ class LevelsFyiSearcher:
             ],
             ignore_default_args=["--enable-automation", "--no-sandbox"],
         )
-        logger.info("Browser context launched")
+        logger.info(f"Browser context launched in {'headless' if headless else 'headed'} mode")
 
         self.page = self.browser.new_page()
         logger.info("New page created")
@@ -849,8 +849,8 @@ class LevelsExtractor:
         return relevant_levels
 
 
-def main(company_name: str = "", company_salary_url: str = ""):
-    searcher = LevelsFyiSearcher()
+def main(company_name: str = "", company_salary_url: str = "", headless: bool = True):
+    searcher = LevelsFyiSearcher(headless=headless)
     try:
         if company_name:
             # If company name provided as argument
@@ -867,8 +867,8 @@ def main(company_name: str = "", company_salary_url: str = ""):
         searcher.cleanup()
 
 
-def extract_levels(company_name: str):
-    searcher = LevelsFyiSearcher()
+def extract_levels(company_name: str, headless: bool = True):
+    searcher = LevelsFyiSearcher(headless=headless)
     try:
         return searcher.find_and_extract_levels(company_name)
     finally:
@@ -895,25 +895,31 @@ if __name__ == "__main__":
         help="Test shopify salary page",
         action="store_true",
     )
-
     parser.add_argument(
         "--test-levels-extraction",
         help="Find and extract levels comparing Shopify to named company",
         action="store_true",
     )
+    parser.add_argument(
+        "--no-headless",
+        help="Run browser in visible mode (not headless)",
+        action="store_true",
+        default=False,
+    )
 
     args = parser.parse_args()
 
     company_salary_url = ""
+    headless = not args.no_headless
 
     if args.test_levels_extraction:
         assert args.company, "Company name must be provided for levels extraction"
-        result = extract_levels(args.company)
+        result = extract_levels(args.company, headless=headless)
         pprint.pprint(result)
         sys.exit(0)
     elif args.test:
         company_salary_url = "https://www.levels.fyi/companies/shopify/salaries/software-engineer?country=43"
 
-    for i, result in enumerate(main(args.company, company_salary_url)):
+    for i, result in enumerate(main(args.company, company_salary_url, headless=headless)):
         print(f"{i+1}:")
         pprint.pprint(result)
