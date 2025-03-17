@@ -50,6 +50,12 @@
             <button @click="filterMode = 'without-replies'" class="filter-button outline" :class="{ 'active': filterMode === 'without-replies' }">
               No Reply
             </button>
+            <button @click="filterMode = 'researched'" class="filter-button outline" :class="{ 'active': filterMode === 'researched' }">
+              Researched
+            </button>
+            <button @click="filterMode = 'not-researched'" class="filter-button outline" :class="{ 'active': filterMode === 'not-researched' }">
+              Not Researched
+            </button>
           </div>
 
           <div class="sort-controls">

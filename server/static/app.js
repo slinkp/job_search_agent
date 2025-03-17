@@ -430,6 +430,10 @@ document.addEventListener("alpine:init", () => {
             return company.reply_message;
           case "without-replies":
             return !company.reply_message;
+          case "researched":
+            return company.research_completed_at;
+          case "not-researched":
+            return !company.research_completed_at;
           default:
             return true;
         }
