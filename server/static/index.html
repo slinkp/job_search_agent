@@ -30,6 +30,12 @@
               Scan Emails
             </button>
           </div>
+          <div class="scan-options">
+            <label>
+              <input type="checkbox" id="skipResearch">
+              Skip research
+            </label>
+          </div>
           <div x-show="emailScanStatus" x-text="getEmailScanStatusText()" :class="getEmailScanStatusClass()"></div>
         </div>
 
