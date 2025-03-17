@@ -182,7 +182,7 @@ class TestGmailRepliesSearcher:
 
         # Mock the labels.create response
         gmail_searcher.service.users().labels().create.return_value.execute.return_value = {
-            "id": label_id
+            "id": label_id, "name": label_name
         }
 
         # Call the method
