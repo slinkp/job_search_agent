@@ -142,7 +142,7 @@ class ResearchDaemon:
                 company_row = self.jobsearch.research_company(
                     message,
                     model=self.ai_model,
-                    do_advanced=False,
+                    do_advanced=args.get("do_research", False),
                 )
                 if company_row.name is None:
                     logger.warning(f"No company extracted from message, skipping")

@@ -39,8 +39,9 @@ class CacheStep(IntEnum):
     GET_MESSAGES = 0
     RAG_CONTEXT = 1
     BASIC_RESEARCH = 2
-    FOLLOWUP_RESEARCH = 3
-    REPLY = 4
+    COMPENSATION_RESEARCH = 3
+    FOLLOWUP_RESEARCH = 4
+    REPLY = 5
 
 
 
@@ -394,8 +395,16 @@ class JobSearch:
 
         company_info = self.initial_research_company(message, model=model)
         logger.debug(f"Company info after initial research: {company_info}\n\n")
+        if not company_info.name:
+            logger.warning(f"Company name not found, nothing else to do")
 
-        if do_advanced and self.is_good_fit(company_info):
+        if not do_advanced:
+            return company_info
+
+        company_info = self.research_compensation(company_info)
+        logger.debug(f"Company info after salary research: {company_info}\n\n")
+
+        if self.is_good_fit(company_info):
             company_info = self.followup_research_company(company_info)
             logger.debug(f"Company info after followup research: {company_info}\n\n")
 
@@ -417,11 +426,10 @@ class JobSearch:
         #   and pass that to company_researcher.py too
         row = company_researcher.main(url_or_message=message, model=model, is_url=False)
         row.email_thread_link = email_thread_link
+        return row
 
-        if not row.name:
-            logger.warning(f"Company name not found: {row}, nothing else to do")
-            return row
-
+    @disk_cache(CacheStep.COMPENSATION_RESEARCH)
+    def research_compensation(self, row: CompaniesSheetRow) -> CompaniesSheetRow:
         now = datetime.datetime.now()
         logger.info("Finding equivalent job levels ...")
         equivalent_levels = list(

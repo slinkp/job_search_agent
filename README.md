@@ -121,7 +121,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [ ] Iterate on prompt against real recruiter email, until test replies to those usually look good.
   - [ ] Extract data from attachments if any (eg .doc or .pdf)
   - [x] Extract subject from message too
-- [ ] Actually send email replies
+- [x] Actually send email replies
 - [x] Re-label replied messages (so we know they don't need looking at again)
 - [ ] Company research: general info
   - [x] Formalize my research steps:
@@ -157,7 +157,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [ ] Is there an API? Or drive browser? Is there TOS?
   - [ ] Search for 1st degree connections currently at company
   - [ ] Integrate with end-to-end flow, add to spreadsheet
-  - [ ] Skip if company not a good fit
+  - [x] Skip if company not a good fit
 - [x] UX: Proof-of-concept command line
     - [x] Chose command line for first pass (running libjobsearch.py as a script)
     - [x] Edit reply via texteditor
@@ -171,7 +171,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] simple repository implementation
   - [ ] Manually trigger checking email (with optional max)
       - [x] Button to scan email and select how many
-      - [ ] Make it optional whether we do research automatically (default: no)
+      - [x] Make it optional whether we do research automatically (default: no)
       - [ ] Show more detailed progress info?
       - [ ] Make sure we only pull in new companies
   - [x] List pending companies
