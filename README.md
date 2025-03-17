@@ -177,9 +177,9 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [x] List pending companies
     - [x] Display known data
     - [x] Link to original message, if any (maybe just gmail link?)
-  - [ ] List companies that already have been replied to
-    - [ ] show whether reply was sent and date it was sent
-    - [ ] "send and archive" should effectively update this
+  - [x] List companies that already have been replied to
+    - [x] show whether reply was sent and date it was sent
+    - [x] "send and archive" should effectively update this
   - [x] Research button
     - [ ] If already researched, label it "Re-do research"
   - [x] "Generate reply" button (and "regenerate")
