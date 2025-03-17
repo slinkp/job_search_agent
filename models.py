@@ -13,6 +13,40 @@ from typing import Any, ClassVar, Iterator, List, Optional
 import dateutil.parser
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
+
+class EventType(enum.Enum):
+    REPLY_SENT = "reply_sent"
+    RESEARCH_COMPLETED = "research_completed"
+    COMPANY_CREATED = "company_created"
+    COMPANY_UPDATED = "company_updated"
+
+
+class Event(BaseModel):
+    """Event model for tracking company-related events"""
+    id: Optional[int] = None
+    company_name: str
+    event_type: EventType
+    timestamp: Optional[datetime.datetime] = None
+    
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> dict:
+        if isinstance(data, dict):
+            # Convert string event_type to enum if needed
+            if isinstance(data.get("event_type"), str):
+                try:
+                    data["event_type"] = EventType(data["event_type"])
+                except ValueError:
+                    pass
+                
+            # Parse timestamp string to datetime if needed
+            if isinstance(data.get("timestamp"), str):
+                try:
+                    data["timestamp"] = dateutil.parser.parse(data["timestamp"])
+                except ValueError:
+                    pass
+        return data
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_CURRENT_STATE = "25. consider applying"
@@ -291,6 +325,13 @@ class CustomJSONEncoder(json.JSONEncoder):
             return str(obj)
         if isinstance(obj, enum.Enum):
             return obj.value
+        if isinstance(obj, Event):
+            return {
+                "id": obj.id,
+                "company_name": obj.company_name,
+                "event_type": obj.event_type.value,
+                "timestamp": obj.timestamp.isoformat() if obj.timestamp else None,
+            }
         return super().default(obj)
 
 
@@ -317,6 +358,7 @@ class CompanyRepository:
                 if clear_data:
                     conn.execute("DROP TABLE IF EXISTS companies")
                     conn.execute("DROP TABLE IF EXISTS recruiter_messages")
+                    conn.execute("DROP TABLE IF EXISTS events")
                 conn.execute(
                     """
                     CREATE TABLE IF NOT EXISTS companies (
@@ -338,6 +380,17 @@ class CompanyRepository:
                         thread_id TEXT NOT NULL,
                         email_thread_link TEXT DEFAULT '',
                         date TEXT DEFAULT ''
+                    )
+                """
+                )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS events (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        company_name TEXT NOT NULL,
+                        event_type TEXT NOT NULL,
+                        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+                        FOREIGN KEY (company_name) REFERENCES companies (name)
                     )
                 """
                 )
@@ -583,6 +636,64 @@ class CompanyRepository:
             reply_message=reply_message,
             message_id=message_id,
         )
+        
+    def create_event(self, event: Event) -> Event:
+        """Create a new event record"""
+        if not event.timestamp:
+            event.timestamp = datetime.datetime.now(datetime.timezone.utc)
+            
+        with self.lock:
+            with self._get_connection() as conn:
+                cursor = conn.execute(
+                    """
+                    INSERT INTO events (company_name, event_type, timestamp)
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        event.company_name,
+                        event.event_type.value,
+                        event.timestamp.isoformat(),
+                    ),
+                )
+                conn.commit()
+                event_id = cursor.lastrowid
+                event.id = event_id
+                return event
+            
+    def get_events(self, company_name: Optional[str] = None, event_type: Optional[EventType] = None) -> List[Event]:
+        """Get events, optionally filtered by company name and/or event type"""
+        query = "SELECT id, company_name, event_type, timestamp FROM events"
+        params = []
+        
+        if company_name or event_type:
+            query += " WHERE"
+            
+            if company_name:
+                query += " company_name = ?"
+                params.append(company_name)
+                
+            if event_type:
+                if company_name:
+                    query += " AND"
+                query += " event_type = ?"
+                params.append(event_type.value)
+                
+        query += " ORDER BY timestamp DESC"
+        
+        with self._get_connection() as conn:
+            cursor = conn.execute(query, params)
+            events = []
+            for row in cursor.fetchall():
+                id, company_name, event_type_str, timestamp = row
+                events.append(
+                    Event(
+                        id=id,
+                        company_name=company_name,
+                        event_type=EventType(event_type_str),
+                        timestamp=dateutil.parser.parse(timestamp),
+                    )
+                )
+            return events
 
 
 # Sample data
