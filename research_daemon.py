@@ -193,7 +193,10 @@ class ResearchDaemon:
             
         if not company.reply_message:
             raise ValueError(f"No reply message for company: {company_name}")
-            
+
+        if not company.message_id:
+            raise ValueError(f"No message ID for company: {company_name}")
+
         # In dry run mode, just log what would happen
         if self.dry_run:
             logger.info("DRY RUN: Would send the following email:")
@@ -202,51 +205,25 @@ class ResearchDaemon:
             logger.info(f"Message ID: {company.message_id}")
             logger.info(f"Message:\n{company.reply_message}")
             logger.info("DRY RUN: Would archive the message thread")
-        else:
-            # Check if we have the necessary IDs
-            if not company.message_id:
-                logger.warning(f"No message ID for {company_name}, trying to use thread ID")
-                if not company.thread_id:
-                    logger.error(f"No thread ID for {company_name}, cannot send reply")
-                    raise ValueError(f"No message ID or thread ID for {company_name}")
-                
-                # Try to get the message ID from the thread ID
-                try:
-                    # Use libjobsearch to send the reply and archive
-                    success = libjobsearch.send_reply_and_archive(
-                        message_id=company.thread_id,  # Fallback to thread_id if no message_id
-                        thread_id=company.thread_id,
-                        reply=company.reply_message
-                    )
-                    
-                    if success:
-                        logger.info(f"Successfully sent reply to {company_name} and archived the thread")
-                    else:
-                        logger.error(f"Failed to send reply to {company_name}")
-                        raise RuntimeError(f"Failed to send reply to {company_name}")
-                except Exception as e:
-                    logger.error(f"Error sending reply: {e}")
-                    raise RuntimeError(f"Failed to send reply to {company_name}: {e}")
+            return
+
+        # We have a message ID, use it
+        try:
+            success = libjobsearch.send_reply_and_archive(
+                message_id=company.message_id,
+                thread_id=company.thread_id,
+                reply=company.reply_message
+            )
+
+            if success:
+                logger.info(f"Successfully sent reply to {company_name} and archived the thread")
             else:
-                # We have a message ID, use it
-                try:
-                    # Use libjobsearch to send the reply and archive
-                    thread_id = company.thread_id or company.message_id
-                    success = libjobsearch.send_reply_and_archive(
-                        message_id=company.message_id,
-                        thread_id=thread_id,
-                        reply=company.reply_message
-                    )
-                    
-                    if success:
-                        logger.info(f"Successfully sent reply to {company_name} and archived the thread")
-                    else:
-                        logger.error(f"Failed to send reply to {company_name}")
-                        raise RuntimeError(f"Failed to send reply to {company_name}")
-                except Exception as e:
-                    logger.error(f"Error sending reply: {e}")
-                    raise RuntimeError(f"Failed to send reply to {company_name}: {e}")
-            
+                logger.error(f"Failed to send reply to {company_name}")
+                raise RuntimeError(f"Failed to send reply to {company_name}")
+        except Exception as e:
+            logger.exception(f"Error sending reply: {e}")
+            raise
+
         # Mark the company as sent/archived in the database
         company.details.current_state = "30. replied to recruiter"
         company.details.updated = datetime.date.today()
