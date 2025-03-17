@@ -163,11 +163,12 @@ def get_task_status(request):
 @view_config(route_name="scan_recruiter_emails", renderer="json", request_method="POST")
 def scan_recruiter_emails(request):
     max_messages = request.json_body.get("max_messages", 10)
+    do_research = request.json_body.get("do_research", False)
     task_id = tasks.task_manager().create_task(
         tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
-        {"max_messages": max_messages},
+        {"max_messages": max_messages, "do_research": do_research},
     )
-    logger.info(f"Email scan requested, task_id: {task_id}")
+    logger.info(f"Email scan requested with do_research={do_research}, task_id: {task_id}")
     return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
 
 
