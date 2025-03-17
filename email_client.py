@@ -23,8 +23,8 @@ TOKEN_FILE = os.path.join(AUTH_DIR, "token.json")
 
 ARCHIVED_LABEL = "jobs-2024/recruiter-pings-archived"
 RECRUITER_REPLIES_QUERY = f"label:{ARCHIVED_LABEL} from:me"
-RECRUITER_MESSSAGES_LABEL = "jobs-2024/recruiter-pings"
-RECRUITER_MESSAGES_QUERY = f"label:{RECRUITER_MESSSAGES_LABEL}"
+RECRUITER_MESSAGES_LABEL = "jobs-2024/recruiter-pings"
+RECRUITER_MESSAGES_QUERY = f"label:{RECRUITER_MESSAGES_LABEL}"
 RECRUITER_MESSAGES_LINK_TEMPLATE = (
     "https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/{thread_id}"
 )
@@ -360,16 +360,23 @@ class GmailRepliesSearcher:
         Returns:
             bool: True if successful, False otherwise
         """
+        job_inbox_label = self._get_or_create_label_id(RECRUITER_MESSAGES_LABEL)
         try:
             self.service.users().messages().modify(
-                userId="me", id=message_id, body={"removeLabelIds": ["INBOX"]}
+                userId="me", id=message_id,
+                body={"removeLabelIds": ["INBOX", job_inbox_label]},
             ).execute()
-            self.add_label(message_id, ARCHIVED_LABEL)
-            logger.info(f"Message {message_id} archived successfully")
-            return True
-        except Exception as error:
-            logger.error(f"Error archiving message: {error}")
+            logger.info(f"Message {message_id} labels removed")
+        except Exception:
+            logger.exception("Error removing INBOX")
             return False
+        try:
+            self.add_label(message_id, ARCHIVED_LABEL)
+            logger.info(f"Message {message_id} archive label added successfully")
+        except Exception as error:
+            logger.exception(f"Error removing archive label: {error}")
+            return False
+        return True
 
     def add_label(self, message_id: str, label_name: str = ARCHIVED_LABEL) -> bool:
         """
@@ -405,27 +412,32 @@ class GmailRepliesSearcher:
 
         # Check if label exists
         for label in labels.get("labels", []):
+            logger.debug(f"Checking label {label['name']}...")
+            if label["name"].lower() == label_name.lower().replace('-', ' ').strip():
+                label_id = label["id"]
+                logger.info(f"Found close label {label['name']} with id {label_id}")
+                return label_id
+
             if label["name"] == label_name:
                 label_id = label["id"]
-                logger.debug(f"Found existing label {label_name}")
-                break
+                logger.info(f"Found existing label {label_name} with id {label_id}")
+                return label_id
 
-        if not label_id:
-            created_label = (
-                self.service.users()
-                .labels()
-                .create(
-                    userId="me",
-                    body={
-                        "name": label_name,
-                        "labelListVisibility": "labelShow",
-                        "messageListVisibility": "show",
-                    },
-                )
-                .execute()
+        created_label = (
+            self.service.users()
+            .labels()
+            .create(
+                userId="me",
+                body={
+                    "name": label_name,
+                    "labelListVisibility": "labelShow",
+                    "messageListVisibility": "show",
+                },
             )
-            label_id = created_label["id"]
-            logger.info(f"Created new label: {label_name}")
+            .execute()
+        )
+        label_id = created_label["id"]
+        logger.info(f"Created new label: {created_label['name']} with id {label_id}")
         return label_id
 
 

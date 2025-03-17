@@ -9,7 +9,7 @@ from models import RecruiterMessage
 class TestGmailRepliesSearcher:
     @pytest.fixture
     def gmail_searcher(self):
-        with patch("email_client.build") as mock_build:
+        with patch("email_client.build", autospec=True) as mock_build:
             searcher = GmailRepliesSearcher()
             searcher._service = MagicMock()
             yield searcher
@@ -85,7 +85,7 @@ class TestGmailRepliesSearcher:
             modify_call = gmail_searcher.service.users().messages().modify.call_args
             assert modify_call is not None
             assert modify_call[1]["id"] == message_id
-            assert modify_call[1]["body"]["removeLabelIds"] == ["INBOX"]
+            assert modify_call[1]["body"]["removeLabelIds"][0] == "INBOX"
 
             # Verify add_label was called with the archived label
             mock_add_label.assert_called_once_with(message_id, ARCHIVED_LABEL)

@@ -353,7 +353,8 @@ class JobSearch:
             new_recruiter_email = args.test_messages
         else:
             logger.debug("Getting new recruiter messages...")
-            new_recruiter_email = self.get_new_recruiter_messages(max_results=args.limit)
+            new_recruiter_email = self.get_new_recruiter_messages(
+                max_results=args.recruiter_message_limit)
             logger.debug("...Got new recruiter messages")
 
         for i, msg in enumerate(new_recruiter_email):
@@ -375,7 +376,9 @@ class JobSearch:
 
             reply = maybe_edit_reply(generated_reply)
             logger.info(f"------ EDITED REPLY:\n{reply}\n\n")
-            send_reply_and_archive(reply)
+            send_reply_and_archive(
+                message_id=msg.message_id, thread_id=msg.thread_id, reply=reply
+                )
             add_company_to_spreadsheet(company_info, args)
             logger.info(f"Processed message {i+1} of {len(new_recruiter_email)}")
 
@@ -564,6 +567,12 @@ def arg_parser():
     )
 
     parser.add_argument(
+        "--recruiter-message-limit",
+        type=int,
+        default=1,
+        help="Number of recruiter messages to fetch if not using test-messages",
+        )
+    parser.add_argument(
         "-s",
         "--sheet",
         action="store",
@@ -580,6 +589,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     setup_logging(args.verbose)
+    if args.verbose:
+       email_client.logger.setLevel(logging.DEBUG)
+
     # Clear all cache if requested (do this before any other operations)
     if args.clear_all_cache:
         logger.info("Clearing all cache...")
