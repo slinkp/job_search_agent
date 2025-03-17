@@ -1,4 +1,5 @@
 import base64
+import datetime
 import logging
 import os
 import re
@@ -215,7 +216,9 @@ class GmailRepliesSearcher:
             thread_id = msg_dict["threadId"]
             content = self.extract_message_content(msg_dict)
             content = self.clean_quoted_text(content)
-            date = msg_dict["internalDate"]
+            # Convert internalDate (milliseconds since epoch) to datetime
+            date_ms = int(msg_dict["internalDate"])
+            date = datetime.datetime.fromtimestamp(date_ms / 1000, tz=datetime.timezone.utc)
             content_by_thread[thread_id].append((date, content, msg_dict))
 
         combined_messages = []
@@ -262,18 +265,22 @@ class GmailRepliesSearcher:
                     break
 
             # TODO: Add text extracted from attached PDFs, docx, etc.
+            # Convert internalDate (milliseconds since epoch) to datetime
+            date_ms = int(combined_msg["internalDate"])
+            date = datetime.datetime.fromtimestamp(date_ms / 1000, tz=datetime.timezone.utc)
+            
             recruiter_message = RecruiterMessage(
                 message_id=combined_msg["id"],
                 email_thread_link=email_thread_link,
                 thread_id=extracted_thread_id,
                 subject=subject.strip() if subject else "",  # Remove the newlines we added for combined content
                 sender=sender,
-                date=combined_msg["internalDate"],
+                date=date,
                 message="\n\n".join(combined_content),
             )
             combined_messages.append(recruiter_message)
 
-        combined_messages.sort(key=lambda x: x.date, reverse=True)
+        combined_messages.sort(key=lambda x: x.date if x.date else datetime.datetime.min.replace(tzinfo=datetime.timezone.utc), reverse=True)
         logger.info(
             f"Got {len(message_dicts)} new recruiter messages in {len(combined_messages)} threads"
         )

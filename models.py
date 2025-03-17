@@ -235,7 +235,7 @@ class RecruiterMessage(BaseModel):
         sender: Email sender (recruiter's email address)
         email_thread_link: URL to the email thread in Gmail
         thread_id: Gmail thread ID
-        date: Timestamp of the message
+        date: Timestamp of the message as UTC datetime
     """
     message_id: str = ""
     message: str = ""
@@ -243,7 +243,7 @@ class RecruiterMessage(BaseModel):
     sender: Optional[str] = ""
     email_thread_link: str = ""
     thread_id: str = ""
-    date: str = ""
+    date: Optional[datetime.datetime] = None
 
 
 
@@ -381,6 +381,15 @@ class CompanyRepository:
         )
         row = cursor.fetchone()
         if row:
+            # Parse the date string to datetime if it exists
+            date_str = row[6]
+            date = None
+            if date_str:
+                try:
+                    date = dateutil.parser.parse(date_str).replace(tzinfo=datetime.timezone.utc)
+                except (ValueError, TypeError):
+                    logger.warning(f"Failed to parse date string: {date_str}")
+            
             recruiter_message = RecruiterMessage(
                 message_id=row[0],
                 subject=row[1],
@@ -388,7 +397,7 @@ class CompanyRepository:
                 message=row[3],
                 thread_id=row[4],
                 email_thread_link=row[5],
-                date=row[6],
+                date=date,
             )
             return recruiter_message
         return None
@@ -404,6 +413,9 @@ class CompanyRepository:
         Insert or update a recruiter message.
         If a message with the same ID already exists, it will be updated.
         """
+        # Convert datetime to ISO format string for SQLite storage
+        date_str = message.date.isoformat() if message.date else ""
+        
         try:
             # Try to insert first
             conn.execute(
@@ -419,7 +431,7 @@ class CompanyRepository:
                     message.message,
                     message.thread_id,
                     message.email_thread_link,
-                    message.date,
+                    date_str,
                 ),
             )
         except sqlite3.IntegrityError:
@@ -436,7 +448,7 @@ class CompanyRepository:
                     message.message,
                     message.thread_id,
                     message.email_thread_link,
-                    message.date,
+                    date_str,
                     message.message_id,
                 ),
             )
@@ -594,7 +606,7 @@ SAMPLE_COMPANIES = [
             message="Hi Paul, are you interested in working as a staff developer at Shopify? Salary is $12k/year.  Regards, Bobby Bobberson",
             subject="Staff Developer Role at Shopify",
             sender="Bobby Bobberson",
-            date="2024-12-15T12:00:00Z",
+            date=datetime.datetime(2024, 12, 15, 12, 0, 0, tzinfo=datetime.timezone.utc),
             email_thread_link="https://mail.google.com/mail/u/0/#label/jobs+2024%2Fshopify/QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",
             thread_id="QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",
             ),
@@ -616,7 +628,7 @@ SAMPLE_COMPANIES = [
             message="Hi Paul! Interested in a senior backend role at Rippling working with AI? Work from anywhere. It pays $999,999. - Mark Marker",
             subject="Senior Backend Role at Rippling",
             sender="Mark Marker",
-            date="2024-10-10T12:00:00Z",
+            date=datetime.datetime(2024, 10, 10, 12, 0, 0, tzinfo=datetime.timezone.utc),
             email_thread_link="https://mail.google.com/mail/u/0/#label/jobs+2024%2Frippling/QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",
             thread_id="QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",
         ),

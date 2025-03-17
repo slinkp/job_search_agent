@@ -171,7 +171,7 @@ class TestCompanyRepository:
             sender="recruiter@example.com",
             email_thread_link="https://mail.example.com/thread123",
             thread_id="thread123",
-            date="2023-01-01T12:00:00Z",
+            date=datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
         )
         
         # Create a test company with the recruiter message
@@ -202,7 +202,7 @@ class TestCompanyRepository:
         assert retrieved_company.recruiter_message.sender == "recruiter@example.com"
         assert retrieved_company.recruiter_message.email_thread_link == "https://mail.example.com/thread123"
         assert retrieved_company.recruiter_message.thread_id == "thread123"
-        assert retrieved_company.recruiter_message.date == "2023-01-01T12:00:00Z"
+        assert retrieved_company.recruiter_message.date == datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
     
     def test_company_repository_singleton(self):
         """Test that the company_repository function returns a singleton."""
@@ -233,7 +233,7 @@ class TestCompanyRepository:
             sender="recruiter@example.com",
             email_thread_link="https://mail.example.com/thread123",
             thread_id="thread123",
-            date="2023-01-01T12:00:00Z",
+            date=datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
         )
         
         # Create a test company with the recruiter message
