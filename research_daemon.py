@@ -208,7 +208,8 @@ class ResearchDaemon:
             success = libjobsearch.send_reply_and_archive(
                 message_id=company.message_id,
                 thread_id=company.thread_id,
-                reply=company.reply_message
+                reply=company.reply_message,
+                company_name=company.name,
             )
 
             if success:
