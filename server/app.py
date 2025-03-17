@@ -225,7 +225,14 @@ def send_and_archive(request):
     )
     logger.info(f"Send and archive requested for {company_name}, task_id: {task_id}")
 
-    return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value, "sent_at": datetime.now().isoformat()}
+    # Add the current time as sent_at
+    sent_at = datetime.now().isoformat()
+
+    return {
+        "task_id": task_id, 
+        "status": tasks.TaskStatus.PENDING.value,
+        "sent_at": sent_at
+    }
 
 
 def main(global_config, **settings):
