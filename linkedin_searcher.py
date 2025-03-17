@@ -258,17 +258,17 @@ class LinkedInSearcher:
                             print(f"Skipping non-profile result at index {i}")
                             continue
 
-                    # Use a more direct approach to get the name with shorter timeout
-                    try:
-                        # Try to get the name from the link text directly
-                        name = result.get_by_role("link").first.inner_text(timeout=4000).strip().split("\n")[0]
-                    except Exception:
-                        # Fallback to other methods
+                        # Use a more direct approach to get the name with shorter timeout
                         try:
-                            name_element = result.locator("span.entity-result__title-text a").first
-                            name = name_element.inner_text(timeout=4000).strip().split("\n")[0]
+                            # Try to get the name from the link text directly
+                            name = result.get_by_role("link").first.inner_text(timeout=4000).strip().split("\n")[0]
                         except Exception:
-                            name = ""
+                            # Fallback to other methods
+                            try:
+                                name_element = result.locator("span.entity-result__title-text a").first
+                                name = name_element.inner_text(timeout=4000).strip().split("\n")[0]
+                            except Exception:
+                                name = ""
                     
                     # Get title with shorter timeout
                     try:
