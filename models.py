@@ -194,6 +194,7 @@ class CompaniesSheetRow(BaseSheetRow):
 
     notes: Optional[str] = Field(default=None)
 
+    email_thread_link: Optional[str] = Field(default="")
     message_id: Optional[str] = Field(default="")
 
     @model_validator(mode="before")

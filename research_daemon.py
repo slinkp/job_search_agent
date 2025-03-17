@@ -91,24 +91,27 @@ class ResearchDaemon:
         company_name = args["company_name"]
         existing = self.company_repo.get(company_name)
         content = company_name
-        initial_message = None
+        recruiter_message = None
         if existing:
-            initial_message = existing.initial_message
-            if initial_message:
-                content = initial_message
+            recruiter_message = existing.recruiter_message
+            if recruiter_message:
+                content = recruiter_message.message
                 logger.info(f"Using existing initial message: {content[:400]}")
-            # TODO: Update existing company
-            logger.info(f"Company {company_name} already exists")
-            self.company_repo.delete(existing.name)
-        logger.info(f"Creating company {company_name}")
+
         # TODO: Pass more context from email, etc.
         company_row = self.jobsearch.research_company(content, model=self.ai_model)
-        company = models.Company(
-            name=company_name,
-            details=company_row,
-            initial_message=initial_message,
-        )
-        self.company_repo.create(company)
+        if existing:
+            logger.info(f"Updating company {company_name}")
+            existing.details = company_row
+            self.company_repo.update(existing)
+        else:
+            logger.info(f"Creating company {company_name}")
+            company = models.Company(
+                name=company_name,
+                details=company_row,
+            )
+            self.company_repo.create(company)
+
 
     def do_generate_reply(self, args: dict):
         # TODO: Use LLM to generate reply
@@ -162,13 +165,13 @@ class ResearchDaemon:
                 # If we have a message object with a message_id attribute, use it
                 if hasattr(message, 'message_id'):
                     message_id = message.message_id
-                
+
                 company = models.Company(
                     name=company_row.name,
                     details=company_row,
-                    initial_message=message.message,
                     message_id=message_id,
                     thread_id=thread_id,
+                    recruiter_message=message
                 )
                 self.company_repo.create(company)
                 logger.info(f"Created company {company_row.name} from recruiter message")
@@ -208,7 +211,6 @@ class ResearchDaemon:
                     raise ValueError(f"No message ID or thread ID for {company_name}")
                 
                 # Try to get the message ID from the thread ID
-                import libjobsearch
                 try:
                     # Use libjobsearch to send the reply and archive
                     success = libjobsearch.send_reply_and_archive(
