@@ -331,12 +331,18 @@ document.addEventListener("alpine:init", () => {
       try {
         this.scanningEmails = true;
         this.emailScanError = null;
+        // Get the research checkbox value
+        const doResearch = document.getElementById("doResearch").checked;
+        
         const response = await fetch("/api/scan_recruiter_emails", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ max_messages: maxMessages }),
+          body: JSON.stringify({ 
+            max_messages: maxMessages,
+            do_research: doResearch 
+          }),
         });
 
         if (!response.ok) {
