@@ -581,6 +581,10 @@ class SalarySearcher:
 
         MIN_RESULTS = 5
 
+        def _delay():
+            # Longer wait in here, does it help?
+            self.random_delay(1.5, 3)
+
         # Helper function to capture and cache salary data if it's better than what we have
         def capture_salary_data(count, filter_description):
             if count >= MIN_RESULTS:
@@ -593,7 +597,7 @@ class SalarySearcher:
                     # 2. We have fewer results than before (more filtered, but still enough)
                     if (len(current_results) >= MIN_RESULTS and 
                         (not self.cached_salary_results or 
-                         len(current_results) < len(self.cached_salary_results))):
+                         len(current_results) <= len(self.cached_salary_results))):
                         logger.info(f"Caching {len(current_results)} results from {filter_description}")
                         self.cached_salary_results = current_results
                         return True
@@ -625,7 +629,7 @@ class SalarySearcher:
 
         logger.info("Clicking United States checkbox...")
         us_checkbox.click()
-        self.random_delay()
+        _delay()
 
         # Verify it was selected
         if not us_checkbox.is_checked():
@@ -641,7 +645,7 @@ class SalarySearcher:
         if us_count < MIN_RESULTS:
             logger.info("Not enough results after US filter, unclicking...")
             us_checkbox.click()
-            self.random_delay()
+            _delay()
 
         # Add New Offer Only filter
         logger.info("Looking for New Offer Only checkbox...")
@@ -649,24 +653,29 @@ class SalarySearcher:
             "checkbox", name="New Offer Only"
         ).first
 
+        zero_count_seen = 0
+
         if new_offer_checkbox.is_visible(timeout=3000):
             logger.info("Clicking New Offer Only checkbox...")
             new_offer_checkbox.click()
-            self.random_delay()
+            _delay()
 
             # Check results after New Offer filter
             new_offer_count = self._get_salary_result_count()
             logger.info(f"After New Offer filter: {new_offer_count} results")
-            
+
+            if new_offer_count == 0:
+                zero_count_seen += 1
+
             # Capture results if we have enough
             capture_salary_data(new_offer_count, "New Offer filter")
-            
+
             if new_offer_count < MIN_RESULTS:
                 logger.info(
                     "Not enough results after New Offer filter, unclicking..."
                 )
                 new_offer_checkbox.click()
-                self.random_delay()
+                _delay()
 
         # Try Greater NYC Area filter
         logger.info("Looking for Greater NYC Area checkbox...")
@@ -677,7 +686,7 @@ class SalarySearcher:
         if us_checkbox.is_checked():
             logger.info("Unchecking United States...")
             us_checkbox.click()
-            self.random_delay()
+            _delay()
 
         nyc_checkbox = filter_widget.get_by_role(
             "checkbox", name="Greater NYC Area"
@@ -686,12 +695,17 @@ class SalarySearcher:
         if nyc_checkbox.is_visible(timeout=3000):
             logger.info("Clicking Greater NYC Area checkbox...")
             nyc_checkbox.click()
-            self.random_delay()
+            _delay()
 
             # Check results after NYC filter
             nyc_count = self._get_salary_result_count()
             logger.info(f"After NYC filter: {nyc_count} results")
-            
+            if nyc_count == 0:
+                zero_count_seen += 1
+                if zero_count_seen >= 2:
+                    logger.info(f"No results received {zero_count_seen} times, stop filtering")
+                    return
+
             # Capture results if we have enough
             capture_salary_data(nyc_count, "NYC filter")
             
@@ -700,7 +714,7 @@ class SalarySearcher:
                 nyc_checkbox.click()
                 # If NYC didn't work, recheck US
                 us_checkbox.click()
-                self.random_delay()
+                _delay()
 
         # Add Past 1 Year filter, then try Past 2 Years if needed
         logger.info("Looking for time range radio buttons...")
@@ -710,12 +724,18 @@ class SalarySearcher:
         if one_year_radio.is_visible(timeout=3000):
             logger.info("Clicking Past Year radio...")
             one_year_radio.click()
-            self.random_delay()
+            _delay()
 
             # Check results after 1 year filter
             time_count = self._get_salary_result_count()
             logger.info(f"After 1 Year filter: {time_count} results")
-            
+
+            if time_count == 0:
+                zero_count_seen += 1
+                if zero_count_seen >= 2:
+                    logger.info(f"No results received {zero_count_seen} times, stop filtering")
+                    return
+
             # Capture results if we have enough
             capture_salary_data(time_count, "1 Year filter")
 
@@ -731,12 +751,18 @@ class SalarySearcher:
                 if two_years_radio.is_visible(timeout=3000):
                     logger.info("Clicking Past 2 Years radio...")
                     two_years_radio.click()
-                    self.random_delay()
+                    _delay()
 
                     # Check results after 2 years filter
                     time_count = self._get_salary_result_count()
                     logger.info(f"After 2 Years filter: {time_count} results")
-                    
+
+                    if time_count == 0:
+                        zero_count_seen += 1
+                    if zero_count_seen >= 2:
+                        logger.info(f"No results received {zero_count_seen} times, stop filtering")
+                        return
+
                     # Capture results if we have enough
                     capture_salary_data(time_count, "2 Years filter")
                     
@@ -749,7 +775,7 @@ class SalarySearcher:
                             "radio", name="All Time"
                         ).first
                         all_time_radio.click()
-                        self.random_delay()
+                        _delay()
 
         # TODO:
         # - years of experience: enter 10 in the min years field, iterate downward
