@@ -41,6 +41,7 @@ class LevelsFyiSearcher:
             ignore_default_args=["--enable-automation", "--no-sandbox"],
             # Use new headless mode instead of the deprecated old headless mode
             chromium_sandbox=True,
+            viewport=viewport,
         )
         logger.info(f"Browser context launched in {'headless' if headless else 'headed'} mode")
 
@@ -366,15 +367,25 @@ class SalarySearcher:
             )
             return []
         logger.info(f"Looking for salary table on {self.page.url}...")
+        max_salary_results = 10
         try:
             self._say_salary_data_added()
             self.random_delay()
-            self._narrow_salary_search()
-            for row in self._extract_salary_data():
+            try:
+                self._narrow_salary_search()
+            except Exception as e:
+                logger.exception(f"Failure filtering salaries: {e}")
+                self.page.screenshot(path="filter_setting_failed.png")
+                raise
+
+            for i, row in enumerate(self._extract_salary_data()):
+                if i > max_salary_results:
+                    break
                 yield self._postprocess_salary_row(row)
+
         except Exception:
             self.page.screenshot(path="get_salary_data_error.png")
-            logger.exception("screenie where")
+            logger.error("Error getting salaries")
             raise
 
     def random_delay(
@@ -423,6 +434,7 @@ class SalarySearcher:
                     logger.info(
                         f"Skipping row {i+1} - appears to be an ad or invalid row"
                     )
+                    self.page.screenshot(path="ad_or_invalid_salary_row.png")
                     continue
 
                 data = {
@@ -555,142 +567,142 @@ class SalarySearcher:
         # My approximate filtering algorithm: do these filters one at a time,
         # until there are too few, and then back up one step
         # TODO: refactor to DRY up the boilerplate
+
         # TODO: not crazy about Cursor's exception pattern here
 
+        # TODO: capture the actual salaries at each step IF it's
+        # still more than the minimum,
+        # as sometimes they stop displaying, and removing filters
+        # won't bring them back.
         MIN_RESULTS = 5
-        # Get initial result count
+
+        filter_widget = self._toggle_search_filters()
+
+        self._clear_location_filters(filter_widget)
         initial_count = self._get_salary_result_count()
+        # Get initial result count
         logger.info(f"Starting with {initial_count} results")
         if initial_count < MIN_RESULTS:
             logger.info("Not enough results to narrow search")
             return
 
-        filter_widget = self._toggle_search_filters()
+        # Click United States checkbox
+        logger.info("Looking for United States checkbox...")
+        us_checkbox = filter_widget.get_by_role(
+            "checkbox", name="United States"
+        ).first
 
-        try:
-            self._clear_location_filters(filter_widget)
-            # Click United States checkbox
-            logger.info("Looking for United States checkbox...")
-            us_checkbox = filter_widget.get_by_role(
-                "checkbox", name="United States"
-            ).first
+        if not us_checkbox.is_visible(timeout=3000):
+            raise Exception("United States checkbox not found")
 
-            if not us_checkbox.is_visible(timeout=3000):
-                raise Exception("United States checkbox not found")
+        logger.info("Clicking United States checkbox...")
+        us_checkbox.click()
+        self.random_delay()
 
-            logger.info("Clicking United States checkbox...")
+        # Verify it was selected
+        if not us_checkbox.is_checked():
+            raise Exception("Failed to select United States checkbox")
+
+        # Check how many results we have after US filter
+        us_count = self._get_salary_result_count()
+        logger.info(f"After US filter: {us_count} results")
+        if us_count < MIN_RESULTS:
+            logger.info("Not enough results after US filter, unclicking...")
             us_checkbox.click()
             self.random_delay()
 
-            # Verify it was selected
-            if not us_checkbox.is_checked():
-                raise Exception("Failed to select United States checkbox")
+        # Add New Offer Only filter
+        logger.info("Looking for New Offer Only checkbox...")
+        new_offer_checkbox = filter_widget.get_by_role(
+            "checkbox", name="New Offer Only"
+        ).first
 
-            # Check how many results we have after US filter
-            us_count = self._get_salary_result_count()
-            logger.info(f"After US filter: {us_count} results")
-            if us_count < MIN_RESULTS:
-                logger.info("Not enough results after US filter, unclicking...")
-                us_checkbox.click()
-                self.random_delay()
+        if new_offer_checkbox.is_visible(timeout=3000):
+            logger.info("Clicking New Offer Only checkbox...")
+            new_offer_checkbox.click()
+            self.random_delay()
 
-            # Add New Offer Only filter
-            logger.info("Looking for New Offer Only checkbox...")
-            new_offer_checkbox = filter_widget.get_by_role(
-                "checkbox", name="New Offer Only"
-            ).first
-
-            if new_offer_checkbox.is_visible(timeout=3000):
-                logger.info("Clicking New Offer Only checkbox...")
+            # Check results after New Offer filter
+            new_offer_count = self._get_salary_result_count()
+            logger.info(f"After New Offer filter: {new_offer_count} results")
+            if new_offer_count < MIN_RESULTS:
+                logger.info(
+                    "Not enough results after New Offer filter, unclicking..."
+                )
                 new_offer_checkbox.click()
                 self.random_delay()
 
-                # Check results after New Offer filter
-                new_offer_count = self._get_salary_result_count()
-                logger.info(f"After New Offer filter: {new_offer_count} results")
-                if new_offer_count < MIN_RESULTS:
-                    logger.info(
-                        "Not enough results after New Offer filter, unclicking..."
-                    )
-                    new_offer_checkbox.click()
-                    self.random_delay()
+        # Try Greater NYC Area filter
+        logger.info("Looking for Greater NYC Area checkbox...")
+        # First uncheck US if it's checked
+        us_checkbox = filter_widget.get_by_role(
+            "checkbox", name="United States"
+        ).first
+        if us_checkbox.is_checked():
+            logger.info("Unchecking United States...")
+            us_checkbox.click()
+            self.random_delay()
 
-            # Try Greater NYC Area filter
-            logger.info("Looking for Greater NYC Area checkbox...")
-            # First uncheck US if it's checked
-            us_checkbox = filter_widget.get_by_role(
-                "checkbox", name="United States"
-            ).first
-            if us_checkbox.is_checked():
-                logger.info("Unchecking United States...")
+        nyc_checkbox = filter_widget.get_by_role(
+            "checkbox", name="Greater NYC Area"
+        ).first
+
+        if nyc_checkbox.is_visible(timeout=3000):
+            logger.info("Clicking Greater NYC Area checkbox...")
+            nyc_checkbox.click()
+            self.random_delay()
+
+            # Check results after NYC filter
+            nyc_count = self._get_salary_result_count()
+            logger.info(f"After NYC filter: {nyc_count} results")
+            if nyc_count < MIN_RESULTS:
+                logger.info("Not enough results after NYC filter, unclicking...")
+                nyc_checkbox.click()
+                # If NYC didn't work, recheck US
                 us_checkbox.click()
                 self.random_delay()
 
-            nyc_checkbox = filter_widget.get_by_role(
-                "checkbox", name="Greater NYC Area"
-            ).first
+        # Add Past 1 Year filter, then try Past 2 Years if needed
+        logger.info("Looking for time range radio buttons...")
 
-            if nyc_checkbox.is_visible(timeout=3000):
-                logger.info("Clicking Greater NYC Area checkbox...")
-                nyc_checkbox.click()
-                self.random_delay()
+        # Try Past Year first
+        one_year_radio = filter_widget.get_by_role("radio", name="Past Year").first
+        if one_year_radio.is_visible(timeout=3000):
+            logger.info("Clicking Past Year radio...")
+            one_year_radio.click()
+            self.random_delay()
 
-                # Check results after NYC filter
-                nyc_count = self._get_salary_result_count()
-                logger.info(f"After NYC filter: {nyc_count} results")
-                if nyc_count < MIN_RESULTS:
-                    logger.info("Not enough results after NYC filter, unclicking...")
-                    nyc_checkbox.click()
-                    # If NYC didn't work, recheck US
-                    us_checkbox.click()
+            # Check results after 1 year filter
+            time_count = self._get_salary_result_count()
+            logger.info(f"After 1 Year filter: {time_count} results")
+
+            if time_count < MIN_RESULTS:
+                logger.info(
+                    "Not enough results with 1 Year filter, trying 2 Years..."
+                )
+
+                # Try 2 years instead
+                two_years_radio = filter_widget.get_by_role(
+                    "radio", name="Past 2 Years"
+                ).first
+                if two_years_radio.is_visible(timeout=3000):
+                    logger.info("Clicking Past 2 Years radio...")
+                    two_years_radio.click()
                     self.random_delay()
 
-            # Add Past 1 Year filter, then try Past 2 Years if needed
-            logger.info("Looking for time range radio buttons...")
-
-            # Try Past Year first
-            one_year_radio = filter_widget.get_by_role("radio", name="Past Year").first
-            if one_year_radio.is_visible(timeout=3000):
-                logger.info("Clicking Past Year radio...")
-                one_year_radio.click()
-                self.random_delay()
-
-                # Check results after 1 year filter
-                time_count = self._get_salary_result_count()
-                logger.info(f"After 1 Year filter: {time_count} results")
-
-                if time_count < MIN_RESULTS:
-                    logger.info(
-                        "Not enough results with 1 Year filter, trying 2 Years..."
-                    )
-
-                    # Try 2 years instead
-                    two_years_radio = filter_widget.get_by_role(
-                        "radio", name="Past 2 Years"
-                    ).first
-                    if two_years_radio.is_visible(timeout=3000):
-                        logger.info("Clicking Past 2 Years radio...")
-                        two_years_radio.click()
+                    # Check results after 2 years filter
+                    time_count = self._get_salary_result_count()
+                    logger.info(f"After 2 Years filter: {time_count} results")
+                    if time_count < MIN_RESULTS:
+                        logger.info(
+                            "Not enough results after 2 Years filter, setting to All Time..."
+                        )
+                        # Reset to All Time if neither option works
+                        all_time_radio = filter_widget.get_by_role(
+                            "radio", name="All Time"
+                        ).first
+                        all_time_radio.click()
                         self.random_delay()
-
-                        # Check results after 2 years filter
-                        time_count = self._get_salary_result_count()
-                        logger.info(f"After 2 Years filter: {time_count} results")
-                        if time_count < MIN_RESULTS:
-                            logger.info(
-                                "Not enough results after 2 Years filter, setting to All Time..."
-                            )
-                            # Reset to All Time if neither option works
-                            all_time_radio = filter_widget.get_by_role(
-                                "radio", name="All Time"
-                            ).first
-                            all_time_radio.click()
-                            self.random_delay()
-
-        except Exception as e:
-            logger.error(f"Failed to set filters: {e}")
-            self.page.screenshot(path="filter_setting_failed.png")
-            raise Exception("Could not set filters")
 
         # TODO:
         # - years of experience: enter 10 in the min years field, iterate downward
@@ -705,8 +717,12 @@ class SalarySearcher:
                 "text=/\\d+ - \\d+ of [\\d,]+/"
             ).first
             if not pagination_text.is_visible(timeout=3000):
-                # TODO: just count the rows instead.
-                raise Exception("Could not find pagination text")
+                # TODO: Try to just count the rows instead.
+                # Or -Sometimes in headless mode, no results are shown,
+                # but works non-headless?
+                self.page.screenshot(path="no_salary_pagination_found.png")
+                logger.error("No pagination text found, returning 0 results")
+                return 0
 
             # Extract the total count (the last number)
             text = pagination_text.inner_text()
@@ -715,7 +731,6 @@ class SalarySearcher:
 
             logger.info(f"Found {count} total results")
             return count
-
         except Exception as e:
             logger.error(f"Failed to get result count: {e}")
             raise Exception("Could not determine number of results")
