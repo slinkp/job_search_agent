@@ -25,6 +25,10 @@ class LevelsFyiSearcher:
         user_data_dir = Path.home() / ".playwright-levels-chrome"
         logger.info(f"Using Chrome profile directory: {user_data_dir}")
 
+        if headless:
+            viewport={"width": 1200, "height": 1400}
+        else:
+            viewport={"width": 1000, "height": 1000}
         self.browser = playwright.chromium.launch_persistent_context(
             user_data_dir=str(user_data_dir),
             headless=headless,
@@ -35,6 +39,8 @@ class LevelsFyiSearcher:
                 "--enable-sandbox",
             ],
             ignore_default_args=["--enable-automation", "--no-sandbox"],
+            # Use new headless mode instead of the deprecated old headless mode
+            chromium_sandbox=True,
         )
         logger.info(f"Browser context launched in {'headless' if headless else 'headed'} mode")
 
@@ -97,11 +103,11 @@ class LevelsFyiSearcher:
         except NotFoundError as e:
             logger.error(str(e))
             return []
+        searcher = SalarySearcher(self.page)
         try:
-            searcher = SalarySearcher(self.page)
             return searcher.get_salary_data()
         except Exception as e:
-            logger.error(f"Error finding and extracting salaries: {e}")
+            logger.exception(f"Error finding and extracting salaries: {e}")
             return []
 
     def find_and_extract_levels(self, company_name: str):
@@ -347,7 +353,8 @@ class LevelsFyiSearcher:
 class SalarySearcher:
     def __init__(self, page):
         self.page = page
-        assert "salaries/software-engineer" in self.page.url
+        if "salaries/software-engineer" in self.page.url:
+            self.page.screenshot(path="maybe_not_swe_salary_page.png")
         self.salary_table = self.page.locator(
             "table[aria-label='Salary Submissions']"
         ).first
@@ -359,11 +366,16 @@ class SalarySearcher:
             )
             return []
         logger.info(f"Looking for salary table on {self.page.url}...")
-        self._say_salary_data_added()
-        self.random_delay()
-        self._narrow_salary_search()
-        for row in self._extract_salary_data():
-            yield self._postprocess_salary_row(row)
+        try:
+            self._say_salary_data_added()
+            self.random_delay()
+            self._narrow_salary_search()
+            for row in self._extract_salary_data():
+                yield self._postprocess_salary_row(row)
+        except Exception:
+            self.page.screenshot(path="get_salary_data_error.png")
+            logger.exception("screenie where")
+            raise
 
     def random_delay(
         self, min_seconds: float | int = 0.6, max_seconds: float | int = 3.0
@@ -677,6 +689,7 @@ class SalarySearcher:
 
         except Exception as e:
             logger.error(f"Failed to set filters: {e}")
+            self.page.screenshot(path="filter_setting_failed.png")
             raise Exception("Could not set filters")
 
         # TODO:
