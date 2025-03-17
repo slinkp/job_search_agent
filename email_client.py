@@ -430,7 +430,7 @@ class GmailRepliesSearcher:
 
 
 def main_demo(
-    do_replies: bool, do_recruiter_messages: bool, max_lines: int, max_results: int
+    do_replies: bool, recruiter_message_limit: int, max_lines: int, my_message_limit: int
 ):
     searcher = GmailRepliesSearcher()
     query = RECRUITER_REPLIES_QUERY
@@ -441,20 +441,21 @@ def main_demo(
     recruiter_messages = []
     if do_replies:
         processed_messages = searcher.get_my_replies_to_recruiters(
-            query, max_results=max_results + 10
+            query, max_results=my_message_limit + 10
         )
-        processed_messages = processed_messages[:max_results]
+        processed_messages = processed_messages[:my_message_limit]
 
-    if do_recruiter_messages:
-        recruiter_messages = searcher.get_new_recruiter_messages(max_results=max_results)
+    if recruiter_message_limit > 0:
+        recruiter_messages = searcher.get_new_recruiter_messages(max_results=recruiter_message_limit)
 
     for i, msg in enumerate(recruiter_messages):
         print(f"Recruiter Message {i}:")
         print()
-        msg = textwrap.fill(
-            msg["combined_content"], width=term_width, max_lines=max_lines
+        print(
+            textwrap.fill(
+                msg.message, width=term_width, max_lines=max_lines
+            )
         )
-        print(msg)
         print()
         print("-" * term_width)
         print()
@@ -478,13 +479,13 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--replies", action="store_true")
-    parser.add_argument("--recruiter-messages", action="store_true")
+    parser.add_argument("--recruiter-message-limit", type=int, default=0)
     parser.add_argument("--max-lines", type=int, default=10)
-    parser.add_argument("--max-results", type=int, default=10)
+    parser.add_argument("--my-message-limit", type=int, default=10)
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
-    if not args.replies and not args.recruiter_messages:
-        print("Please specify at least one of --replies or --recruiter-messages")
+    if not args.replies and not args.recruiter_message_limit:
+        print("Please specify at least one of --replies or --recruiter-message-limit")
         exit(1)
 
     if args.verbose:
@@ -492,7 +493,7 @@ if __name__ == "__main__":
 
     main_demo(
         do_replies=args.replies,
-        do_recruiter_messages=args.recruiter_messages,
+        recruiter_message_limit=args.recruiter_message_limit,
         max_lines=args.max_lines,
-        max_results=args.max_results,
+        my_message_limit=args.my_message_limit,
     )
