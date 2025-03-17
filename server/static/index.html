@@ -136,6 +136,16 @@
                 x-text="'(' + Object.keys(company.details || {}).length + ' items)'"
               ></span>
             </summary>
+            <div class="company-status-details">
+              <div class="status-item">
+                <strong>Reply Status:</strong>
+                <span x-text="company.sent_at ? 'Replied on ' + new Date(company.sent_at).toLocaleString() : 'Not replied'"></span>
+              </div>
+              <div class="status-item">
+                <strong>Research Status:</strong>
+                <span x-text="company.research_completed_at ? 'Completed on ' + new Date(company.research_completed_at).toLocaleString() : 'Not fully researched'"></span>
+              </div>
+            </div>
             <p>
               <template
                 x-for="[key, value] in Object.entries(company.details || {})"

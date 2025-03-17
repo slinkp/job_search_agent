@@ -175,6 +175,23 @@ dialog .original-message pre {
     padding: 0;
 }
 
+.company-status-details {
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    background-color: var(--card-background-color);
+    border-radius: var(--border-radius);
+    font-size: 0.85em;
+}
+
+.status-item {
+    margin-bottom: 0.3rem;
+}
+
+.status-item strong {
+    margin-right: 0.3rem;
+    color: var(--primary);
+}
+
 .reply-actions {
     display: inline-flex;
     align-items: center;
