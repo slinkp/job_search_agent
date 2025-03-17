@@ -214,93 +214,38 @@ class LinkedInSearcher:
                 print(f"Linkedin found no connections at {company}")
                 return []
 
-            # Try a more direct approach to get search results
-            try:
-                # First try to get the HTML content of the page to analyze
-                page_html = self.page.content()
-                with open(f"debug_full_page_{datetime.now():%Y%m%d_%H%M%S}.html", "w", encoding="utf-8") as f:
-                    f.write(page_html)
-                
-                # Get all result cards within search results container
-                results = results_container.get_by_role("list").first.locator("li")
-                count = results.count()
-                print(f"Found {count} result items")
-                
-                # If we can't get results through the normal way, try a more direct approach
-                if count == 0:
-                    # Try to get search results directly by class
-                    results = self.page.locator("li.reusable-search__result-container")
-                    count = results.count()
-                    print(f"Found {count} results with direct selector")
-                
-                connections = []
-                
-                for i in range(count):
-                    result = results.nth(i)
-                    try:
-                        # Skip upsell cards (they have specific classes or content)
-                        if (
-                            result.locator("div.search-result__upsell-divider").is_visible(timeout=1000)
-                            or result.locator("text=Sales Navigator").is_visible(timeout=1000)
-                            or result.locator("text=Try Premium").is_visible(timeout=1000)
-                        ):
-                            print(f"Skipping upsell card at index {i}")
-                            continue
-                        
-                        # Check if this is a profile result by looking for a link
-                        link_visible = False
-                        try:
-                            link_visible = result.get_by_role("link").first.is_visible(timeout=2000)
-                        except:
-                            pass
-                            
-                        if not link_visible:
-                            print(f"Skipping non-profile result at index {i}")
-                            continue
+            # First try to get the HTML content of the page to analyze
+            page_html = self.page.content()
+            with open(f"debug_full_page_{datetime.now():%Y%m%d_%H%M%S}.html", "w", encoding="utf-8") as f:
+                f.write(page_html)
 
-                        # Use a more direct approach to get the name with shorter timeout
-                        try:
-                            # Try to get the name from the link text directly
-                            name = result.get_by_role("link").first.inner_text(timeout=4000).strip().split("\n")[0]
-                        except Exception:
-                            # Fallback to other methods
-                            try:
-                                name_element = result.locator("span.entity-result__title-text a").first
-                                name = name_element.inner_text(timeout=4000).strip().split("\n")[0]
-                            except Exception:
-                                name = ""
-                    
-                        # Get title with shorter timeout
-                        try:
-                            title = result.locator("div.t-black.t-normal").first.inner_text(timeout=4000)
-                        except Exception:
-                            title = "Unknown title"
-                        
-                        # Get profile URL
-                        profile_url = result.get_by_role("link").first.get_attribute("href")
-                        
-                        connection = {
-                            "name": name,
-                            "title": title,
-                            "profile_url": profile_url,
-                        }
-                    
-                    # Always extract name from URL as a fallback
-                    if not name or "Status is" in name or len(name) < 2:
-                        # Extract name from URL (format: /in/username)
-                        url_parts = profile_url.split("/in/")
-                        if len(url_parts) > 1:
-                            username = url_parts[1].split("?")[0]
-                            name = f"{username}"
-                    
-                    connections.append(connection)
-                    print(f"Found connection: {connection['name']} - {connection['title']}")
+            # Get all result cards within search results container
+            results = results_container.get_by_role("list").first.locator("li")
+            count = results.count()
+            print(f"Found {count} result items")
+
+            # If we can't get results through the normal way, try a more direct approach
+            if count == 0:
+                # Try to get search results directly by class
+                results = self.page.locator("li.reusable-search__result-container")
+                count = results.count()
+                print(f"Found {count} results with direct selector")
+
+            connections = []
+
+            for i in range(count):
+                result = results.nth(i)
+                try:
+                    connection = self._find_connection(i, result)
+                    if connection:
+                        connections.append(connection)
+                        print(f"Found connection: {connection['name']} - {connection['title']}")
                 except Exception as e:
                     dumpfile = f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.html"
                     print(f"Error parsing result {i}: {e}, writing to {dumpfile}")
                     with open(dumpfile, "w", encoding="utf-8") as f:
                         f.write(result.evaluate("el => el.outerHTML"))
-                    
+
                     if self.debug:
                         # Save screenshot of this specific result for visual debugging
                         try:
@@ -321,7 +266,7 @@ class LinkedInSearcher:
                                             info += ' -> "' + element.innerText.trim().substring(0, 50) + '"';
                                         return info;
                                     }
-                                    
+
                                     function getElementTree(element, depth = 0) {
                                         let result = getElementInfo(element, depth) + '\\n';
                                         for (const child of element.children) {
@@ -329,7 +274,7 @@ class LinkedInSearcher:
                                         }
                                         return result;
                                     }
-                                    
+
                                     return getElementTree(el);
                                 }""")
                                 f.write(structure)
@@ -341,6 +286,64 @@ class LinkedInSearcher:
         except Exception as e:
             self.screenshot("search_error")
             raise
+
+    def _find_connection(self, i, result):
+        # Skip upsell cards (they have specific classes or content)
+        if (
+            result.locator("div.search-result__upsell-divider").is_visible(timeout=1000)
+            or result.locator("text=Sales Navigator").is_visible(timeout=1000)
+            or result.locator("text=Try Premium").is_visible(timeout=1000)
+        ):
+            print(f"Skipping upsell card at index {i}")
+            return {}
+
+        # Check if this is a profile result by looking for a link
+        link_visible = False
+        try:
+            link_visible = result.get_by_role("link").first.is_visible(timeout=2000)
+        except:
+            pass
+
+        if not link_visible:
+            print(f"Skipping non-profile result at index {i}")
+            return {}
+
+        # Use a more direct approach to get the name with shorter timeout
+        try:
+            # Try to get the name from the link text directly
+            name = result.get_by_role("link").first.inner_text(timeout=4000).strip().split("\n")[0]
+        except Exception:
+            # Fallback to other methods
+            try:
+                name_element = result.locator("span.entity-result__title-text a").first
+                name = name_element.inner_text(timeout=4000).strip().split("\n")[0]
+            except Exception:
+                name = ""
+
+        # Get title with shorter timeout
+        try:
+            title = result.locator("div.t-black.t-normal").first.inner_text(timeout=4000)
+        except Exception:
+            title = "Unknown title"
+
+        # Get profile URL
+        profile_url = result.get_by_role("link").first.get_attribute("href")
+
+        # Always extract name from URL as a fallback
+        if not name or "Status is" in name or len(name) < 2:
+            # Extract name from URL (format: /in/username)
+            url_parts = profile_url.split("/in/")
+            if len(url_parts) > 1:
+                username = url_parts[1].split("?")[0]
+                name = f"{username}"
+
+        connection = {
+            "name": name,
+            "title": title,
+            "profile_url": profile_url,
+        }
+        return connection
+
 
     def cleanup(self) -> None:
         """Clean up browser resources"""
