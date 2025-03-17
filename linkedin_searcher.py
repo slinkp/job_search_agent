@@ -308,17 +308,22 @@ class LinkedInSearcher:
             print(f"Skipping non-profile result at index {i}")
             return {}
 
-        # Use a more direct approach to get the name with shorter timeout
+        # Use multiple approaches to get the human-readable name
         try:
-            # Try to get the name from the link text directly
-            name = result.get_by_role("link").first.inner_text(timeout=4000).strip().split("\n")[0]
+            # First try to get the name from the specific span that contains the actual name
+            name_element = result.locator("span.entity-result__title-text a span[aria-hidden='true']").first
+            name = name_element.inner_text(timeout=4000).strip()
         except Exception:
-            # Fallback to other methods
             try:
-                name_element = result.locator("span.entity-result__title-text a").first
-                name = name_element.inner_text(timeout=4000).strip().split("\n")[0]
+                # Try to get the name from the link text directly
+                name = result.get_by_role("link").first.inner_text(timeout=4000).strip().split("\n")[0]
             except Exception:
-                name = ""
+                try:
+                    # Another fallback method
+                    name_element = result.locator("span.entity-result__title-text a").first
+                    name = name_element.inner_text(timeout=4000).strip().split("\n")[0]
+                except Exception:
+                    name = ""
 
         # Get title with shorter timeout
         try:
@@ -329,13 +334,27 @@ class LinkedInSearcher:
         # Get profile URL
         profile_url = result.get_by_role("link").first.get_attribute("href")
 
-        # Always extract name from URL as a fallback
+        # Extract username from URL for fallback or to combine with name
+        username = ""
+        url_parts = profile_url.split("/in/")
+        if len(url_parts) > 1:
+            username = url_parts[1].split("?")[0]
+        
+        # If we couldn't get a proper name, use the username
         if not name or "Status is" in name or len(name) < 2:
-            # Extract name from URL (format: /in/username)
-            url_parts = profile_url.split("/in/")
-            if len(url_parts) > 1:
-                username = url_parts[1].split("?")[0]
-                name = f"{username}"
+            name = username
+        
+        # Try one more approach - look for the name in a different location
+        if not name or name == username:
+            try:
+                # Try to find the name in the aria-label of the profile image
+                img = result.locator("img.presence-entity__image").first
+                if img.is_visible(timeout=2000):
+                    aria_label = img.get_attribute("alt", timeout=2000)
+                    if aria_label and "Status is" not in aria_label:
+                        name = aria_label
+            except Exception:
+                pass
 
         connection = {
             "name": name,
