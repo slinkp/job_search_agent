@@ -139,7 +139,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [x] chose Pydantic, it's pretty nice
 - [x] Write a Google sheet client to store this data model in my existing sheet
   - [x] Integrate with main script
-  - [ ] Check if company already exists in sheet; if so, update rather than add
+  - [x] Check if company already exists in sheet; if so, update rather than add
 - [x] Company research: Salary data from levels.fyi
   - [x] Drive browser - chose Playwright
   - [x] Extract salary data based on company name

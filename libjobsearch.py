@@ -328,7 +328,7 @@ class EmailResponseGenerator:
 
 
 def add_company_to_spreadsheet(company_info: CompaniesSheetRow, args: argparse.Namespace):
-    logger.info(f"Adding company to spreadsheet: {company_info.name}")
+    logger.info(f"Processing company for spreadsheet: {company_info.name}")
     if args.sheet == "test":
         config = spreadsheet_client.TestConfig
     else:
@@ -339,9 +339,30 @@ def add_company_to_spreadsheet(company_info: CompaniesSheetRow, args: argparse.N
         range_name=config.TAB_1_RANGE,
     )
 
-    # TODO: Check if the company already exists in the sheet, and update instead of appending
-    client.append_rows([company_info.as_list_of_str()])
-    logger.info(f"Added company to spreadsheet: {company_info.name}")
+    # Read existing rows from the spreadsheet
+    client.read_rows_from_google()
+    
+    # Check if the company already exists in the sheet
+    existing_rows = client.rows
+    company_name = company_info.name.lower().strip() if company_info.name else ""
+    
+    # Find the row index if the company exists
+    existing_row_index = None
+    for i, row in enumerate(existing_rows):
+        if len(row) > 0 and row[0].lower().strip() == company_name:
+            existing_row_index = i
+            break
+    
+    if existing_row_index is not None:
+        # Company exists, update the row
+        logger.info(f"Updating existing company in spreadsheet: {company_info.name} at row {existing_row_index + 1}")
+        client.update_row_partial(existing_row_index, company_info)
+        logger.info(f"Updated company in spreadsheet: {company_info.name}")
+    else:
+        # Company doesn't exist, append a new row
+        logger.info(f"Adding new company to spreadsheet: {company_info.name}")
+        client.append_rows([company_info.as_list_of_str()])
+        logger.info(f"Added company to spreadsheet: {company_info.name}")
 
 
 class JobSearch:
