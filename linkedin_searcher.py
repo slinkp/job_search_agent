@@ -270,19 +270,20 @@ class LinkedInSearcher:
                             except Exception:
                                 name = ""
                     
-                    # Get title with shorter timeout
-                    try:
-                        title = result.locator("div.t-black.t-normal").first.inner_text(timeout=4000)
-                    except Exception:
-                        title = "Unknown title"
-                    # Get profile URL
-                    profile_url = result.get_by_role("link").first.get_attribute("href")
-                    
-                    connection = {
-                        "name": name,
-                        "title": title,
-                        "profile_url": profile_url,
-                    }
+                        # Get title with shorter timeout
+                        try:
+                            title = result.locator("div.t-black.t-normal").first.inner_text(timeout=4000)
+                        except Exception:
+                            title = "Unknown title"
+                        
+                        # Get profile URL
+                        profile_url = result.get_by_role("link").first.get_attribute("href")
+                        
+                        connection = {
+                            "name": name,
+                            "title": title,
+                            "profile_url": profile_url,
+                        }
                     
                     # Always extract name from URL as a fallback
                     if not name or "Status is" in name or len(name) < 2:
