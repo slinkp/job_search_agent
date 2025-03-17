@@ -152,19 +152,15 @@ class ResearchDaemon:
                     logger.info(f"Company {company_row.name} already exists, skipping")
                     continue
 
-                # Extract message_id and thread_id from the RecruiterMessage
-                message_id = None
                 thread_id = None
-                if hasattr(message, 'email_thread_link') and message.email_thread_link:
+                if getattr(message, 'email_thread_link', None):
                     # Extract thread_id from the URL format like:
                     # https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread-id
                     parts = message.email_thread_link.split('/')
                     if len(parts) > 0:
                         thread_id = parts[-1]
-                
-                # If we have a message object with a message_id attribute, use it
-                if hasattr(message, 'message_id'):
-                    message_id = message.message_id
+
+                message_id = message.message_id
 
                 company = models.Company(
                     name=company_row.name,
