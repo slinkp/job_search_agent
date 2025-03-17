@@ -22,6 +22,7 @@ import company_researcher
 import email_client
 import levels_searcher
 import linkedin_searcher
+import models
 import spreadsheet_client
 from logsetup import setup_logging
 from models import CompaniesSheetRow, RecruiterMessage
@@ -211,10 +212,9 @@ def send_reply_and_archive(message_id: str, thread_id: str, reply: str, company_
             
             # Create a REPLY_SENT event if company_name is provided
             if company_name:
-                from models import Event, EventType
-                event = Event(
+                event = models.Event(
                     company_name=company_name,
-                    event_type=EventType.REPLY_SENT,
+                    event_type=models.EventType.REPLY_SENT,
                     timestamp=datetime.datetime.now(datetime.timezone.utc)
                 )
                 models.company_repository().create_event(event)
@@ -423,10 +423,9 @@ class JobSearch:
 
         # Create a RESEARCH_COMPLETED event
         if company_info.name:
-            from models import Event, EventType
-            event = Event(
+            event = models.Event(
                 company_name=company_info.name,
-                event_type=EventType.RESEARCH_COMPLETED,
+                event_type=models.EventType.RESEARCH_COMPLETED,
                 timestamp=datetime.datetime.now(datetime.timezone.utc)
             )
             models.company_repository().create_event(event)
