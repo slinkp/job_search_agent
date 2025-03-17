@@ -63,7 +63,6 @@ class LevelsFyiSearcher:
         # All of these work by side effects or raising exceptions
         self.search_by_company_name(company_name)
         self.random_delay()
-        # TODO: add levels extraction
         return self.find_and_extract_salaries()
 
     def test_company_salary(self, company_salary_url: str) -> Iterable[Dict]:
@@ -359,6 +358,8 @@ class SalarySearcher:
         self.salary_table = self.page.locator(
             "table[aria-label='Salary Submissions']"
         ).first
+        # Cache for storing the best salary results found during filtering
+        self.cached_salary_results = []
 
     def get_salary_data(self) -> Iterable[Dict]:
         if not self.salary_table.is_visible(timeout=5000):
@@ -376,9 +377,17 @@ class SalarySearcher:
             except Exception as e:
                 logger.exception(f"Failure filtering salaries: {e}")
                 self.page.screenshot(path="filter_setting_failed.png")
-                raise
+                # Don't raise - we might have cached results we can use
 
-            for i, row in enumerate(self._extract_salary_data()):
+            # Use cached results if available, otherwise try to extract fresh data
+            if self.cached_salary_results:
+                logger.info(f"Using {len(self.cached_salary_results)} cached salary results")
+                data_to_process = self.cached_salary_results
+            else:
+                logger.info("No cached results available, extracting fresh data")
+                data_to_process = self._extract_salary_data()
+
+            for i, row in enumerate(data_to_process):
                 if i > max_salary_results:
                     break
                 yield self._postprocess_salary_row(row)
@@ -570,11 +579,27 @@ class SalarySearcher:
 
         # TODO: not crazy about Cursor's exception pattern here
 
-        # TODO: capture the actual salaries at each step IF it's
-        # still more than the minimum,
-        # as sometimes they stop displaying, and removing filters
-        # won't bring them back.
         MIN_RESULTS = 5
+
+        # Helper function to capture and cache salary data if it's better than what we have
+        def capture_salary_data(count, filter_description):
+            if count >= MIN_RESULTS:
+                try:
+                    logger.info(f"Capturing salary data after {filter_description}...")
+                    current_results = list(self._extract_salary_data())
+                    
+                    # Only update cache if we have enough results and either:
+                    # 1. We don't have any cached results yet, or
+                    # 2. We have fewer results than before (more filtered, but still enough)
+                    if (len(current_results) >= MIN_RESULTS and 
+                        (not self.cached_salary_results or 
+                         len(current_results) < len(self.cached_salary_results))):
+                        logger.info(f"Caching {len(current_results)} results from {filter_description}")
+                        self.cached_salary_results = current_results
+                        return True
+                except Exception as e:
+                    logger.warning(f"Failed to capture salary data: {e}")
+            return False
 
         filter_widget = self._toggle_search_filters()
 
@@ -585,6 +610,9 @@ class SalarySearcher:
         if initial_count < MIN_RESULTS:
             logger.info("Not enough results to narrow search")
             return
+        
+        # Capture initial results
+        capture_salary_data(initial_count, "initial search")
 
         # Click United States checkbox
         logger.info("Looking for United States checkbox...")
@@ -606,6 +634,10 @@ class SalarySearcher:
         # Check how many results we have after US filter
         us_count = self._get_salary_result_count()
         logger.info(f"After US filter: {us_count} results")
+        
+        # Capture results if we have enough
+        capture_salary_data(us_count, "US filter")
+        
         if us_count < MIN_RESULTS:
             logger.info("Not enough results after US filter, unclicking...")
             us_checkbox.click()
@@ -625,6 +657,10 @@ class SalarySearcher:
             # Check results after New Offer filter
             new_offer_count = self._get_salary_result_count()
             logger.info(f"After New Offer filter: {new_offer_count} results")
+            
+            # Capture results if we have enough
+            capture_salary_data(new_offer_count, "New Offer filter")
+            
             if new_offer_count < MIN_RESULTS:
                 logger.info(
                     "Not enough results after New Offer filter, unclicking..."
@@ -655,6 +691,10 @@ class SalarySearcher:
             # Check results after NYC filter
             nyc_count = self._get_salary_result_count()
             logger.info(f"After NYC filter: {nyc_count} results")
+            
+            # Capture results if we have enough
+            capture_salary_data(nyc_count, "NYC filter")
+            
             if nyc_count < MIN_RESULTS:
                 logger.info("Not enough results after NYC filter, unclicking...")
                 nyc_checkbox.click()
@@ -675,6 +715,9 @@ class SalarySearcher:
             # Check results after 1 year filter
             time_count = self._get_salary_result_count()
             logger.info(f"After 1 Year filter: {time_count} results")
+            
+            # Capture results if we have enough
+            capture_salary_data(time_count, "1 Year filter")
 
             if time_count < MIN_RESULTS:
                 logger.info(
@@ -693,6 +736,10 @@ class SalarySearcher:
                     # Check results after 2 years filter
                     time_count = self._get_salary_result_count()
                     logger.info(f"After 2 Years filter: {time_count} results")
+                    
+                    # Capture results if we have enough
+                    capture_salary_data(time_count, "2 Years filter")
+                    
                     if time_count < MIN_RESULTS:
                         logger.info(
                             "Not enough results after 2 Years filter, setting to All Time..."
