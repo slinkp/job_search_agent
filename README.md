@@ -181,7 +181,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
     - [x] show whether reply was sent and date it was sent
     - [x] "send and archive" should effectively update this
   - [x] Research button
-    - [ ] If already researched, label it "Re-do research"
+    - [x] If already researched, label it "Re-do research"
   - [x] "Generate reply" button (and "regenerate")
     - [x] "Edit reply" button
     - [x] Display reply

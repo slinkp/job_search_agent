@@ -84,7 +84,7 @@
               class="research-button"
             >
               <span
-                x-text="isResearching(company) ? 'Researching...' : 'Research!'"
+                x-text="isResearching(company) ? 'Researching...' : (company.research_completed_at ? 'Redo research' : 'Research!')"
                 >Research!</span
               >
               <span
