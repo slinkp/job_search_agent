@@ -348,7 +348,7 @@ def upsert_company_in_spreadsheet(
     # Find the row index if the company exists
     existing_row_index = None
     for i, row in enumerate(existing_rows):
-        if len(row) > 0 and row[0].lower().strip() == company_name:
+        if isinstance(row, list) and len(row) > 0 and row[0].lower().strip() == company_name:
             existing_row_index = i
             break
 
