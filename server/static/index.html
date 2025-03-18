@@ -74,9 +74,13 @@
       <template x-for="company in sortedAndFilteredCompanies" :key="company.name">
         <article>
           <header>
+            <div class="company-status-icons">
+              <span class="status-icon research-done-icon" x-show="company.research_completed_at" title="Research completed">R</span>
+              <span class="status-icon reply-sent-icon" x-show="company.sent_at" title="Reply sent">S</span>
+            </div>
             <a href="#" @click.prevent="document.getElementById(company.name).scrollIntoView({behavior: 'smooth'})" x-text="company.name" :id="company.name"></a>
             updated <span x-text="company.updated_at"></span>
-        </header>
+          </header>
           <div class="research-status">
             <button
               @click="research(company)"

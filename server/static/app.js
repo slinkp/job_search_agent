@@ -1,4 +1,4 @@
-// Add CSS for message date styling
+// Add CSS for message date styling and status icons
 const style = document.createElement('style');
 style.textContent = `
   .message-date {
@@ -16,6 +16,37 @@ style.textContent = `
   
   .message-headers p {
     margin: 5px 0;
+  }
+  
+  .company-status-icons {
+    display: inline-block;
+    margin-right: 8px;
+  }
+  
+  .status-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-right: 4px;
+    position: relative;
+    top: 2px;
+  }
+  
+  .research-done-icon {
+    background-color: #4CAF50; /* Green */
+    color: white;
+    font-size: 10px;
+    text-align: center;
+    line-height: 16px;
+  }
+  
+  .reply-sent-icon {
+    background-color: #2196F3; /* Blue */
+    color: white;
+    font-size: 10px;
+    text-align: center;
+    line-height: 16px;
   }
 `;
 document.head.appendChild(style);
