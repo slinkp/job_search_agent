@@ -146,8 +146,8 @@ def run_in_process(func: Callable, *args, timeout=120, **kwargs) -> Any:
         TimeoutError: If the function takes longer than timeout seconds
         Exception: If the function raises an exception
     """
-    result_queue = Queue()
-    error_queue = Queue()
+    result_queue: Queue = Queue()
+    error_queue: Queue = Queue()
 
     process = Process(
         target=_process_wrapper, args=(func, args, kwargs, result_queue, error_queue)
@@ -208,7 +208,7 @@ def send_reply_and_archive(
         if success:
             # Add label and archive
             email_searcher.label_and_archive_message(message_id)
-            logger.info(f"Reply sent and archived successfully")
+            logger.info("Reply sent and archived successfully")
 
             # Create a REPLY_SENT event if company_name is provided
             if company_name:
@@ -222,7 +222,7 @@ def send_reply_and_archive(
 
             return True
         else:
-            logger.error(f"Failed to send reply")
+            logger.error("Failed to send reply")
             return False
     except Exception as e:
         logger.exception(f"Error sending reply: {e}")
@@ -249,7 +249,7 @@ def maybe_edit_reply(reply: str) -> str:
         editor_cmd = editor.split()
 
         # Open editor and wait for it to close
-        result = subprocess.run(
+        subprocess.run(
             editor_cmd + [temp_path],
             check=True,
         )
@@ -299,7 +299,7 @@ class EmailResponseGenerator:
             logger.info("Reusing existing RAG data...")
         rag.prepare_data(clear_existing=clear_rag_context)
         rag.setup_chain(llm_type=self.reply_rag_model)
-        logger.info(f"...RAG setup complete")
+        logger.info("...RAG setup complete")
         return rag
 
     @disk_cache(CacheStep.GET_MESSAGES)
@@ -334,7 +334,7 @@ def upsert_company_in_spreadsheet(
     if args.sheet == "test":
         config = spreadsheet_client.TestConfig
     else:
-        config = spreadsheet_client.Config
+        config = spreadsheet_client.Config  # type: ignore
     client = MainTabCompaniesClient(
         doc_id=config.SHEET_DOC_ID,
         sheet_id=config.TAB_1_GID,
@@ -355,7 +355,7 @@ def upsert_company_in_spreadsheet(
     if existing_row_index is not None:
         # Company exists, update the row
         logger.info(
-            f"Updating existing company in spreadsheet: {company_info.name} at row {existing_row_index + 1}"
+            f"Updating existing company in spreadsheet: {company_info.name} at row {existing_row_index + 1}"  # noqa: B950
         )
         client.update_row_partial(existing_row_index, company_info)
         logger.info(f"Updated company in spreadsheet: {company_info.name}")
@@ -429,13 +429,13 @@ class JobSearch:
         self, message: str | RecruiterMessage, model: str, do_advanced=True
     ) -> CompaniesSheetRow:
         """
-        Builds a CompaniesSheetRow from raw text about the company, eg could be from a recruiter email.
+        Builds a CompaniesSheetRow from raw text about the company, eg could be from a recruiter email.  # noqa: B950
         """
 
         company_info = self.initial_research_company(message, model=model)
         logger.debug(f"Company info after initial research: {company_info}\n\n")
         if not company_info.name:
-            logger.warning(f"Company name not found, nothing else to do")
+            logger.warning("Company name not found, nothing else to do")
 
         if not do_advanced:
             return company_info
@@ -444,7 +444,7 @@ class JobSearch:
             company_info = self.research_compensation(company_info)
             logger.debug(f"Company info after salary research: {company_info}\n\n")
         except Exception as e:
-            logger.exception(f"Error during compensation research")
+            logger.exception("Error during compensation research")
             error = models.ResearchStepError(step="compensation_research", error=str(e))
             company_info.research_errors.append(error)
 
@@ -632,7 +632,7 @@ def arg_parser():
             "gpt-4o",
             "gpt-4-turbo",
             "gpt-3.5-turbo",
-            "claude-3-5-sonnet-latest",
+            "claude-3-5-sonnet-latest",  # noqa: B950
         ],
     )
     DEFAULT_RAG_LIMIT = 20
