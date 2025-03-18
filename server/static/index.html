@@ -205,7 +205,10 @@
             </footer>
           </form>
           <div class="original-message" x-show="editingCompany?.initial_message">
-            <h4>Original Message:</h4>
+            <h4>
+              Original Message: 
+              <span x-text="formatRecruiterMessageDate(editingCompany?.date)" class="message-date"></span>
+            </h4>
             <pre x-text="editingCompany?.initial_message"></pre>
           </div>
         </article>

@@ -1,3 +1,14 @@
+// Add CSS for message date styling
+const style = document.createElement('style');
+style.textContent = `
+  .message-date {
+    font-size: 0.9em;
+    font-weight: normal;
+    color: #666;
+  }
+`;
+document.head.appendChild(style);
+
 document.addEventListener("alpine:init", () => {
   Alpine.data("companyList", () => ({
     companies: [],
@@ -464,6 +475,31 @@ document.addEventListener("alpine:init", () => {
         this.sortField = field;
         this.sortAsc = true;
       }
+    },
+
+    formatRecruiterMessageDate(dateString) {
+      if (!dateString) return "";
+      
+      const date = new Date(dateString);
+      const now = new Date();
+      
+      // Calculate days ago
+      const diffTime = Math.abs(now - date);
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      // Format the date as YYYY/MM/DD
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      // Format the time as h:mm am/pm
+      let hours = date.getHours();
+      const ampm = hours >= 12 ? 'pm' : 'am';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // the hour '0' should be '12'
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      
+      return `${year}/${month}/${day} ${hours}:${minutes}${ampm} (${diffDays} days ago)`;
     },
   }));
 });
