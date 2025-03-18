@@ -42,10 +42,12 @@ class ResearchDaemon:
         self.company_repo = models.company_repository()
         self.ai_model = args.model
         self.dry_run = args.dry_run
-        self.headless = not getattr(args, 'no_headless', False)
+        self.headless = not getattr(args, "no_headless", False)
         if self.dry_run:
             logger.info("Running in DRY RUN mode - no emails will be sent")
-        logger.info(f"Browser will run in {'headless' if self.headless else 'visible'} mode")
+        logger.info(
+            f"Browser will run in {'headless' if self.headless else 'visible'} mode"
+        )
         self.args = args
         self.jobsearch = libjobsearch.JobSearch(
             args, loglevel=logging.DEBUG, cache_settings=cache_settings
@@ -114,10 +116,9 @@ class ResearchDaemon:
                 details=company_row,
             )
             self.company_repo.create(company)
-        
+
         # Update the spreadsheet with the researched company data
         libjobsearch.upsert_company_in_spreadsheet(company_row, self.args)
-
 
     def do_generate_reply(self, args: dict):
         # TODO: Use LLM to generate reply
@@ -159,10 +160,10 @@ class ResearchDaemon:
                     continue
 
                 thread_id = None
-                if getattr(message, 'email_thread_link', None):
+                if getattr(message, "email_thread_link", None):
                     # Extract thread_id from the URL format like:
                     # https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread-id
-                    parts = message.email_thread_link.split('/')
+                    parts = message.email_thread_link.split("/")
                     if len(parts) > 0:
                         thread_id = parts[-1]
 
@@ -172,8 +173,7 @@ class ResearchDaemon:
                     name=company_row.name,
                     details=company_row,
                     message_id=message_id,
-                    thread_id=thread_id,
-                    recruiter_message=message
+                    recruiter_message=message,
                 )
                 self.company_repo.create(company)
                 logger.info(f"Created company {company_row.name} from recruiter message")
@@ -181,18 +181,18 @@ class ResearchDaemon:
                 logger.exception("Error processing recruiter message")
                 continue
         logger.info("Finished processing recruiter messages")
-        
+
     def do_send_and_archive(self, args: dict):
         """Handle sending a reply and archiving the message."""
         company_name = args.get("company_name")
         if not company_name:
             raise ValueError("Missing company_name in task args")
-            
+
         logger.info(f"Sending reply and archiving for company: {company_name}")
         company = self.company_repo.get(company_name)
         if not company:
             raise ValueError(f"Company not found: {company_name}")
-            
+
         if not company.reply_message:
             raise ValueError(f"No reply message for company: {company_name}")
 
@@ -219,7 +219,9 @@ class ResearchDaemon:
             )
 
             if success:
-                logger.info(f"Successfully sent reply to {company_name} and archived the thread")
+                logger.info(
+                    f"Successfully sent reply to {company_name} and archived the thread"
+                )
             else:
                 logger.error(f"Failed to send reply to {company_name}")
                 raise RuntimeError(f"Failed to send reply to {company_name}")
@@ -235,8 +237,14 @@ class ResearchDaemon:
 
 if __name__ == "__main__":
     parser = libjobsearch.arg_parser()
-    parser.add_argument("--dry-run", action="store_true", help="Don't actually send emails")
-    parser.add_argument("--no-headless", action="store_true", help="Run browser in visible mode (not headless)")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Don't actually send emails"
+    )
+    parser.add_argument(
+        "--no-headless",
+        action="store_true",
+        help="Run browser in visible mode (not headless)",
+    )
     args = parser.parse_args()
 
     setup_logging(args.verbose)

@@ -45,8 +45,6 @@ class CacheStep(IntEnum):
     REPLY = 5
 
 
-
-
 @dataclasses.dataclass
 class CacheSettings:
     no_cache: bool = False
@@ -211,17 +209,17 @@ def send_reply_and_archive(
             # Add label and archive
             email_searcher.label_and_archive_message(message_id)
             logger.info(f"Reply sent and archived successfully")
-            
+
             # Create a REPLY_SENT event if company_name is provided
             if company_name:
                 event = models.Event(
                     company_name=company_name,
                     event_type=models.EventType.REPLY_SENT,
-                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                    timestamp=datetime.datetime.now(datetime.timezone.utc),
                 )
                 models.company_repository().create_event(event)
                 logger.info(f"Created REPLY_SENT event for {company_name}")
-                
+
             return True
         else:
             logger.error(f"Failed to send reply")
@@ -329,7 +327,9 @@ class EmailResponseGenerator:
         return self.email_client.get_new_recruiter_messages(max_results=max_results)
 
 
-def upsert_company_in_spreadsheet(company_info: CompaniesSheetRow, args: argparse.Namespace):
+def upsert_company_in_spreadsheet(
+    company_info: CompaniesSheetRow, args: argparse.Namespace
+):
     logger.info(f"Processing company for spreadsheet: {company_info.name}")
     if args.sheet == "test":
         config = spreadsheet_client.TestConfig
@@ -341,23 +341,22 @@ def upsert_company_in_spreadsheet(company_info: CompaniesSheetRow, args: argpars
         range_name=config.TAB_1_RANGE,
     )
 
-    # Read existing rows from the spreadsheet
-    client.read_rows_from_google()
-    
-    # Check if the company already exists in the sheet
-    existing_rows = client.rows
+    # Check if the company already exists in the sheet.
+    existing_rows = client.read_rows_from_google()
     company_name = company_info.name.lower().strip() if company_info.name else ""
-    
+
     # Find the row index if the company exists
     existing_row_index = None
     for i, row in enumerate(existing_rows):
         if len(row) > 0 and row[0].lower().strip() == company_name:
             existing_row_index = i
             break
-    
+
     if existing_row_index is not None:
         # Company exists, update the row
-        logger.info(f"Updating existing company in spreadsheet: {company_info.name} at row {existing_row_index + 1}")
+        logger.info(
+            f"Updating existing company in spreadsheet: {company_info.name} at row {existing_row_index + 1}"
+        )
         client.update_row_partial(existing_row_index, company_info)
         logger.info(f"Updated company in spreadsheet: {company_info.name}")
     else:
@@ -391,7 +390,8 @@ class JobSearch:
         else:
             logger.debug("Getting new recruiter messages...")
             new_recruiter_email = self.get_new_recruiter_messages(
-                max_results=args.recruiter_message_limit)
+                max_results=args.recruiter_message_limit
+            )
             logger.debug("...Got new recruiter messages")
 
         for i, msg in enumerate(new_recruiter_email):
@@ -414,8 +414,11 @@ class JobSearch:
             reply = maybe_edit_reply(generated_reply)
             logger.info(f"------ EDITED REPLY:\n{reply}\n\n")
             send_reply_and_archive(
-                message_id=msg.message_id, thread_id=msg.thread_id, reply=reply, company_name=company_info.name
-                )
+                message_id=msg.message_id,
+                thread_id=msg.thread_id,
+                reply=reply,
+                company_name=company_info.name,
+            )
             upsert_company_in_spreadsheet(company_info, args)
             logger.info(f"Processed message {i+1} of {len(new_recruiter_email)}")
 
@@ -449,7 +452,7 @@ class JobSearch:
             event = models.Event(
                 company_name=company_info.name,
                 event_type=models.EventType.RESEARCH_COMPLETED,
-                timestamp=datetime.datetime.now(datetime.timezone.utc)
+                timestamp=datetime.datetime.now(datetime.timezone.utc),
             )
             models.company_repository().create_event(event)
             logger.info(f"Created RESEARCH_COMPLETED event for {company_info.name}")
@@ -584,7 +587,7 @@ def arg_parser():
         action="store",
         type=int,
         default=DEFAULT_RAG_LIMIT,
-    help=f"Max number of old replies for training generated replies (default {DEFAULT_RAG_LIMIT})",
+        help=f"Max number of old replies for training generated replies (default {DEFAULT_RAG_LIMIT})",
     )
     parser.add_argument(
         "--no-cache",
@@ -625,7 +628,7 @@ def arg_parser():
         type=int,
         default=1,
         help="Number of recruiter messages to fetch if not using test-messages",
-        )
+    )
     parser.add_argument(
         "-s",
         "--sheet",
@@ -644,7 +647,7 @@ if __name__ == "__main__":
 
     setup_logging(args.verbose)
     if args.verbose:
-       email_client.logger.setLevel(logging.DEBUG)
+        email_client.logger.setLevel(logging.DEBUG)
 
     # Clear all cache if requested (do this before any other operations)
     if args.clear_all_cache:

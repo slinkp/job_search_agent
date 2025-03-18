@@ -22,11 +22,12 @@ class EventType(enum.Enum):
 
 class Event(BaseModel):
     """Event model for tracking company-related events"""
+
     id: Optional[int] = None
     company_name: str
     event_type: EventType
     timestamp: Optional[datetime.datetime] = None
-    
+
     @model_validator(mode="before")
     @classmethod
     def normalize_fields(cls, data: Any) -> dict:
@@ -37,7 +38,7 @@ class Event(BaseModel):
                     data["event_type"] = EventType(data["event_type"])
                 except ValueError:
                     pass
-                
+
             # Parse timestamp string to datetime if needed
             if isinstance(data.get("timestamp"), str):
                 try:
@@ -45,6 +46,7 @@ class Event(BaseModel):
                 except ValueError:
                     pass
         return data
+
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +263,7 @@ class CompaniesSheetRow(BaseSheetRow):
 class RecruiterMessage(BaseModel):
     """
     Represents a recruiter message with its content and metadata.
-    
+
     Attributes:
         message_id: Unique Gmail message ID for this specific message
         message: The content of the message
@@ -271,6 +273,7 @@ class RecruiterMessage(BaseModel):
         thread_id: Gmail thread ID
         date: Timestamp of the message as UTC datetime
     """
+
     message_id: str = ""
     message: str = ""
     subject: Optional[str] = ""
@@ -278,7 +281,6 @@ class RecruiterMessage(BaseModel):
     email_thread_link: str = ""
     thread_id: str = ""
     date: Optional[datetime.datetime] = None
-
 
 
 class Company(BaseModel):
@@ -427,7 +429,9 @@ class CompanyRepository:
         with self._get_connection() as conn:
             return self._get_recruiter_message(message_id, conn)
 
-    def _get_recruiter_message(self, message_id: str, conn: sqlite3.Connection) -> Optional[RecruiterMessage]:
+    def _get_recruiter_message(
+        self, message_id: str, conn: sqlite3.Connection
+    ) -> Optional[RecruiterMessage]:
         cursor = conn.execute(
             "SELECT message_id, subject, sender, message, thread_id, email_thread_link, date FROM recruiter_messages WHERE message_id = ?",
             (message_id,),
@@ -439,10 +443,12 @@ class CompanyRepository:
             date = None
             if date_str:
                 try:
-                    date = dateutil.parser.parse(date_str).replace(tzinfo=datetime.timezone.utc)
+                    date = dateutil.parser.parse(date_str).replace(
+                        tzinfo=datetime.timezone.utc
+                    )
                 except (ValueError, TypeError):
                     logger.warning(f"Failed to parse date string: {date_str}")
-            
+
             recruiter_message = RecruiterMessage(
                 message_id=row[0],
                 subject=row[1],
@@ -461,14 +467,16 @@ class CompanyRepository:
                 self._upsert_recruiter_message(message, conn)
                 conn.commit()
 
-    def _upsert_recruiter_message(self, message: RecruiterMessage, conn: sqlite3.Connection) -> None:
+    def _upsert_recruiter_message(
+        self, message: RecruiterMessage, conn: sqlite3.Connection
+    ) -> None:
         """
         Insert or update a recruiter message.
         If a message with the same ID already exists, it will be updated.
         """
         # Convert datetime to ISO format string for SQLite storage
         date_str = message.date.isoformat() if message.date else ""
-        
+
         try:
             # Try to insert first
             conn.execute(
@@ -531,7 +539,7 @@ class CompanyRepository:
                         message_id = company.recruiter_message.message_id
                     elif company.message_id:
                         message_id = company.message_id
-                        
+
                     conn.execute(
                         """
                         INSERT INTO companies (
@@ -547,11 +555,11 @@ class CompanyRepository:
                             message_id,
                         ),
                     )
-                    
+
                     # Save the recruiter message if it exists
                     if company.recruiter_message and company.recruiter_message.message_id:
                         self._upsert_recruiter_message(company.recruiter_message, conn)
-                            
+
                     conn.commit()
                     refreshed_company = self.get(
                         company.name
@@ -570,7 +578,7 @@ class CompanyRepository:
                     message_id = company.recruiter_message.message_id
                 elif company.message_id:
                     message_id = company.message_id
-                
+
                 cursor = conn.execute(
                     """
                     UPDATE companies 
@@ -587,17 +595,19 @@ class CompanyRepository:
                         company.name,
                     ),
                 )
-                
+
                 if cursor.rowcount == 0:
                     raise ValueError(f"Company {company.name} not found")
-                
+
                 # Update or create the recruiter message if it exists
                 if company.recruiter_message and company.recruiter_message.message_id:
                     # Use the upsert method to handle both new and existing messages
                     self._upsert_recruiter_message(company.recruiter_message, conn)
-                
+
                 conn.commit()
-                refreshed_company = self.get(company.name)  # To include generated timestamp
+                refreshed_company = self.get(
+                    company.name
+                )  # To include generated timestamp
                 assert refreshed_company is not None
                 return refreshed_company
 
@@ -635,12 +645,12 @@ class CompanyRepository:
             reply_message=reply_message,
             message_id=message_id,
         )
-        
+
     def create_event(self, event: Event) -> Event:
         """Create a new event record"""
         if not event.timestamp:
             event.timestamp = datetime.datetime.now(datetime.timezone.utc)
-            
+
         with self.lock:
             with self._get_connection() as conn:
                 cursor = conn.execute(
@@ -658,27 +668,29 @@ class CompanyRepository:
                 event_id = cursor.lastrowid
                 event.id = event_id
                 return event
-            
-    def get_events(self, company_name: Optional[str] = None, event_type: Optional[EventType] = None) -> List[Event]:
+
+    def get_events(
+        self, company_name: Optional[str] = None, event_type: Optional[EventType] = None
+    ) -> List[Event]:
         """Get events, optionally filtered by company name and/or event type"""
         query = "SELECT id, company_name, event_type, timestamp FROM events"
         params = []
-        
+
         if company_name or event_type:
             query += " WHERE"
-            
+
             if company_name:
                 query += " company_name = ?"
                 params.append(company_name)
-                
+
             if event_type:
                 if company_name:
                     query += " AND"
                 query += " event_type = ?"
                 params.append(event_type.value)
-                
+
         query += " ORDER BY timestamp DESC"
-        
+
         with self._get_connection() as conn:
             cursor = conn.execute(query, params)
             events = []
@@ -720,7 +732,7 @@ SAMPLE_COMPANIES = [
             date=datetime.datetime(2024, 12, 15, 12, 0, 0, tzinfo=datetime.timezone.utc),
             email_thread_link="https://mail.google.com/mail/u/0/#label/jobs+2024%2Fshopify/QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",
             thread_id="QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",
-            ),
+        ),
     ),
     Company(
         name="Rippling",
@@ -787,16 +799,19 @@ if __name__ == "__main__":
     parser.add_argument("--clear-data", action="store_true", help="Clear existing data")
     parser.add_argument("--sample-data", action="store_true", help="Load sample data")
     parser.add_argument("--dump", action="store_true", help="Dump company data to stdout")
-    parser.add_argument("--dump-events", action="store_true", help="Dump events data to stdout")
+    parser.add_argument(
+        "--dump-events", action="store_true", help="Dump events data to stdout"
+    )
     parser.add_argument("--company", help="Filter events by company name")
-    parser.add_argument("--event-type", choices=[e.value for e in EventType], 
-                        help="Filter events by type")
+    parser.add_argument(
+        "--event-type", choices=[e.value for e in EventType], help="Filter events by type"
+    )
     args = parser.parse_args()
 
     repo = company_repository(
         clear_data=args.clear_data, load_sample_data=args.sample_data
     )
-    
+
     if args.dump:
         for company in repo.get_all(include_messages=True):
             print(f"Company: {company.name}")
@@ -804,13 +819,13 @@ if __name__ == "__main__":
             if company.recruiter_message:
                 print(company.recruiter_message.model_dump_json(indent=4))
             print()
-            
+
     if args.dump_events:
         # Convert string event type to enum if provided
         event_type = None
         if args.event_type:
             event_type = EventType(args.event_type)
-            
+
         events = repo.get_events(company_name=args.company, event_type=event_type)
         if not events:
             print("No events found matching the criteria")
