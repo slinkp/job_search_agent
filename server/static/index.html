@@ -212,6 +212,10 @@
             <div class="message-headers">
               <p><strong>Subject:</strong> <span x-text="editingCompany?.recruiter_message?.subject"></span></p>
               <p><strong>From:</strong> <span x-text="editingCompany?.recruiter_message?.sender"></span></p>
+              <p x-show="editingCompany?.recruiter_message?.email_thread_link">
+                <strong>Thread:</strong> 
+                <a :href="editingCompany?.recruiter_message?.email_thread_link" target="_blank">View in Gmail</a>
+              </p>
             </div>
             <pre x-text="editingCompany?.recruiter_message?.message"></pre>
           </div>
