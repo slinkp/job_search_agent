@@ -774,6 +774,10 @@ def serialize_company(company: Company):
         for k, v in company.details.model_dump().items()
         if v is not None
     }
+    if company.recruiter_message:
+        data["recruiter_message"] = company.recruiter_message.model_dump()
+    else:
+        data["recruiter_message"] = None
     return data
 
 

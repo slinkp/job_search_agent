@@ -6,6 +6,17 @@ style.textContent = `
     font-weight: normal;
     color: #666;
   }
+  
+  .message-headers {
+    margin-bottom: 10px;
+    padding: 8px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+  }
+  
+  .message-headers p {
+    margin: 5px 0;
+  }
 `;
 document.head.appendChild(style);
 
@@ -56,6 +67,12 @@ document.addEventListener("alpine:init", () => {
 
     async generateReply(company, updateModal = false) {
       try {
+        // Check if company has a recruiter message
+        if (!company.recruiter_message || !company.recruiter_message.message) {
+          this.showError("No recruiter message to reply to");
+          return;
+        }
+        
         this.generatingMessages.add(company.name);
         const response = await fetch(`/api/${company.name}/reply_message`, {
           method: "POST",

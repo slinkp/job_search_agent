@@ -70,12 +70,12 @@ logger = logging.getLogger(__name__)
 @view_config(route_name="companies", renderer="json", request_method="GET")
 def get_companies(request):
     repo = models.company_repository()
-    companies = repo.get_all()
+    companies = repo.get_all(include_messages=True)
     
     company_data = []
     for company in companies:
         company_dict = models.serialize_company(company)
-        
+
         # Get the latest reply_sent event for this company
         reply_events = repo.get_events(
             company_name=company.name, 

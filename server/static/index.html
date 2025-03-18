@@ -204,12 +204,16 @@
               </button>
             </footer>
           </form>
-          <div class="original-message" x-show="editingCompany?.initial_message">
+          <div class="original-message" x-show="editingCompany?.recruiter_message?.message">
             <h4>
               Original Message: 
-              <span x-text="formatRecruiterMessageDate(editingCompany?.date)" class="message-date"></span>
+              <span x-text="formatRecruiterMessageDate(editingCompany?.recruiter_message?.date)" class="message-date"></span>
             </h4>
-            <pre x-text="editingCompany?.initial_message"></pre>
+            <div class="message-headers">
+              <p><strong>Subject:</strong> <span x-text="editingCompany?.recruiter_message?.subject"></span></p>
+              <p><strong>From:</strong> <span x-text="editingCompany?.recruiter_message?.sender"></span></p>
+            </div>
+            <pre x-text="editingCompany?.recruiter_message?.message"></pre>
           </div>
         </article>
       </dialog>
