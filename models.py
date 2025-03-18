@@ -194,7 +194,11 @@ class BaseSheetRow(BaseModel):
                     field.default_factory() if hasattr(field, "default_factory") else []
                 )
             else:
-                data[name] = field.default
+                # Handle None default values
+                if field.default is None:
+                    data[name] = None
+                else:
+                    data[name] = field.default
 
         # Update with values from row_data
         for name, value in zip(field_names, row_data):
