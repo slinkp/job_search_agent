@@ -23,6 +23,7 @@ class EventType(enum.Enum):
 
 class ResearchStepError(BaseModel):
     """Error information for a research step that failed."""
+
     step: str
     error: str
     timestamp: datetime.datetime = Field(
@@ -259,7 +260,7 @@ class CompaniesSheetRow(BaseSheetRow):
 
     email_thread_link: Optional[str] = Field(default="")
     message_id: Optional[str] = Field(default="")
-    
+
     # Track research errors
     research_errors: List[ResearchStepError] = Field(default_factory=list)
 
