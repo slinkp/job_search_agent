@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# echo $PATH
+# which flake8
+# which black
+
+echo Black...
+black $*
+echo Flake8...
+flake8 $* # || exit 1
+echo Mypy...
+mypy $* || exit 1
