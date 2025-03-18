@@ -129,6 +129,9 @@ class GmailRepliesSearcher:
             "View profile:",
             "Accept:http",
             "You have an invitation",
+            "Grow your network faster",
+            "Premium subscribers",
+            "Learn why we included this",
             "-------------------------------",
         )
         for garbage in linkedin_garbage_lines_starters:
