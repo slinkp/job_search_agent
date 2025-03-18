@@ -263,40 +263,6 @@ class LinkedInSearcher:
                             result.screenshot(
                                 path=f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.png"
                             )
-                            # Also dump the inner HTML structure for detailed analysis
-                            with open(
-                                f"debug_result_{i}_structure_{datetime.now():%Y%m%d_%H%M%S}.txt",
-                                "w",
-                                encoding="utf-8",
-                            ) as f:
-                                # Get element structure with classes - fixed to handle className that might not be a string
-                                structure = result.evaluate(
-                                    """el => {
-                                    function getElementInfo(element, depth = 0) {
-                                        let info = '  '.repeat(depth) + element.tagName.toLowerCase();
-                                        if (element.id) info += '#' + element.id;
-                                        if (element.className && typeof element.className === 'string') {
-                                            info += '.' + element.className.replace(/\\s+/g, '.');
-                                        } else if (element.classList && element.classList.length) {
-                                            info += '.' + Array.from(element.classList).join('.');
-                                        }
-                                        if (element.innerText && element.innerText.trim()) 
-                                            info += ' -> "' + element.innerText.trim().substring(0, 50) + '"';
-                                        return info;
-                                    }
-
-                                    function getElementTree(element, depth = 0) {
-                                        let result = getElementInfo(element, depth) + '\\n';
-                                        for (const child of element.children) {
-                                            result += getElementTree(child, depth + 1);
-                                        }
-                                        return result;
-                                    }
-
-                                    return getElementTree(el);
-                                }"""
-                                )
-                                f.write(structure)
                         except Exception as screenshot_err:
                             print(f"Error capturing debug info: {screenshot_err}")
 
