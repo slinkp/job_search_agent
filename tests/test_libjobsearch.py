@@ -1,14 +1,14 @@
-import pytest
 import argparse
+import logging
 import os
 import tempfile
-import logging
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import ANY, MagicMock, patch
+
+import pytest
 
 import libjobsearch
-import email_client
 import models
-from models import Event, EventType, Company, CompaniesSheetRow
+from models import CompaniesSheetRow, Company, Event, EventType
 
 
 @patch("libjobsearch.email_client.GmailRepliesSearcher", autospec=True)
@@ -42,10 +42,10 @@ def test_send_reply_and_archive_creates_event(mock_repo_func, mock_gmail_searche
     # Setup mocks
     mock_searcher = mock_gmail_searcher_class.return_value
     mock_searcher.send_reply.return_value = True
-    
+
     mock_repo = MagicMock()
     mock_repo_func.return_value = mock_repo
-    
+
     # Call the function with a company name
     result = libjobsearch.send_reply_and_archive(
         message_id="test-message-id",
@@ -53,16 +53,16 @@ def test_send_reply_and_archive_creates_event(mock_repo_func, mock_gmail_searche
         reply="This is a test reply",
         company_name="Test Company"
     )
-    
+
     # Verify the result
     assert result is True
-    
+
     # Verify an event was created
     mock_repo.create_event.assert_called_once()
-    
+
     # Get the event that was created
     event_arg = mock_repo.create_event.call_args[0][0]
-    
+
     # Verify event properties
     assert isinstance(event_arg, Event)
     assert event_arg.company_name == "Test Company"
