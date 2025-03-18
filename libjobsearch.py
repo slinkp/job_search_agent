@@ -15,7 +15,7 @@ from functools import wraps
 from multiprocessing import Process, Queue
 from typing import Any, Callable, Optional
 
-from diskcache import Cache
+from diskcache import Cache  # type: ignore
 from pydantic import BaseModel, ValidationError
 
 import company_researcher
@@ -463,7 +463,7 @@ class JobSearch:
                 company_info = self.followup_research_company(company_info)
                 logger.debug(f"Company info after followup research: {company_info}\n\n")
             except Exception as e:
-                logger.exception(f"Error during followup research")
+                logger.exception("Error during followup research")
                 error = models.ResearchStepError(step="followup_research", error=str(e))
                 company_info.research_errors.append(error)
 
@@ -543,7 +543,7 @@ class JobSearch:
 
             delta = datetime.datetime.now() - now
             logger.info(
-                f"Got {len(salary_data)} rows of salary data for {row.name} in {delta.seconds} seconds"
+                f"Got {len(salary_data)} rows of salary data for {row.name} in {delta.seconds} seconds"  # noqa: B950
             )
         except Exception as e:
             logger.exception(f"Error finding salary data for {row.name}")
@@ -641,7 +641,7 @@ def arg_parser():
         action="store",
         type=int,
         default=DEFAULT_RAG_LIMIT,
-        help=f"Max number of old replies for training generated replies (default {DEFAULT_RAG_LIMIT})",
+        help=f"Max number of old replies for training generated replies (default {DEFAULT_RAG_LIMIT})",  # noqa: B950
     )
     parser.add_argument(
         "--no-cache",
@@ -654,7 +654,7 @@ def arg_parser():
         "--cache-until",
         type=lambda s: CacheStep[s.upper()],
         choices=list(CacheStep),
-        help=f"Cache steps up to and including this step",
+        help="Cache steps up to and including this step",
     )
 
     # Clear cache options
