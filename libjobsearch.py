@@ -352,7 +352,9 @@ def upsert_company_in_spreadsheet(
             if len(row) > 0 and row[0].lower().strip() == company_name:
                 existing_row_index = i
                 break
-        elif hasattr(row, 'name') and row.name and row.name.lower().strip() == company_name:
+        elif (
+            hasattr(row, "name") and row.name and row.name.lower().strip() == company_name
+        ):
             existing_row_index = i
             break
 
