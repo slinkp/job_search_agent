@@ -70,6 +70,7 @@ class ResearchDaemon:
     def stop(self, signum=None, frame=None) -> int:
         logger.info("Research daemon stopping")
         self.running = False
+        return 0
 
     def process_next_task(self):
         row = self.task_mgr.get_next_pending_task()
@@ -152,7 +153,7 @@ class ResearchDaemon:
                     do_advanced=args.get("do_research", False),
                 )
                 if company_row.name is None:
-                    logger.warning(f"No company extracted from message, skipping")
+                    logger.warning("No company extracted from message, skipping")
                     continue
 
                 if self.company_repo.get(company_row.name) is not None:
@@ -160,12 +161,14 @@ class ResearchDaemon:
                     continue
 
                 thread_id = None
+                thread_id = None
                 if getattr(message, "email_thread_link", None):
                     # Extract thread_id from the URL format like:
                     # https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread-id
                     parts = message.email_thread_link.split("/")
                     if len(parts) > 0:
                         thread_id = parts[-1]
+                        company.thread_id = thread_id
 
                 message_id = message.message_id
 
