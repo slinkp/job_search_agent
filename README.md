@@ -107,9 +107,10 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [x] Retrieve recruiter messages (and my replies) from gmail
   - [ ] Support extracting and researching companies that aren't from recruiter
         mail
-    - [ ] Manually add company name and/or URL
-    - [ ] Companies from linkedin job alert email
-    - [ ] Companies from "welcome to the jungle" alert email
+    - [ ] distinguish these from recruiter companies in the company list
+    - [ ] support manually adding by name or URL
+    - [ ] support linkedin job alert email
+    - [ ] support "welcome to the jungle" job alert email
   - [x] Build a RAG chain trained on those messages
     - [x] Understand the parts of the chain that I don't yet!
     - [x] What is RunnablePassThrough?
@@ -123,7 +124,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [x] Extract subject from message too
 - [x] Actually send email replies
 - [x] Re-label replied messages (so we know they don't need looking at again)
-- [ ] Company research: general info
+- [x] Company research: general info
   - [x] Formalize my research steps:
   - [x] Try langchain with both anthropic and openai
   - [x] Try RecursiveUrlLoader to fetch more data from company websites
@@ -174,6 +175,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] Make it optional whether we do research automatically (default: no)
       - [ ] Show more detailed progress info?
       - [ ] Make sure we only pull in new companies
+        - [ ] TBD: How to handle multiple messages for same company??
   - [x] List pending companies
     - [x] Display known data
     - [x] Link to original message, if any (maybe just gmail link?)
@@ -186,19 +188,13 @@ Won't work if follow-ups are not threaded, but that can't be helped.
     - [x] "Edit reply" button
     - [x] Display reply
       - [x] Show recruiter message below generated reply
-      - [ ] Show date of recruiter message above their message,
+      - [x] Show date of recruiter message above their message,
             formatted like  "YYYY/MM/DD 3:42pm (X days ago)"
-      - [ ] Add link to email thread from the reply page
+      - [x] Add link to email thread from the reply page
     - [x] "Send and archive" button
     - [ ] "--dry-run" command line flag to server/app, to not actually send
           messages
     - [x] similar option to research daemon to not actually send messages
-  - [ ] List companies that are from non-recruiter sources
-     - [ ] distinguish these from recruiter companies in the company list
-     - [ ] add button to research these
-     - [ ] support manually adding by name or URL
-     - [ ] support linkedin job alert email
-     - [ ] support "welcome to the jungle" job alert email
   - [ ] Richer company data display, with links
   - [x] Async updates from backend
     - [x] Polling the API is fine
@@ -209,11 +205,11 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] app uses task.py to create and check on tasks
       - [x] research_daemon.py uses task.py to run and update tasks
       - [x] Chose sqlite for task db
-    - [ ] Support processing old unprocessed tasks
-      - [ ] Not sure if this should be the default
+    - [x] Support processing old unprocessed tasks
+      - [x] Works, does oldest first
       - [ ] Probably should have a sensible cutoff age, eg don't auto-apply
             a task older than 2 days
-      - [ ] Also support cleaning up / discarding
+      - [ ] Also support cleaning up / discarding old ones
       - [ ] Maybe all this should be shown in the UX.
             Think of it kind of like the print job queue on eg MacOS.
 - [ ] Work through the existing backlog with this tool
