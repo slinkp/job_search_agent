@@ -283,8 +283,8 @@ class LinkedInSearcher:
 
             return connections
 
-        except Exception as e:
-            self.screenshot("search_error")
+        except Exception:
+            self.screenshot(path="search_error.png")
             raise
 
     def _find_connection(self, i, result):
@@ -298,13 +298,9 @@ class LinkedInSearcher:
             return {}
 
         # Check if this is a profile result by looking for a link
-        link_visible = False
         try:
-            link_visible = result.get_by_role("link").first.is_visible(timeout=2000)
-        except:
-            pass
-
-        if not link_visible:
+            result.get_by_role("link").first.is_visible(timeout=2000)
+        except Exception:
             print(f"Skipping non-profile result at index {i}")
             return {}
 
@@ -312,22 +308,23 @@ class LinkedInSearcher:
         try:
             # First try to get the name from the specific span that contains the actual name
             name_element = result.locator("span.entity-result__title-text a span[aria-hidden='true']").first
-            name = name_element.inner_text(timeout=4000).strip()
+            name = name_element.inner_text(timeout=1000).strip()
         except Exception:
             try:
                 # Try to get the name from the link text directly
-                name = result.get_by_role("link").first.inner_text(timeout=4000).strip().split("\n")[0]
+                name = result.get_by_role("link").first.inner_text(timeout=1000).strip().split("\n")[0]
             except Exception:
                 try:
                     # Another fallback method
                     name_element = result.locator("span.entity-result__title-text a").first
-                    name = name_element.inner_text(timeout=4000).strip().split("\n")[0]
+                    name = name_element.inner_text(timeout=1000).strip().split("\n")[0]
+                    print("Getting name from first approach failed, second worked")
                 except Exception:
                     name = ""
 
         # Get title with shorter timeout
         try:
-            title = result.locator("div.t-black.t-normal").first.inner_text(timeout=4000)
+            title = result.locator("div.t-black.t-normal").first.inner_text(timeout=1000)
         except Exception:
             title = "Unknown title"
 
@@ -342,6 +339,7 @@ class LinkedInSearcher:
         
         # If we couldn't get a proper name, use the username
         if not name or "Status is" in name or len(name) < 2:
+            print("No good Name found, falling back to username from URL")
             name = username
         
         # Try one more approach - look for the name in a different location
@@ -349,9 +347,10 @@ class LinkedInSearcher:
             try:
                 # Try to find the name in the aria-label of the profile image
                 img = result.locator("img.presence-entity__image").first
-                if img.is_visible(timeout=2000):
-                    aria_label = img.get_attribute("alt", timeout=2000)
+                if img.is_visible(timeout=1000):
+                    aria_label = img.get_attribute("alt", timeout=1000).strip()
                     if aria_label and "Status is" not in aria_label:
+                        print(f"Fell back to using aria_label {aria_label} instead of username {username}")
                         name = aria_label
             except Exception:
                 pass
