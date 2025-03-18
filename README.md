@@ -152,7 +152,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [x] Search for 1st degree connections currently at company
   - [x] Integrate with end-to-end flow, add to spreadsheet
   - [x] Skip if company not a good fit
-- [ ] Browser-driven research: Run headless?
+- [x] Browser-driven research: Run headless?
 - [ ] Company research: Find contacts in recurse
   - [ ] Is there an API? Or drive browser? Is there TOS?
   - [ ] Search for 1st degree connections currently at company

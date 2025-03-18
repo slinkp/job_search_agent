@@ -120,7 +120,7 @@ class LinkedInSearcher:
                     self.screenshot("login_state_with_timeout")
                     raise
 
-        except Exception as e:
+        except Exception:
             self.screenshot("login_failure")
             raise
 
@@ -303,7 +303,7 @@ class LinkedInSearcher:
             return connections
 
         except Exception:
-            self.screenshot(path="search_error.png")
+            self.screenshot("search_error.png")
             raise
 
     def _find_connection(self, i, result):
