@@ -67,7 +67,7 @@ class ResearchDaemon:
                 logger.exception("Error processing task")
                 time.sleep(5)  # Back off on errors
 
-    def stop(self, signum=None, frame=None):
+    def stop(self, signum=None, frame=None) -> int:
         logger.info("Research daemon stopping")
         self.running = False
 
