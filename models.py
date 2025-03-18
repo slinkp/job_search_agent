@@ -184,23 +184,27 @@ class BaseSheetRow(BaseModel):
     def from_list(cls, row_data: list[str]) -> "BaseSheetRow":
         """Convert a list of strings into a row instance"""
         field_names = [name for name in cls.model_fields.keys()]
-        
+
         # Create a dictionary with default values for fields
         data = {}
         for name, field in cls.model_fields.items():
             # Use default values for fields that expect lists or other complex types
-            if 'List' in str(field.annotation) or 'list' in str(field.annotation):
-                data[name] = field.default_factory() if hasattr(field, 'default_factory') else []
+            if "List" in str(field.annotation) or "list" in str(field.annotation):
+                data[name] = (
+                    field.default_factory() if hasattr(field, "default_factory") else []
+                )
             else:
                 data[name] = field.default
-        
+
         # Update with values from row_data
         for name, value in zip(field_names, row_data):
             # Skip updating list fields with empty strings
-            if value != "" or ('List' not in str(cls.model_fields[name].annotation) and 
-                              'list' not in str(cls.model_fields[name].annotation)):
+            if value != "" or (
+                "List" not in str(cls.model_fields[name].annotation)
+                and "list" not in str(cls.model_fields[name].annotation)
+            ):
                 data[name] = value
-                
+
         return cls(**data)
 
 
