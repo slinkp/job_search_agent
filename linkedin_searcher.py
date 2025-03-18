@@ -14,6 +14,7 @@ class LinkedInSearcher:
         # Fetch credentials from environment
         self.email: str = os.environ.get("LINKEDIN_EMAIL", "")
         self.password: str = os.environ.get("LINKEDIN_PASSWORD", "")
+        self.headless = headless
         self.debug: bool = debug
         if not all([self.email, self.password]):
             raise ValueError("LinkedIn credentials not found in environment")
@@ -78,9 +79,13 @@ class LinkedInSearcher:
                 print("Already logged in!")
                 return
             except PlaywrightTimeout:
-                # Not logged in, proceed with login process
-                pass
+                if self.headless:
+                    raise ValueError(
+                        "Not logged in and running in headless mode. "
+                        "Please run with --no-headless first to log in manually."
+                    )
 
+            # Not logged in, proceed with login process
             self.page.goto("https://www.linkedin.com/login")
             self._wait()
             # Fill login form
