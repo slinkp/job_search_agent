@@ -206,12 +206,12 @@
           </form>
           <div class="original-message" x-show="editingCompany?.recruiter_message?.message">
             <h4>
-              Original Message: 
-              <span x-text="formatRecruiterMessageDate(editingCompany?.recruiter_message?.date)" class="message-date"></span>
+              Original Message
             </h4>
             <div class="message-headers">
               <p><strong>Subject:</strong> <span x-text="editingCompany?.recruiter_message?.subject"></span></p>
               <p><strong>From:</strong> <span x-text="editingCompany?.recruiter_message?.sender"></span></p>
+              <p><strong>Date:</strong> <span x-text="formatRecruiterMessageDate(editingCompany?.recruiter_message?.date)"></span></p>
               <p x-show="editingCompany?.recruiter_message?.email_thread_link">
                 <strong>Thread:</strong> 
                 <a :href="editingCompany?.recruiter_message?.email_thread_link" target="_blank">View in Gmail</a>
