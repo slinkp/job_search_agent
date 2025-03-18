@@ -42,8 +42,11 @@ class ResearchDaemon:
         self.company_repo = models.company_repository()
         self.ai_model = args.model
         self.dry_run = args.dry_run
+        self.headless = not getattr(args, 'no_headless', False)
         if self.dry_run:
             logger.info("Running in DRY RUN mode - no emails will be sent")
+        logger.info(f"Browser will run in {'headless' if self.headless else 'visible'} mode")
+        self.args = args
         self.jobsearch = libjobsearch.JobSearch(
             args, loglevel=logging.DEBUG, cache_settings=cache_settings
         )
@@ -233,6 +236,7 @@ class ResearchDaemon:
 if __name__ == "__main__":
     parser = libjobsearch.arg_parser()
     parser.add_argument("--dry-run", action="store_true", help="Don't actually send emails")
+    parser.add_argument("--no-headless", action="store_true", help="Run browser in visible mode (not headless)")
     args = parser.parse_args()
 
     setup_logging(args.verbose)

@@ -17,17 +17,21 @@ class NotFoundError(RuntimeError):
 
 
 class LevelsFyiSearcher:
-    def __init__(self):
-        logger.info("Initializing LevelsFyiSearcher")
+    def __init__(self, headless=True):
+        logger.info(f"Initializing LevelsFyiSearcher (headless={headless})")
         playwright = sync_playwright().start()
 
         # Create a persistent context with a user data directory
         user_data_dir = Path.home() / ".playwright-levels-chrome"
         logger.info(f"Using Chrome profile directory: {user_data_dir}")
 
+        if headless:
+            viewport = {"width": 1200, "height": 1400}
+        else:
+            viewport = {"width": 1000, "height": 1000}
         self.browser = playwright.chromium.launch_persistent_context(
             user_data_dir=str(user_data_dir),
-            headless=False,
+            headless=headless,
             channel="chrome",
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -35,8 +39,13 @@ class LevelsFyiSearcher:
                 "--enable-sandbox",
             ],
             ignore_default_args=["--enable-automation", "--no-sandbox"],
+            # Use new headless mode instead of the deprecated old headless mode
+            chromium_sandbox=True,
+            viewport=viewport,
         )
-        logger.info("Browser context launched")
+        logger.info(
+            f"Browser context launched in {'headless' if headless else 'headed'} mode"
+        )
 
         self.page = self.browser.new_page()
         logger.info("New page created")
@@ -56,7 +65,6 @@ class LevelsFyiSearcher:
         # All of these work by side effects or raising exceptions
         self.search_by_company_name(company_name)
         self.random_delay()
-        # TODO: add levels extraction
         return self.find_and_extract_salaries()
 
     def test_company_salary(self, company_salary_url: str) -> Iterable[Dict]:
@@ -97,11 +105,11 @@ class LevelsFyiSearcher:
         except NotFoundError as e:
             logger.error(str(e))
             return []
+        searcher = SalarySearcher(self.page)
         try:
-            searcher = SalarySearcher(self.page)
             return searcher.get_salary_data()
         except Exception as e:
-            logger.error(f"Error finding and extracting salaries: {e}")
+            logger.exception(f"Error finding and extracting salaries: {e}")
             return []
 
     def find_and_extract_levels(self, company_name: str):
@@ -347,10 +355,13 @@ class LevelsFyiSearcher:
 class SalarySearcher:
     def __init__(self, page):
         self.page = page
-        assert "salaries/software-engineer" in self.page.url
+        if "salaries/software-engineer" in self.page.url:
+            self.page.screenshot(path="maybe_not_swe_salary_page.png")
         self.salary_table = self.page.locator(
             "table[aria-label='Salary Submissions']"
         ).first
+        # Cache for storing the best salary results found during filtering
+        self.cached_salary_results = []
 
     def get_salary_data(self) -> Iterable[Dict]:
         if not self.salary_table.is_visible(timeout=5000):
@@ -359,11 +370,36 @@ class SalarySearcher:
             )
             return []
         logger.info(f"Looking for salary table on {self.page.url}...")
-        self._say_salary_data_added()
-        self.random_delay()
-        self._narrow_salary_search()
-        for row in self._extract_salary_data():
-            yield self._postprocess_salary_row(row)
+        max_salary_results = 10
+        try:
+            self._say_salary_data_added()
+            self.random_delay()
+            try:
+                self._narrow_salary_search()
+            except Exception as e:
+                logger.exception(f"Failure filtering salaries: {e}")
+                self.page.screenshot(path="filter_setting_failed.png")
+                # Don't raise - we might have cached results we can use
+
+            # Use cached results if available, otherwise try to extract fresh data
+            if self.cached_salary_results:
+                logger.info(
+                    f"Using {len(self.cached_salary_results)} cached salary results"
+                )
+                data_to_process = self.cached_salary_results
+            else:
+                logger.info("No cached results available, extracting fresh data")
+                data_to_process = self._extract_salary_data()
+
+            for i, row in enumerate(data_to_process):
+                if i > max_salary_results:
+                    break
+                yield self._postprocess_salary_row(row)
+
+        except Exception:
+            self.page.screenshot(path="get_salary_data_error.png")
+            logger.error("Error getting salaries")
+            raise
 
     def random_delay(
         self, min_seconds: float | int = 0.6, max_seconds: float | int = 3.0
@@ -411,6 +447,7 @@ class SalarySearcher:
                     logger.info(
                         f"Skipping row {i+1} - appears to be an ad or invalid row"
                     )
+                    self.page.screenshot(path="ad_or_invalid_salary_row.png")
                     continue
 
                 data = {
@@ -543,141 +580,207 @@ class SalarySearcher:
         # My approximate filtering algorithm: do these filters one at a time,
         # until there are too few, and then back up one step
         # TODO: refactor to DRY up the boilerplate
+
         # TODO: not crazy about Cursor's exception pattern here
 
         MIN_RESULTS = 5
-        # Get initial result count
+
+        def _delay():
+            # Longer wait in here, does it help?
+            self.random_delay(1.5, 3)
+
+        # Helper function to capture and cache salary data if it's better than what we have
+        def capture_salary_data(count, filter_description):
+            if count >= MIN_RESULTS:
+                try:
+                    logger.info(f"Capturing salary data after {filter_description}...")
+                    current_results = list(self._extract_salary_data())
+
+                    # Only update cache if we have enough results and either:
+                    # 1. We don't have any cached results yet, or
+                    # 2. We have fewer results than before (more filtered, but still enough)
+                    if len(current_results) >= MIN_RESULTS and (
+                        not self.cached_salary_results
+                        or len(current_results) <= len(self.cached_salary_results)
+                    ):
+                        logger.info(
+                            f"Caching {len(current_results)} results from {filter_description}"
+                        )
+                        self.cached_salary_results = current_results
+                        return True
+                except Exception as e:
+                    logger.warning(f"Failed to capture salary data: {e}")
+            return False
+
+        filter_widget = self._toggle_search_filters()
+
+        self._clear_location_filters(filter_widget)
         initial_count = self._get_salary_result_count()
+        # Get initial result count
         logger.info(f"Starting with {initial_count} results")
         if initial_count < MIN_RESULTS:
             logger.info("Not enough results to narrow search")
             return
 
-        filter_widget = self._toggle_search_filters()
+        # Capture initial results
+        capture_salary_data(initial_count, "initial search")
 
-        try:
-            self._clear_location_filters(filter_widget)
-            # Click United States checkbox
-            logger.info("Looking for United States checkbox...")
-            us_checkbox = filter_widget.get_by_role(
-                "checkbox", name="United States"
-            ).first
+        # Click United States checkbox
+        logger.info("Looking for United States checkbox...")
+        us_checkbox = filter_widget.get_by_role("checkbox", name="United States").first
 
-            if not us_checkbox.is_visible(timeout=3000):
-                raise Exception("United States checkbox not found")
+        if not us_checkbox.is_visible(timeout=3000):
+            raise Exception("United States checkbox not found")
 
-            logger.info("Clicking United States checkbox...")
+        logger.info("Clicking United States checkbox...")
+        us_checkbox.click()
+        _delay()
+
+        # Verify it was selected
+        if not us_checkbox.is_checked():
+            raise Exception("Failed to select United States checkbox")
+
+        # Check how many results we have after US filter
+        us_count = self._get_salary_result_count()
+        logger.info(f"After US filter: {us_count} results")
+
+        # Capture results if we have enough
+        capture_salary_data(us_count, "US filter")
+
+        if us_count < MIN_RESULTS:
+            logger.info("Not enough results after US filter, unclicking...")
             us_checkbox.click()
-            self.random_delay()
+            _delay()
 
-            # Verify it was selected
-            if not us_checkbox.is_checked():
-                raise Exception("Failed to select United States checkbox")
+        # Add New Offer Only filter
+        logger.info("Looking for New Offer Only checkbox...")
+        new_offer_checkbox = filter_widget.get_by_role(
+            "checkbox", name="New Offer Only"
+        ).first
 
-            # Check how many results we have after US filter
-            us_count = self._get_salary_result_count()
-            logger.info(f"After US filter: {us_count} results")
-            if us_count < MIN_RESULTS:
-                logger.info("Not enough results after US filter, unclicking...")
-                us_checkbox.click()
-                self.random_delay()
+        zero_count_seen = 0
 
-            # Add New Offer Only filter
-            logger.info("Looking for New Offer Only checkbox...")
-            new_offer_checkbox = filter_widget.get_by_role(
-                "checkbox", name="New Offer Only"
-            ).first
+        if new_offer_checkbox.is_visible(timeout=3000):
+            logger.info("Clicking New Offer Only checkbox...")
+            new_offer_checkbox.click()
+            _delay()
 
-            if new_offer_checkbox.is_visible(timeout=3000):
-                logger.info("Clicking New Offer Only checkbox...")
+            # Check results after New Offer filter
+            new_offer_count = self._get_salary_result_count()
+            logger.info(f"After New Offer filter: {new_offer_count} results")
+
+            if new_offer_count == 0:
+                zero_count_seen += 1
+
+            # Capture results if we have enough
+            capture_salary_data(new_offer_count, "New Offer filter")
+
+            if new_offer_count < MIN_RESULTS:
+                logger.info("Not enough results after New Offer filter, unclicking...")
                 new_offer_checkbox.click()
-                self.random_delay()
+                _delay()
 
-                # Check results after New Offer filter
-                new_offer_count = self._get_salary_result_count()
-                logger.info(f"After New Offer filter: {new_offer_count} results")
-                if new_offer_count < MIN_RESULTS:
+        # Try Greater NYC Area filter
+        logger.info("Looking for Greater NYC Area checkbox...")
+        # First uncheck US if it's checked
+        us_checkbox = filter_widget.get_by_role("checkbox", name="United States").first
+        if us_checkbox.is_checked():
+            logger.info("Unchecking United States...")
+            us_checkbox.click()
+            _delay()
+
+        nyc_checkbox = filter_widget.get_by_role(
+            "checkbox", name="Greater NYC Area"
+        ).first
+
+        if nyc_checkbox.is_visible(timeout=3000):
+            logger.info("Clicking Greater NYC Area checkbox...")
+            nyc_checkbox.click()
+            _delay()
+
+            # Check results after NYC filter
+            nyc_count = self._get_salary_result_count()
+            logger.info(f"After NYC filter: {nyc_count} results")
+            if nyc_count == 0:
+                zero_count_seen += 1
+                if zero_count_seen >= 2:
                     logger.info(
-                        "Not enough results after New Offer filter, unclicking..."
+                        f"No results received {zero_count_seen} times, stop filtering"
                     )
-                    new_offer_checkbox.click()
-                    self.random_delay()
+                    return
 
-            # Try Greater NYC Area filter
-            logger.info("Looking for Greater NYC Area checkbox...")
-            # First uncheck US if it's checked
-            us_checkbox = filter_widget.get_by_role(
-                "checkbox", name="United States"
-            ).first
-            if us_checkbox.is_checked():
-                logger.info("Unchecking United States...")
-                us_checkbox.click()
-                self.random_delay()
+            # Capture results if we have enough
+            capture_salary_data(nyc_count, "NYC filter")
 
-            nyc_checkbox = filter_widget.get_by_role(
-                "checkbox", name="Greater NYC Area"
-            ).first
-
-            if nyc_checkbox.is_visible(timeout=3000):
-                logger.info("Clicking Greater NYC Area checkbox...")
+            if nyc_count < MIN_RESULTS:
+                logger.info("Not enough results after NYC filter, unclicking...")
                 nyc_checkbox.click()
-                self.random_delay()
+                # If NYC didn't work, recheck US
+                us_checkbox.click()
+                _delay()
 
-                # Check results after NYC filter
-                nyc_count = self._get_salary_result_count()
-                logger.info(f"After NYC filter: {nyc_count} results")
-                if nyc_count < MIN_RESULTS:
-                    logger.info("Not enough results after NYC filter, unclicking...")
-                    nyc_checkbox.click()
-                    # If NYC didn't work, recheck US
-                    us_checkbox.click()
-                    self.random_delay()
+        # Add Past 1 Year filter, then try Past 2 Years if needed
+        logger.info("Looking for time range radio buttons...")
 
-            # Add Past 1 Year filter, then try Past 2 Years if needed
-            logger.info("Looking for time range radio buttons...")
+        # Try Past Year first
+        one_year_radio = filter_widget.get_by_role("radio", name="Past Year").first
+        if one_year_radio.is_visible(timeout=3000):
+            logger.info("Clicking Past Year radio...")
+            one_year_radio.click()
+            _delay()
 
-            # Try Past Year first
-            one_year_radio = filter_widget.get_by_role("radio", name="Past Year").first
-            if one_year_radio.is_visible(timeout=3000):
-                logger.info("Clicking Past Year radio...")
-                one_year_radio.click()
-                self.random_delay()
+            # Check results after 1 year filter
+            time_count = self._get_salary_result_count()
+            logger.info(f"After 1 Year filter: {time_count} results")
 
-                # Check results after 1 year filter
-                time_count = self._get_salary_result_count()
-                logger.info(f"After 1 Year filter: {time_count} results")
-
-                if time_count < MIN_RESULTS:
+            if time_count == 0:
+                zero_count_seen += 1
+                if zero_count_seen >= 2:
                     logger.info(
-                        "Not enough results with 1 Year filter, trying 2 Years..."
+                        f"No results received {zero_count_seen} times, stop filtering"
                     )
+                    return
 
-                    # Try 2 years instead
-                    two_years_radio = filter_widget.get_by_role(
-                        "radio", name="Past 2 Years"
-                    ).first
-                    if two_years_radio.is_visible(timeout=3000):
-                        logger.info("Clicking Past 2 Years radio...")
-                        two_years_radio.click()
-                        self.random_delay()
+            # Capture results if we have enough
+            capture_salary_data(time_count, "1 Year filter")
 
-                        # Check results after 2 years filter
-                        time_count = self._get_salary_result_count()
-                        logger.info(f"After 2 Years filter: {time_count} results")
-                        if time_count < MIN_RESULTS:
-                            logger.info(
-                                "Not enough results after 2 Years filter, setting to All Time..."
-                            )
-                            # Reset to All Time if neither option works
-                            all_time_radio = filter_widget.get_by_role(
-                                "radio", name="All Time"
-                            ).first
-                            all_time_radio.click()
-                            self.random_delay()
+            if time_count < MIN_RESULTS:
+                logger.info("Not enough results with 1 Year filter, trying 2 Years...")
 
-        except Exception as e:
-            logger.error(f"Failed to set filters: {e}")
-            raise Exception("Could not set filters")
+                # Try 2 years instead
+                two_years_radio = filter_widget.get_by_role(
+                    "radio", name="Past 2 Years"
+                ).first
+                if two_years_radio.is_visible(timeout=3000):
+                    logger.info("Clicking Past 2 Years radio...")
+                    two_years_radio.click()
+                    _delay()
+
+                    # Check results after 2 years filter
+                    time_count = self._get_salary_result_count()
+                    logger.info(f"After 2 Years filter: {time_count} results")
+
+                    if time_count == 0:
+                        zero_count_seen += 1
+                    if zero_count_seen >= 2:
+                        logger.info(
+                            f"No results received {zero_count_seen} times, stop filtering"
+                        )
+                        return
+
+                    # Capture results if we have enough
+                    capture_salary_data(time_count, "2 Years filter")
+
+                    if time_count < MIN_RESULTS:
+                        logger.info(
+                            "Not enough results after 2 Years filter, setting to All Time..."
+                        )
+                        # Reset to All Time if neither option works
+                        all_time_radio = filter_widget.get_by_role(
+                            "radio", name="All Time"
+                        ).first
+                        all_time_radio.click()
+                        _delay()
 
         # TODO:
         # - years of experience: enter 10 in the min years field, iterate downward
@@ -692,8 +795,12 @@ class SalarySearcher:
                 "text=/\\d+ - \\d+ of [\\d,]+/"
             ).first
             if not pagination_text.is_visible(timeout=3000):
-                # TODO: just count the rows instead.
-                raise Exception("Could not find pagination text")
+                # TODO: Try to just count the rows instead.
+                # Or -Sometimes in headless mode, no results are shown,
+                # but works non-headless?
+                self.page.screenshot(path="no_salary_pagination_found.png")
+                logger.error("No pagination text found, returning 0 results")
+                return 0
 
             # Extract the total count (the last number)
             text = pagination_text.inner_text()
@@ -702,7 +809,6 @@ class SalarySearcher:
 
             logger.info(f"Found {count} total results")
             return count
-
         except Exception as e:
             logger.error(f"Failed to get result count: {e}")
             raise Exception("Could not determine number of results")
@@ -849,8 +955,8 @@ class LevelsExtractor:
         return relevant_levels
 
 
-def main(company_name: str = "", company_salary_url: str = ""):
-    searcher = LevelsFyiSearcher()
+def main(company_name: str = "", company_salary_url: str = "", headless: bool = True):
+    searcher = LevelsFyiSearcher(headless=headless)
     try:
         if company_name:
             # If company name provided as argument
@@ -867,8 +973,8 @@ def main(company_name: str = "", company_salary_url: str = ""):
         searcher.cleanup()
 
 
-def extract_levels(company_name: str):
-    searcher = LevelsFyiSearcher()
+def extract_levels(company_name: str, headless: bool = True):
+    searcher = LevelsFyiSearcher(headless=headless)
     try:
         return searcher.find_and_extract_levels(company_name)
     finally:
@@ -895,25 +1001,31 @@ if __name__ == "__main__":
         help="Test shopify salary page",
         action="store_true",
     )
-
     parser.add_argument(
         "--test-levels-extraction",
         help="Find and extract levels comparing Shopify to named company",
         action="store_true",
     )
+    parser.add_argument(
+        "--no-headless",
+        help="Run browser in visible mode (not headless)",
+        action="store_true",
+        default=False,
+    )
 
     args = parser.parse_args()
 
     company_salary_url = ""
+    headless = not args.no_headless
 
     if args.test_levels_extraction:
         assert args.company, "Company name must be provided for levels extraction"
-        result = extract_levels(args.company)
+        result = extract_levels(args.company, headless=headless)
         pprint.pprint(result)
         sys.exit(0)
     elif args.test:
         company_salary_url = "https://www.levels.fyi/companies/shopify/salaries/software-engineer?country=43"
 
-    for i, result in enumerate(main(args.company, company_salary_url)):
+    for i, result in enumerate(main(args.company, company_salary_url, headless=headless)):
         print(f"{i+1}:")
         pprint.pprint(result)

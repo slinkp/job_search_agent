@@ -10,10 +10,11 @@ from playwright.sync_api import sync_playwright
 
 class LinkedInSearcher:
 
-    def __init__(self, debug: bool = False):
+    def __init__(self, debug: bool = False, headless: bool = True):
         # Fetch credentials from environment
         self.email: str = os.environ.get("LINKEDIN_EMAIL", "")
         self.password: str = os.environ.get("LINKEDIN_PASSWORD", "")
+        self.headless = headless
         self.debug: bool = debug
         if not all([self.email, self.password]):
             raise ValueError("LinkedIn credentials not found in environment")
@@ -23,9 +24,14 @@ class LinkedInSearcher:
         # Define path for persistent context
         user_data_dir = os.path.abspath("./playwright-linkedin-chrome")
 
+        if headless:
+            viewport = {"width": 1200, "height": 1400}
+        else:
+            viewport = {"width": 1000, "height": 1000}
+
         self.context = playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=False,
+            headless=headless,
             channel="chrome",  # Use regular Chrome instead of Chromium
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -33,7 +39,11 @@ class LinkedInSearcher:
                 "--enable-sandbox",
             ],
             ignore_default_args=["--enable-automation", "--no-sandbox"],
+            # Use new headless mode instead of the deprecated old headless mode
+            chromium_sandbox=True,
+            viewport=viewport,
         )
+        print(f"Browser context launched in {'headless' if headless else 'headed'} mode")
         self.page = self.context.new_page()
 
         # Add webdriver detection bypass
@@ -69,9 +79,13 @@ class LinkedInSearcher:
                 print("Already logged in!")
                 return
             except PlaywrightTimeout:
-                # Not logged in, proceed with login process
-                pass
+                if self.headless:
+                    raise ValueError(
+                        "Not logged in and running in headless mode. "
+                        "Please run with --no-headless first to log in manually."
+                    )
 
+            # Not logged in, proceed with login process
             self.page.goto("https://www.linkedin.com/login")
             self._wait()
             # Fill login form
@@ -180,7 +194,7 @@ class LinkedInSearcher:
             print("Waiting for search results...")
             try:
                 results_container = self.page.locator("div.search-results-container")
-                results_container.wait_for(state="visible", timeout=30000)
+                results_container.wait_for(state="visible", timeout=8000)
                 with open(
                     f"debug_search_results_container_{datetime.now():%Y%m%d_%H%M%S}.html",
                     "w",
@@ -205,50 +219,178 @@ class LinkedInSearcher:
                 print(f"Linkedin found no connections at {company}")
                 return []
 
+            # First try to get the HTML content of the page to analyze
+            page_html = self.page.content()
+            with open(
+                f"debug_full_page_{datetime.now():%Y%m%d_%H%M%S}.html",
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(page_html)
+
             # Get all result cards within search results container
             results = results_container.get_by_role("list").first.locator("li")
             count = results.count()
+            print(f"Found {count} result items")
+
+            # If we can't get results through the normal way, try a more direct approach
+            if count == 0:
+                # Try to get search results directly by class
+                results = self.page.locator("li.reusable-search__result-container")
+                count = results.count()
+                print(f"Found {count} results with direct selector")
+
             connections = []
 
             for i in range(count):
                 result = results.nth(i)
                 try:
-                    # Skip upsell cards (they have specific classes or content)
-                    if (
-                        result.locator("div.search-result__upsell-divider").is_visible()
-                        or result.locator("text=Sales Navigator").is_visible()
-                        or result.locator("text=Try Premium").is_visible()
-                    ):
-                        print(f"Skipping upsell card at index {i}")
-                        continue
-
-                    if not result.get_by_role("link").first.is_visible():
-                        print(f"Skipping non-profile result at index {i}")
-                        continue
-
-                    name = result.get_by_role("link").first.inner_text()
-                    name = name.split("\n")[0]
-                    title = result.locator("div.t-black.t-normal").first.inner_text()
-                    connection = {
-                        "name": name,
-                        "title": title,
-                        "profile_url": result.get_by_role("link").first.get_attribute(
-                            "href"
-                        ),
-                    }
-                    connections.append(connection)
-                    print(f"Found connection: {connection['name']}")
+                    connection = self._find_connection(i, result)
+                    if connection:
+                        connections.append(connection)
+                        print(
+                            f"Found connection: {connection['name']} - {connection['title']}"
+                        )
                 except Exception as e:
                     dumpfile = f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.html"
                     print(f"Error parsing result {i}: {e}, writing to {dumpfile}")
                     with open(dumpfile, "w", encoding="utf-8") as f:
                         f.write(result.evaluate("el => el.outerHTML"))
 
+                    if self.debug:
+                        # Save screenshot of this specific result for visual debugging
+                        try:
+                            result.screenshot(
+                                path=f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.png"
+                            )
+                            # Also dump the inner HTML structure for detailed analysis
+                            with open(
+                                f"debug_result_{i}_structure_{datetime.now():%Y%m%d_%H%M%S}.txt",
+                                "w",
+                                encoding="utf-8",
+                            ) as f:
+                                # Get element structure with classes - fixed to handle className that might not be a string
+                                structure = result.evaluate(
+                                    """el => {
+                                    function getElementInfo(element, depth = 0) {
+                                        let info = '  '.repeat(depth) + element.tagName.toLowerCase();
+                                        if (element.id) info += '#' + element.id;
+                                        if (element.className && typeof element.className === 'string') {
+                                            info += '.' + element.className.replace(/\\s+/g, '.');
+                                        } else if (element.classList && element.classList.length) {
+                                            info += '.' + Array.from(element.classList).join('.');
+                                        }
+                                        if (element.innerText && element.innerText.trim()) 
+                                            info += ' -> "' + element.innerText.trim().substring(0, 50) + '"';
+                                        return info;
+                                    }
+
+                                    function getElementTree(element, depth = 0) {
+                                        let result = getElementInfo(element, depth) + '\\n';
+                                        for (const child of element.children) {
+                                            result += getElementTree(child, depth + 1);
+                                        }
+                                        return result;
+                                    }
+
+                                    return getElementTree(el);
+                                }"""
+                                )
+                                f.write(structure)
+                        except Exception as screenshot_err:
+                            print(f"Error capturing debug info: {screenshot_err}")
+
             return connections
 
-        except Exception as e:
-            self.screenshot("search_error")
+        except Exception:
+            self.screenshot(path="search_error.png")
             raise
+
+    def _find_connection(self, i, result):
+        # Skip upsell cards (they have specific classes or content)
+        if (
+            result.locator("div.search-result__upsell-divider").is_visible(timeout=1000)
+            or result.locator("text=Sales Navigator").is_visible(timeout=1000)
+            or result.locator("text=Try Premium").is_visible(timeout=1000)
+        ):
+            print(f"Skipping upsell card at index {i}")
+            return {}
+
+        # Check if this is a profile result by looking for a link
+        try:
+            result.get_by_role("link").first.is_visible(timeout=2000)
+        except Exception:
+            print(f"Skipping non-profile result at index {i}")
+            return {}
+
+        # Use multiple approaches to get the human-readable name
+        try:
+            # First try to get the name from the specific span that contains the actual name
+            name_element = result.locator(
+                "span.entity-result__title-text a span[aria-hidden='true']"
+            ).first
+            name = name_element.inner_text(timeout=1000).strip()
+        except Exception:
+            try:
+                # Try to get the name from the link text directly
+                name = (
+                    result.get_by_role("link")
+                    .first.inner_text(timeout=1000)
+                    .strip()
+                    .split("\n")[0]
+                )
+            except Exception:
+                try:
+                    # Another fallback method
+                    name_element = result.locator(
+                        "span.entity-result__title-text a"
+                    ).first
+                    name = name_element.inner_text(timeout=1000).strip().split("\n")[0]
+                    print("Getting name from first approach failed, second worked")
+                except Exception:
+                    name = ""
+
+        # Get title with shorter timeout
+        try:
+            title = result.locator("div.t-black.t-normal").first.inner_text(timeout=1000)
+        except Exception:
+            title = "Unknown title"
+
+        # Get profile URL
+        profile_url = result.get_by_role("link").first.get_attribute("href")
+
+        # Extract username from URL for fallback or to combine with name
+        username = ""
+        url_parts = profile_url.split("/in/")
+        if len(url_parts) > 1:
+            username = url_parts[1].split("?")[0]
+
+        # If we couldn't get a proper name, use the username
+        if not name or "Status is" in name or len(name) < 2:
+            print("No good Name found, falling back to username from URL")
+            name = username
+
+        # Try one more approach - look for the name in a different location
+        if not name or name == username:
+            try:
+                # Try to find the name in the aria-label of the profile image
+                img = result.locator("img.presence-entity__image").first
+                if img.is_visible(timeout=1000):
+                    aria_label = img.get_attribute("alt", timeout=1000).strip()
+                    if aria_label and "Status is" not in aria_label:
+                        print(
+                            f"Fell back to using aria_label {aria_label} instead of username {username}"
+                        )
+                        name = aria_label
+            except Exception:
+                pass
+
+        connection = {
+            "name": name,
+            "title": title,
+            "profile_url": profile_url,
+        }
+        return connection
 
     def cleanup(self) -> None:
         """Clean up browser resources"""
@@ -259,8 +401,8 @@ class LinkedInSearcher:
             print(f"Error during cleanup: {e}")
 
 
-def main(company: str, debug: bool = False):
-    searcher = LinkedInSearcher(debug=debug)
+def main(company: str, debug: bool = False, headless: bool = True):
+    searcher = LinkedInSearcher(debug=debug, headless=headless)
     try:
         searcher.login()
 
@@ -283,7 +425,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--debug", action="store_true", help="Enable debug mode screenshots"
     )
+    parser.add_argument(
+        "--no-headless",
+        action="store_true",
+        help="Run browser in visible mode (not headless)",
+    )
     args = parser.parse_args()
-    results = main(args.company, debug=args.debug)
+    headless = not args.no_headless
+    results = main(args.company, debug=args.debug, headless=headless)
     for result in results:
         print(result)
