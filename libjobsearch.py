@@ -348,13 +348,7 @@ def upsert_company_in_spreadsheet(
     # Find the row index if the company exists
     existing_row_index = None
     for i, row in enumerate(existing_rows):
-        if isinstance(row, list):
-            if len(row) > 0 and row[0].lower().strip() == company_name:
-                existing_row_index = i
-                break
-        elif (
-            hasattr(row, "name") and row.name and row.name.lower().strip() == company_name
-        ):
+        if row and row.name and row.name.lower().strip() == company_name:
             existing_row_index = i
             break
 
@@ -363,7 +357,9 @@ def upsert_company_in_spreadsheet(
         logger.info(
             f"Updating existing company in spreadsheet: {company_info.name} at row {existing_row_index + 1}"  # noqa: B950
         )
-        client.update_row_partial(existing_row_index, company_info)
+        client.update_row_partial(
+            existing_row_index, company_info, skip_empty_update_values=True
+        )
         logger.info(f"Updated company in spreadsheet: {company_info.name}")
     else:
         # Company doesn't exist, append a new row

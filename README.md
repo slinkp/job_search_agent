@@ -184,6 +184,8 @@ Won't work if follow-ups are not threaded, but that can't be helped.
     - [x] "send and archive" should effectively update this
   - [x] Research button
     - [x] If already researched, label it "Re-do research"
+    - [ ] If a research step fails, show which one(s), without blowing up the
+          research process.
   - [x] "Generate reply" button (and "regenerate")
     - [x] "Edit reply" button
     - [x] Display reply

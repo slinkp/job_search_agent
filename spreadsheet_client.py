@@ -281,7 +281,7 @@ class BaseGoogleSheetClient:
         ).execute()
         logger.info(f"{len(rows)} rows appended.")
 
-    def read_rows_from_google(self):
+    def read_rows_from_google(self) -> list[models.BaseSheetRow]:
         values = self.service.spreadsheets().values()
         result = values.get(spreadsheetId=self.doc_id, range=self.range_name).execute()
         values = result.get("values", [])
@@ -369,7 +369,8 @@ class BaseGoogleSheetClient:
         request.execute()
 
     def update_row_partial(
-        self, row_index: int, cell_updates: dict[int, Any] | models.BaseSheetRow
+        self, row_index: int, cell_updates: dict[int, Any] | models.BaseSheetRow,
+        skip_empty_update_values: bool = False,
     ):
         """Update specific cells in a row, leaving others untouched."""
         # TODO test this method
@@ -378,6 +379,11 @@ class BaseGoogleSheetClient:
 
         if isinstance(cell_updates, models.BaseSheetRow):
             cell_updates = dict(enumerate(cell_updates.as_list_of_str()))
+
+        if skip_empty_update_values:
+            for key, val in list(cell_updates.items()):
+                if val in ("", None):
+                    cell_updates.pop(key)
 
         for col_index, value in cell_updates.items():
             # Convert non-JSON-serializable types to strings
