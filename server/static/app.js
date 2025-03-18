@@ -485,10 +485,10 @@ document.addEventListener("alpine:init", () => {
     get filteredCompanies() {
       const filtered = this.companies.filter((company) => {
         switch (this.filterMode) {
-          case "with-replies":
-            return company.reply_message;
-          case "without-replies":
-            return !company.reply_message;
+          case "reply-sent":
+            return company.sent_at;
+          case "reply-not-sent":
+            return !company.sent_at;
           case "researched":
             return company.research_completed_at;
           case "not-researched":
