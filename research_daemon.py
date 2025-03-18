@@ -160,22 +160,11 @@ class ResearchDaemon:
                     logger.info(f"Company {company_row.name} already exists, skipping")
                     continue
 
-                thread_id = None
-                if getattr(message, "email_thread_link", None):
-                    # Extract thread_id from the URL format like:
-                    # https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread-id
-                    parts = message.email_thread_link.split("/")
-                    if len(parts) > 0:
-                        thread_id = parts[-1]
-
-                message_id = message.message_id
-
                 company = models.Company(
                     name=company_row.name,
                     details=company_row,
-                    message_id=message_id,
+                    message_id=message.message_id,
                     recruiter_message=message,
-                    thread_id=thread_id,
                 )
                 self.company_repo.create(company)
                 logger.info(f"Created company {company_row.name} from recruiter message")
@@ -231,7 +220,7 @@ class ResearchDaemon:
             logger.exception(f"Error sending reply: {e}")
             raise
 
-        # Mark the company as sent/archived in the database
+        # Mark the company as sent/archived in the spreadsheet data
         company.details.current_state = "30. replied to recruiter"
         company.details.updated = datetime.date.today()
         self.company_repo.update(company)
