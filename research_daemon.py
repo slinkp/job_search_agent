@@ -104,22 +104,76 @@ class ResearchDaemon:
                 content = recruiter_message.message
                 logger.info(f"Using existing initial message: {content[:400]}")
 
-        # TODO: Pass more context from email, etc.
-        company_row = self.jobsearch.research_company(content, model=self.ai_model)
-        if existing:
-            logger.info(f"Updating company {company_name}")
-            existing.details = company_row
-            self.company_repo.update(existing)
-        else:
-            logger.info(f"Creating company {company_name}")
-            company = models.Company(
-                name=company_name,
-                details=company_row,
-            )
-            self.company_repo.create(company)
-
-        # Update the spreadsheet with the researched company data
-        libjobsearch.upsert_company_in_spreadsheet(company_row, self.args)
+        try:
+            # TODO: Pass more context from email, etc.
+            company_row = self.jobsearch.research_company(content, model=self.ai_model)
+            
+            # Log any research errors that occurred
+            if company_row.research_errors:
+                logger.warning(f"Research completed with {len(company_row.research_errors)} errors:")
+                for err in company_row.research_errors:
+                    logger.warning(f"  - {err.step}: {err.error}")
+                
+                # Add error notes to the company's AI notes
+                error_notes = "\n\nResearch Errors:\n" + "\n".join([
+                    f"- {err.step}: {err.error}" for err in company_row.research_errors
+                ])
+                if company_row.ai_notes:
+                    company_row.ai_notes += error_notes
+                else:
+                    company_row.ai_notes = error_notes
+                
+            if existing:
+                logger.info(f"Updating company {company_name}")
+                existing.details = company_row
+                self.company_repo.update(existing)
+            else:
+                logger.info(f"Creating company {company_name}")
+                company = models.Company(
+                    name=company_name,
+                    details=company_row,
+                )
+                self.company_repo.create(company)
+                
+            # Update the spreadsheet with the researched company data
+            libjobsearch.upsert_company_in_spreadsheet(company_row, self.args)
+            
+        except Exception as e:
+            logger.exception(f"Error researching company {company_name}")
+            # Create a minimal company record with the error if it doesn't exist
+            if not existing:
+                minimal_row = models.CompaniesSheetRow(
+                    name=company_name,
+                    ai_notes=f"Research failed: {str(e)}",
+                    research_errors=[
+                        models.ResearchStepError(
+                            step="research_company", 
+                            error=f"Complete research failure: {str(e)}"
+                        )
+                    ]
+                )
+                company = models.Company(
+                    name=company_name,
+                    details=minimal_row,
+                )
+                self.company_repo.create(company)
+                
+                # Create an event for the research error
+                event = models.Event(
+                    company_name=company_name,
+                    event_type=models.EventType.RESEARCH_ERROR,
+                    timestamp=datetime.datetime.now(datetime.timezone.utc),
+                    details=f"Complete research failure: {str(e)}"
+                )
+                self.company_repo.create_event(event)
+                
+                # Try to update the spreadsheet with minimal info
+                try:
+                    libjobsearch.upsert_company_in_spreadsheet(minimal_row, self.args)
+                except Exception as spreadsheet_error:
+                    logger.exception(f"Failed to update spreadsheet: {spreadsheet_error}")
+            
+            raise
 
     def do_generate_reply(self, args: dict):
         # TODO: Use LLM to generate reply

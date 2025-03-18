@@ -18,6 +18,16 @@ class EventType(enum.Enum):
     RESEARCH_COMPLETED = "research_completed"
     COMPANY_CREATED = "company_created"
     COMPANY_UPDATED = "company_updated"
+    RESEARCH_ERROR = "research_error"
+
+
+class ResearchStepError(BaseModel):
+    """Error information for a research step that failed."""
+    step: str
+    error: str
+    timestamp: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
 
 
 class Event(BaseModel):
@@ -27,6 +37,7 @@ class Event(BaseModel):
     company_name: str
     event_type: EventType
     timestamp: Optional[datetime.datetime] = None
+    details: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -172,7 +183,24 @@ class BaseSheetRow(BaseModel):
     def from_list(cls, row_data: list[str]) -> "BaseSheetRow":
         """Convert a list of strings into a row instance"""
         field_names = [name for name in cls.model_fields.keys()]
-        return cls(**dict(zip(field_names, row_data)))
+        
+        # Create a dictionary with default values for fields
+        data = {}
+        for name, field in cls.model_fields.items():
+            # Use default values for fields that expect lists or other complex types
+            if 'List' in str(field.annotation) or 'list' in str(field.annotation):
+                data[name] = field.default_factory() if hasattr(field, 'default_factory') else []
+            else:
+                data[name] = field.default
+        
+        # Update with values from row_data
+        for name, value in zip(field_names, row_data):
+            # Skip updating list fields with empty strings
+            if value != "" or ('List' not in str(cls.model_fields[name].annotation) and 
+                              'list' not in str(cls.model_fields[name].annotation)):
+                data[name] = value
+                
+        return cls(**data)
 
 
 class CompaniesSheetRow(BaseSheetRow):
@@ -231,6 +259,9 @@ class CompaniesSheetRow(BaseSheetRow):
 
     email_thread_link: Optional[str] = Field(default="")
     message_id: Optional[str] = Field(default="")
+    
+    # Track research errors
+    research_errors: List[ResearchStepError] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod
@@ -332,6 +363,13 @@ class CustomJSONEncoder(json.JSONEncoder):
                 "company_name": obj.company_name,
                 "event_type": obj.event_type.value,
                 "timestamp": obj.timestamp.isoformat() if obj.timestamp else None,
+                "details": obj.details,
+            }
+        if isinstance(obj, ResearchStepError):
+            return {
+                "step": obj.step,
+                "error": obj.error,
+                "timestamp": obj.timestamp.isoformat() if obj.timestamp else None,
             }
         return super().default(obj)
 
@@ -391,6 +429,7 @@ class CompanyRepository:
                         company_name TEXT NOT NULL,
                         event_type TEXT NOT NULL,
                         timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+                        details TEXT,
                         FOREIGN KEY (company_name) REFERENCES companies (name)
                     )
                 """
@@ -655,13 +694,14 @@ class CompanyRepository:
             with self._get_connection() as conn:
                 cursor = conn.execute(
                     """
-                    INSERT INTO events (company_name, event_type, timestamp)
-                    VALUES (?, ?, ?)
+                    INSERT INTO events (company_name, event_type, timestamp, details)
+                    VALUES (?, ?, ?, ?)
                     """,
                     (
                         event.company_name,
                         event.event_type.value,
                         event.timestamp.isoformat(),
+                        event.details,
                     ),
                 )
                 conn.commit()
@@ -673,7 +713,7 @@ class CompanyRepository:
         self, company_name: Optional[str] = None, event_type: Optional[EventType] = None
     ) -> List[Event]:
         """Get events, optionally filtered by company name and/or event type"""
-        query = "SELECT id, company_name, event_type, timestamp FROM events"
+        query = "SELECT id, company_name, event_type, timestamp, details FROM events"
         params = []
 
         if company_name or event_type:
@@ -695,13 +735,14 @@ class CompanyRepository:
             cursor = conn.execute(query, params)
             events = []
             for row in cursor.fetchall():
-                id, company_name, event_type_str, timestamp = row
+                id, company_name, event_type_str, timestamp, details = row
                 events.append(
                     Event(
                         id=id,
                         company_name=company_name or "",
                         event_type=EventType(event_type_str),
                         timestamp=dateutil.parser.parse(timestamp),
+                        details=details,
                     )
                 )
             return events

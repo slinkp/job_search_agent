@@ -440,12 +440,48 @@ class JobSearch:
         if not do_advanced:
             return company_info
 
-        company_info = self.research_compensation(company_info)
-        logger.debug(f"Company info after salary research: {company_info}\n\n")
+        try:
+            company_info = self.research_compensation(company_info)
+            logger.debug(f"Company info after salary research: {company_info}\n\n")
+        except Exception as e:
+            logger.exception(f"Error during compensation research")
+            error = models.ResearchStepError(
+                step="compensation_research",
+                error=str(e)
+            )
+            company_info.research_errors.append(error)
+            
+            # Create an event for the research error
+            if company_info.name:
+                event = models.Event(
+                    company_name=company_info.name,
+                    event_type=models.EventType.RESEARCH_ERROR,
+                    timestamp=datetime.datetime.now(datetime.timezone.utc),
+                    details=f"Compensation research failed: {str(e)}"
+                )
+                models.company_repository().create_event(event)
 
         if self.is_good_fit(company_info):
-            company_info = self.followup_research_company(company_info)
-            logger.debug(f"Company info after followup research: {company_info}\n\n")
+            try:
+                company_info = self.followup_research_company(company_info)
+                logger.debug(f"Company info after followup research: {company_info}\n\n")
+            except Exception as e:
+                logger.exception(f"Error during followup research")
+                error = models.ResearchStepError(
+                    step="followup_research",
+                    error=str(e)
+                )
+                company_info.research_errors.append(error)
+                
+                # Create an event for the research error
+                if company_info.name:
+                    event = models.Event(
+                        company_name=company_info.name,
+                        event_type=models.EventType.RESEARCH_ERROR,
+                        timestamp=datetime.datetime.now(datetime.timezone.utc),
+                        details=f"Followup research failed: {str(e)}"
+                    )
+                    models.company_repository().create_event(event)
 
         # Create a RESEARCH_COMPLETED event
         if company_info.name:
@@ -453,6 +489,7 @@ class JobSearch:
                 company_name=company_info.name,
                 event_type=models.EventType.RESEARCH_COMPLETED,
                 timestamp=datetime.datetime.now(datetime.timezone.utc),
+                details=f"Research completed with {len(company_info.research_errors)} errors" if company_info.research_errors else None
             )
             models.company_repository().create_event(event)
             logger.info(f"Created RESEARCH_COMPLETED event for {company_info.name}")
@@ -481,27 +518,44 @@ class JobSearch:
     def research_compensation(self, row: CompaniesSheetRow) -> CompaniesSheetRow:
         now = datetime.datetime.now()
         logger.info("Finding equivalent job levels ...")
-        equivalent_levels = list(
-            run_in_process(levels_searcher.extract_levels, row.name) or []
-        )
-        if equivalent_levels:
-            row.level_equiv = ", ".join(equivalent_levels)
-            delta = datetime.datetime.now() - now
-            logger.info(
-                f"Found equivalent job levels: {row.level_equiv} in {delta.seconds} seconds"
+        try:
+            equivalent_levels = list(
+                run_in_process(levels_searcher.extract_levels, row.name) or []
             )
-        else:
-            logger.info(f"No equivalent job levels found for {row.name}")
+            if equivalent_levels:
+                row.level_equiv = ", ".join(equivalent_levels)
+                delta = datetime.datetime.now() - now
+                logger.info(
+                    f"Found equivalent job levels: {row.level_equiv} in {delta.seconds} seconds"
+                )
+            else:
+                logger.info(f"No equivalent job levels found for {row.name}")
+        except Exception as e:
+            logger.exception(f"Error finding equivalent job levels for {row.name}")
+            error = models.ResearchStepError(
+                step="equivalent_levels", 
+                error=str(e)
+            )
+            row.research_errors.append(error)
 
         logger.info("Finding salary data ...")
         now = datetime.datetime.now()
-        salary_data = run_in_process(levels_searcher.main, company_name=row.name) or []
-        salary_data = list(salary_data)  # Convert generator to list if needed
+        try:
+            salary_data = run_in_process(levels_searcher.main, company_name=row.name) or []
+            salary_data = list(salary_data)  # Convert generator to list if needed
 
-        delta = datetime.datetime.now() - now
-        logger.info(
-            f"Got {len(salary_data)} rows of salary data for {row.name} in {delta.seconds} seconds"
-        )
+            delta = datetime.datetime.now() - now
+            logger.info(
+                f"Got {len(salary_data)} rows of salary data for {row.name} in {delta.seconds} seconds"
+            )
+        except Exception as e:
+            logger.exception(f"Error finding salary data for {row.name}")
+            error = models.ResearchStepError(
+                step="salary_data", 
+                error=str(e)
+            )
+            row.research_errors.append(error)
+            salary_data = []
 
         if salary_data:
             # Calculate averages from all salary entries.
@@ -542,14 +596,23 @@ class JobSearch:
 
         logger.info(f"Doing followup research on: {company_info}")
 
-        linkedin_contacts = (
-            run_in_process(linkedin_searcher.main, company_info.name) or []
-        )
-        linkedin_contacts = linkedin_contacts[:4]
+        try:
+            linkedin_contacts = (
+                run_in_process(linkedin_searcher.main, company_info.name) or []
+            )
+            linkedin_contacts = linkedin_contacts[:4]
 
-        company_info.maybe_referrals = "\n".join(
-            [f"{c['name']} - {c['title']}" for c in linkedin_contacts]
-        )
+            company_info.maybe_referrals = "\n".join(
+                [f"{c['name']} - {c['title']}" for c in linkedin_contacts]
+            )
+        except Exception as e:
+            logger.exception(f"Error finding LinkedIn contacts for {company_info.name}")
+            error = models.ResearchStepError(
+                step="linkedin_contacts", 
+                error=str(e)
+            )
+            company_info.research_errors.append(error)
+            
         return company_info
 
     def is_good_fit(self, company_info: CompaniesSheetRow) -> bool:
