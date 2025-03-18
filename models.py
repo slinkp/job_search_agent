@@ -87,7 +87,7 @@ class BaseSheetRow(BaseModel):
         if isinstance(data, dict):
             for field_name, field in cls.model_fields.items():
                 # First ensure all fields exist with defaults
-                # (this prevents attribute errors when loading from eg old pickles that are missing fields)
+                # (this prevents attribute errors when loading from eg old pickles that are missing fields)  # noqa: B950
                 if field_name not in data:
                     data[field_name] = field.default
 
@@ -460,7 +460,7 @@ class CompanyRepository:
                 (name,),
             )
             row = cursor.fetchone()
-            company = self._deserialize_company(row) if row else None
+            company = self._deserialize_company(row) if row else None  # noqa: B950
             if company and company.message_id:
                 message = self._get_recruiter_message(company.message_id, conn)
                 company.recruiter_message = message
@@ -481,7 +481,7 @@ class CompanyRepository:
             (message_id,),
         )
         row = cursor.fetchone()
-        if row:
+        if row:  # noqa: B950
             # Parse the date string to datetime if it exists
             date_str = row[6]
             date = None
@@ -531,7 +531,7 @@ class CompanyRepository:
                 """,
                 (
                     message.message_id,
-                    message.subject,
+                    message.subject,  # noqa: B950
                     message.sender,
                     message.message,
                     message.thread_id,
@@ -776,7 +776,7 @@ SAMPLE_COMPANIES = [
             subject="Staff Developer Role at Shopify",
             sender="Bobby Bobberson",
             date=datetime.datetime(2024, 12, 15, 12, 0, 0, tzinfo=datetime.timezone.utc),
-            email_thread_link="https://mail.google.com/mail/u/0/#label/jobs+2024%2Fshopify/QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",
+            email_thread_link="https://mail.google.com/mail/u/0/#label/jobs+2024%2Fshopify/QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",  # noqa: B950
             thread_id="QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",
         ),
     ),
@@ -789,7 +789,7 @@ SAMPLE_COMPANIES = [
             url="https://rippling.com",
             updated=datetime.date(2024, 10, 10),
             headquarters="New York",
-            email_thread_link="https://mail.google.com/mail/u/0/#label/jobs+2024%2Frippling/QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",
+            email_thread_link="https://mail.google.com/mail/u/0/#label/jobs+2024%2Frippling/QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",  # noqa: B950
         ),
         message_id="2222",
         recruiter_message=RecruiterMessage(
