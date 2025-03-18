@@ -1,4 +1,5 @@
 import pytest
+import argparse
 import os
 import tempfile
 import logging
@@ -67,6 +68,65 @@ def test_send_reply_and_archive_creates_event(mock_repo_func, mock_gmail_searche
     assert event_arg.company_name == "Test Company"
     assert event_arg.event_type == EventType.REPLY_SENT
     assert event_arg.timestamp is not None
+
+
+@patch("libjobsearch.MainTabCompaniesClient", autospec=True)
+def test_upsert_company_in_spreadsheet_update_existing(mock_client_class):
+    """Test updating an existing company in spreadsheet."""
+    # Setup
+    mock_client = mock_client_class.return_value
+
+    # Mock existing rows with one matching company
+    existing_company = CompaniesSheetRow(name="Test Company")
+    mock_client.read_rows_from_google.return_value = [existing_company]
+
+    # Create test company info and args
+    company_info = CompaniesSheetRow(
+        name="Test Company", type="Startup", valuation="100M"
+    )
+    args = argparse.Namespace(sheet="test")
+
+    # Call the function
+    libjobsearch.upsert_company_in_spreadsheet(company_info, args)
+
+    # Verify client was created with correct config
+    mock_client_class.assert_called_once_with(doc_id=ANY, sheet_id=ANY, range_name=ANY)
+
+    # Verify existing rows were fetched
+    mock_client.read_rows_from_google.assert_called_once()
+
+    # Verify row was updated not appended
+    mock_client.update_row_partial.assert_called_once_with(
+        0, company_info, skip_empty_update_values=True
+    )
+    mock_client.append_rows.assert_not_called()
+
+
+@patch("libjobsearch.MainTabCompaniesClient", autospec=True)
+def test_upsert_company_in_spreadsheet_add_new(mock_client_class):
+    """Test adding a new company to spreadsheet."""
+    # Setup
+    mock_client = mock_client_class.return_value
+
+    # Mock empty existing rows
+    mock_client.read_rows_from_google.return_value = []
+
+    # Create test company info and args
+    company_info = CompaniesSheetRow(name="New Company", type="Public", valuation="10B")
+    args = argparse.Namespace(sheet="prod")
+
+    # Call the function
+    libjobsearch.upsert_company_in_spreadsheet(company_info, args)
+
+    # Verify client was created with correct config
+    mock_client_class.assert_called_once_with(doc_id=ANY, sheet_id=ANY, range_name=ANY)
+
+    # Verify existing rows were fetched
+    mock_client.read_rows_from_google.assert_called_once()
+
+    # Verify row was appended not updated
+    mock_client.append_rows.assert_called_once_with([company_info.as_list_of_str()])
+    mock_client.update_row_partial.assert_not_called()
 
 
 @pytest.fixture
