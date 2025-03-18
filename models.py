@@ -1,4 +1,3 @@
-import dataclasses
 import datetime
 import decimal
 import enum
@@ -688,7 +687,7 @@ class CompanyRepository:
                 events.append(
                     Event(
                         id=id,
-                        company_name=company_name,
+                        company_name=company_name or "",
                         event_type=EventType(event_type_str),
                         timestamp=dateutil.parser.parse(timestamp),
                     )

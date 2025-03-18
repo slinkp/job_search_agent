@@ -13,7 +13,7 @@ import time
 from enum import IntEnum
 from functools import wraps
 from multiprocessing import Process, Queue
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from diskcache import Cache
 from pydantic import BaseModel, ValidationError
@@ -25,8 +25,8 @@ import linkedin_searcher
 import models
 import spreadsheet_client
 from logsetup import setup_logging
-from models import CompaniesSheetRow, RecruiterMessage
 from message_generation_rag import RecruitmentRAG
+from models import CompaniesSheetRow, RecruiterMessage
 from spreadsheet_client import MainTabCompaniesClient
 
 logger = logging.getLogger(__name__)
@@ -183,7 +183,9 @@ def run_in_process(func: Callable, *args, timeout=120, **kwargs) -> Any:
                 process.kill()
 
 
-def send_reply_and_archive(message_id: str, thread_id: str, reply: str, company_name: str = None) -> bool:
+def send_reply_and_archive(
+    message_id: str, thread_id: str, reply: str, company_name: Optional[str] = None
+) -> bool:
     """
     Send a reply to a recruiter email.
 
