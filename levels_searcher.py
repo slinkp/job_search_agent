@@ -26,9 +26,9 @@ class LevelsFyiSearcher:
         logger.info(f"Using Chrome profile directory: {user_data_dir}")
 
         if headless:
-            viewport={"width": 1200, "height": 1400}
+            viewport = {"width": 1200, "height": 1400}
         else:
-            viewport={"width": 1000, "height": 1000}
+            viewport = {"width": 1000, "height": 1000}
         self.browser = playwright.chromium.launch_persistent_context(
             user_data_dir=str(user_data_dir),
             headless=headless,
@@ -43,7 +43,9 @@ class LevelsFyiSearcher:
             chromium_sandbox=True,
             viewport=viewport,
         )
-        logger.info(f"Browser context launched in {'headless' if headless else 'headed'} mode")
+        logger.info(
+            f"Browser context launched in {'headless' if headless else 'headed'} mode"
+        )
 
         self.page = self.browser.new_page()
         logger.info("New page created")
@@ -381,7 +383,9 @@ class SalarySearcher:
 
             # Use cached results if available, otherwise try to extract fresh data
             if self.cached_salary_results:
-                logger.info(f"Using {len(self.cached_salary_results)} cached salary results")
+                logger.info(
+                    f"Using {len(self.cached_salary_results)} cached salary results"
+                )
                 data_to_process = self.cached_salary_results
             else:
                 logger.info("No cached results available, extracting fresh data")
@@ -591,14 +595,17 @@ class SalarySearcher:
                 try:
                     logger.info(f"Capturing salary data after {filter_description}...")
                     current_results = list(self._extract_salary_data())
-                    
+
                     # Only update cache if we have enough results and either:
                     # 1. We don't have any cached results yet, or
                     # 2. We have fewer results than before (more filtered, but still enough)
-                    if (len(current_results) >= MIN_RESULTS and 
-                        (not self.cached_salary_results or 
-                         len(current_results) <= len(self.cached_salary_results))):
-                        logger.info(f"Caching {len(current_results)} results from {filter_description}")
+                    if len(current_results) >= MIN_RESULTS and (
+                        not self.cached_salary_results
+                        or len(current_results) <= len(self.cached_salary_results)
+                    ):
+                        logger.info(
+                            f"Caching {len(current_results)} results from {filter_description}"
+                        )
                         self.cached_salary_results = current_results
                         return True
                 except Exception as e:
@@ -614,15 +621,13 @@ class SalarySearcher:
         if initial_count < MIN_RESULTS:
             logger.info("Not enough results to narrow search")
             return
-        
+
         # Capture initial results
         capture_salary_data(initial_count, "initial search")
 
         # Click United States checkbox
         logger.info("Looking for United States checkbox...")
-        us_checkbox = filter_widget.get_by_role(
-            "checkbox", name="United States"
-        ).first
+        us_checkbox = filter_widget.get_by_role("checkbox", name="United States").first
 
         if not us_checkbox.is_visible(timeout=3000):
             raise Exception("United States checkbox not found")
@@ -638,10 +643,10 @@ class SalarySearcher:
         # Check how many results we have after US filter
         us_count = self._get_salary_result_count()
         logger.info(f"After US filter: {us_count} results")
-        
+
         # Capture results if we have enough
         capture_salary_data(us_count, "US filter")
-        
+
         if us_count < MIN_RESULTS:
             logger.info("Not enough results after US filter, unclicking...")
             us_checkbox.click()
@@ -671,18 +676,14 @@ class SalarySearcher:
             capture_salary_data(new_offer_count, "New Offer filter")
 
             if new_offer_count < MIN_RESULTS:
-                logger.info(
-                    "Not enough results after New Offer filter, unclicking..."
-                )
+                logger.info("Not enough results after New Offer filter, unclicking...")
                 new_offer_checkbox.click()
                 _delay()
 
         # Try Greater NYC Area filter
         logger.info("Looking for Greater NYC Area checkbox...")
         # First uncheck US if it's checked
-        us_checkbox = filter_widget.get_by_role(
-            "checkbox", name="United States"
-        ).first
+        us_checkbox = filter_widget.get_by_role("checkbox", name="United States").first
         if us_checkbox.is_checked():
             logger.info("Unchecking United States...")
             us_checkbox.click()
@@ -703,12 +704,14 @@ class SalarySearcher:
             if nyc_count == 0:
                 zero_count_seen += 1
                 if zero_count_seen >= 2:
-                    logger.info(f"No results received {zero_count_seen} times, stop filtering")
+                    logger.info(
+                        f"No results received {zero_count_seen} times, stop filtering"
+                    )
                     return
 
             # Capture results if we have enough
             capture_salary_data(nyc_count, "NYC filter")
-            
+
             if nyc_count < MIN_RESULTS:
                 logger.info("Not enough results after NYC filter, unclicking...")
                 nyc_checkbox.click()
@@ -733,16 +736,16 @@ class SalarySearcher:
             if time_count == 0:
                 zero_count_seen += 1
                 if zero_count_seen >= 2:
-                    logger.info(f"No results received {zero_count_seen} times, stop filtering")
+                    logger.info(
+                        f"No results received {zero_count_seen} times, stop filtering"
+                    )
                     return
 
             # Capture results if we have enough
             capture_salary_data(time_count, "1 Year filter")
 
             if time_count < MIN_RESULTS:
-                logger.info(
-                    "Not enough results with 1 Year filter, trying 2 Years..."
-                )
+                logger.info("Not enough results with 1 Year filter, trying 2 Years...")
 
                 # Try 2 years instead
                 two_years_radio = filter_widget.get_by_role(
@@ -760,12 +763,14 @@ class SalarySearcher:
                     if time_count == 0:
                         zero_count_seen += 1
                     if zero_count_seen >= 2:
-                        logger.info(f"No results received {zero_count_seen} times, stop filtering")
+                        logger.info(
+                            f"No results received {zero_count_seen} times, stop filtering"
+                        )
                         return
 
                     # Capture results if we have enough
                     capture_salary_data(time_count, "2 Years filter")
-                    
+
                     if time_count < MIN_RESULTS:
                         logger.info(
                             "Not enough results after 2 Years filter, setting to All Time..."

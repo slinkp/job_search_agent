@@ -23,11 +23,11 @@ class LinkedInSearcher:
 
         # Define path for persistent context
         user_data_dir = os.path.abspath("./playwright-linkedin-chrome")
-        
+
         if headless:
-            viewport={"width": 1200, "height": 1400}
+            viewport = {"width": 1200, "height": 1400}
         else:
-            viewport={"width": 1000, "height": 1000}
+            viewport = {"width": 1000, "height": 1000}
 
         self.context = playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
@@ -221,7 +221,11 @@ class LinkedInSearcher:
 
             # First try to get the HTML content of the page to analyze
             page_html = self.page.content()
-            with open(f"debug_full_page_{datetime.now():%Y%m%d_%H%M%S}.html", "w", encoding="utf-8") as f:
+            with open(
+                f"debug_full_page_{datetime.now():%Y%m%d_%H%M%S}.html",
+                "w",
+                encoding="utf-8",
+            ) as f:
                 f.write(page_html)
 
             # Get all result cards within search results container
@@ -244,7 +248,9 @@ class LinkedInSearcher:
                     connection = self._find_connection(i, result)
                     if connection:
                         connections.append(connection)
-                        print(f"Found connection: {connection['name']} - {connection['title']}")
+                        print(
+                            f"Found connection: {connection['name']} - {connection['title']}"
+                        )
                 except Exception as e:
                     dumpfile = f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.html"
                     print(f"Error parsing result {i}: {e}, writing to {dumpfile}")
@@ -254,11 +260,18 @@ class LinkedInSearcher:
                     if self.debug:
                         # Save screenshot of this specific result for visual debugging
                         try:
-                            result.screenshot(path=f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.png")
+                            result.screenshot(
+                                path=f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.png"
+                            )
                             # Also dump the inner HTML structure for detailed analysis
-                            with open(f"debug_result_{i}_structure_{datetime.now():%Y%m%d_%H%M%S}.txt", "w", encoding="utf-8") as f:
+                            with open(
+                                f"debug_result_{i}_structure_{datetime.now():%Y%m%d_%H%M%S}.txt",
+                                "w",
+                                encoding="utf-8",
+                            ) as f:
                                 # Get element structure with classes - fixed to handle className that might not be a string
-                                structure = result.evaluate("""el => {
+                                structure = result.evaluate(
+                                    """el => {
                                     function getElementInfo(element, depth = 0) {
                                         let info = '  '.repeat(depth) + element.tagName.toLowerCase();
                                         if (element.id) info += '#' + element.id;
@@ -281,7 +294,8 @@ class LinkedInSearcher:
                                     }
 
                                     return getElementTree(el);
-                                }""")
+                                }"""
+                                )
                                 f.write(structure)
                         except Exception as screenshot_err:
                             print(f"Error capturing debug info: {screenshot_err}")
@@ -312,16 +326,25 @@ class LinkedInSearcher:
         # Use multiple approaches to get the human-readable name
         try:
             # First try to get the name from the specific span that contains the actual name
-            name_element = result.locator("span.entity-result__title-text a span[aria-hidden='true']").first
+            name_element = result.locator(
+                "span.entity-result__title-text a span[aria-hidden='true']"
+            ).first
             name = name_element.inner_text(timeout=1000).strip()
         except Exception:
             try:
                 # Try to get the name from the link text directly
-                name = result.get_by_role("link").first.inner_text(timeout=1000).strip().split("\n")[0]
+                name = (
+                    result.get_by_role("link")
+                    .first.inner_text(timeout=1000)
+                    .strip()
+                    .split("\n")[0]
+                )
             except Exception:
                 try:
                     # Another fallback method
-                    name_element = result.locator("span.entity-result__title-text a").first
+                    name_element = result.locator(
+                        "span.entity-result__title-text a"
+                    ).first
                     name = name_element.inner_text(timeout=1000).strip().split("\n")[0]
                     print("Getting name from first approach failed, second worked")
                 except Exception:
@@ -341,12 +364,12 @@ class LinkedInSearcher:
         url_parts = profile_url.split("/in/")
         if len(url_parts) > 1:
             username = url_parts[1].split("?")[0]
-        
+
         # If we couldn't get a proper name, use the username
         if not name or "Status is" in name or len(name) < 2:
             print("No good Name found, falling back to username from URL")
             name = username
-        
+
         # Try one more approach - look for the name in a different location
         if not name or name == username:
             try:
@@ -355,7 +378,9 @@ class LinkedInSearcher:
                 if img.is_visible(timeout=1000):
                     aria_label = img.get_attribute("alt", timeout=1000).strip()
                     if aria_label and "Status is" not in aria_label:
-                        print(f"Fell back to using aria_label {aria_label} instead of username {username}")
+                        print(
+                            f"Fell back to using aria_label {aria_label} instead of username {username}"
+                        )
                         name = aria_label
             except Exception:
                 pass
@@ -366,7 +391,6 @@ class LinkedInSearcher:
             "profile_url": profile_url,
         }
         return connection
-
 
     def cleanup(self) -> None:
         """Clean up browser resources"""
@@ -402,7 +426,9 @@ if __name__ == "__main__":
         "--debug", action="store_true", help="Enable debug mode screenshots"
     )
     parser.add_argument(
-        "--no-headless", action="store_true", help="Run browser in visible mode (not headless)"
+        "--no-headless",
+        action="store_true",
+        help="Run browser in visible mode (not headless)",
     )
     args = parser.parse_args()
     headless = not args.no_headless
