@@ -74,13 +74,7 @@ document.addEventListener("alpine:init", () => {
     async init() {
       this.loading = true;
       try {
-        const response = await fetch("/api/companies");
-        const data = await response.json();
-        // Make the entire companies array and its contents reactive from the start
-        this.companies = data.map((company) => ({
-          ...company,
-          details: company.details || {},
-        }));
+        await this.refreshAllCompanies();
       } catch (err) {
         console.error("Failed to load companies:", err);
       } finally {
@@ -103,11 +97,14 @@ document.addEventListener("alpine:init", () => {
           this.showError("No recruiter message to reply to");
           return;
         }
-        
+
         this.generatingMessages.add(company.name);
-        const response = await fetch(`/api/${company.name}/reply_message`, {
-          method: "POST",
-        });
+        const response = await fetch(
+          `/api/companies/${company.name}/reply_message`,
+          {
+            method: "POST",
+          }
+        );
 
         if (!response.ok) {
           const error = await response.json();
@@ -157,7 +154,7 @@ document.addEventListener("alpine:init", () => {
       if (this.editingCompany) {
         try {
           const response = await fetch(
-            `/api/${this.editingCompany.name}/reply_message`,
+            `/api/companies/${this.editingCompany.name}/reply_message`,
             {
               method: "PUT",
               headers: {
@@ -175,7 +172,12 @@ document.addEventListener("alpine:init", () => {
           }
 
           const data = await response.json();
+          // Update the local company object
           Object.assign(this.editingCompany, data);
+
+          // Also update the companies array with fresh data
+          await this.fetchAndUpdateCompany(this.editingCompany.name);
+
           this.cancelEdit();
         } catch (err) {
           console.error("Failed to save reply:", err);
@@ -194,15 +196,21 @@ document.addEventListener("alpine:init", () => {
 
       try {
         // First save any edits to the reply
-        if (this.editingCompany && this.editingReply !== company.reply_message) {
+        if (
+          this.editingCompany &&
+          this.editingReply !== company.reply_message
+        ) {
           company.reply_message = this.editingReply;
           await this.saveReply();
         }
 
         // Send the reply and archive
-        const response = await fetch(`/api/${company.name}/send_and_archive`, {
-          method: "POST",
-        });
+        const response = await fetch(
+          `/api/companies/${company.name}/send_and_archive`,
+          {
+            method: "POST",
+          }
+        );
 
         if (!response.ok) {
           const error = await response.json();
@@ -212,14 +220,10 @@ document.addEventListener("alpine:init", () => {
         }
 
         const data = await response.json();
-        
-        // Update the company data
-        const updatedCompany = this.companies.find(c => c.name === company.name);
-        if (updatedCompany) {
-          updatedCompany.sent_at = data.sent_at;
-          updatedCompany.archived = true;
-        }
-        
+
+        // Fetch fresh company data instead of just updating properties
+        await this.fetchAndUpdateCompany(company.name);
+
         this.showSuccess("Reply sent and message archived");
         this.cancelEdit();
       } catch (err) {
@@ -233,9 +237,12 @@ document.addEventListener("alpine:init", () => {
     async research(company) {
       try {
         this.researchingCompanies.add(company.name);
-        const response = await fetch(`/api/${company.name}/research`, {
-          method: "POST",
-        });
+        const response = await fetch(
+          `/api/companies/${company.name}/research`,
+          {
+            method: "POST",
+          }
+        );
 
         if (!response.ok) {
           const error = await response.json();
@@ -327,49 +334,28 @@ document.addEventListener("alpine:init", () => {
             this.emailScanStatus = task.status;
           }
 
-          if (task.status === "completed") {
-            // Fetch fresh company data from the server
-            const companyResponse = await fetch("/api/companies");
-            const companies = await companyResponse.json();
+          if (task.status === "completed" || task.status === "failed") {
+            // For both completion and failure, fetch fresh data
+
+            if (task.status === "failed") {
+              console.log(`Task failed for ${trackingKey}:`, task.error);
+              if (company) {
+                company[errorField] = task.error;
+              } else {
+                this.emailScanError = task.error;
+                this.scanningEmails = false;
+              }
+            }
 
             if (company) {
-              const updatedCompany = companies.find(
-                (c) => c.name === company.name
-              );
-              if (updatedCompany) {
-                console.log(`Updating company with fresh data:`, {
-                  before: company,
-                  after: updatedCompany,
-                });
-                
-                // The research_completed_at is now set on the server via events
-                
-                // Find and replace the company in our array
-                const index = this.companies.findIndex(
-                  (c) => c.name === company.name
-                );
-                if (index !== -1) {
-                  this.companies[index] = updatedCompany;
-                }
-              }
+              // Get fresh data for this company
+              await this.fetchAndUpdateCompany(company.name);
             } else {
               // For email scanning tasks, update entire companies list
-              this.companies = companies.map((company) => ({
-                ...company,
-                details: company.details || {},
-              }));
+              await this.refreshAllCompanies();
               this.scanningEmails = false;
             }
-            trackingSet.delete(trackingKey);
-            break;
-          } else if (task.status === "failed") {
-            console.log(`Task failed for ${trackingKey}:`, task.error);
-            if (company) {
-              company[errorField] = task.error;
-            } else {
-              this.emailScanError = task.error;
-              this.scanningEmails = false;
-            }
+
             trackingSet.delete(trackingKey);
             break;
           }
@@ -395,15 +381,15 @@ document.addEventListener("alpine:init", () => {
         this.emailScanError = null;
         // Get the research checkbox value
         const doResearch = document.getElementById("doResearch").checked;
-        
+
         const response = await fetch("/api/scan_recruiter_emails", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             max_messages: maxMessages,
-            do_research: doResearch 
+            do_research: doResearch,
           }),
         });
 
@@ -527,27 +513,75 @@ document.addEventListener("alpine:init", () => {
 
     formatRecruiterMessageDate(dateString) {
       if (!dateString) return "";
-      
+
       const date = new Date(dateString);
       const now = new Date();
-      
+
       // Calculate days ago
       const diffTime = Math.abs(now - date);
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      
+
       // Format the date as YYYY/MM/DD
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+
       // Format the time as h:mm am/pm
       let hours = date.getHours();
-      const ampm = hours >= 12 ? 'pm' : 'am';
+      const ampm = hours >= 12 ? "pm" : "am";
       hours = hours % 12;
       hours = hours ? hours : 12; // the hour '0' should be '12'
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+
       return `${year}/${month}/${day} ${hours}:${minutes}${ampm} (${diffDays} days ago)`;
+    },
+
+    // New method to fetch and update a single company
+    async fetchAndUpdateCompany(companyName) {
+      try {
+        const response = await fetch(`/api/companies/${companyName}`);
+        if (!response.ok) {
+          console.error(`Failed to fetch company data for ${companyName}`);
+          return;
+        }
+
+        const updatedCompany = await response.json();
+        console.log(`Fetched fresh data for ${companyName}:`, updatedCompany);
+
+        // Find and replace the company in our array
+        const index = this.companies.findIndex((c) => c.name === companyName);
+        if (index !== -1) {
+          // Make sure to preserve details object structure
+          this.companies[index] = {
+            ...updatedCompany,
+            details: updatedCompany.details || {},
+          };
+
+          // If this is also the current editing company, update that reference
+          if (this.editingCompany && this.editingCompany.name === companyName) {
+            Object.assign(this.editingCompany, updatedCompany);
+            this.editingReply = updatedCompany.reply_message;
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching individual company:", err);
+      }
+    },
+
+    // New method to refresh all companies
+    async refreshAllCompanies() {
+      try {
+        const response = await fetch("/api/companies");
+        const data = await response.json();
+        this.companies = data.map((company) => ({
+          ...company,
+          details: company.details || {},
+        }));
+        return data;
+      } catch (err) {
+        console.error("Failed to refresh companies:", err);
+        return [];
+      }
     },
   }));
 });

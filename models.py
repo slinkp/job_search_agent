@@ -37,7 +37,7 @@ class Event(BaseModel):
     id: Optional[int] = None
     company_name: str
     event_type: EventType
-    timestamp: Optional[datetime.datetime] = None
+    timestamp: datetime.datetime
     details: Optional[str] = None
 
     @model_validator(mode="before")
@@ -744,6 +744,8 @@ class CompanyRepository:
             cursor = conn.execute(query, params)
             events = []
             for row in cursor.fetchall():
+                if row is None:
+                    continue
                 id, company_name, event_type_str, timestamp, details = row
                 events.append(
                     Event(

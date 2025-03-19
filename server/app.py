@@ -1,8 +1,7 @@
 import json
 import logging
 import os
-import random
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import colorama
 from colorama import Fore, Style
@@ -67,33 +66,66 @@ def setup_colored_logging():
 logger = logging.getLogger(__name__)
 
 
+@view_config(route_name="company", renderer="json", request_method="GET")
+def get_company(request) -> dict:
+    company_name = request.matchdict["company_name"]
+    repo = models.company_repository()
+    company = repo.get(company_name)
+
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found"}
+
+    company_dict = get_company_dict_with_status(company, repo)
+    return company_dict
+
+
+def get_company_dict_with_status(
+    company: models.Company, repo: models.CompanyRepository
+) -> dict:
+    company_dict = models.serialize_company(company)
+
+    # Get the latest reply_sent event for this company
+    reply_events = repo.get_events(
+        company_name=company.name, event_type=models.EventType.REPLY_SENT
+    )
+    if reply_events:
+        company_dict["sent_at"] = reply_events[0].timestamp
+
+    # Get the latest research_completed event for this company
+    research_events = repo.get_events(
+        company_name=company.name, event_type=models.EventType.RESEARCH_COMPLETED
+    )
+    if research_events:
+        company_dict["research_completed_at"] = research_events[0].timestamp
+        company_dict["research_status"] = "completed"
+
+    research_errors = repo.get_events(
+        company_name=company.name, event_type=models.EventType.RESEARCH_ERROR
+    )
+    if research_errors:
+        company_dict["research_error_at"] = research_errors[0].timestamp
+        if (
+            research_events
+            and research_events[0].timestamp > research_errors[0].timestamp
+        ):
+            company_dict["research_status"] = "completed"
+        else:
+            company_dict["research_status"] = "error"
+
+    return company_dict
+
+
 @view_config(route_name="companies", renderer="json", request_method="GET")
-def get_companies(request):
+def get_companies(request) -> list[dict]:
     repo = models.company_repository()
     companies = repo.get_all(include_messages=True)
-    
+
     company_data = []
     for company in companies:
-        company_dict = models.serialize_company(company)
-
-        # Get the latest reply_sent event for this company
-        reply_events = repo.get_events(
-            company_name=company.name, 
-            event_type=models.EventType.REPLY_SENT
-        )
-        if reply_events:
-            company_dict['sent_at'] = reply_events[0].timestamp
-        
-        # Get the latest research_completed event for this company
-        research_events = repo.get_events(
-            company_name=company.name, 
-            event_type=models.EventType.RESEARCH_COMPLETED
-        )
-        if research_events:
-            company_dict['research_completed_at'] = research_events[0].timestamp
-        
+        company_dict = get_company_dict_with_status(company, repo)
         company_data.append(company_dict)
-    
+
     return company_data
 
 
@@ -249,10 +281,15 @@ def main(global_config, **settings):
         # Routes
         config.add_route('home', '/')
         config.add_route('companies', '/api/companies')
-        config.add_route("generate_message", "/api/{company_name}/reply_message")
-        config.add_route("research", "/api/{company_name}/research")
+        config.add_route("company", "/api/companies/{company_name}")
+        config.add_route(
+            "generate_message", "/api/companies/{company_name}/reply_message"
+        )
+        config.add_route("research", "/api/companies/{company_name}/research")
         config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
-        config.add_route("send_and_archive", "/api/{company_name}/send_and_archive")
+        config.add_route(
+            "send_and_archive", "/api/companies/{company_name}/send_and_archive"
+        )
         config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_static_view(name='static', path='static')
         config.scan()
