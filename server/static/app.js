@@ -664,9 +664,28 @@ document.addEventListener("alpine:init", () => {
 
       company.promising = value;
 
-      // In a real implementation, you would save this to the backend
-      // For now we'll just update the local state
-      console.log(`Set ${company.name} promising status to:`, value);
+      // Save to backend
+      fetch(`/api/companies/${company.name}/details`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ promising: value }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Failed to update company promising status");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log(`Set ${company.name} promising status to:`, value);
+        })
+        .catch((error) => {
+          console.error("Error updating company status:", error);
+          // Revert the local change if the server update failed
+          company.promising = null;
+        });
     },
   }));
 });

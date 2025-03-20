@@ -275,9 +275,6 @@ class CompaniesSheetRow(BaseSheetRow):
 
     promising: Optional[bool] = Field(default=None)
 
-    # Track research errors
-    research_errors: List[ResearchStepError] = Field(default_factory=list)
-
     @model_validator(mode="before")
     @classmethod
     def normalize_fields(cls, data: Any) -> dict:

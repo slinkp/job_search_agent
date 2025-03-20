@@ -1,7 +1,7 @@
+import datetime
 import json
 import logging
 import os
-from datetime import datetime
 
 import colorama
 from colorama import Fore, Style
@@ -101,13 +101,9 @@ def get_company_dict_with_status(
         company_dict["research_status"] = "completed"
 
     # Format research errors as a readable string to avoid [object Object] display
-    if (
-        company.details
-        and hasattr(company.details, "research_errors")
-        and company.details.research_errors
-    ):
+    if company.status.research_errors:
         formatted_errors = []
-        for err in company.details.research_errors:
+        for err in company.status.research_errors:
             formatted_errors.append(f"{err.step}: {err.error}")
         company_dict["research_errors"] = "; ".join(formatted_errors)
 
@@ -123,6 +119,10 @@ def get_company_dict_with_status(
             company_dict["research_status"] = "completed"
         else:
             company_dict["research_status"] = "error"
+
+    # Include status fields directly in the response
+    company_dict["archived_at"] = company.status.archived_at
+    company_dict["promising"] = company.details.promising
 
     return company_dict
 
@@ -149,7 +149,7 @@ def home(request):
 
 
 def create_stub_message(company_name: str) -> str:
-    return f"generated reply {company_name} {datetime.now().isoformat()}"
+    return f"generated reply {company_name} {datetime.datetime.now().isoformat()}"
 
 
 @view_config(route_name="generate_message", renderer="json", request_method="POST")
@@ -264,15 +264,20 @@ def send_and_archive(request):
         tasks.TaskType.SEND_AND_ARCHIVE,
         {"company_name": company_name},
     )
+
+    # Set archived_at and reply_sent_at status fields
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    company.status.archived_at = current_time
+    company.status.reply_sent_at = current_time
+    models.company_repository().update(company)
+
     logger.info(f"Send and archive requested for {company_name}, task_id: {task_id}")
 
-    # Add the current time as sent_at
-    sent_at = datetime.now().isoformat()
-
     return {
-        "task_id": task_id, 
+        "task_id": task_id,
         "status": tasks.TaskStatus.PENDING.value,
-        "sent_at": sent_at
+        "sent_at": current_time.isoformat(),
+        "archived_at": current_time.isoformat(),
     }
 
 
@@ -290,12 +295,42 @@ def ignore_and_archive(request):
         tasks.TaskType.IGNORE_AND_ARCHIVE,
         {"company_name": company_name},
     )
+
+    # Set archived_at status field
+    company.status.archived_at = datetime.datetime.now(datetime.timezone.utc)
+    models.company_repository().update(company)
+
     logger.info(f"Ignore and archive requested for {company_name}, task_id: {task_id}")
 
     return {
         "task_id": task_id,
         "status": tasks.TaskStatus.PENDING.value,
+        "archived_at": company.status.archived_at.isoformat(),
     }
+
+
+@view_config(route_name="company_details", renderer="json", request_method="PATCH")
+def patch_company_details(request):
+    company_name = request.matchdict["company_name"]
+    company = models.company_repository().get(company_name)
+
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found"}
+
+    try:
+        body = request.json_body
+    except json.JSONDecodeError:
+        request.response.status = 400
+        return {"error": "Invalid JSON"}
+
+    for key, value in body.items():
+        setattr(company.details, key, value)
+
+    models.company_repository().update(company)
+
+    logger.info(f"Updated fields for {company_name}: {body}")
+    return company.details
 
 
 def main(global_config, **settings):
@@ -327,6 +362,7 @@ def main(global_config, **settings):
             "ignore_and_archive", "/api/companies/{company_name}/ignore_and_archive"
         )
         config.add_route("task_status", "/api/tasks/{task_id}")
+        config.add_route("company_details", "/api/companies/{company_name}/details")
         config.add_static_view(name='static', path='static')
         config.scan()
 
