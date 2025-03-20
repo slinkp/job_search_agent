@@ -76,7 +76,13 @@
           <header>
             <div class="company-status-icons">
               <span class="status-icon research-done-icon" x-show="company.research_completed_at" title="Research completed">R</span>
-              <span class="status-icon reply-sent-icon" x-show="company.sent_at" title="Reply sent">S</span>
+              <span class="status-icon research-failed-icon" 
+                    x-show="company.research_error || company.research_status === 'failed' || company.research_errors" 
+                    title="Research failed">❌</span>
+              <span class="status-icon reply-sent-icon" x-show="company.sent_at" title="Reply sent">📧</span>
+              <span class="status-icon archived-icon" x-show="company.sent_at || company.archived_at" title="Archived">A</span>
+              <span class="status-icon promising-positive" x-show="company.promising === true" title="Promising">👍</span>
+              <span class="status-icon promising-negative" x-show="company.promising === false" title="Not promising">👎</span>
             </div>
             <a href="#" @click.prevent="document.getElementById(company.name).scrollIntoView({behavior: 'smooth'})" x-text="company.name" :id="company.name"></a>
             updated <span x-text="company.updated_at"></span>
@@ -139,6 +145,27 @@
               </button>
             </div>
           </template>
+          <div class="promising-controls" x-show="company.research_completed_at">
+            <span>Promising?</span>
+            <button 
+              @click="togglePromising(company, true)" 
+              :class="{ 'active': company.promising === true }" 
+              class="btn-small"
+              title="Mark as promising"
+            >👍</button>
+            <button 
+              @click="togglePromising(company, false)" 
+              :class="{ 'active': company.promising === false }" 
+              class="btn-small"
+              title="Mark as not promising"
+            >👎</button>
+            <button 
+              @click="togglePromising(company, null)" 
+              :class="{ 'active': company.promising === null || company.promising === undefined }" 
+              class="btn-small"
+              title="Clear promising status"
+            >❓</button>
+          </div>
           <details>
             <summary>
               Details...
@@ -152,12 +179,20 @@
                 <span x-text="company.sent_at ? 'Replied on ' + new Date(company.sent_at).toLocaleString() : 'Not replied'"></span>
               </div>
               <div class="status-item">
+                <strong>Archive Status:</strong>
+                <span x-text="company.sent_at || company.archived_at ? 'Archived on ' + new Date(company.archived_at || company.sent_at).toLocaleString() : 'Not archived'"></span>
+              </div>
+              <div class="status-item">
                 <strong>Research Status:</strong>
                 <span x-text="company.research_completed_at ? 'Completed on ' + new Date(company.research_completed_at).toLocaleString() : 'Not fully researched'"></span>
               </div>
+              <div class="status-item">
+                <strong>Promising:</strong>
+                <span x-text="company.promising === true ? 'Yes' : (company.promising === false ? 'No' : 'Not evaluated')"></span>
+              </div>
               <div class="status-item" x-show="company.research_errors">
                 <strong>Research Errors:</strong>
-                <span x-text="formatResearchErrors(company)"></span>
+                <span x-text="formatResearchErrors(company)" class="research-error-text"></span>
               </div>
             </div>
             <p>
@@ -187,9 +222,45 @@
       <dialog id="editModal" x-show="editingCompany" x-cloak>
         <article>
           <header>
-            <h3>Edit Reply</h3>
+            <div class="modal-header-content">
+              <h3>Edit Reply</h3>
+              <div class="company-status-icons modal-status-icons" x-show="editingCompany">
+                <span class="status-icon research-done-icon" x-show="editingCompany?.research_completed_at" title="Research completed">R</span>
+                <span class="status-icon research-failed-icon" 
+                      x-show="editingCompany?.research_error || editingCompany?.research_status === 'failed' || editingCompany?.research_errors" 
+                      title="Research failed">❌</span>
+                <span class="status-icon reply-sent-icon" x-show="editingCompany?.sent_at" title="Reply sent">📧</span>
+                <span class="status-icon archived-icon" x-show="editingCompany?.sent_at || editingCompany?.archived_at" title="Archived">A</span>
+                <span class="status-icon promising-positive" x-show="editingCompany?.promising === true" title="Promising">👍</span>
+                <span class="status-icon promising-negative" x-show="editingCompany?.promising === false" title="Not promising">👎</span>
+              </div>
+            </div>
           </header>
           <form @submit.prevent="saveReply">
+            <div class="modal-promising-controls" x-show="editingCompany?.research_completed_at">
+              <span>Promising?</span>
+              <button 
+                type="button"
+                @click="togglePromising(editingCompany, true)" 
+                :class="{ 'active': editingCompany?.promising === true }" 
+                class="btn-small"
+                title="Mark as promising"
+              >👍</button>
+              <button 
+                type="button"
+                @click="togglePromising(editingCompany, false)" 
+                :class="{ 'active': editingCompany?.promising === false }" 
+                class="btn-small"
+                title="Mark as not promising"
+              >👎</button>
+              <button 
+                type="button"
+                @click="togglePromising(editingCompany, null)" 
+                :class="{ 'active': editingCompany?.promising === null || editingCompany?.promising === undefined }" 
+                class="btn-small"
+                title="Clear promising status"
+              >❓</button>
+            </div>
             <textarea x-model="editingReply" rows="5"></textarea>
             <footer>
               <button type="button" @click="cancelEdit" :disabled="isGeneratingMessage(editingCompany)">Cancel</button>
@@ -234,6 +305,10 @@
               </p>
             </div>
             <pre x-text="editingCompany?.recruiter_message?.message"></pre>
+          </div>
+          <div class="status-item" x-show="editingCompany?.research_errors">
+            <strong>Research Errors:</strong>
+            <span x-text="formatResearchErrors(editingCompany)" class="research-error-text"></span>
           </div>
         </article>
       </dialog>

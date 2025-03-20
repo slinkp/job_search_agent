@@ -250,4 +250,115 @@ button.secondary:hover {
 
 button.secondary:focus {
   box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.5);
+}
+
+/* Status icons styling */
+.status-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-right: 4px;
+  position: relative;
+  top: 2px;
+  text-align: center;
+  line-height: 16px;
+  font-size: 10px;
+  color: white;
+}
+
+.research-done-icon {
+  background-color: #4CAF50; /* Green */
+}
+
+.reply-sent-icon {
+  background-color: #2196F3; /* Blue */
+  font-size: 12px; /* Slightly larger for emoji */
+  line-height: 14px;
+}
+
+.archived-icon {
+  background-color: #9C27B0; /* Purple */
+}
+
+.promising-positive {
+  background-color: #4CAF50; /* Green */
+  font-size: 12px; /* Slightly larger for emoji */
+  line-height: 14px;
+}
+
+.promising-negative {
+  background-color: #F44336; /* Red */
+  font-size: 12px; /* Slightly larger for emoji */
+  line-height: 14px;
+}
+
+.promising-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+  font-size: 0.8em;
+}
+
+.promising-controls .btn-small {
+  padding: 0.1rem 0.3rem;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  background: none;
+  border: 1px solid var(--muted-border-color);
+  cursor: pointer;
+}
+
+.promising-controls .btn-small.active {
+  background-color: var(--primary);
+  color: var(--primary-inverse);
+  border-color: var(--primary);
+}
+
+.research-failed-icon {
+  background-color: #F44336; /* Red */
+  font-size: 12px; /* Slightly larger for emoji */
+  line-height: 14px;
+}
+
+.modal-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-status-icons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.modal-status-icons .status-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.modal-promising-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background-color: var(--card-background-color);
+  border-radius: var(--border-radius);
+}
+
+.modal-promising-controls .btn-small {
+  padding: 0.2rem 0.4rem;
+  min-width: 2rem;
+  height: 2rem;
+  font-size: 1rem;
+}
+
+/* Red text for research errors */
+.research-error-text {
+  color: #F44336; /* Red */
+  font-weight: 500;
 } 

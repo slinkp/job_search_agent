@@ -653,5 +653,20 @@ document.addEventListener("alpine:init", () => {
         );
       }
     },
+
+    togglePromising(company, value) {
+      if (!company) return;
+
+      // If clicking the same value that's already set, clear it
+      if (company.promising === value) {
+        value = null;
+      }
+
+      company.promising = value;
+
+      // In a real implementation, you would save this to the backend
+      // For now we'll just update the local state
+      console.log(`Set ${company.name} promising status to:`, value);
+    },
   }));
 });
