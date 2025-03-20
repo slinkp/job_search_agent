@@ -34,7 +34,6 @@ class ResearchStepError(BaseModel):
 
 
 class Event(BaseModel):
-    """Event model for tracking company-related events"""
 
     id: Optional[int] = None
     company_name: str

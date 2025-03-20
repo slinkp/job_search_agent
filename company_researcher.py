@@ -32,6 +32,7 @@ GET_SEARCH_CONTEXT_INPUT_LIMIT = 400
 # PROMPT_LIMIT
 BASIC_COMPANY_PROMPT = """
 For the company {company_info.company_identifier}, find:
+ - The correct company name, which may be different than the name we were provided via email, if any.
  - City and country of the company's headquarters.
  - Address of the company's NYC office, if there is one.
  - Total number of employees worldwide. 
@@ -40,6 +41,7 @@ For the company {company_info.company_identifier}, find:
 
 BASIC_COMPANY_FORMAT_PROMPT = """
 Return these results as a valid JSON object, with the following keys and data types:
+ - company_name: string or null
  - headquarters_city: string or null
  - nyc_office_address: string or null
  - total_employees: integer or null
@@ -208,7 +210,6 @@ class TavilyRAGResearchAgent:
                 extra_context="",  # No need for search context when parsing message directly
             )
             result = self.llm.invoke(full_prompt)
-            # TODO: also use the recruiter's email, if there is one, not just name.
             if not isinstance(result.content, str):
                 raise ValueError(f"Expected string content, got {type(result.content)}")
             return json.loads(result.content)
@@ -325,10 +326,21 @@ class TavilyRAGResearchAgent:
             ):
                 return
             if fieldname in company_info.model_fields:
-                setattr(company_info, fieldname, content[key])
+                setattr(company_info, fieldname, val)
             else:
                 logger.warning(f"Skipping unknown field: {fieldname}")
 
+        # Company name is a special case, because it's the primary key for Company objects
+        if (
+            company_info.name is not None
+            and content.get("company_name") is not None
+            and content["company_name"].strip().lower()
+            != company_info.name.strip().lower()
+        ):
+            logger.warning(
+                f"Company name mismatch!!!: Will update {company_info.name} with {content.get('company_name')}"
+            )
+        update_field_from_key_if_present("name", "company_name")
         update_field_from_key_if_present("ny_address", "nyc_office_address")
         update_field_from_key_if_present("headquarters", "headquarters_city")
         update_field_from_key_if_present("eng_size", "total_engineers")
@@ -346,7 +358,6 @@ class TavilyRAGResearchAgent:
         update_field_from_key_if_present("url", "jobs_homepage_url")
         update_field_from_key_if_present("remote_policy", "remote_work_policy")
         # TODO: hiring_status, hiring_status_ai
-        # TODO: uses_ai
 
         update_field_from_key_if_present("ai_notes", "ai_notes")
 
