@@ -116,15 +116,6 @@ class ResearchDaemon:
                 for err in company_row.research_errors:
                     logger.warning(f"  - {err.step}: {err.error}")
 
-                # Add error notes to the company's AI notes
-                error_notes = "\n\nResearch Errors:\n" + "\n".join(
-                    [f"- {err.step}: {err.error}" for err in company_row.research_errors]
-                )
-                if company_row.ai_notes:
-                    company_row.ai_notes += error_notes
-                else:
-                    company_row.ai_notes = error_notes
-
             if existing:
                 logger.info(f"Updating company {company_name}")
                 existing.details = company_row
