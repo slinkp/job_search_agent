@@ -89,6 +89,8 @@ class ResearchDaemon:
                     self.do_find_companies_in_recruiter_messages(task_args)
                 elif task_type == TaskType.SEND_AND_ARCHIVE:
                     self.do_send_and_archive(task_args)
+                elif task_type == TaskType.IGNORE_AND_ARCHIVE:
+                    self.do_ignore_and_archive(task_args)
                 else:
                     logger.error(f"Ignoring unsupported task type: {task_type}")
                 logger.info(f"Task {task_id} completed")
@@ -150,16 +152,6 @@ class ResearchDaemon:
                     details=minimal_row,
                 )
                 self.company_repo.create(company)
-
-                # Create an event for the research error
-                event = models.Event(
-                    company_name=company_name,
-                    event_type=models.EventType.RESEARCH_ERROR,
-                    timestamp=datetime.datetime.now(datetime.timezone.utc),
-                    details=f"Complete research failure: {str(e)}",
-                )
-                self.company_repo.create_event(event)
-
                 # Try to update the spreadsheet with minimal info
                 try:
                     libjobsearch.upsert_company_in_spreadsheet(minimal_row, self.args)
@@ -270,7 +262,40 @@ class ResearchDaemon:
         # Mark the company as sent/archived in the spreadsheet data
         company.details.current_state = "30. replied to recruiter"
         company.details.updated = datetime.date.today()
+        # TODO actually update the spreadsheet
         self.company_repo.update(company)
+
+    def do_ignore_and_archive(self, args: dict):
+        """
+        Archives a company's message without sending a reply.
+        """
+        company_name = args["company_name"]
+        logger.info(f"Ignoring and archiving message for {company_name}")
+
+        # Get the company
+        company = models.company_repository().get(company_name)
+        if not company:
+            logger.error(f"Company {company_name} not found")
+            return {"error": "Company not found"}
+
+        # Archive the message in Gmail
+        # TODO: Implement the archiving logic here
+
+        # Record the event
+        event = models.Event(
+            company_name=company_name,
+            event_type=models.EventType.ARCHIVED,
+        )
+        models.company_repository().create_event(event)
+
+        logger.info(f"Successfully archived message for {company_name}")
+        # Mark the company as sent/archived in the spreadsheet data
+        company.details.current_state = "70. ruled out, without reply"
+        company.details.updated = datetime.date.today()
+        # TODO actually update the spreadsheet
+        self.company_repo.update(company)
+
+        return {"status": "success"}
 
 
 if __name__ == "__main__":

@@ -214,6 +214,10 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [ ] Also support cleaning up / discarding old ones
       - [ ] Maybe all this should be shown in the UX.
             Think of it kind of like the print job queue on eg MacOS.
+  - [ ] "Ignore and archive" feature
+     - [ ] sends no message; archives the recruiter message
+     - [ ] updates status in spreadsheet to "70. ruled out - didn't reply"
+     - [ ] new "archived" icon & filter for this in web app
 - [ ] Work through the existing backlog with this tool
 - [ ] Keep it at inbox zero until I get a job
 - [ ] Profit
