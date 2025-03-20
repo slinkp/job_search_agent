@@ -1,18 +1,18 @@
 import datetime
+import json
 import os
+
 import pytest
-import shutil
-from typing import Optional
 
 from models import (
-    CompanyRepository,
-    Company,
     CompaniesSheetRow,
-    RecruiterMessage,
-    company_repository,
+    Company,
+    CompanyRepository,
+    CustomJSONEncoder,
     Event,
     EventType,
-    CustomJSONEncoder,
+    RecruiterMessage,
+    company_repository,
 )
 
 TEST_DB_PATH = "data/_test_companies.db"
@@ -301,19 +301,19 @@ class TestCompaniesSheetRow:
 
 
 class TestEvents:
-    
+
     @pytest.fixture
     def event_repo(self, tmp_path):
         """Create a test repository with a temporary database."""
         # Use a temporary file for the database
         db_path = tmp_path / "test_events.db"
-        
+
         # Create a repository with a clean database
         repo = CompanyRepository(
             db_path=str(db_path), 
             clear_data=True
         )
-        
+
         # Create a test company
         company = Company(
             name="Test Company",
@@ -321,9 +321,9 @@ class TestEvents:
             reply_message="Test reply"
         )
         repo.create(company)
-        
+
         return repo
-    
+
     def test_create_event(self, event_repo):
         """Test creating an event."""
         # Create an event
@@ -332,13 +332,13 @@ class TestEvents:
             event_type=EventType.REPLY_SENT
         )
         created_event = event_repo.create_event(event)
-        
+
         # Verify the event was created with an ID and timestamp
         assert created_event.id is not None
         assert created_event.timestamp is not None
         assert created_event.company_name == "Test Company"
         assert created_event.event_type == EventType.REPLY_SENT
-    
+
     def test_get_events_by_company(self, event_repo):
         """Test retrieving events filtered by company."""
         # Create multiple events for the same company
@@ -347,21 +347,21 @@ class TestEvents:
             event_type=EventType.COMPANY_CREATED,
             timestamp=datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
         ))
-        
+
         event2 = event_repo.create_event(Event(
             company_name="Test Company",
             event_type=EventType.RESEARCH_COMPLETED,
             timestamp=datetime.datetime(2023, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc)
         ))
-        
+
         # Get events for the company
         events = event_repo.get_events(company_name="Test Company")
-        
+
         # Verify we got both events, sorted by timestamp (newest first)
         assert len(events) == 2
         assert events[0].id == event2.id  # Newest first
         assert events[1].id == event1.id
-    
+
     def test_get_events_by_type(self, event_repo):
         """Test retrieving events filtered by type."""
         # Create events of different types
@@ -369,19 +369,19 @@ class TestEvents:
             company_name="Test Company",
             event_type=EventType.COMPANY_CREATED
         ))
-        
+
         event_repo.create_event(Event(
             company_name="Test Company",
             event_type=EventType.RESEARCH_COMPLETED
         ))
-        
+
         # Get only research completed events
         events = event_repo.get_events(event_type=EventType.RESEARCH_COMPLETED)
-        
+
         # Verify we got only the research event
         assert len(events) == 1
         assert events[0].event_type == EventType.RESEARCH_COMPLETED
-    
+
     def test_get_events_by_company_and_type(self, event_repo):
         """Test retrieving events filtered by both company and type."""
         # Create events for different companies
@@ -389,33 +389,33 @@ class TestEvents:
             name="Another Company",
             details=CompaniesSheetRow(name="Another Company")
         ))
-        
+
         event_repo.create_event(Event(
             company_name="Test Company",
             event_type=EventType.REPLY_SENT
         ))
-        
+
         event_repo.create_event(Event(
             company_name="Another Company",
             event_type=EventType.REPLY_SENT
         ))
-        
+
         event_repo.create_event(Event(
             company_name="Test Company",
             event_type=EventType.RESEARCH_COMPLETED
         ))
-        
+
         # Get only reply events for Test Company
         events = event_repo.get_events(
             company_name="Test Company",
             event_type=EventType.REPLY_SENT
         )
-        
+
         # Verify we got only the matching event
         assert len(events) == 1
         assert events[0].company_name == "Test Company"
         assert events[0].event_type == EventType.REPLY_SENT
-    
+
     def test_event_serialization(self):
         """Test serialization of Event objects."""
         # Create an event with a specific timestamp
@@ -426,29 +426,30 @@ class TestEvents:
             event_type=EventType.REPLY_SENT,
             timestamp=timestamp
         )
-        
+
         # Use the CustomJSONEncoder to serialize the event
         encoder = CustomJSONEncoder()
-        serialized = encoder.default(event)
-        
+        serialized_str = encoder.encode(event)
+        serialized = json.loads(serialized_str)
+
         # Verify the serialized format
         assert serialized["id"] == 1
         assert serialized["company_name"] == "Test Company"
         assert serialized["event_type"] == "reply_sent"
         assert serialized["timestamp"] == "2023-01-01T12:00:00+00:00"
-    
+
     def test_from_list(self):
         """Test creating a CompaniesSheetRow from a list of strings."""
         # Create a list with values for the first few fields
         row_data = ["TestCompany", "Private", "100M", "Series B", "yes", "https://example.com"]
-        
+
         # Pad with empty strings for the remaining fields
         field_count = len(CompaniesSheetRow.model_fields)
         row_data.extend([""] * (field_count - len(row_data)))
-        
+
         # Create a CompaniesSheetRow from the list
-        row = CompaniesSheetRow.from_list(row_data)
-        
+        row: CompaniesSheetRow = CompaniesSheetRow.from_list(row_data)
+
         # Verify the values were set correctly
         assert row.name == "TestCompany"
         assert row.type == "Private"
@@ -485,6 +486,7 @@ class TestCompany:
         
         # Test setting the initial_message
         company.initial_message = "Updated message"
+        assert company.recruiter_message is not None
         assert company.recruiter_message.message == "Updated message"
         
         # Test with no recruiter message

@@ -20,6 +20,7 @@ class EventType(enum.Enum):
     COMPANY_UPDATED = "company_updated"
     RESEARCH_ERROR = "research_error"
     ARCHIVED = "archived"
+    STATUS_CHANGED = "status_changed"
 
 
 class ResearchStepError(BaseModel):
@@ -194,7 +195,7 @@ class BaseSheetRow(BaseModel):
             # Use default values for fields that expect lists or other complex types
             if "List" in str(field.annotation) or "list" in str(field.annotation):
                 data[name] = (
-                    field.default_factory() if hasattr(field, "default_factory") else []
+                    field.default_factory() if field.default_factory is not None else []  # type: ignore
                 )
             else:
                 # Handle None default values
@@ -272,6 +273,8 @@ class CompaniesSheetRow(BaseSheetRow):
     email_thread_link: Optional[str] = Field(default="")
     message_id: Optional[str] = Field(default="")
 
+    promising: Optional[bool] = Field(default=None)
+
     # Track research errors
     research_errors: List[ResearchStepError] = Field(default_factory=list)
 
@@ -326,10 +329,24 @@ class RecruiterMessage(BaseModel):
     date: Optional[datetime.datetime] = None
 
 
+class CompanyStatus(BaseModel):
+    """Status and metadata about our interaction with a company."""
+
+    research_errors: List[ResearchStepError] = Field(default_factory=list)
+    archived_at: Optional[datetime.datetime] = None
+    reply_sent_at: Optional[datetime.datetime] = None  # When we sent a reply
+    updated_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
+
+
 class Company(BaseModel):
     name: str
-    updated_at: Optional[datetime.datetime] = None
+    updated_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
     details: CompaniesSheetRow
+    status: CompanyStatus = Field(default_factory=CompanyStatus)
     reply_message: str = ""
     message_id: Optional[str] = None
     recruiter_message: Optional[RecruiterMessage] = None
@@ -369,14 +386,10 @@ class CustomJSONEncoder(json.JSONEncoder):
             return str(obj)
         if isinstance(obj, enum.Enum):
             return obj.value
-        if isinstance(obj, Event):
-            return {
-                "id": obj.id,
-                "company_name": obj.company_name,
-                "event_type": obj.event_type.value,
-                "timestamp": obj.timestamp.isoformat() if obj.timestamp else None,
-                "details": obj.details,
-            }
+        if isinstance(obj, EventType):
+            return obj.value
+        if isinstance(obj, (Event, CompanyStatus)):
+            return obj.model_dump()
         if isinstance(obj, ResearchStepError):
             return {
                 "step": obj.step,
@@ -415,7 +428,8 @@ class CompanyRepository:
                     CREATE TABLE IF NOT EXISTS companies (
                         name TEXT PRIMARY KEY,
                         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-                        details TEXT NOT NULL,
+                        details TEXT NOT NULL DEFAULT '{}',
+                        status TEXT NOT NULL DEFAULT '{}',  -- New status column with default empty JSON
                         reply_message TEXT,
                         message_id TEXT
                     )
@@ -463,7 +477,7 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT name, updated_at, details, reply_message, message_id FROM companies WHERE name = ?",
+                "SELECT name, updated_at, details, status, reply_message, message_id FROM companies WHERE name = ?",
                 (name,),
             )
             row = cursor.fetchone()
@@ -569,7 +583,7 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT name, updated_at, details, reply_message, message_id FROM companies"
+                "SELECT name, updated_at, details, status, reply_message, message_id FROM companies"
             )
             companies = [self._deserialize_company(row) for row in cursor.fetchall()]
             if include_messages:
@@ -594,13 +608,17 @@ class CompanyRepository:
                     conn.execute(
                         """
                         INSERT INTO companies (
-                            name, details, reply_message, message_id
-                        ) VALUES (?, ?, ?, ?)
+                            name, updated_at, details, status, reply_message, message_id
+                        ) VALUES (?, ?, ?, ?, ?, ?)
                         """,
                         (
                             company.name,
+                            company.updated_at.isoformat(),
                             json.dumps(
                                 company.details.model_dump(), cls=CustomJSONEncoder
+                            ),
+                            json.dumps(
+                                company.status.model_dump(), cls=CustomJSONEncoder
                             ),
                             company.reply_message,
                             message_id,
@@ -634,6 +652,7 @@ class CompanyRepository:
                     """
                     UPDATE companies 
                     SET details = ?, 
+                        status = ?,
                         reply_message = ?,
                         message_id = ?,
                         updated_at = datetime('now')
@@ -641,6 +660,7 @@ class CompanyRepository:
                     """,
                     (
                         json.dumps(company.details.model_dump(), cls=CustomJSONEncoder),
+                        json.dumps(company.status.model_dump(), cls=CustomJSONEncoder),
                         company.reply_message,
                         message_id,
                         company.name,
@@ -673,8 +693,11 @@ class CompanyRepository:
     def _deserialize_company(self, row: tuple) -> Company:
         """Convert a database row into a Company object."""
         assert row is not None
-        name, updated_at, details_json, reply_message, message_id = row
+        name, updated_at, details_json, status_json, reply_message, message_id = row
         details_dict = json.loads(details_json)
+
+        # Parse the status JSON or use empty dict if NULL
+        status_dict = json.loads(status_json) if status_json else {}
 
         # Parse updated_at as UTC timezone-aware datetime
         updated_at_dt = dateutil.parser.parse(updated_at).replace(
@@ -689,10 +712,26 @@ class CompanyRepository:
                 except (ValueError, TypeError):
                     details_dict[key] = None
 
+        # Parse timestamps in status if they exist
+        if "archived_at" in status_dict and status_dict["archived_at"]:
+            try:
+                status_dict["archived_at"] = dateutil.parser.parse(
+                    status_dict["archived_at"]
+                )
+            except (ValueError, TypeError):
+                status_dict["archived_at"] = None
+
+        # Handle research errors
+        if "research_errors" in details_dict:
+            # Move research_errors from details to status for backward compatibility
+            if "research_errors" not in status_dict:
+                status_dict["research_errors"] = details_dict.pop("research_errors")
+
         return Company(
             name=name,
             updated_at=updated_at_dt,
             details=CompaniesSheetRow(**details_dict),
+            status=CompanyStatus(**status_dict),
             reply_message=reply_message,
             message_id=message_id,
         )
@@ -835,15 +874,34 @@ def company_repository(
 
 def serialize_company(company: Company):
     data = company.model_dump()
+
+    # Convert details to a simpler dict
     data["details"] = {
         k: (v.isoformat() if isinstance(v, datetime.date) else v)
         for k, v in company.details.model_dump().items()
         if v is not None
     }
+
+    # Add promising directly at the top level for easier access from frontend
+    data["promising"] = company.details.promising
+
+    # Convert status to a simpler dict and include at top level for backward compatibility
+    status_dict = company.status.model_dump()
+    for key, value in status_dict.items():
+        if isinstance(value, datetime.datetime):
+            data[key] = value.isoformat()
+        else:
+            data[key] = value
+
+    # Set sent_at based on reply_sent_at for backward compatibility
+    if company.status.reply_sent_at:
+        data["sent_at"] = company.status.reply_sent_at.isoformat()
+
     if company.recruiter_message:
         data["recruiter_message"] = company.recruiter_message.model_dump()
     else:
         data["recruiter_message"] = None
+
     return data
 
 
@@ -891,4 +949,9 @@ if __name__ == "__main__":
                 print(f"Company: {event.company_name}")
                 print(f"Type: {event.event_type.value}")
                 print(f"Timestamp: {event.timestamp}")
+                print("-" * 40)
+
+                print(f"Timestamp: {event.timestamp}")
+                print("-" * 40)
+
                 print("-" * 40)
