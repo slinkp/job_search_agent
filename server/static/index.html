@@ -155,6 +155,10 @@
                 <strong>Research Status:</strong>
                 <span x-text="company.research_completed_at ? 'Completed on ' + new Date(company.research_completed_at).toLocaleString() : 'Not fully researched'"></span>
               </div>
+              <div class="status-item" x-show="company.research_errors">
+                <strong>Research Errors:</strong>
+                <span x-text="formatResearchErrors(company)"></span>
+              </div>
             </div>
             <p>
               <template

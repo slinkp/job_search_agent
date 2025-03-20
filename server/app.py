@@ -100,6 +100,17 @@ def get_company_dict_with_status(
         company_dict["research_completed_at"] = research_events[0].timestamp
         company_dict["research_status"] = "completed"
 
+    # Format research errors as a readable string to avoid [object Object] display
+    if (
+        company.details
+        and hasattr(company.details, "research_errors")
+        and company.details.research_errors
+    ):
+        formatted_errors = []
+        for err in company.details.research_errors:
+            formatted_errors.append(f"{err.step}: {err.error}")
+        company_dict["research_errors"] = "; ".join(formatted_errors)
+
     research_errors = repo.get_events(
         company_name=company.name, event_type=models.EventType.RESEARCH_ERROR
     )

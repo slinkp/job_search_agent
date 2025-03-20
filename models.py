@@ -37,7 +37,9 @@ class Event(BaseModel):
     id: Optional[int] = None
     company_name: str
     event_type: EventType
-    timestamp: datetime.datetime
+    timestamp: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
     details: Optional[str] = None
 
     @model_validator(mode="before")

@@ -167,38 +167,49 @@ def test_research_company_creates_event(temp_db):
         rag_message_limit = 5
         recruiter_message_limit = 1
         sheet = "test"
-    
+
     args = Args()
     cache_settings = libjobsearch.CacheSettings(no_cache=True)
-    
+
     # Create a JobSearch instance with mocked components
     with patch("libjobsearch.EmailResponseGenerator", autospec=True):
         job_search = libjobsearch.JobSearch(args, logging.INFO, cache_settings)
-        
+
         # Mock the research methods to avoid actual API calls
-        with patch.object(job_search, "initial_research_company") as mock_initial:
-            with patch.object(job_search, "research_compensation") as mock_comp:
-                with patch.object(job_search, "followup_research_company") as mock_followup:
-                    # Configure mocks
-                    company_info = CompaniesSheetRow(name="Test Company")
-                    mock_initial.return_value = company_info
-                    mock_comp.return_value = company_info
-                    mock_followup.return_value = company_info
-                    
-                    # Call the method
-                    result = job_search.research_company("Test message", model="test-model")
-                    
-                    # Verify the result
-                    assert result.name == "Test Company"
-                    
-                    # Check that an event was created
-                    repo = models.company_repository()
-                    events = repo.get_events(
-                        company_name="Test Company",
-                        event_type=EventType.RESEARCH_COMPLETED
-                    )
-                    
-                    # Verify we have exactly one event
-                    assert len(events) == 1
-                    assert events[0].company_name == "Test Company"
-                    assert events[0].event_type == EventType.RESEARCH_COMPLETED
+        with patch.object(
+            job_search, "initial_research_company", autospec=True
+        ) as mock_initial:
+            with patch.object(
+                job_search, "research_compensation", autospec=True
+            ) as mock_comp:
+                with patch.object(
+                    job_search, "research_levels", autospec=True
+                ) as mock_levels:
+                    with patch.object(
+                        job_search, "followup_research_company", autospec=True
+                    ) as mock_followup:
+                        # Configure mocks
+                        company_info = CompaniesSheetRow(name="Test Company")
+                        mock_initial.return_value = company_info
+                        mock_comp.return_value = company_info
+                        mock_followup.return_value = company_info
+
+                        # Call the method
+                        result = job_search.research_company(
+                            "Test message", model="test-model"
+                        )
+
+                        # Verify the result
+                        assert result.name == "Test Company"
+
+                        # Check that an event was created
+                        repo = models.company_repository()
+                        events = repo.get_events(
+                            company_name="Test Company",
+                            event_type=EventType.RESEARCH_COMPLETED,
+                        )
+
+                        # Verify we have exactly one event
+                        assert len(events) == 1
+                        assert events[0].company_name == "Test Company"
+                        assert events[0].event_type == EventType.RESEARCH_COMPLETED

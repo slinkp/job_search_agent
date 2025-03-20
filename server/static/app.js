@@ -583,5 +583,29 @@ document.addEventListener("alpine:init", () => {
         return [];
       }
     },
+
+    formatResearchErrors(company) {
+      if (!company || !company.research_errors) return "";
+
+      // If it's already a formatted string, just return it
+      if (typeof company.research_errors === "string") {
+        return company.research_errors;
+      }
+
+      // If it's an array of objects, try to format it
+      if (Array.isArray(company.research_errors)) {
+        return company.research_errors
+          .map((err) => {
+            if (typeof err === "string") return err;
+            if (err && err.step && err.error)
+              return `${err.step}: ${err.error}`;
+            return JSON.stringify(err);
+          })
+          .join("; ");
+      }
+
+      // Fallback for unknown formats
+      return JSON.stringify(company.research_errors);
+    },
   }));
 });
