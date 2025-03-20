@@ -276,6 +276,28 @@ def send_and_archive(request):
     }
 
 
+@view_config(route_name="ignore_and_archive", renderer="json", request_method="POST")
+def ignore_and_archive(request):
+    company_name = request.matchdict["company_name"]
+    company = models.company_repository().get(company_name)
+
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found"}
+
+    # Create a new task for just archiving (no reply sent)
+    task_id = tasks.task_manager().create_task(
+        tasks.TaskType.IGNORE_AND_ARCHIVE,
+        {"company_name": company_name},
+    )
+    logger.info(f"Ignore and archive requested for {company_name}, task_id: {task_id}")
+
+    return {
+        "task_id": task_id,
+        "status": tasks.TaskStatus.PENDING.value,
+    }
+
+
 def main(global_config, **settings):
     with Configurator(settings=settings) as config:
         # Enable debugtoolbar for development
@@ -300,6 +322,9 @@ def main(global_config, **settings):
         config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
         config.add_route(
             "send_and_archive", "/api/companies/{company_name}/send_and_archive"
+        )
+        config.add_route(
+            "ignore_and_archive", "/api/companies/{company_name}/ignore_and_archive"
         )
         config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_static_view(name='static', path='static')
