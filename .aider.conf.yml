@@ -1,5 +1,7 @@
 read: [CONVENTIONS.md]
 
+dark-mode: true
+
 # I want this config in my repo
 gitignore: false
 
@@ -30,4 +32,7 @@ auto-accept-architect: false
 
 llm-history-file: .aider.llm.history.md
 
-dark-mode: true
+# This may help??
+
+cache-prompts: true
+
