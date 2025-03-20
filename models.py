@@ -330,11 +330,26 @@ class CompanyStatus(BaseModel):
     """Status and metadata about our interaction with a company."""
 
     research_errors: List[ResearchStepError] = Field(default_factory=list)
+    research_failed_at: Optional[datetime.datetime] = None
+    research_completed_at: Optional[datetime.datetime] = None
     archived_at: Optional[datetime.datetime] = None
     reply_sent_at: Optional[datetime.datetime] = None  # When we sent a reply
     updated_at: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
+
+    @property
+    def research_status(self) -> str:
+        if self.research_completed_at and not self.research_failed_at:
+            return "completed"
+        if self.research_failed_at and not self.research_completed_at:
+            return "failed"
+        if self.research_failed_at and self.research_completed_at:
+            if self.research_completed_at > self.research_failed_at:
+                return "completed"
+            else:
+                return "failed"
+        return "none"
 
 
 class Company(BaseModel):

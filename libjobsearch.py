@@ -446,6 +446,7 @@ class JobSearch:
         logger.debug(f"Company info after initial research: {company_info}\n\n")
 
         research_errors: list[models.ResearchStepError] = []
+        assert company_info.name is not None
         company = models.Company(
             name=company_info.name,
             details=company_info,

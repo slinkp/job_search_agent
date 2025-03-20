@@ -85,21 +85,6 @@ def get_company_dict_with_status(
 ) -> dict:
     company_dict = models.serialize_company(company)
 
-    # Get the latest reply_sent event for this company
-    reply_events = repo.get_events(
-        company_name=company.name, event_type=models.EventType.REPLY_SENT
-    )
-    if reply_events:
-        company_dict["sent_at"] = reply_events[0].timestamp
-
-    # Get the latest research_completed event for this company
-    research_events = repo.get_events(
-        company_name=company.name, event_type=models.EventType.RESEARCH_COMPLETED
-    )
-    if research_events:
-        company_dict["research_completed_at"] = research_events[0].timestamp
-        company_dict["research_status"] = "completed"
-
     # Format research errors as a readable string to avoid [object Object] display
     if company.status.research_errors:
         formatted_errors = []
@@ -107,20 +92,9 @@ def get_company_dict_with_status(
             formatted_errors.append(f"{err.step}: {err.error}")
         company_dict["research_errors"] = "; ".join(formatted_errors)
 
-    research_errors = repo.get_events(
-        company_name=company.name, event_type=models.EventType.RESEARCH_ERROR
-    )
-    if research_errors:
-        company_dict["research_error_at"] = research_errors[0].timestamp
-        if (
-            research_events
-            and research_events[0].timestamp > research_errors[0].timestamp
-        ):
-            company_dict["research_status"] = "completed"
-        else:
-            company_dict["research_status"] = "error"
-
     # Include status fields directly in the response
+    company_dict["research_status"] = company.status.research_status
+    company_dict["sent_at"] = company.status.reply_sent_at
     company_dict["archived_at"] = company.status.archived_at
     company_dict["promising"] = company.details.promising
 
@@ -310,7 +284,7 @@ def ignore_and_archive(request):
 
 
 @view_config(route_name="company_details", renderer="json", request_method="PATCH")
-def patch_company_details(request):
+def patch_company_details(request) -> dict:
     company_name = request.matchdict["company_name"]
     company = models.company_repository().get(company_name)
 
@@ -330,7 +304,8 @@ def patch_company_details(request):
     models.company_repository().update(company)
 
     logger.info(f"Updated fields for {company_name}: {body}")
-    return company.details
+    company_dict = models.serialize_company(company)
+    return company_dict["details"]
 
 
 def main(global_config, **settings):
