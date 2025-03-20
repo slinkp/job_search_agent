@@ -429,32 +429,48 @@ class JobSearch:
 
     def research_company(
         self, message: str | RecruiterMessage, model: str, do_advanced=True
-    ) -> CompaniesSheetRow:
+    ) -> models.Company:
         """
-        Builds a CompaniesSheetRow from raw text about the company, eg could be from a recruiter email.  # noqa: B950
+        Builds a Company object from raw text about the company, eg could be from a recruiter email.  # noqa: B950
         """
 
-        company_info = self.initial_research_company(message, model=model)
+        company_info: CompaniesSheetRow = self.initial_research_company(
+            message, model=model
+        )
+        if not str(company_info.name or "").strip():
+            # Just name it after microseconds since epoch and assume that in THIS application
+            # those will never collide.
+            unknown_company_name = "<UNKNOWN %s>" % int(time.time() * 1000 * 1000)
+            logger.warning(f"Company name not found, using {unknown_company_name}")
+            company_info.name = unknown_company_name
         logger.debug(f"Company info after initial research: {company_info}\n\n")
-        if not company_info.name:
-            logger.warning("Company name not found, nothing else to do")
 
+        research_errors: list[models.ResearchStepError] = []
+        company = models.Company(
+            name=company_info.name,
+            details=company_info,
+            status=models.CompanyStatus(research_errors=research_errors),
+        )
         if not do_advanced:
-            return company_info
+            return company
 
         try:
             company_info = self.research_levels(company_info)
             logger.debug(f"Company info after levels research: {company_info}\n\n")
         except Exception as e:
             logger.exception("Error during levels research")
-            self._handle_research_error("levels_research", company_info, e)
+            research_errors.append(
+                self._handle_research_error("levels_research", company_info, e)
+            )
 
         try:
             company_info = self.research_compensation(company_info)
             logger.debug(f"Company info after salary research: {company_info}\n\n")
         except Exception as e:
             logger.exception("Error during compensation research")
-            self._handle_research_error("compensation_research", company_info, e)
+            research_errors.append(
+                self._handle_research_error("compensation_research", company_info, e)
+            )
 
         if self.is_good_fit(company_info):
             try:
@@ -462,24 +478,25 @@ class JobSearch:
                 logger.debug(f"Company info after followup research: {company_info}\n\n")
             except Exception as e:
                 logger.exception("Error during followup research")
-                self._handle_research_error("followup_research", company_info, e)
+                research_errors.append(
+                    self._handle_research_error("followup_research", company_info, e)
+                )
 
         # Create a RESEARCH_COMPLETED event
-        if company_info.name and not company_info.research_errors:
+        if not research_errors:
             event = models.Event(
-                company_name=company_info.name,
+                company_name=company.name,
                 event_type=models.EventType.RESEARCH_COMPLETED,
             )
             models.company_repository().create_event(event)
-            logger.info(f"Created RESEARCH_COMPLETED event for {company_info.name}")
+            logger.info(f"Created RESEARCH_COMPLETED event for {company.name}")
 
-        return company_info
+        return company
 
     def _handle_research_error(
         self, step_name: str, company_info: CompaniesSheetRow, e: Exception | str
-    ):
+    ) -> models.ResearchStepError:
         error = models.ResearchStepError(step=step_name, error=str(e))
-        company_info.research_errors.append(error)
 
         # Create an event for the research error
         if company_info.name:
@@ -488,7 +505,8 @@ class JobSearch:
                 event_type=models.EventType.RESEARCH_ERROR,
                 details=f"{step_name} research failed: {str(e)}",
             )
-        models.company_repository().create_event(event)
+            models.company_repository().create_event(event)
+        return error
 
     @disk_cache(CacheStep.BASIC_RESEARCH)
     def initial_research_company(

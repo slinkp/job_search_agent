@@ -98,6 +98,7 @@ class ResearchDaemon:
     def do_research(self, args: dict):
         company_name = args["company_name"]
         existing = self.company_repo.get(company_name)
+        company = None
         content = company_name
         recruiter_message = None
         if existing:
@@ -108,38 +109,38 @@ class ResearchDaemon:
 
         try:
             # TODO: Pass more context from email, etc.
-            company_row = self.jobsearch.research_company(content, model=self.ai_model)
+            # And anything we know about the company already?
+            company = self.jobsearch.research_company(content, model=self.ai_model)
 
             # Log any research errors that occurred
-            if company_row.research_errors:
-                logger.warning(
-                    f"Research completed with {len(company_row.research_errors)} errors:"
-                )
-                for err in company_row.research_errors:
+            research_errors = company.status.research_errors
+            if research_errors:
+                logger.warning(f"Research completed with {len(research_errors)} errors:")
+                for err in research_errors:
                     logger.warning(f"  - {err.step}: {err.error}")
 
             if existing:
                 logger.info(f"Updating company {company_name}")
-                existing.details = company_row
+                existing.details = company.details
+                existing.status.research_errors = research_errors
                 self.company_repo.update(existing)
+                company = existing
             else:
                 logger.info(f"Creating company {company_name}")
-                company = models.Company(
-                    name=company_name,
-                    details=company_row,
-                )
                 self.company_repo.create(company)
 
             # Update the spreadsheet with the researched company data
-            libjobsearch.upsert_company_in_spreadsheet(company_row, self.args)
+            libjobsearch.upsert_company_in_spreadsheet(company.details, self.args)
 
         except Exception as e:
             logger.exception(f"Error researching company {company_name}")
             # Create a minimal company record with the error if it doesn't exist
-            if not existing:
+            if existing is None and company is None:
                 minimal_row = models.CompaniesSheetRow(
                     name=company_name,
-                    ai_notes=f"Research failed: {str(e)}",
+                    notes=f"Research failed: {str(e)}",
+                )
+                company_status = models.CompanyStatus(
                     research_errors=[
                         models.ResearchStepError(
                             step="research_company",
@@ -150,6 +151,7 @@ class ResearchDaemon:
                 company = models.Company(
                     name=company_name,
                     details=minimal_row,
+                    status=company_status,
                 )
                 self.company_repo.create(company)
                 # Try to update the spreadsheet with minimal info
@@ -186,11 +188,12 @@ class ResearchDaemon:
                 f"Processing message {i+1} of {len(messages)} [max {max_messages}]..."
             )
             try:
-                company_row = self.jobsearch.research_company(
+                company = self.jobsearch.research_company(
                     message,
                     model=self.ai_model,
                     do_advanced=args.get("do_research", False),
                 )
+                company_row = company.details
                 if company_row.name is None:
                     logger.warning("No company extracted from message, skipping")
                     continue
@@ -199,12 +202,6 @@ class ResearchDaemon:
                     logger.info(f"Company {company_row.name} already exists, skipping")
                     continue
 
-                company = models.Company(
-                    name=company_row.name,
-                    details=company_row,
-                    message_id=message.message_id,
-                    recruiter_message=message,
-                )
                 self.company_repo.create(company)
                 logger.info(f"Created company {company_row.name} from recruiter message")
             except Exception:
