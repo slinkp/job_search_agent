@@ -215,8 +215,10 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [ ] Maybe all this should be shown in the UX.
             Think of it kind of like the print job queue on eg MacOS.
   - [ ] "Ignore and archive" feature
-     - [ ] sends no message; archives the recruiter message
-     - [ ] updates status in spreadsheet to "70. ruled out - didn't reply"
+     - [x] button, backend api, task, and task handler for this
+     - [ ] add function to libjobsearch: sends no message; archives the
+           recruiter message
+     - [ ] updates status in actual spreadsheet to "70. ruled out - didn't reply"
      - [ ] new "archived" icon & filter for this in web app
 - [ ] Work through the existing backlog with this tool
 - [ ] Keep it at inbox zero until I get a job

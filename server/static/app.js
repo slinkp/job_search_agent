@@ -607,5 +607,51 @@ document.addEventListener("alpine:init", () => {
       // Fallback for unknown formats
       return JSON.stringify(company.research_errors);
     },
+
+    async ignoreAndArchive(company) {
+      if (!company) {
+        this.showError("No company selected");
+        return;
+      }
+
+      // Confirm with the user before proceeding
+      if (
+        !confirm(
+          "Are you sure you want to archive this message without replying?"
+        )
+      ) {
+        return;
+      }
+
+      try {
+        // Call the ignore and archive endpoint
+        const response = await fetch(
+          `/api/companies/${company.name}/ignore_and_archive`,
+          {
+            method: "POST",
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(
+            error.error || `Failed to ignore and archive: ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+
+        // Fetch fresh company data
+        await this.fetchAndUpdateCompany(company.name);
+
+        this.showSuccess("Message archived without reply");
+        this.cancelEdit();
+      } catch (err) {
+        console.error("Failed to ignore and archive:", err);
+        this.showError(
+          err.message || "Failed to ignore and archive. Please try again."
+        );
+      }
+    },
   }));
 });

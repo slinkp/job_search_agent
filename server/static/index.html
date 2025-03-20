@@ -204,6 +204,14 @@
               </button>
               <button 
                 type="button" 
+                @click="ignoreAndArchive(editingCompany)"
+                :disabled="isGeneratingMessage(editingCompany)"
+                class="secondary"
+              >
+                Ignore & Archive
+              </button>
+              <button 
+                type="button" 
                 @click="sendAndArchive(editingCompany)"
                 :disabled="isGeneratingMessage(editingCompany) || !editingCompany?.reply_message"
                 class="primary"

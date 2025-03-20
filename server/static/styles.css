@@ -66,8 +66,9 @@ dialog textarea {
 
 dialog footer {
     display: flex;
-    gap: 1rem;
+    gap: 0.5rem;
     justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 .loading-spinner {
@@ -233,4 +234,20 @@ article button {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+/* Button styling for secondary actions */
+button.secondary {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+button.secondary:hover {
+  background-color: #5a6268;
+  border-color: #545b62;
+}
+
+button.secondary:focus {
+  box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.5);
 } 
