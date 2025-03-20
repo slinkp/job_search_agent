@@ -119,12 +119,16 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [x] Demo of generating replies based on example new messages
   - [ ] Solve problem of linkedin email that are recruiter followup, but gmail doesn't thread them
   - [ ] Solve messages that I've already replied to on linkedin and so aren't in gmail - maybe require manually re-labeling
-  - [ ] Iterate on prompt against real recruiter email, until test replies to those usually look good.
+  - [ ] Iterate on prompt against real recruiter email, until test replies to
+        those usually look good.
+        - [ ] Try prompt improvement tools eg Anthropic's
   - [ ] Extract data from attachments if any (eg .doc or .pdf)
   - [x] Extract subject from message too
 - [x] Actually send email replies
 - [x] Re-label replied messages (so we know they don't need looking at again)
 - [x] Company research: general info
+  - [ ] If initial research finds a different company name than was in email: log warning and update
+        it. Known example: Capital Markets Placement -> iCapital
   - [x] Formalize my research steps:
   - [x] Try langchain with both anthropic and openai
   - [x] Try RecursiveUrlLoader to fetch more data from company websites
@@ -141,6 +145,11 @@ Won't work if follow-ups are not threaded, but that can't be helped.
 - [x] Write a Google sheet client to store this data model in my existing sheet
   - [x] Integrate with main script
   - [x] Check if company already exists in sheet; if so, update rather than add
+  - [ ] If company exists in sheet, but not in database, then pull in the sheet
+        info to db, and update if needed
+        - [ ] if all fields are full, mark research as done
+        - [ ] fuzzy-match on name? normalize somehow? warn if similar name
+              found / allow merging?
 - [x] Company research: Salary data from levels.fyi
   - [x] Drive browser - chose Playwright
   - [x] Extract salary data based on company name
@@ -175,7 +184,9 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] Make it optional whether we do research automatically (default: no)
       - [ ] Show more detailed progress info?
       - [ ] Make sure we only pull in new companies
-        - [ ] TBD: How to handle multiple messages for same company??
+        - [ ] Add to db only if doesn't exist
+        - [ ] Check spreadsheet for existing match - see above
+        - [ ] Handle multiple messages for same company??
   - [x] List pending companies
     - [x] Display known data
     - [x] Link to original message, if any (maybe just gmail link?)
@@ -193,7 +204,12 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] Show date of recruiter message above their message,
             formatted like  "YYYY/MM/DD 3:42pm (X days ago)"
       - [x] Add link to email thread from the reply page
+      - [ ] Mark as manually replied button
+      - [ ] Optionally add link to existing thread
     - [x] "Send and archive" button
+    - [ ] "Save gmail draft" button
+      - [ ] Track and show the state of this so we don't regenerate or edit and send
+            when there's already a draft? Link to draft?
     - [ ] "--dry-run" command line flag to server/app, to not actually send
           messages
     - [x] similar option to research daemon to not actually send messages
@@ -220,6 +236,16 @@ Won't work if follow-ups are not threaded, but that can't be helped.
            recruiter message
      - [ ] updates status in actual spreadsheet to "70. ruled out - didn't reply"
      - [ ] new "archived" icon & filter for this in web app
+- [ ] Q: If this app has all the same data as spreadsheet, then we can drop the
+      spreadsheet
+    - [ ] Two sources of truth sucks; i'm currently treating the sheet as canonical
+    - [ ] First pull in all the old data from the sheet
+    - [ ] Make all fields easily hand-editable in the app
+    - [ ] Make it trivial to modify the db schema while preserving existing
+          data
+          - [ ] we may need an ORM with migrations, sigh.
+          - [ ] is there something that integrates well with pydantic as source
+                of truth on fields / types?
 - [ ] Work through the existing backlog with this tool
 - [ ] Keep it at inbox zero until I get a job
 - [ ] Profit
