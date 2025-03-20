@@ -19,6 +19,7 @@ class EventType(enum.Enum):
     COMPANY_CREATED = "company_created"
     COMPANY_UPDATED = "company_updated"
     RESEARCH_ERROR = "research_error"
+    ARCHIVED = "archived"
 
 
 class ResearchStepError(BaseModel):
