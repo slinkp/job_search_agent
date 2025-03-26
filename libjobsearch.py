@@ -432,6 +432,8 @@ class JobSearch:
     ) -> models.Company:
         """
         Builds a Company object from raw text about the company, eg could be from a recruiter email.  # noqa: B950
+
+        This does not update the company in the database, but it may create events in the db.
         """
 
         company_info: CompaniesSheetRow = self.initial_research_company(
@@ -459,31 +461,24 @@ class JobSearch:
             company_info = self.research_levels(company_info)
             logger.debug(f"Company info after levels research: {company_info}\n\n")
         except Exception as e:
-            logger.exception("Error during levels research")
-            research_errors.append(
-                self._handle_research_error("levels_research", company_info, e)
-            )
+            self._handle_research_error("levels_research", company, e)
 
         try:
             company_info = self.research_compensation(company_info)
             logger.debug(f"Company info after salary research: {company_info}\n\n")
         except Exception as e:
-            logger.exception("Error during compensation research")
-            research_errors.append(
-                self._handle_research_error("compensation_research", company_info, e)
-            )
+            self._handle_research_error("compensation_research", company, e)
 
         if self.is_good_fit(company_info):
             try:
                 company_info = self.followup_research_company(company_info)
                 logger.debug(f"Company info after followup research: {company_info}\n\n")
             except Exception as e:
-                logger.exception("Error during followup research")
-                research_errors.append(
-                    self._handle_research_error("followup_research", company_info, e)
-                )
+                self._handle_research_error("followup_research", company, e)
+        # Update company details with final research results
+        company.details = company_info
 
-        # Create a RESEARCH_COMPLETED event
+        # Create a RESEARCH_COMPLETED event and set timestamp if no errors occurred
         if not research_errors:
             event = models.Event(
                 company_name=company.name,
@@ -495,10 +490,11 @@ class JobSearch:
         return company
 
     def _handle_research_error(
-        self, step_name: str, company_info: CompaniesSheetRow, e: Exception | str
-    ) -> models.ResearchStepError:
+        self, step_name: str, company: models.Company, e: Exception | str
+    ) -> None:
+        logger.exception(f"Error during {step_name} research")
         error = models.ResearchStepError(step=step_name, error=str(e))
-
+        company_info = company.details
         # Create an event for the research error
         if company_info.name:
             event = models.Event(
@@ -507,7 +503,8 @@ class JobSearch:
                 details=f"{step_name} research failed: {str(e)}",
             )
             models.company_repository().create_event(event)
-        return error
+        company.status.research_errors.append(error)
+        company.status.research_failed_at = datetime.datetime.now(datetime.timezone.utc)
 
     @disk_cache(CacheStep.BASIC_RESEARCH)
     def initial_research_company(
