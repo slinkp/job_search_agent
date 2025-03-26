@@ -77,7 +77,7 @@
             <div class="company-status-icons">
               <span class="status-icon research-done-icon" x-show="company.research_completed_at" title="Research completed">R</span>
               <span class="status-icon research-failed-icon" 
-                    x-show="company.research_error || company.research_status === 'failed' || company.research_errors" 
+                    x-show="company.research_status === 'failed' || (company.research_errors && company.research_errors.length > 0)" 
                     title="Research failed">❌</span>
               <span class="status-icon reply-sent-icon" x-show="company.sent_at" title="Reply sent">📧</span>
               <span class="status-icon archived-icon" x-show="company.sent_at || company.archived_at" title="Archived">A</span>
@@ -227,7 +227,7 @@
               <div class="company-status-icons modal-status-icons" x-show="editingCompany">
                 <span class="status-icon research-done-icon" x-show="editingCompany?.research_completed_at" title="Research completed">R</span>
                 <span class="status-icon research-failed-icon" 
-                      x-show="editingCompany?.research_error || editingCompany?.research_status === 'failed' || editingCompany?.research_errors" 
+                      x-show="editingCompany?.research_status === 'failed' || (editingCompany?.research_errors && editingCompany?.research_errors.length > 0)" 
                       title="Research failed">❌</span>
                 <span class="status-icon reply-sent-icon" x-show="editingCompany?.sent_at" title="Reply sent">📧</span>
                 <span class="status-icon archived-icon" x-show="editingCompany?.sent_at || editingCompany?.archived_at" title="Archived">A</span>
