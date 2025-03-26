@@ -230,14 +230,15 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [ ] Also support cleaning up / discarding old ones
       - [ ] Maybe all this should be shown in the UX.
             Think of it kind of like the print job queue on eg MacOS.
-  - [ ] "Ignore and archive" feature
+  - [x] "Ignore and archive" feature
      - [x] button, backend api, task, and task handler for this
-     - [ ] add function to libjobsearch: sends no message; archives the
+     - [x] add function to libjobsearch: sends no message; archives the
            recruiter message
-     - [ ] updates status in actual spreadsheet to "70. ruled out - didn't reply"
-     - [ ] new "archived" icon & filter for this in web app
+     - [x] updates status in actual spreadsheet to "70. ruled out - didn't reply"
+     - [x] new "archived" icon & filter for this in web app
 - [ ] Q: If this app has all the same data as spreadsheet, then we can drop the
       spreadsheet
+    - [ ] Make the web app more browsable / readable
     - [ ] Two sources of truth sucks; i'm currently treating the sheet as canonical
     - [ ] First pull in all the old data from the sheet
     - [ ] Make all fields easily hand-editable in the app
