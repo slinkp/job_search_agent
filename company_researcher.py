@@ -118,17 +118,17 @@ of how AI is used by the company, or null if the company does not use AI.
 
 COMPANY_PROMPTS = [
     BASIC_COMPANY_PROMPT,
+    EMPLOYMENT_PROMPT,
     FUNDING_STATUS_PROMPT,
     INTERVIEW_STYLE_PROMPT,
-    EMPLOYMENT_PROMPT,
     AI_MISSION_PROMPT,
 ]
 
 COMPANY_PROMPTS_WITH_FORMAT_PROMPT = [
     (BASIC_COMPANY_PROMPT, BASIC_COMPANY_FORMAT_PROMPT),
+    (EMPLOYMENT_PROMPT, EMPLOYMENT_FORMAT_PROMPT),
     (FUNDING_STATUS_PROMPT, FUNDING_STATUS_FORMAT_PROMPT),
     (INTERVIEW_STYLE_PROMPT, INTERVIEW_STYLE_FORMAT_PROMPT),
-    (EMPLOYMENT_PROMPT, EMPLOYMENT_FORMAT_PROMPT),
     (AI_MISSION_PROMPT, AI_MISSION_FORMAT_PROMPT),
 ]
 
@@ -236,7 +236,11 @@ class TavilyRAGResearchAgent:
         return context
 
     def _plaintext_from_url(self, url: str) -> str:
-        response = requests.get(url)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
+            "Referer": "https://www.linkedin.com/",
+        }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.content, "html.parser")
@@ -276,6 +280,7 @@ class TavilyRAGResearchAgent:
             )
             return company_info
 
+        got_jobs_url = False
         for prompt, format_prompt in COMPANY_PROMPTS_WITH_FORMAT_PROMPT:
             try:
                 context = self.get_search_context(
@@ -306,6 +311,15 @@ class TavilyRAGResearchAgent:
 
                 # Map the API response fields to CompaniesSheetRow fields
                 self.update_company_info_from_dict(company_info, content)
+                if not got_jobs_url and company_info.url:
+                    got_jobs_url = True
+                    # Redo basic company info extraction with the new jobs URL,
+                    # as sometimes that gives us a more accurate company name
+                    # (eg some recruiter messages don't include it).
+                    redone_initial_data = self.extract_initial_company_info(
+                        self._plaintext_from_url(company_info.url)
+                    )
+                    self.update_company_info_from_dict(company_info, redone_initial_data)
             except Exception as e:
                 logger.error(f"Error processing prompt: {e}")
                 raise
