@@ -104,8 +104,10 @@ class ResearchDaemon:
         if existing:
             recruiter_message = existing.recruiter_message
             if recruiter_message:
-                content = recruiter_message.message
-                logger.info(f"Using existing initial message: {content[:400]}")
+                content = recruiter_message
+                logger.info(
+                    f"Using existing initial message: {recruiter_message.message[:400]}"
+                )
 
         try:
             # TODO: Pass more context from email, etc.
