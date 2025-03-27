@@ -3,6 +3,7 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
+from google.auth.exceptions import RefreshError
 
 from email_client import ARCHIVED_LABEL, GmailRepliesSearcher
 from models import RecruiterMessage
@@ -16,25 +17,38 @@ class TestGmailRepliesSearcher:
             searcher._service = MagicMock()
             yield searcher
 
-    def test_send_reply(self, gmail_searcher):
-        # Setup
-        thread_id = "thread123"
-        message_id = "msg456"
-        reply_text = "Thank you for your message"
-
-        # Mock the original message response
-        original_message = {
+    @pytest.fixture
+    def mock_message(self):
+        """Fixture for a basic Gmail message structure."""
+        return {
+            "id": "msg123",
+            "threadId": "thread123",
+            "internalDate": "1617235200000",
             "payload": {
                 "headers": [
                     {"name": "Subject", "value": "Job Opportunity"},
                     {"name": "From", "value": "recruiter@example.com"},
                     {"name": "Message-ID", "value": "<msg123@example.com>"},
-                ]
-            }
+                ],
+                "body": {"data": base64.b64encode(b"Message content").decode()},
+            },
         }
 
+    @pytest.fixture
+    def mock_credentials(self):
+        """Fixture for Gmail API credentials."""
+        mock_creds = MagicMock()
+        mock_creds.to_json.return_value = '{"token": "new_token"}'
+        return mock_creds
+
+    def test_send_reply(self, gmail_searcher, mock_message):
+        # Setup
+        thread_id = "thread123"
+        message_id = "msg456"
+        reply_text = "Thank you for your message"
+
         gmail_searcher.service.users().messages().get.return_value.execute.return_value = (
-            original_message
+            mock_message
         )
         gmail_searcher.service.users().messages().send.return_value.execute.return_value = {
             "id": "sent123"
@@ -54,9 +68,6 @@ class TestGmailRepliesSearcher:
         body_arg = send_call[1]["body"]
         assert body_arg["threadId"] == thread_id
 
-        # We can't easily check the raw message content since it's encoded,
-        # but we can verify the method was called
-
     def test_send_reply_error(self, gmail_searcher):
         # Setup
         gmail_searcher.service.users().messages().get.return_value.execute.side_effect = (
@@ -75,7 +86,7 @@ class TestGmailRepliesSearcher:
 
         # Mock the add_label method
         with patch.object(
-            gmail_searcher, "add_label", return_value=True
+            gmail_searcher, "add_label", return_value=True, autospec=True
         ) as mock_add_label:
             # Call the method
             result = gmail_searcher.label_and_archive_message(message_id)
@@ -113,7 +124,10 @@ class TestGmailRepliesSearcher:
 
         # Mock the _get_or_create_label_id method
         with patch.object(
-            gmail_searcher, "_get_or_create_label_id", return_value=label_id
+            gmail_searcher,
+            "_get_or_create_label_id",
+            return_value=label_id,
+            autospec=True,
         ) as mock_get_label:
             # Call the method
             result = gmail_searcher.add_label(message_id, label_name)
@@ -137,7 +151,10 @@ class TestGmailRepliesSearcher:
 
         # Mock the _get_or_create_label_id method
         with patch.object(
-            gmail_searcher, "_get_or_create_label_id", return_value="label123"
+            gmail_searcher,
+            "_get_or_create_label_id",
+            return_value="label123",
+            autospec=True,
         ):
             # Make the modify call raise an exception
             gmail_searcher.service.users().messages().modify.return_value.execute.side_effect = Exception(
@@ -198,29 +215,21 @@ class TestGmailRepliesSearcher:
         assert create_call is not None
         assert create_call[1]["body"]["name"] == label_name
 
-    def test_get_new_recruiter_messages(self, gmail_searcher):
+    def test_get_new_recruiter_messages(self, gmail_searcher, mock_message):
         """Test getting new recruiter messages."""
-        # Setup mock messages
-        message1 = {
-            "id": "msg123",
-            "threadId": "thread123",
-            "internalDate": "1617235200000",
-            "payload": {
-                "headers": [
-                    {"name": "Subject", "value": "Job Opportunity"},
-                    {"name": "From", "value": "recruiter@example.com"},
-                ],
-                "body": {"data": base64.b64encode(b"Message content").decode()},
-            },
-        }
-
         # Mock the search_and_get_details method
         with patch.object(
-            gmail_searcher, "search_and_get_details", return_value=[message1]
+            gmail_searcher,
+            "search_and_get_details",
+            return_value=[mock_message],
+            autospec=True,
         ) as mock_search:
             # Mock the _get_email_thread_link method
             with patch.object(
-                gmail_searcher, "_get_email_thread_link", return_value="https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread123"
+                gmail_searcher,
+                "_get_email_thread_link",
+                return_value="https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread123",
+                autospec=True,
             ):
                 # Call the method
                 result = gmail_searcher.get_new_recruiter_messages(max_results=1)
@@ -243,7 +252,7 @@ class TestGmailRepliesSearcher:
                 # Verify search_and_get_details was called with the correct parameters
                 mock_search.assert_called_once()
 
-    def test_authenticate_with_expired_token(self, gmail_searcher):
+    def test_authenticate_with_expired_token(self, gmail_searcher, mock_credentials):
         """Test authentication with expired token."""
         # Mock expired credentials
         mock_creds = MagicMock()
@@ -252,14 +261,14 @@ class TestGmailRepliesSearcher:
         mock_creds.refresh_token = "token123"
 
         # Mock token file
-        with patch("os.path.exists", return_value=True), patch(
-            "email_client.Credentials.from_authorized_user_file", return_value=mock_creds
-        ), patch("email_client.Request"), patch(
-            "email_client.InstalledAppFlow"
+        with patch("os.path.exists", return_value=True, autospec=True), patch(
+            "email_client.Credentials.from_authorized_user_file",
+            return_value=mock_creds,
+            autospec=True,
+        ), patch("email_client.Request", autospec=True), patch(
+            "email_client.InstalledAppFlow", autospec=True
         ) as mock_flow, patch(
-            "email_client.RefreshError"
-        ) as mock_refresh_error, patch(
-            "builtins.open"
+            "builtins.open", autospec=True
         ) as mock_open, patch(
             "email_client.build"
         ) as mock_build, patch(
@@ -267,15 +276,12 @@ class TestGmailRepliesSearcher:
         ), patch(
             "email_client.TOKEN_FILE", "secrets/token.json"
         ):
-
             # Make refresh fail with RefreshError
-            mock_creds.refresh.side_effect = mock_refresh_error
+            mock_creds.refresh.side_effect = RefreshError("Token expired")
 
             # Mock the flow and its returned credentials
-            mock_new_creds = MagicMock()
-            mock_new_creds.to_json.return_value = '{"token": "new_token"}'
             mock_flow.from_client_secrets_file.return_value.run_local_server.return_value = (
-                mock_new_creds
+                mock_credentials
             )
 
             # Mock the build function
@@ -296,7 +302,7 @@ class TestGmailRepliesSearcher:
             )
 
             # Verify the credentials were set correctly
-            assert gmail_searcher.creds == mock_new_creds
+            assert gmail_searcher.creds == mock_credentials
 
             # Verify credentials were written to file
             mock_open.assert_called_once_with("secrets/token.json", "w")
@@ -305,25 +311,24 @@ class TestGmailRepliesSearcher:
             )
 
             # Verify build was called with correct parameters
-            mock_build.assert_called_once_with("gmail", "v1", credentials=mock_new_creds)
+            mock_build.assert_called_once_with(
+                "gmail", "v1", credentials=mock_credentials
+            )
 
-    def test_authenticate_without_token(self, gmail_searcher):
+    def test_authenticate_without_token(self, gmail_searcher, mock_credentials):
         """Test authentication without existing token."""
-        with patch("os.path.exists", return_value=False), patch(
-            "email_client.InstalledAppFlow"
+        with patch("os.path.exists", return_value=False, autospec=True), patch(
+            "email_client.InstalledAppFlow", autospec=True
         ) as mock_flow, patch(
             "email_client.CREDENTIALS_FILE", os.path.abspath("secrets/credentials.json")
         ), patch(
             "email_client.TOKEN_FILE", "secrets/token.json"
         ), patch(
-            "builtins.open"
+            "builtins.open", autospec=True
         ) as mock_open:
-
             # Mock the flow and its returned credentials
-            mock_new_creds = MagicMock()
-            mock_new_creds.to_json.return_value = '{"token": "new_token"}'
             mock_flow.from_client_secrets_file.return_value.run_local_server.return_value = (
-                mock_new_creds
+                mock_credentials
             )
 
             # Call authenticate
