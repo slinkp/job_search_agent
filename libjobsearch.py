@@ -421,7 +421,7 @@ class JobSearch:
                 reply=reply,
                 company_name=company_info.name,
             )
-            upsert_company_in_spreadsheet(company_info, args)
+            upsert_company_in_spreadsheet(company_info.details, args)
             logger.info(f"Processed message {i+1} of {len(new_recruiter_email)}")
 
     def generate_reply(self, content: str) -> str:
