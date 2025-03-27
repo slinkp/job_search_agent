@@ -13,6 +13,128 @@ import models
 from models import CompaniesSheetRow, Company, Event, EventType, RecruiterMessage
 
 
+@pytest.fixture
+def mock_research_methods():
+    """Fixture to mock all research methods."""
+    with patch(
+        "company_researcher.main", autospec=True
+    ) as mock_company_researcher, patch(
+        "libjobsearch.levels_searcher.main", autospec=True
+    ) as mock_levels_main, patch(
+        "libjobsearch.levels_searcher.extract_levels", autospec=True
+    ) as mock_levels_extract, patch(
+        "libjobsearch.linkedin_searcher.main", autospec=True
+    ) as mock_linkedin_main, patch(
+        "libjobsearch.run_in_process", autospec=True
+    ) as mock_run_in_process, patch(
+        "libjobsearch.EmailResponseGenerator", autospec=True
+    ) as mock_email_responder_class:
+
+        # Configure run_in_process to just call the function
+        mock_run_in_process.side_effect = lambda func, *args, **kwargs: func(
+            *args, **kwargs
+        )
+
+        # Configure email responder mock
+        mock_email_responder = mock_email_responder_class.return_value
+        mock_email_responder.generate_reply.return_value = "Test reply"
+
+        yield {
+            "company_researcher": mock_company_researcher,
+            "levels_main": mock_levels_main,
+            "levels_extract": mock_levels_extract,
+            "linkedin_main": mock_linkedin_main,
+            "run_in_process": mock_run_in_process,
+            "email_responder_class": mock_email_responder_class,
+        }
+
+
+@pytest.fixture
+def job_search():
+    """Fixture to create a JobSearch instance with common args."""
+    args = argparse.Namespace(
+        model="claude-3-5-sonnet-latest",
+        rag_message_limit=20,
+        no_cache=True,
+    )
+    return libjobsearch.JobSearch(
+        args,
+        loglevel=logging.INFO,
+        cache_settings=libjobsearch.CacheSettings(no_cache=True),
+    )
+
+
+@pytest.fixture
+def recruiter_message():
+    """Fixture to create a test recruiter message."""
+    return RecruiterMessage(
+        message_id="test123",
+        message="Hello, we have a job opportunity at Acme Corp for you.",
+        subject="Job Opportunity at Acme Corp",
+        sender="recruiter@example.com",
+        email_thread_link="https://mail.example.com/thread123",
+        thread_id="thread123",
+        date=datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+    )
+
+
+@pytest.fixture
+def complete_company_info():
+    """Fixture to create a complete company info object."""
+    return CompaniesSheetRow(
+        name="Acme Corp",
+        type="Private",
+        url="https://acme.com",
+        total_comp=decimal.Decimal("150000"),
+        base=decimal.Decimal("120000"),
+        rsu=decimal.Decimal("30000"),
+        bonus=decimal.Decimal("0"),
+        level_equiv="Staff",
+        maybe_referrals="John Doe - Senior Engineer",
+    )
+
+
+@pytest.fixture
+def basic_company_info():
+    """Fixture to create a basic company info object."""
+    return CompaniesSheetRow(
+        name="Acme Corp",
+        type="Private",
+        url="https://acme.com",
+    )
+
+
+@pytest.fixture
+def levels_data():
+    """Fixture to create test levels data."""
+    return {
+        "levels": ["Staff Engineer", "Senior Staff Engineer"],
+        "main_data": [
+            {
+                "level": "Staff Engineer",
+                "role": "Staff Engineer",
+                "experience": "10+ years",
+                "total_comp": "150000",
+                "rsu": "30000",
+                "bonus": "0",
+                "salary": "120000",
+            }
+        ],
+    }
+
+
+@pytest.fixture
+def linkedin_data():
+    """Fixture to create test LinkedIn data."""
+    return [
+        {
+            "name": "John Doe",
+            "title": "Senior Engineer",
+            "profile_url": "https://linkedin.com/in/john-doe",
+        }
+    ]
+
+
 @patch("libjobsearch.email_client.GmailRepliesSearcher", autospec=True)
 def test_send_reply_and_archive(mock_gmail_searcher_class):
     """Test that send_reply_and_archive correctly sends an email and archives it."""
@@ -216,85 +338,20 @@ def test_research_company_creates_event(temp_db):
                         assert events[0].event_type == EventType.RESEARCH_COMPLETED
 
 
-@patch("company_researcher.main", autospec=True)
-@patch("libjobsearch.levels_searcher.main", autospec=True)
-@patch("libjobsearch.levels_searcher.extract_levels", autospec=True)
-@patch("libjobsearch.linkedin_searcher.main", autospec=True)
-@patch("libjobsearch.run_in_process", autospec=True)
-@patch("libjobsearch.EmailResponseGenerator", autospec=True)
 def test_research_company_with_recruiter_message(
-    mock_email_responder_class,
-    mock_run_in_process,
-    mock_linkedin_main,
-    mock_levels_main,
-    mock_levels_extract,
-    mock_company_researcher,
+    mock_research_methods,
+    job_search,
+    recruiter_message,
+    complete_company_info,
+    levels_data,
+    linkedin_data,
 ):
     """Test creating a company from a recruiter message."""
-    # Configure run_in_process to just call the function
-    mock_run_in_process.side_effect = lambda func, *args, **kwargs: func(*args, **kwargs)
-
-    # Configure email responder mock
-    mock_email_responder = mock_email_responder_class.return_value
-    mock_email_responder.generate_reply.return_value = "Test reply"
-
-    args = argparse.Namespace(
-        model="claude-3-5-sonnet-latest",
-        rag_message_limit=20,
-        no_cache=True,
-    )
-    job_search = libjobsearch.JobSearch(
-        args,
-        loglevel=logging.INFO,
-        cache_settings=libjobsearch.CacheSettings(no_cache=True),
-    )
-
-    # Create a test recruiter message
-    recruiter_message = RecruiterMessage(
-        message_id="test123",
-        message="Hello, we have a job opportunity at Acme Corp for you.",
-        subject="Job Opportunity at Acme Corp",
-        sender="recruiter@example.com",
-        email_thread_link="https://mail.example.com/thread123",
-        thread_id="thread123",
-        date=datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
-    )
-
     # Configure mocks
-    mock_company_researcher.return_value = CompaniesSheetRow(
-        name="Acme Corp",
-        type="Private",
-        url="https://acme.com",
-        total_comp=decimal.Decimal("150000"),
-        base=decimal.Decimal("120000"),
-        rsu=decimal.Decimal("30000"),
-        bonus=decimal.Decimal("0"),
-        level_equiv="Staff",
-        maybe_referrals="John Doe - Senior Engineer",
-    )
-
-    # Configure levels searcher mocks to return appropriate data structures
-    mock_levels_extract.return_value = ["Staff Engineer", "Senior Staff Engineer"]
-    mock_levels_main.return_value = [
-        {
-            "level": "Staff Engineer",
-            "role": "Staff Engineer",
-            "experience": "10+ years",
-            "total_comp": "150000",
-            "rsu": "30000",
-            "bonus": "0",
-            "salary": "120000",
-        }
-    ]
-
-    # Configure linkedin searcher mock
-    mock_linkedin_main.return_value = [
-        {
-            "name": "John Doe",
-            "title": "Senior Engineer",
-            "profile_url": "https://linkedin.com/in/john-doe",
-        }
-    ]
+    mock_research_methods["company_researcher"].return_value = complete_company_info
+    mock_research_methods["levels_extract"].return_value = levels_data["levels"]
+    mock_research_methods["levels_main"].return_value = levels_data["main_data"]
+    mock_research_methods["linkedin_main"].return_value = linkedin_data
 
     # Research the company
     company = job_search.research_company(
@@ -312,70 +369,25 @@ def test_research_company_with_recruiter_message(
     )
 
     # Verify all research methods were called
-    mock_company_researcher.assert_called_once()
-    mock_levels_main.assert_called_once()
-    mock_levels_extract.assert_called_once()
-    mock_linkedin_main.assert_called_once()
+    mock_research_methods["company_researcher"].assert_called_once()
+    mock_research_methods["levels_main"].assert_called_once()
+    mock_research_methods["levels_extract"].assert_called_once()
+    mock_research_methods["linkedin_main"].assert_called_once()
 
 
-@patch("company_researcher.main", autospec=True)
-@patch("libjobsearch.levels_searcher.main", autospec=True)
-@patch("libjobsearch.levels_searcher.extract_levels", autospec=True)
-@patch("libjobsearch.linkedin_searcher.main", autospec=True)
-@patch("libjobsearch.run_in_process", autospec=True)
-@patch("libjobsearch.EmailResponseGenerator", autospec=True)
 def test_research_company_with_string_message(
-    mock_email_responder_class,
-    mock_run_in_process,
-    mock_linkedin_main,
-    mock_levels_main,
-    mock_levels_extract,
-    mock_company_researcher,
+    mock_research_methods,
+    job_search,
+    basic_company_info,
+    levels_data,
+    linkedin_data,
 ):
     """Test creating a company from a string message."""
-    # Configure run_in_process to just call the function
-    mock_run_in_process.side_effect = lambda func, *args, **kwargs: func(*args, **kwargs)
-
-    # Configure email responder mock
-    mock_email_responder = mock_email_responder_class.return_value
-    mock_email_responder.generate_reply.return_value = "Test reply"
-
-    args = argparse.Namespace(
-        model="claude-3-5-sonnet-latest",
-        rag_message_limit=20,
-        no_cache=True,
-    )
-    job_search = libjobsearch.JobSearch(
-        args,
-        loglevel=logging.INFO,
-        cache_settings=libjobsearch.CacheSettings(no_cache=True),
-    )
-
     # Configure mocks
-    mock_company_researcher.return_value = CompaniesSheetRow(
-        name="Acme Corp",
-        type="Private",
-        url="https://acme.com",
-    )
-    mock_levels_main.return_value = [
-        {
-            "level": "Staff Engineer",
-            "role": "Staff Engineer",
-            "experience": "10+ years",
-            "total_comp": "150000",
-            "rsu": "30000",
-            "bonus": "0",
-            "salary": "120000",
-        }
-    ]
-    mock_levels_extract.return_value = ["Staff Engineer", "Senior Staff Engineer"]
-    mock_linkedin_main.return_value = [
-        {
-            "name": "John Doe",
-            "title": "Senior Engineer",
-            "profile_url": "https://linkedin.com/in/john-doe",
-        }
-    ]
+    mock_research_methods["company_researcher"].return_value = basic_company_info
+    mock_research_methods["levels_extract"].return_value = levels_data["levels"]
+    mock_research_methods["levels_main"].return_value = levels_data["main_data"]
+    mock_research_methods["linkedin_main"].return_value = linkedin_data
 
     # Research the company from a string message
     company = job_search.research_company(
@@ -389,54 +401,27 @@ def test_research_company_with_string_message(
     assert company.message_id is None
 
     # Verify all research methods were called
-    mock_company_researcher.assert_called_once()
-    mock_levels_main.assert_called_once()
-    mock_levels_extract.assert_called_once()
-    mock_linkedin_main.assert_called_once()
+    mock_research_methods["company_researcher"].assert_called_once()
+    mock_research_methods["levels_main"].assert_called_once()
+    mock_research_methods["levels_extract"].assert_called_once()
+    mock_research_methods["linkedin_main"].assert_called_once()
 
 
-@patch("company_researcher.main", autospec=True)
-@patch("libjobsearch.levels_searcher.main", autospec=True)
-@patch("libjobsearch.levels_searcher.extract_levels", autospec=True)
-@patch("libjobsearch.linkedin_searcher.main", autospec=True)
-@patch("libjobsearch.run_in_process", autospec=True)
-@patch("libjobsearch.EmailResponseGenerator", autospec=True)
 def test_research_company_with_unknown_company(
-    mock_email_responder_class,
-    mock_run_in_process,
-    mock_linkedin_main,
-    mock_levels_main,
-    mock_levels_extract,
-    mock_company_researcher,
+    mock_research_methods,
+    job_search,
+    basic_company_info,
 ):
     """Test creating a company when the name can't be extracted."""
-    # Configure run_in_process to just call the function
-    mock_run_in_process.side_effect = lambda func, *args, **kwargs: func(*args, **kwargs)
-
-    # Configure email responder mock
-    mock_email_responder = mock_email_responder_class.return_value
-    mock_email_responder.generate_reply.return_value = "Test reply"
-
-    args = argparse.Namespace(
-        model="claude-3-5-sonnet-latest",
-        rag_message_limit=20,
-        no_cache=True,
-    )
-    job_search = libjobsearch.JobSearch(
-        args,
-        loglevel=logging.INFO,
-        cache_settings=libjobsearch.CacheSettings(no_cache=True),
-    )
-
     # Configure mocks
-    mock_company_researcher.return_value = CompaniesSheetRow(
+    mock_research_methods["company_researcher"].return_value = CompaniesSheetRow(
         name=None,
         type="Private",
         url="https://acme.com",
     )
-    mock_levels_main.return_value = []
-    mock_levels_extract.return_value = []
-    mock_linkedin_main.return_value = []
+    mock_research_methods["levels_main"].return_value = []
+    mock_research_methods["levels_extract"].return_value = []
+    mock_research_methods["linkedin_main"].return_value = []
 
     # Research with a message that doesn't contain a company name
     company = job_search.research_company(
@@ -449,87 +434,26 @@ def test_research_company_with_unknown_company(
     assert company.message_id is None
 
     # Verify all research methods were called
-    mock_company_researcher.assert_called_once()
-    mock_levels_main.assert_called_once()
-    mock_levels_extract.assert_called_once()
-    mock_linkedin_main.assert_called_once()
+    mock_research_methods["company_researcher"].assert_called_once()
+    mock_research_methods["levels_main"].assert_called_once()
+    mock_research_methods["levels_extract"].assert_called_once()
+    mock_research_methods["linkedin_main"].assert_called_once()
 
 
-@patch("company_researcher.main", autospec=True)
-@patch("libjobsearch.levels_searcher.main", autospec=True)
-@patch("libjobsearch.levels_searcher.extract_levels", autospec=True)
-@patch("libjobsearch.linkedin_searcher.main", autospec=True)
-@patch("libjobsearch.run_in_process", autospec=True)
-@patch("libjobsearch.EmailResponseGenerator", autospec=True)
 def test_research_company_with_advanced_research(
-    mock_email_responder_class,
-    mock_run_in_process,
-    mock_linkedin_main,
-    mock_levels_main,
-    mock_levels_extract,
-    mock_company_researcher,
+    mock_research_methods,
+    job_search,
+    recruiter_message,
+    complete_company_info,
+    levels_data,
+    linkedin_data,
 ):
     """Test creating a company with advanced research enabled."""
-    # Configure run_in_process to just call the function
-    mock_run_in_process.side_effect = lambda func, *args, **kwargs: func(*args, **kwargs)
-
-    # Configure email responder mock
-    mock_email_responder = mock_email_responder_class.return_value
-    mock_email_responder.generate_reply.return_value = "Test reply"
-
-    args = argparse.Namespace(
-        model="claude-3-5-sonnet-latest",
-        rag_message_limit=20,
-        no_cache=True,
-    )
-    job_search = libjobsearch.JobSearch(
-        args,
-        loglevel=logging.INFO,
-        cache_settings=libjobsearch.CacheSettings(no_cache=True),
-    )
-
-    # Create a test recruiter message
-    recruiter_message = RecruiterMessage(
-        message_id="test123",
-        message="Hello, we have a job opportunity at Acme Corp for you.",
-        subject="Job Opportunity at Acme Corp",
-        sender="recruiter@example.com",
-        email_thread_link="https://mail.example.com/thread123",
-        thread_id="thread123",
-        date=datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
-    )
-
     # Configure mocks
-    mock_company_researcher.return_value = CompaniesSheetRow(
-        name="Acme Corp",
-        type="Private",
-        url="https://acme.com",
-        total_comp=decimal.Decimal("150000"),
-        base=decimal.Decimal("120000"),
-        rsu=decimal.Decimal("30000"),
-        bonus=decimal.Decimal("0"),
-        level_equiv="Staff",
-        maybe_referrals="John Doe - Senior Engineer",
-    )
-    mock_levels_main.return_value = [
-        {
-            "level": "Staff Engineer",
-            "role": "Staff Engineer",
-            "experience": "10+ years",
-            "total_comp": "150000",
-            "rsu": "30000",
-            "bonus": "0",
-            "salary": "120000",
-        }
-    ]
-    mock_levels_extract.return_value = ["Staff Engineer", "Senior Staff Engineer"]
-    mock_linkedin_main.return_value = [
-        {
-            "name": "John Doe",
-            "title": "Senior Engineer",
-            "profile_url": "https://linkedin.com/in/john-doe",
-        }
-    ]
+    mock_research_methods["company_researcher"].return_value = complete_company_info
+    mock_research_methods["levels_extract"].return_value = levels_data["levels"]
+    mock_research_methods["levels_main"].return_value = levels_data["main_data"]
+    mock_research_methods["linkedin_main"].return_value = linkedin_data
 
     # Research the company with advanced research
     company = job_search.research_company(
@@ -550,7 +474,7 @@ def test_research_company_with_advanced_research(
     assert isinstance(company.status.research_errors, list)
 
     # Verify all research methods were called
-    mock_company_researcher.assert_called_once()
-    mock_levels_main.assert_called_once()
-    mock_levels_extract.assert_called_once()
-    mock_linkedin_main.assert_called_once()
+    mock_research_methods["company_researcher"].assert_called_once()
+    mock_research_methods["levels_main"].assert_called_once()
+    mock_research_methods["levels_extract"].assert_called_once()
+    mock_research_methods["linkedin_main"].assert_called_once()
