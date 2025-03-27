@@ -367,7 +367,7 @@ class LinkedInSearcher:
             print(f"Error during cleanup: {e}")
 
 
-def main(company: str, debug: bool = False, headless: bool = True):
+def main(company: str, debug: bool = False, headless: bool = True) -> list[Dict]:
     searcher = LinkedInSearcher(debug=debug, headless=headless)
     try:
         searcher.login()

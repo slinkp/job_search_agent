@@ -112,7 +112,7 @@ class LevelsFyiSearcher:
             logger.exception(f"Error finding and extracting salaries: {e}")
             return []
 
-    def find_and_extract_levels(self, company_name: str):
+    def find_and_extract_levels(self, company_name: str) -> list[str]:
         try:
             self._navigate_to_comparison_page(company_name)
             extractor = LevelsExtractor(self.level_container)
