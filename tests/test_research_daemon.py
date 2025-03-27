@@ -45,6 +45,85 @@ def cache_settings():
 
 
 @pytest.fixture
+def mock_spreadsheet():
+    """Fixture to mock spreadsheet operations."""
+    with patch("libjobsearch.upsert_company_in_spreadsheet", autospec=True) as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_email():
+    """Fixture to mock email operations."""
+    with patch("libjobsearch.send_reply_and_archive", autospec=True) as mock:
+        mock.return_value = True
+        yield mock
+
+
+@pytest.fixture
+def test_company():
+    """Fixture to create a test company."""
+    company_name = "Test Corp"
+    return Company(
+        name=company_name,
+        details=CompaniesSheetRow(name=company_name),
+        status=CompanyStatus(),
+    )
+
+
+@pytest.fixture
+def test_company_with_message(test_company):
+    """Fixture to create a test company with a recruiter message."""
+    test_company.recruiter_message = RecruiterMessage(
+        message="Test message",
+        message_id="msg123",
+        thread_id="thread123",
+    )
+    return test_company
+
+
+@pytest.fixture
+def test_company_with_reply(test_company_with_message):
+    """Fixture to create a test company with a reply message."""
+    test_company_with_message.reply_message = "Test reply"
+    test_company_with_message.message_id = "msg123"
+    return test_company_with_message
+
+
+@pytest.fixture
+def test_recruiter_messages():
+    """Fixture to create test recruiter messages."""
+    return [
+        RecruiterMessage(
+            message="Job at Acme Corp",
+            message_id="msg1",
+            thread_id="thread1",
+        ),
+        RecruiterMessage(
+            message="Job at Test Corp",
+            message_id="msg2",
+            thread_id="thread2",
+        ),
+    ]
+
+
+@pytest.fixture
+def test_companies():
+    """Fixture to create test companies."""
+    return [
+        Company(
+            name="Acme Corp",
+            details=CompaniesSheetRow(name="Acme Corp"),
+            status=CompanyStatus(),
+        ),
+        Company(
+            name="Test Corp",
+            details=CompaniesSheetRow(name="Test Corp"),
+            status=CompanyStatus(),
+        ),
+    ]
+
+
+@pytest.fixture
 def daemon(args, cache_settings, mock_task_manager, mock_company_repo, mock_jobsearch):
     with patch("libjobsearch.MainTabCompaniesClient", autospec=True) as mock_client:
         # Configure the mock client to return empty list for read_rows_from_google
@@ -84,72 +163,49 @@ def test_process_next_task_no_tasks(daemon):
     daemon.task_mgr.get_next_pending_task.assert_called_once()
 
 
-def test_do_research_new_company(daemon):
+def test_do_research_new_company(daemon, test_company, mock_spreadsheet):
     company_name = "Test Corp"
     args = {"company_name": company_name}
 
-    # Create actual Company object with real CompaniesSheetRow
-    company_details = CompaniesSheetRow(name=company_name)
-    company = Company(
-        name=company_name,
-        details=company_details,
-        status=CompanyStatus(research_errors=[]),
-    )
-
     # Company doesn't exist yet
     daemon.company_repo.get.return_value = None
-    daemon.jobsearch.research_company.return_value = company
+    daemon.jobsearch.research_company.return_value = test_company
 
-    with patch(
-        "libjobsearch.upsert_company_in_spreadsheet", autospec=True
-    ) as mock_upsert:
-        daemon.do_research(args)
+    daemon.do_research(args)
 
-        daemon.jobsearch.research_company.assert_called_once_with(
-            company_name, model=daemon.ai_model
-        )
-        daemon.company_repo.create.assert_called_once_with(company)
-        mock_upsert.assert_called_once_with(company.details, daemon.args)
+    daemon.jobsearch.research_company.assert_called_once_with(
+        company_name, model=daemon.ai_model
+    )
+    daemon.company_repo.create.assert_called_once_with(test_company)
+    mock_spreadsheet.assert_called_once_with(test_company.details, daemon.args)
 
 
-def test_do_research_existing_company(daemon):
+def test_do_research_existing_company(daemon, test_company, mock_spreadsheet):
     company_name = "Test Corp"
     args = {"company_name": company_name}
 
     # Create existing company with initial data
-    existing_details = CompaniesSheetRow(name=company_name)
-    existing_company = Company(
-        name=company_name,
-        details=existing_details,
-        status=CompanyStatus(research_errors=[]),
-        recruiter_message=None,
-    )
+    existing_company = test_company
     daemon.company_repo.get.return_value = existing_company
 
     # Create new research results
-    new_details = CompaniesSheetRow(name=company_name)
-    research_result = Company(
-        name=company_name, details=new_details, status=CompanyStatus(research_errors=[])
-    )
+    research_result = test_company
     daemon.jobsearch.research_company.return_value = research_result
 
-    with patch(
-        "libjobsearch.upsert_company_in_spreadsheet", autospec=True
-    ) as mock_upsert:
-        daemon.do_research(args)
+    daemon.do_research(args)
 
-        daemon.jobsearch.research_company.assert_called_once_with(
-            company_name, model=daemon.ai_model
-        )
+    daemon.jobsearch.research_company.assert_called_once_with(
+        company_name, model=daemon.ai_model
+    )
 
-        # Verify existing company was updated with new details
-        assert existing_company.details == new_details
-        assert existing_company.status.research_errors == []
-        daemon.company_repo.update.assert_called_once_with(existing_company)
-        mock_upsert.assert_called_once_with(existing_company.details, daemon.args)
+    # Verify existing company was updated with new details
+    assert existing_company.details == research_result.details
+    assert existing_company.status.research_errors == []
+    daemon.company_repo.update.assert_called_once_with(existing_company)
+    mock_spreadsheet.assert_called_once_with(existing_company.details, daemon.args)
 
 
-def test_do_research_error_new_company(daemon):
+def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet):
     """Test research error handling for a new company."""
     company_name = "Test Corp"
     args = {"company_name": company_name}
@@ -158,9 +214,7 @@ def test_do_research_error_new_company(daemon):
     daemon.company_repo.get.return_value = None
     daemon.jobsearch.research_company.side_effect = ValueError("Research failed")
 
-    with patch(
-        "libjobsearch.upsert_company_in_spreadsheet", autospec=True
-    ) as mock_upsert, pytest.raises(ValueError):
+    with pytest.raises(ValueError):
         daemon.do_research(args)
 
     # Verify minimal company was created with error
@@ -171,90 +225,55 @@ def test_do_research_error_new_company(daemon):
     assert len(created_company.status.research_errors) == 1
     assert created_company.status.research_errors[0].step == "research_company"
     assert "Research failed" in created_company.status.research_errors[0].error
-    mock_upsert.assert_called_once_with(created_company.details, daemon.args)
+    mock_spreadsheet.assert_called_once_with(created_company.details, daemon.args)
 
 
-def test_do_send_and_archive(daemon):
+def test_do_send_and_archive(daemon, test_company_with_reply, mock_email):
     company_name = "Test Corp"
     args = {"company_name": company_name}
 
-    # Create actual Company object
-    company = Company(
-        name=company_name,
-        details=CompaniesSheetRow(name=company_name),
-        status=CompanyStatus(),
-        reply_message="Test reply",
-        message_id="msg123",
-        recruiter_message=RecruiterMessage(
-            message="Test message",
-            email_thread_link="https://example.com/thread123",
-            thread_id="thread123",
-        ),
+    daemon.company_repo.get.return_value = test_company_with_reply
+
+    daemon.do_send_and_archive(args)
+
+    mock_email.assert_called_once_with(
+        message_id=test_company_with_reply.message_id,
+        thread_id=test_company_with_reply.thread_id,
+        reply=test_company_with_reply.reply_message,
+        company_name=company_name,
     )
 
-    daemon.company_repo.get.return_value = company
-
-    with patch("libjobsearch.send_reply_and_archive", autospec=True) as mock_send:
-        mock_send.return_value = True
-        daemon.do_send_and_archive(args)
-
-        mock_send.assert_called_once_with(
-            message_id=company.message_id,
-            thread_id=company.thread_id,
-            reply=company.reply_message,
-            company_name=company_name,
-        )
-
-        assert company.details.current_state == "30. replied to recruiter"
-        assert company.details.updated == date.today()
-        daemon.company_repo.update.assert_called_once_with(company)
+    assert test_company_with_reply.details.current_state == "30. replied to recruiter"
+    assert test_company_with_reply.details.updated == date.today()
+    daemon.company_repo.update.assert_called_once_with(test_company_with_reply)
 
 
-def test_do_send_and_archive_dry_run(daemon):
+def test_do_send_and_archive_dry_run(daemon, test_company_with_reply, mock_email):
     daemon.dry_run = True
     company_name = "Test Corp"
     args = {"company_name": company_name}
 
-    company = Company(
-        name=company_name,
-        details=CompaniesSheetRow(name=company_name),
-        status=CompanyStatus(),
-        reply_message="Test reply",
-        message_id="msg123",
-    )
+    daemon.company_repo.get.return_value = test_company_with_reply
 
-    daemon.company_repo.get.return_value = company
-
-    with patch("libjobsearch.send_reply_and_archive", autospec=True) as mock_send:
-        daemon.do_send_and_archive(args)
-        mock_send.assert_not_called()
+    daemon.do_send_and_archive(args)
+    mock_email.assert_not_called()
 
 
-def test_do_generate_reply(daemon):
+def test_do_generate_reply(daemon, test_company_with_message):
     """Test generating a reply for a company."""
     company_name = "Test Corp"
     args = {"company_name": company_name}
 
-    # Create company with recruiter message
-    company = Company(
-        name=company_name,
-        details=CompaniesSheetRow(name=company_name),
-        status=CompanyStatus(),
-        recruiter_message=RecruiterMessage(
-            message="Test message",
-            message_id="msg123",
-            thread_id="thread123",
-        ),
-    )
-
-    daemon.company_repo.get.return_value = company
+    daemon.company_repo.get.return_value = test_company_with_message
     daemon.jobsearch.generate_reply.return_value = "Generated reply"
 
     daemon.do_generate_reply(args)
 
-    daemon.jobsearch.generate_reply.assert_called_once_with(company.initial_message)
-    assert company.reply_message == "Generated reply"
-    daemon.company_repo.update.assert_called_once_with(company)
+    daemon.jobsearch.generate_reply.assert_called_once_with(
+        test_company_with_message.initial_message
+    )
+    assert test_company_with_message.reply_message == "Generated reply"
+    daemon.company_repo.update.assert_called_once_with(test_company_with_message)
 
 
 def test_do_generate_reply_missing_company(daemon):
@@ -268,58 +287,26 @@ def test_do_generate_reply_missing_company(daemon):
         daemon.do_generate_reply(args)
 
 
-def test_do_generate_reply_missing_recruiter_message(daemon):
+def test_do_generate_reply_missing_recruiter_message(daemon, test_company):
     """Test generating a reply when company has no recruiter message."""
     company_name = "Test Corp"
     args = {"company_name": company_name}
 
-    company = Company(
-        name=company_name,
-        details=CompaniesSheetRow(name=company_name),
-        status=CompanyStatus(),
-    )
-
-    daemon.company_repo.get.return_value = company
+    daemon.company_repo.get.return_value = test_company
 
     with pytest.raises(AssertionError):
         daemon.do_generate_reply(args)
 
 
-def test_do_find_companies_in_recruiter_messages(daemon):
+def test_do_find_companies_in_recruiter_messages(
+    daemon, test_recruiter_messages, test_companies
+):
     """Test finding companies in recruiter messages."""
     args = {"max_messages": 2, "do_research": True}
 
-    # Create test messages
-    messages = [
-        RecruiterMessage(
-            message="Job at Acme Corp",
-            message_id="msg1",
-            thread_id="thread1",
-        ),
-        RecruiterMessage(
-            message="Job at Test Corp",
-            message_id="msg2",
-            thread_id="thread2",
-        ),
-    ]
-
-    # Create test companies
-    companies = [
-        Company(
-            name="Acme Corp",
-            details=CompaniesSheetRow(name="Acme Corp"),
-            status=CompanyStatus(),
-        ),
-        Company(
-            name="Test Corp",
-            details=CompaniesSheetRow(name="Test Corp"),
-            status=CompanyStatus(),
-        ),
-    ]
-
-    daemon.jobsearch.get_new_recruiter_messages.return_value = messages
+    daemon.jobsearch.get_new_recruiter_messages.return_value = test_recruiter_messages
     daemon.company_repo.get.return_value = None  # Companies don't exist yet
-    daemon.jobsearch.research_company.side_effect = companies
+    daemon.jobsearch.research_company.side_effect = test_companies
     daemon.running = True  # Ensure daemon stays running
 
     daemon.do_find_companies_in_recruiter_messages(args)
@@ -329,42 +316,24 @@ def test_do_find_companies_in_recruiter_messages(daemon):
 
     # Verify each message was processed
     assert daemon.jobsearch.research_company.call_count == 2
-    for msg, company in zip(messages, companies):
+    for msg, company in zip(test_recruiter_messages, test_companies):
         daemon.jobsearch.research_company.assert_any_call(
             msg, model=daemon.ai_model, do_advanced=True
         )
         daemon.company_repo.create.assert_any_call(company)
 
 
-def test_do_find_companies_in_recruiter_messages_existing_company(daemon):
+def test_do_find_companies_in_recruiter_messages_existing_company(
+    daemon, test_recruiter_messages, test_companies
+):
     """Test finding companies when some already exist."""
     args = {"max_messages": 2, "do_research": True}
 
-    messages = [
-        RecruiterMessage(
-            message="Job at Acme Corp",
-            message_id="msg1",
-            thread_id="thread1",
-        ),
-        RecruiterMessage(
-            message="Job at Test Corp",
-            message_id="msg2",
-            thread_id="thread2",
-        ),
-    ]
-
     # First company exists, second doesn't
-    daemon.company_repo.get.side_effect = [
-        Company(name="Acme Corp", details=CompaniesSheetRow(name="Acme Corp")),
-        None,
-    ]
+    daemon.company_repo.get.side_effect = [test_companies[0], None]
 
-    daemon.jobsearch.get_new_recruiter_messages.return_value = messages
-    daemon.jobsearch.research_company.return_value = Company(
-        name="Test Corp",
-        details=CompaniesSheetRow(name="Test Corp"),
-        status=CompanyStatus(),
-    )
+    daemon.jobsearch.get_new_recruiter_messages.return_value = test_recruiter_messages
+    daemon.jobsearch.research_company.return_value = test_companies[1]
     daemon.running = True  # Ensure daemon stays running
 
     daemon.do_find_companies_in_recruiter_messages(args)
@@ -374,19 +343,15 @@ def test_do_find_companies_in_recruiter_messages_existing_company(daemon):
     daemon.company_repo.create.assert_called_once()
 
 
-def test_do_find_companies_in_recruiter_messages_no_company_name(daemon):
+def test_do_find_companies_in_recruiter_messages_no_company_name(
+    daemon, test_recruiter_messages
+):
     """Test finding companies when no company name is extracted."""
     args = {"max_messages": 2, "do_research": True}
 
-    messages = [
-        RecruiterMessage(
-            message="Job at Acme Corp",
-            message_id="msg1",
-            thread_id="thread1",
-        ),
+    daemon.jobsearch.get_new_recruiter_messages.return_value = [
+        test_recruiter_messages[0]
     ]
-
-    daemon.jobsearch.get_new_recruiter_messages.return_value = messages
     daemon.jobsearch.research_company.return_value = Company(
         name="",
         details=CompaniesSheetRow(name=""),
@@ -399,19 +364,13 @@ def test_do_find_companies_in_recruiter_messages_no_company_name(daemon):
     daemon.company_repo.create.assert_not_called()
 
 
-def test_do_find_companies_in_recruiter_messages_error(daemon):
+def test_do_find_companies_in_recruiter_messages_error(daemon, test_recruiter_messages):
     """Test finding companies when research fails."""
     args = {"max_messages": 2, "do_research": True}
 
-    messages = [
-        RecruiterMessage(
-            message="Job at Acme Corp",
-            message_id="msg1",
-            thread_id="thread1",
-        ),
+    daemon.jobsearch.get_new_recruiter_messages.return_value = [
+        test_recruiter_messages[0]
     ]
-
-    daemon.jobsearch.get_new_recruiter_messages.return_value = messages
     daemon.jobsearch.research_company.side_effect = ValueError("Research failed")
 
     daemon.do_find_companies_in_recruiter_messages(args)
@@ -420,25 +379,19 @@ def test_do_find_companies_in_recruiter_messages_error(daemon):
     daemon.company_repo.create.assert_not_called()
 
 
-def test_do_ignore_and_archive(daemon):
+def test_do_ignore_and_archive(daemon, test_company):
     """Test ignoring and archiving a company's message."""
     company_name = "Test Corp"
     args = {"company_name": company_name}
 
-    company = Company(
-        name=company_name,
-        details=CompaniesSheetRow(name=company_name),
-        status=CompanyStatus(),
-    )
-
-    daemon.company_repo.get.return_value = company
+    daemon.company_repo.get.return_value = test_company
 
     result = daemon.do_ignore_and_archive(args)
 
     # Verify company was updated
-    assert company.details.current_state == "70. ruled out, without reply"
-    assert company.details.updated == date.today()
-    daemon.company_repo.update.assert_called_once_with(company)
+    assert test_company.details.current_state == "70. ruled out, without reply"
+    assert test_company.details.updated == date.today()
+    daemon.company_repo.update.assert_called_once_with(test_company)
 
     # Verify event was created
     daemon.company_repo.create_event.assert_called_once()
