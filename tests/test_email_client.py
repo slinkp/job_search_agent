@@ -1,8 +1,10 @@
 import base64
-import pytest
+import os
 from unittest.mock import MagicMock, patch
 
-from email_client import GmailRepliesSearcher, ARCHIVED_LABEL
+import pytest
+
+from email_client import ARCHIVED_LABEL, GmailRepliesSearcher
 from models import RecruiterMessage
 
 
@@ -195,7 +197,7 @@ class TestGmailRepliesSearcher:
         create_call = gmail_searcher.service.users().labels().create.call_args
         assert create_call is not None
         assert create_call[1]["body"]["name"] == label_name
-        
+
     def test_get_new_recruiter_messages(self, gmail_searcher):
         """Test getting new recruiter messages."""
         # Setup mock messages
@@ -211,7 +213,7 @@ class TestGmailRepliesSearcher:
                 "body": {"data": base64.b64encode(b"Message content").decode()},
             },
         }
-        
+
         # Mock the search_and_get_details method
         with patch.object(
             gmail_searcher, "search_and_get_details", return_value=[message1]
@@ -222,7 +224,7 @@ class TestGmailRepliesSearcher:
             ):
                 # Call the method
                 result = gmail_searcher.get_new_recruiter_messages(max_results=1)
-                
+
                 # Assertions
                 assert len(result) == 1
                 assert isinstance(result[0], RecruiterMessage)
@@ -230,8 +232,259 @@ class TestGmailRepliesSearcher:
                 assert result[0].thread_id == "thread123"
                 assert result[0].subject == "Job Opportunity"
                 assert result[0].sender == "recruiter@example.com"
-                assert "Message content" in result[0].message
+                def normalize_whitespace(text):
+                    return " ".join(text.split())
+
+                assert normalize_whitespace(result[0].message) == normalize_whitespace(
+                    "Job Opportunity\n\nMessage content"
+                )
                 assert result[0].email_thread_link == "https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread123"
-                
+
                 # Verify search_and_get_details was called with the correct parameters
                 mock_search.assert_called_once()
+
+    def test_authenticate_with_expired_token(self, gmail_searcher):
+        """Test authentication with expired token."""
+        # Mock expired credentials
+        mock_creds = MagicMock()
+        mock_creds.valid = False
+        mock_creds.expired = True
+        mock_creds.refresh_token = "token123"
+
+        # Mock token file
+        with patch("os.path.exists", return_value=True), patch(
+            "email_client.Credentials.from_authorized_user_file", return_value=mock_creds
+        ), patch("email_client.Request"), patch(
+            "email_client.InstalledAppFlow"
+        ) as mock_flow, patch(
+            "email_client.RefreshError"
+        ) as mock_refresh_error, patch(
+            "builtins.open"
+        ) as mock_open, patch(
+            "email_client.build"
+        ) as mock_build, patch(
+            "email_client.CREDENTIALS_FILE", os.path.abspath("secrets/credentials.json")
+        ), patch(
+            "email_client.TOKEN_FILE", "secrets/token.json"
+        ):
+
+            # Make refresh fail with RefreshError
+            mock_creds.refresh.side_effect = mock_refresh_error
+
+            # Mock the flow and its returned credentials
+            mock_new_creds = MagicMock()
+            mock_new_creds.to_json.return_value = '{"token": "new_token"}'
+            mock_flow.from_client_secrets_file.return_value.run_local_server.return_value = (
+                mock_new_creds
+            )
+
+            # Mock the build function
+            mock_build.return_value = MagicMock()
+
+            # Call authenticate
+            gmail_searcher.authenticate()
+
+            # Verify refresh was attempted
+            mock_creds.refresh.assert_called_once()
+
+            # Verify flow was created and run
+            mock_flow.from_client_secrets_file.assert_called_once_with(
+                os.path.abspath("secrets/credentials.json"), gmail_searcher.SCOPES
+            )
+            mock_flow.from_client_secrets_file.return_value.run_local_server.assert_called_once_with(
+                port=0
+            )
+
+            # Verify the credentials were set correctly
+            assert gmail_searcher.creds == mock_new_creds
+
+            # Verify credentials were written to file
+            mock_open.assert_called_once_with("secrets/token.json", "w")
+            mock_open.return_value.__enter__.return_value.write.assert_called_once_with(
+                '{"token": "new_token"}'
+            )
+
+            # Verify build was called with correct parameters
+            mock_build.assert_called_once_with("gmail", "v1", credentials=mock_new_creds)
+
+    def test_authenticate_without_token(self, gmail_searcher):
+        """Test authentication without existing token."""
+        with patch("os.path.exists", return_value=False), patch(
+            "email_client.InstalledAppFlow"
+        ) as mock_flow, patch(
+            "email_client.CREDENTIALS_FILE", os.path.abspath("secrets/credentials.json")
+        ), patch(
+            "email_client.TOKEN_FILE", "secrets/token.json"
+        ), patch(
+            "builtins.open"
+        ) as mock_open:
+
+            # Mock the flow and its returned credentials
+            mock_new_creds = MagicMock()
+            mock_new_creds.to_json.return_value = '{"token": "new_token"}'
+            mock_flow.from_client_secrets_file.return_value.run_local_server.return_value = (
+                mock_new_creds
+            )
+
+            # Call authenticate
+            gmail_searcher.authenticate()
+
+            # Verify flow was created and run
+            mock_flow.from_client_secrets_file.assert_called_once_with(
+                os.path.abspath("secrets/credentials.json"), gmail_searcher.SCOPES
+            )
+            mock_flow.from_client_secrets_file.return_value.run_local_server.assert_called_once_with(
+                port=0
+            )
+
+            # Verify credentials were written to file
+            mock_open.assert_called_once_with("secrets/token.json", "w")
+            mock_open.return_value.__enter__.return_value.write.assert_called_once_with(
+                '{"token": "new_token"}'
+            )
+
+    def test_extract_message_content_with_parts(self, gmail_searcher):
+        """Test extracting message content from message parts."""
+        message = {
+            "payload": {
+                "parts": [
+                    {
+                        "mimeType": "text/plain",
+                        "body": {"data": base64.b64encode(b"Message content").decode()},
+                    }
+                ]
+            }
+        }
+
+        content = gmail_searcher.extract_message_content(message)
+        assert content == "Message content"
+
+    def test_extract_message_content_no_content(self, gmail_searcher):
+        """Test extracting message content when no content is found."""
+        message = {"payload": {"parts": []}}
+
+        content = gmail_searcher.extract_message_content(message)
+        assert content == ""
+
+    def test_clean_reply_short_text(self, gmail_searcher):
+        """Test cleaning short reply text."""
+        text = "Replied on LinkedIn"
+        cleaned = gmail_searcher.clean_reply(text)
+        assert cleaned == ""
+
+    def test_clean_reply_long_text(self, gmail_searcher):
+        """Test cleaning long reply text."""
+        text = "Thank you for your message. I am interested in the position."
+        cleaned = gmail_searcher.clean_reply(text)
+        assert cleaned == text
+
+    def test_clean_quoted_text_with_garbage(self, gmail_searcher):
+        """Test cleaning quoted text with garbage lines."""
+        text = "> Normal line\n> Get the new LinkedIn\n> Another line"
+        cleaned = gmail_searcher.clean_quoted_text(text)
+        assert cleaned == "Normal line"
+
+    def test_clean_quoted_text_with_email(self, gmail_searcher):
+        """Test cleaning quoted text with email addresses."""
+        text = "> Normal line\n> <user@example.com> wrote:\n> Another line"
+        cleaned = gmail_searcher.clean_quoted_text(text)
+
+        def normalize_whitespace(text):
+            return " ".join(text.split())
+
+        assert normalize_whitespace(cleaned) == normalize_whitespace("Normal line")
+
+    def test_split_message_with_quoted_text(self, gmail_searcher):
+        """Test splitting message with quoted text."""
+        content = "My reply. Lorem ipsum dolor sit amet.\n\n"
+        content += "On Mon, Jan 1, 2024 at 12:00 PM <user@example.com> wrote:\n\n"
+        content += "Blah blah blah"
+        reply, quoted = gmail_searcher.split_message(content)
+        assert reply == "My reply. Lorem ipsum dolor sit amet."
+        assert quoted == "Blah blah blah"
+
+    def test_split_message_without_quoted_text(self, gmail_searcher):
+        """Test splitting message without quoted text."""
+        content = "Just a simple message. Lorem ipsum dolor sit amet."
+        reply, quoted = gmail_searcher.split_message(content)
+        assert reply == "Just a simple message. Lorem ipsum dolor sit amet."
+        assert quoted == ""
+
+    def test_get_subject_with_garbage(self, gmail_searcher):
+        """Test getting subject with garbage subject."""
+        message = {
+            "payload": {
+                "headers": [{"name": "Subject", "value": "You have an invitation"}]
+            }
+        }
+        subject = gmail_searcher.get_subject(message)
+        assert subject == "(No Subject)"
+
+    def test_get_subject_no_subject(self, gmail_searcher):
+        """Test getting subject when no subject header exists."""
+        message = {"payload": {"headers": []}}
+        subject = gmail_searcher.get_subject(message)
+        assert subject == "(No Subject)"
+
+    def test_send_reply_without_headers(self, gmail_searcher):
+        """Test sending reply when original message has no headers."""
+        thread_id = "thread123"
+        message_id = "msg456"
+        reply_text = "Thank you for your message"
+
+        # Mock the original message response with no headers
+        original_message = {"payload": {"headers": []}}
+
+        gmail_searcher.service.users().messages().get.return_value.execute.return_value = (
+            original_message
+        )
+        gmail_searcher.service.users().messages().send.return_value.execute.return_value = {
+            "id": "sent123"
+        }
+
+        # Call the method
+        result = gmail_searcher.send_reply(thread_id, message_id, reply_text)
+
+        # Assertions
+        assert result is True
+
+    def test_label_and_archive_message_error_removing_label(self, gmail_searcher):
+        """Test error handling when removing label fails."""
+        message_id = "msg456"
+        gmail_searcher.service.users().messages().modify.return_value.execute.side_effect = Exception(
+            "API Error"
+        )
+
+        result = gmail_searcher.label_and_archive_message(message_id)
+        assert result is False
+
+    def test_add_label_error_creating_label(self, gmail_searcher):
+        """Test error handling when creating label fails."""
+        message_id = "msg456"
+        label_name = "test-label"
+
+        # Make the modify call raise an exception
+        gmail_searcher.service.users().messages().modify.return_value.execute.side_effect = Exception(
+            "Label creation failed"
+        )
+
+        # Call the method
+        result = gmail_searcher.add_label(message_id, label_name)
+
+        # Assertions
+        assert result is False
+
+    def test_get_or_create_label_id_with_similar_name(self, gmail_searcher):
+        """Test getting label ID with similar name."""
+        label_name = "jobs-2024/recruiter-pings"
+        label_id = "label123"
+
+        # Mock the labels.list response with similar name
+        gmail_searcher.service.users().labels().list.return_value.execute.return_value = {
+            "labels": [
+                {"name": "jobs 2024/recruiter pings", "id": label_id},
+            ]
+        }
+
+        result = gmail_searcher._get_or_create_label_id(label_name)
+        assert result == label_id

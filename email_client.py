@@ -1,10 +1,10 @@
 import base64
 import datetime
+import functools
 import logging
 import os
 import re
 import textwrap
-import functools
 from collections import defaultdict
 
 from google.auth.exceptions import RefreshError
@@ -144,6 +144,12 @@ class GmailRepliesSearcher:
         for garbage in linkedin_garbage_lines_exact:
             if line == garbage:
                 return True
+        garbage_regexes = [
+            r".*wrote:\s*$",
+        ]
+        for regex in garbage_regexes:
+            if re.match(regex, line):
+                return True
         return False
 
     def clean_quoted_text(self, text):
@@ -271,7 +277,7 @@ class GmailRepliesSearcher:
             # Convert internalDate (milliseconds since epoch) to datetime
             date_ms = int(combined_msg["internalDate"])
             date = datetime.datetime.fromtimestamp(date_ms / 1000, tz=datetime.timezone.utc)
-            
+
             recruiter_message = RecruiterMessage(
                 message_id=combined_msg["id"],
                 email_thread_link=email_thread_link,
@@ -393,8 +399,8 @@ class GmailRepliesSearcher:
         Returns:
             bool: True if successful, False otherwise
         """
-        label_id = self._get_or_create_label_id(label_name)
         try:
+            label_id = self._get_or_create_label_id(label_name)
             # Add label to message
             self.service.users().messages().modify(
                 userId="me", id=message_id, body={"addLabelIds": [label_id]}
