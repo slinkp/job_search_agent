@@ -183,7 +183,10 @@ def run_in_process(func: Callable, *args, timeout=120, **kwargs) -> Any:
 
 
 def send_reply_and_archive(
-    message_id: str, thread_id: str, reply: str, company_name: Optional[str] = None
+    message_id: str,
+    thread_id: str,
+    reply: str,
+    company_id: Optional[str] = None,
 ) -> bool:
     """
     Send a reply to a recruiter email.
@@ -192,7 +195,7 @@ def send_reply_and_archive(
         message_id: The Gmail message ID to reply to
         thread_id: The Gmail thread ID
         reply: The reply text to send
-        company_name: Optional company name to create an event for
+        company_id: Optional company ID to create an event for
 
     Returns:
         bool: True if successful, False otherwise
@@ -211,14 +214,14 @@ def send_reply_and_archive(
             email_searcher.label_and_archive_message(message_id)
             logger.info("Reply sent and archived successfully")
 
-            # Create a REPLY_SENT event if company_name is provided
-            if company_name:
+            # Create a REPLY_SENT event if company_id is provided
+            if company_id:
                 event = models.Event(
-                    company_name=company_name,
+                    company_id=company_id,
                     event_type=models.EventType.REPLY_SENT,
                 )
                 models.company_repository().create_event(event)
-                logger.info(f"Created REPLY_SENT event for {company_name}")
+                logger.info(f"Created REPLY_SENT event for {company_id}")
 
             return True
         else:
@@ -407,8 +410,8 @@ class JobSearch:
             )
             # TODO: pass subject too?
 
-            company_info = self.research_company(msg, model=args.model)
-            logger.info(f"------- RESEARCHED COMPANY:\n{company_info}\n\n")
+            company = self.research_company(msg, model=args.model)
+            logger.info(f"------- RESEARCHED COMPANY:\n{company.details}\n\n")
 
             generated_reply = self.generate_reply(msg.message)
             logger.info(f"------ GENERATED REPLY:\n{generated_reply[:400]}\n\n")
@@ -419,9 +422,9 @@ class JobSearch:
                 message_id=msg.message_id,
                 thread_id=msg.thread_id,
                 reply=reply,
-                company_name=company_info.name,
+                company_id=company.company_id,
             )
-            upsert_company_in_spreadsheet(company_info.details, args)
+            upsert_company_in_spreadsheet(company.details, args)
             logger.info(f"Processed message {i+1} of {len(new_recruiter_email)}")
 
     def generate_reply(self, content: str) -> str:
@@ -435,7 +438,6 @@ class JobSearch:
 
         This does not update the company in the database, but it may create events in the db.
         """
-
         company_info: CompaniesSheetRow = self.initial_research_company(
             message, model=model
         )
@@ -449,14 +451,19 @@ class JobSearch:
 
         research_errors: list[models.ResearchStepError] = []
         assert company_info.name is not None
+
+        # Generate company_id from name
+        company_id = company_info.name.lower().replace(" ", "-")
+
         company = models.Company(
+            company_id=company_id,
             name=company_info.name,
             details=company_info,
             status=models.CompanyStatus(research_errors=research_errors),
         )
         if isinstance(message, models.RecruiterMessage):
             company.recruiter_message = message
-            company.recruiter_message.company_name = company_info.name
+            company.recruiter_message.company_id = company_id
         if not do_advanced:
             return company
 
@@ -484,7 +491,7 @@ class JobSearch:
         # Create a RESEARCH_COMPLETED event and set timestamp if no errors occurred
         if not research_errors:
             event = models.Event(
-                company_name=company.name,
+                company_id=company_id,
                 event_type=models.EventType.RESEARCH_COMPLETED,
             )
             models.company_repository().create_event(event)
@@ -501,7 +508,7 @@ class JobSearch:
         # Create an event for the research error
         if company_info.name:
             event = models.Event(
-                company_name=company_info.name,
+                company_id=company.company_id,
                 event_type=models.EventType.RESEARCH_ERROR,
                 details=f"{step_name} research failed: {str(e)}",
             )
