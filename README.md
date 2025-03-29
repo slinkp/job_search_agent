@@ -148,8 +148,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [ ] If company exists in sheet, but not in database, then pull in the sheet
         info to db, and update if needed
         - [ ] if all fields are full, mark research as done
-        - [ ] fuzzy-match on name? normalize somehow? warn if similar name
-              found / allow merging?
+        - [ ] see below about existing match
 - [x] Company research: Salary data from levels.fyi
   - [x] Drive browser - chose Playwright
   - [x] Extract salary data based on company name
@@ -179,13 +178,17 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] chose sqlite db
       - [x] models.py
       - [x] simple repository implementation
-  - [ ] Manually trigger checking email (with optional max)
+  - [x] Manually trigger checking email (with optional max)
       - [x] Button to scan email and select how many
       - [x] Make it optional whether we do research automatically (default: no)
       - [ ] Show more detailed progress info?
       - [ ] Make sure we only pull in new companies
         - [ ] Add to db only if doesn't exist
-        - [ ] Check spreadsheet for existing match - see above
+        - [ ] Check spreadsheet and db for existing match:
+          - [ ] company name - fuzzy match? normalize?
+            - [ ] support merging?
+          - [ ] message id
+          - [ ] thread link
         - [ ] Handle multiple messages for same company??
   - [x] List pending companies
     - [x] Display known data
@@ -204,8 +207,8 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] Show date of recruiter message above their message,
             formatted like  "YYYY/MM/DD 3:42pm (X days ago)"
       - [x] Add link to email thread from the reply page
-      - [ ] Mark as manually replied button
-      - [ ] Optionally add link to existing thread
+      - [ ] "Mark as manually replied" button
+        - [ ] Optionally add link to an existing thread?
     - [x] "Send and archive" button
     - [ ] "Save gmail draft" button
       - [ ] Track and show the state of this so we don't regenerate or edit and send
