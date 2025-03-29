@@ -97,7 +97,10 @@ class ResearchDaemon:
 
     def do_research(self, args: dict):
         company_name = args["company_name"]
-        existing = self.company_repo.get(company_name)
+        # Generate company_id from name
+        company_id = company_name.lower().replace(" ", "-")
+
+        existing = self.company_repo.get(company_id)
         company = None
         content = company_name
         recruiter_message = None
@@ -151,6 +154,7 @@ class ResearchDaemon:
                     ],
                 )
                 company = models.Company(
+                    company_id=company_id,
                     name=company_name,
                     details=minimal_row,
                     status=company_status,
@@ -273,7 +277,7 @@ class ResearchDaemon:
 
         # Record the event
         event = models.Event(
-            company_name=company_name,
+            company_id=company.company_id,
             event_type=models.EventType.ARCHIVED,
         )
         models.company_repository().create_event(event)

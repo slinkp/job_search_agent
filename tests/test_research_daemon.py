@@ -65,7 +65,9 @@ def mock_email():
 def test_company():
     """Fixture to create a test company."""
     company_name = "Test Corp"
+    company_id = "test-corp"
     return Company(
+        company_id=company_id,
         name=company_name,
         details=CompaniesSheetRow(name=company_name),
         status=CompanyStatus(),
@@ -78,7 +80,7 @@ def test_company_with_message(test_company):
     test_company.recruiter_message = RecruiterMessage(
         message="Test message",
         message_id="msg123",
-        company_name=test_company.name,
+        company_id=test_company.company_id,
         thread_id="thread123",
     )
     return test_company
@@ -113,11 +115,13 @@ def test_companies():
     """Fixture to create test companies."""
     return [
         Company(
+            company_id="acme-corp",
             name="Acme Corp",
             details=CompaniesSheetRow(name="Acme Corp"),
             status=CompanyStatus(),
         ),
         Company(
+            company_id="test-corp",
             name="Test Corp",
             details=CompaniesSheetRow(name="Test Corp"),
             status=CompanyStatus(),
@@ -355,6 +359,7 @@ def test_do_find_companies_in_recruiter_messages_no_company_name(
         test_recruiter_messages[0]
     ]
     daemon.jobsearch.research_company.return_value = Company(
+        company_id="unknown",
         name="",
         details=CompaniesSheetRow(name=""),
         status=CompanyStatus(),
@@ -398,7 +403,7 @@ def test_do_ignore_and_archive(daemon, test_company):
     # Verify event was created
     daemon.company_repo.create_event.assert_called_once()
     event = daemon.company_repo.create_event.call_args[0][0]
-    assert event.company_name == company_name
+    assert event.company_id == test_company.company_id
     assert event.event_type == models.EventType.ARCHIVED
 
     assert result == {"status": "success"}
