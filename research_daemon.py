@@ -225,24 +225,15 @@ class ResearchDaemon:
         if not company.reply_message:
             raise ValueError(f"No reply message for company: {company_name}")
 
-        if not company.message_id:
-            raise ValueError(f"No message ID for company: {company_name}")
-
-        # In dry run mode, just log what would happen
-        if self.dry_run:
-            logger.info("DRY RUN: Would send the following email:")
-            logger.info(f"To: Recruiter at {company_name}")
-            logger.info(f"Thread: {company.thread_id}")
-            logger.info(f"Message ID: {company.message_id}")
-            logger.info(f"Message:\n{company.reply_message}")
-            logger.info("DRY RUN: Would archive the message thread")
+        if not company.recruiter_message or not company.recruiter_message.message_id:
+            logger.warning("No recruiter message found for company, skipping")
             return
 
-        # We have a message ID, use it
+        logger.info(f"Message ID: {company.recruiter_message.message_id}")
         try:
-            success = libjobsearch.send_reply_and_archive(
-                message_id=company.message_id,
-                thread_id=company.thread_id,
+            success = self.jobsearch.send_reply_and_archive(
+                thread_id=company.recruiter_message.thread_id,
+                message_id=company.recruiter_message.message_id,
                 reply=company.reply_message,
                 company_name=company.name,
             )

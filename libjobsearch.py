@@ -456,7 +456,7 @@ class JobSearch:
         )
         if isinstance(message, models.RecruiterMessage):
             company.recruiter_message = message
-            company.message_id = message.message_id
+            company.recruiter_message.company_name = company_info.name
         if not do_advanced:
             return company
 

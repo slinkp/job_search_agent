@@ -25,7 +25,9 @@ def mock_company_repo():
 @pytest.fixture
 def mock_jobsearch():
     with patch("libjobsearch.JobSearch", autospec=True) as mock:
-        yield mock.return_value
+        instance = mock.return_value
+        instance.send_reply_and_archive = Mock(return_value=True)
+        yield instance
 
 
 @pytest.fixture
@@ -76,6 +78,7 @@ def test_company_with_message(test_company):
     test_company.recruiter_message = RecruiterMessage(
         message="Test message",
         message_id="msg123",
+        company_name=test_company.name,
         thread_id="thread123",
     )
     return test_company
@@ -85,7 +88,6 @@ def test_company_with_message(test_company):
 def test_company_with_reply(test_company_with_message):
     """Fixture to create a test company with a reply message."""
     test_company_with_message.reply_message = "Test reply"
-    test_company_with_message.message_id = "msg123"
     return test_company_with_message
 
 
@@ -228,7 +230,7 @@ def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet):
     mock_spreadsheet.assert_called_once_with(created_company.details, daemon.args)
 
 
-def test_do_send_and_archive(daemon, test_company_with_reply, mock_email):
+def test_do_send_and_archive(daemon, test_company_with_reply):
     company_name = "Test Corp"
     args = {"company_name": company_name}
 
@@ -236,9 +238,9 @@ def test_do_send_and_archive(daemon, test_company_with_reply, mock_email):
 
     daemon.do_send_and_archive(args)
 
-    mock_email.assert_called_once_with(
-        message_id=test_company_with_reply.message_id,
-        thread_id=test_company_with_reply.thread_id,
+    daemon.jobsearch.send_reply_and_archive.assert_called_once_with(
+        message_id=test_company_with_reply.recruiter_message.message_id,
+        thread_id=test_company_with_reply.recruiter_message.thread_id,
         reply=test_company_with_reply.reply_message,
         company_name=company_name,
     )

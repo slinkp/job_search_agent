@@ -308,6 +308,7 @@ class RecruiterMessage(BaseModel):
 
     Attributes:
         message_id: Unique Gmail message ID for this specific message
+        company_name: Name of the company this message is associated with
         message: The content of the message
         subject: Email subject line
         sender: Email sender (recruiter's email address)
@@ -317,6 +318,7 @@ class RecruiterMessage(BaseModel):
     """
 
     message_id: str = ""
+    company_name: str = ""
     message: str = ""
     subject: Optional[str] = ""
     sender: Optional[str] = ""
@@ -359,8 +361,14 @@ class Company(BaseModel):
     details: CompaniesSheetRow
     status: CompanyStatus = Field(default_factory=CompanyStatus)
     reply_message: str = ""
-    message_id: Optional[str] = None
     recruiter_message: Optional[RecruiterMessage] = None
+
+    @property
+    def message_id(self) -> Optional[str]:
+        """Get the message_id from the recruiter_message if it exists."""
+        if self.recruiter_message is None:
+            return None
+        return self.recruiter_message.message_id
 
     @property
     def email_thread_link(self) -> str:
@@ -384,7 +392,9 @@ class Company(BaseModel):
     def initial_message(self, message: str):
         if self.recruiter_message is None:
             # Create a minimal RecruiterMessage if none exists
-            self.recruiter_message = RecruiterMessage(message=message)
+            self.recruiter_message = RecruiterMessage(
+                message=message, company_name=self.name
+            )
         else:
             self.recruiter_message.message = message
 
@@ -441,8 +451,7 @@ class CompanyRepository:
                         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                         details TEXT NOT NULL DEFAULT '{}',
                         status TEXT NOT NULL DEFAULT '{}',  -- New status column with default empty JSON
-                        reply_message TEXT,
-                        message_id TEXT
+                        reply_message TEXT
                     )
                 """
                 )
@@ -450,12 +459,14 @@ class CompanyRepository:
                     """
                     CREATE TABLE IF NOT EXISTS recruiter_messages (
                         message_id TEXT PRIMARY KEY,
+                        company_name TEXT NOT NULL,
                         subject TEXT DEFAULT '',
                         sender TEXT DEFAULT '',
                         message TEXT DEFAULT '',
                         thread_id TEXT NOT NULL,
                         email_thread_link TEXT DEFAULT '',
-                        date TEXT DEFAULT ''
+                        date TEXT DEFAULT '',
+                        FOREIGN KEY (company_name) REFERENCES companies (name)
                     )
                 """
                 )
@@ -488,34 +499,34 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT name, updated_at, details, status, reply_message, message_id FROM companies WHERE name = ?",
+                "SELECT name, updated_at, details, status, reply_message FROM companies WHERE name = ?",
                 (name,),
             )
             row = cursor.fetchone()
             company = self._deserialize_company(row) if row else None  # noqa: B950
-            if company and company.message_id:
-                message = self._get_recruiter_message(company.message_id, conn)
+            if company:
+                message = self._get_recruiter_message(name, conn)
                 company.recruiter_message = message
         return company
 
-    def get_recruiter_message(self, message_id: str) -> Optional[RecruiterMessage]:
+    def get_recruiter_message(self, company_name: str) -> Optional[RecruiterMessage]:
         """
-        Get a single recruiter message by its message_id.
+        Get a single recruiter message by company name.
         """
         with self._get_connection() as conn:
-            return self._get_recruiter_message(message_id, conn)
+            return self._get_recruiter_message(company_name, conn)
 
     def _get_recruiter_message(
-        self, message_id: str, conn: sqlite3.Connection
+        self, company_name: str, conn: sqlite3.Connection
     ) -> Optional[RecruiterMessage]:
         cursor = conn.execute(
-            "SELECT message_id, subject, sender, message, thread_id, email_thread_link, date FROM recruiter_messages WHERE message_id = ?",
-            (message_id,),
+            "SELECT message_id, company_name, subject, sender, message, thread_id, email_thread_link, date FROM recruiter_messages WHERE company_name = ?",
+            (company_name,),
         )
         row = cursor.fetchone()
         if row:  # noqa: B950
             # Parse the date string to datetime if it exists
-            date_str = row[6]
+            date_str = row[7]
             date = None
             if date_str:
                 try:
@@ -527,11 +538,12 @@ class CompanyRepository:
 
             recruiter_message = RecruiterMessage(
                 message_id=row[0],
-                subject=row[1],
-                sender=row[2],
-                message=row[3],
-                thread_id=row[4],
-                email_thread_link=row[5],
+                company_name=row[1],
+                subject=row[2],
+                sender=row[3],
+                message=row[4],
+                thread_id=row[5],
+                email_thread_link=row[6],
                 date=date,
             )
             return recruiter_message
@@ -558,11 +570,12 @@ class CompanyRepository:
             conn.execute(
                 """
                 INSERT INTO recruiter_messages (
-                    message_id, subject, sender, message, thread_id, email_thread_link, date
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    message_id, company_name, subject, sender, message, thread_id, email_thread_link, date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     message.message_id,
+                    message.company_name,
                     message.subject,  # noqa: B950
                     message.sender,
                     message.message,
@@ -576,10 +589,11 @@ class CompanyRepository:
             conn.execute(
                 """
                 UPDATE recruiter_messages
-                SET subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?
+                SET company_name = ?, subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?
                 WHERE message_id = ?
                 """,
                 (
+                    message.company_name,
                     message.subject,
                     message.sender,
                     message.message,
@@ -594,33 +608,25 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT name, updated_at, details, status, reply_message, message_id FROM companies"
+                "SELECT name, updated_at, details, status, reply_message FROM companies"
             )
             companies = [self._deserialize_company(row) for row in cursor.fetchall()]
             if include_messages:
                 # Don't worry about this being slow for now
                 for comp in companies:
-                    if comp.message_id:
-                        message = self._get_recruiter_message(comp.message_id, conn)
-                        comp.recruiter_message = message
+                    message = self._get_recruiter_message(comp.name, conn)
+                    comp.recruiter_message = message
             return companies
 
     def create(self, company: Company) -> Company:
         with self.lock:
             with self._get_connection() as conn:
                 try:
-                    # Store message_id from recruiter_message if available
-                    message_id = None
-                    if company.recruiter_message and company.recruiter_message.message_id:
-                        message_id = company.recruiter_message.message_id
-                    elif company.message_id:
-                        message_id = company.message_id
-
                     conn.execute(
                         """
                         INSERT INTO companies (
-                            name, updated_at, details, status, reply_message, message_id
-                        ) VALUES (?, ?, ?, ?, ?, ?)
+                            name, updated_at, details, status, reply_message
+                        ) VALUES (?, ?, ?, ?, ?)
                         """,
                         (
                             company.name,
@@ -632,12 +638,12 @@ class CompanyRepository:
                                 company.status.model_dump(), cls=CustomJSONEncoder
                             ),
                             company.reply_message,
-                            message_id,
                         ),
                     )
 
                     # Save the recruiter message if it exists
-                    if company.recruiter_message and company.recruiter_message.message_id:
+                    if company.recruiter_message:
+                        company.recruiter_message.company_name = company.name
                         self._upsert_recruiter_message(company.recruiter_message, conn)
 
                     conn.commit()
@@ -652,20 +658,12 @@ class CompanyRepository:
     def update(self, company: Company) -> Company:
         with self.lock:  # Lock for writes
             with self._get_connection() as conn:
-                # Get message_id from recruiter_message if available
-                message_id = None
-                if company.recruiter_message and company.recruiter_message.message_id:
-                    message_id = company.recruiter_message.message_id
-                elif company.message_id:
-                    message_id = company.message_id
-
                 cursor = conn.execute(
                     """
                     UPDATE companies 
                     SET details = ?, 
                         status = ?,
                         reply_message = ?,
-                        message_id = ?,
                         updated_at = datetime('now')
                     WHERE name = ?
                     """,
@@ -673,7 +671,6 @@ class CompanyRepository:
                         json.dumps(company.details.model_dump(), cls=CustomJSONEncoder),
                         json.dumps(company.status.model_dump(), cls=CustomJSONEncoder),
                         company.reply_message,
-                        message_id,
                         company.name,
                     ),
                 )
@@ -682,8 +679,8 @@ class CompanyRepository:
                     raise ValueError(f"Company {company.name} not found")
 
                 # Update or create the recruiter message if it exists
-                if company.recruiter_message and company.recruiter_message.message_id:
-                    # Use the upsert method to handle both new and existing messages
+                if company.recruiter_message:
+                    company.recruiter_message.company_name = company.name
                     self._upsert_recruiter_message(company.recruiter_message, conn)
 
                 conn.commit()
@@ -704,7 +701,7 @@ class CompanyRepository:
     def _deserialize_company(self, row: tuple) -> Company:
         """Convert a database row into a Company object."""
         assert row is not None
-        name, updated_at, details_json, status_json, reply_message, message_id = row
+        name, updated_at, details_json, status_json, reply_message = row
         details_dict = json.loads(details_json)
 
         # Parse the status JSON or use empty dict if NULL
@@ -744,7 +741,6 @@ class CompanyRepository:
             details=CompaniesSheetRow(**details_dict),
             status=CompanyStatus(**status_dict),
             reply_message=reply_message,
-            message_id=message_id,
         )
 
     def create_event(self, event: Event) -> Event:
@@ -828,9 +824,9 @@ SAMPLE_COMPANIES = [
             remote_policy="Remote",
             email_thread_link="",
         ),
-        message_id="1111",
         recruiter_message=RecruiterMessage(
             message_id="1111",
+            company_name="Shopify",
             message="Hi Paul, are you interested in working as a staff developer at Shopify? Salary is $12k/year.  Regards, Bobby Bobberson",
             subject="Staff Developer Role at Shopify",
             sender="Bobby Bobberson",
@@ -850,9 +846,9 @@ SAMPLE_COMPANIES = [
             headquarters="New York",
             email_thread_link="https://mail.google.com/mail/u/0/#label/jobs+2024%2Frippling/QgrcJHrnzwvcPZNKHFvMjTVtJtGrWQflzqB",  # noqa: B950
         ),
-        message_id="2222",
         recruiter_message=RecruiterMessage(
             message_id="2222",
+            company_name="Rippling",
             message="Hi Paul! Interested in a senior backend role at Rippling working with AI? Work from anywhere. It pays $999,999. - Mark Marker",
             subject="Senior Backend Role at Rippling",
             sender="Mark Marker",
