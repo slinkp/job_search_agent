@@ -68,9 +68,9 @@ logger = logging.getLogger(__name__)
 
 @view_config(route_name="company", renderer="json", request_method="GET")
 def get_company(request) -> dict:
-    company_name = request.matchdict["company_name"]
+    company_id = request.matchdict["company_id"]
     repo = models.company_repository()
-    company = repo.get(company_name)
+    company = repo.get(company_id)
 
     if not company:
         request.response.status = 404
@@ -128,8 +128,8 @@ def create_stub_message(company_name: str) -> str:
 
 @view_config(route_name="generate_message", renderer="json", request_method="POST")
 def generate_message(request):
-    company_name = request.matchdict["company_name"]
-    company = models.company_repository().get(company_name)
+    company_id = request.matchdict["company_id"]
+    company = models.company_repository().get(company_id)
     if company is None:
         request.response.status = 404
         return {"error": "Company not found"}
@@ -139,16 +139,16 @@ def generate_message(request):
 
     task_id = tasks.task_manager().create_task(
         tasks.TaskType.GENERATE_REPLY,
-        {"company_name": company_name},
+        {"company_id": company.company_id},
     )
-    logger.info(f"Generate reply requested for {company_name}, task_id: {task_id}")
+    logger.info(f"Generate reply requested for {company.name}, task_id: {task_id}")
 
     return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
 
 
 @view_config(route_name="generate_message", renderer="json", request_method="PUT")
 def update_message(request):
-    company_name = request.matchdict["company_name"]
+    company_id = request.matchdict["company_id"]
     try:
         body = request.json_body
         message = body.get("message")
@@ -156,7 +156,7 @@ def update_message(request):
             request.response.status = 400
             return {"error": "Message is required"}
 
-        company = models.company_repository().get(company_name)
+        company = models.company_repository().get(company_id)
         if not company:
             request.response.status = 404
             return {"error": "Company not found"}
@@ -164,7 +164,7 @@ def update_message(request):
         company.reply_message = message
         models.company_repository().update(company)
 
-        logger.info(f"Updated message for {company_name}: {message}")
+        logger.info(f"Updated message for {company.name}: {message}")
         return models.serialize_company(company)
     except json.JSONDecodeError:
         request.response.status = 400
@@ -173,8 +173,8 @@ def update_message(request):
 
 @view_config(route_name="research", renderer="json", request_method="POST")
 def research_company(request):
-    company_name = request.matchdict["company_name"]
-    company = models.company_repository().get(company_name)
+    company_id = request.matchdict["company_id"]
+    company = models.company_repository().get(company_id)
 
     if not company:
         request.response.status = 404
@@ -183,9 +183,9 @@ def research_company(request):
     # Create a new task
     task_id = tasks.task_manager().create_task(
         tasks.TaskType.COMPANY_RESEARCH,
-        {"company_name": company_name},
+        {"company_id": company.company_id, "company_name": company.name},
     )
-    logger.info(f"Research requested for {company_name}, task_id: {task_id}")
+    logger.info(f"Research requested for {company.name}, task_id: {task_id}")
 
     # When research is completed, we'll set this timestamp
     # For now, just return the task info
@@ -222,8 +222,8 @@ def scan_recruiter_emails(request):
 
 @view_config(route_name="send_and_archive", renderer="json", request_method="POST")
 def send_and_archive(request):
-    company_name = request.matchdict["company_name"]
-    company = models.company_repository().get(company_name)
+    company_id = request.matchdict["company_id"]
+    company = models.company_repository().get(company_id)
 
     if not company:
         request.response.status = 404
@@ -236,7 +236,7 @@ def send_and_archive(request):
     # Create a new task for sending and archiving
     task_id = tasks.task_manager().create_task(
         tasks.TaskType.SEND_AND_ARCHIVE,
-        {"company_name": company_name},
+        {"company_id": company.company_id},
     )
 
     # Set archived_at and reply_sent_at status fields
@@ -245,7 +245,7 @@ def send_and_archive(request):
     company.status.reply_sent_at = current_time
     models.company_repository().update(company)
 
-    logger.info(f"Send and archive requested for {company_name}, task_id: {task_id}")
+    logger.info(f"Send and archive requested for {company.name}, task_id: {task_id}")
 
     return {
         "task_id": task_id,
@@ -257,8 +257,8 @@ def send_and_archive(request):
 
 @view_config(route_name="ignore_and_archive", renderer="json", request_method="POST")
 def ignore_and_archive(request):
-    company_name = request.matchdict["company_name"]
-    company = models.company_repository().get(company_name)
+    company_id = request.matchdict["company_id"]
+    company = models.company_repository().get(company_id)
 
     if not company:
         request.response.status = 404
@@ -267,14 +267,14 @@ def ignore_and_archive(request):
     # Create a new task for just archiving (no reply sent)
     task_id = tasks.task_manager().create_task(
         tasks.TaskType.IGNORE_AND_ARCHIVE,
-        {"company_name": company_name},
+        {"company_id": company.company_id},
     )
 
     # Set archived_at status field
     company.status.archived_at = datetime.datetime.now(datetime.timezone.utc)
     models.company_repository().update(company)
 
-    logger.info(f"Ignore and archive requested for {company_name}, task_id: {task_id}")
+    logger.info(f"Ignore and archive requested for {company.name}, task_id: {task_id}")
 
     return {
         "task_id": task_id,
@@ -285,8 +285,8 @@ def ignore_and_archive(request):
 
 @view_config(route_name="company_details", renderer="json", request_method="PATCH")
 def patch_company_details(request) -> dict:
-    company_name = request.matchdict["company_name"]
-    company = models.company_repository().get(company_name)
+    company_id = request.matchdict["company_id"]
+    company = models.company_repository().get(company_id)
 
     if not company:
         request.response.status = 404
@@ -303,7 +303,7 @@ def patch_company_details(request) -> dict:
 
     models.company_repository().update(company)
 
-    logger.info(f"Updated fields for {company_name}: {body}")
+    logger.info(f"Updated fields for {company.name}: {body}")
     company_dict = models.serialize_company(company)
     return company_dict["details"]
 
@@ -324,20 +324,18 @@ def main(global_config, **settings):
         # Routes
         config.add_route('home', '/')
         config.add_route('companies', '/api/companies')
-        config.add_route("company", "/api/companies/{company_name}")
-        config.add_route(
-            "generate_message", "/api/companies/{company_name}/reply_message"
-        )
-        config.add_route("research", "/api/companies/{company_name}/research")
+        config.add_route("company", "/api/companies/{company_id}")
+        config.add_route("generate_message", "/api/companies/{company_id}/reply_message")
+        config.add_route("research", "/api/companies/{company_id}/research")
         config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
         config.add_route(
-            "send_and_archive", "/api/companies/{company_name}/send_and_archive"
+            "send_and_archive", "/api/companies/{company_id}/send_and_archive"
         )
         config.add_route(
-            "ignore_and_archive", "/api/companies/{company_name}/ignore_and_archive"
+            "ignore_and_archive", "/api/companies/{company_id}/ignore_and_archive"
         )
         config.add_route("task_status", "/api/tasks/{task_id}")
-        config.add_route("company_details", "/api/companies/{company_name}/details")
+        config.add_route("company_details", "/api/companies/{company_id}/details")
         config.add_static_view(name='static', path='static')
         config.scan()
 

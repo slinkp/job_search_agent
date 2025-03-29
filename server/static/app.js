@@ -100,7 +100,7 @@ document.addEventListener("alpine:init", () => {
 
         this.generatingMessages.add(company.name);
         const response = await fetch(
-          `/api/companies/${company.name}/reply_message`,
+          `/api/companies/${company.company_id}/reply_message`,
           {
             method: "POST",
           }
@@ -154,7 +154,7 @@ document.addEventListener("alpine:init", () => {
       if (this.editingCompany) {
         try {
           const response = await fetch(
-            `/api/companies/${this.editingCompany.name}/reply_message`,
+            `/api/companies/${this.editingCompany.company_id}/reply_message`,
             {
               method: "PUT",
               headers: {
@@ -176,7 +176,7 @@ document.addEventListener("alpine:init", () => {
           Object.assign(this.editingCompany, data);
 
           // Also update the companies array with fresh data
-          await this.fetchAndUpdateCompany(this.editingCompany.name);
+          await this.fetchAndUpdateCompany(this.editingCompany.company_id);
 
           this.cancelEdit();
         } catch (err) {
@@ -206,7 +206,7 @@ document.addEventListener("alpine:init", () => {
 
         // Send the reply and archive
         const response = await fetch(
-          `/api/companies/${company.name}/send_and_archive`,
+          `/api/companies/${company.company_id}/send_and_archive`,
           {
             method: "POST",
           }
@@ -222,7 +222,7 @@ document.addEventListener("alpine:init", () => {
         const data = await response.json();
 
         // Fetch fresh company data instead of just updating properties
-        await this.fetchAndUpdateCompany(company.name);
+        await this.fetchAndUpdateCompany(company.company_id);
 
         this.showSuccess("Reply sent and message archived");
         this.cancelEdit();
@@ -238,7 +238,7 @@ document.addEventListener("alpine:init", () => {
       try {
         this.researchingCompanies.add(company.name);
         const response = await fetch(
-          `/api/companies/${company.name}/research`,
+          `/api/companies/${company.company_id}/research`,
           {
             method: "POST",
           }
@@ -349,7 +349,7 @@ document.addEventListener("alpine:init", () => {
 
             if (company) {
               // Get fresh data for this company
-              await this.fetchAndUpdateCompany(company.name);
+              await this.fetchAndUpdateCompany(company.company_id);
             } else {
               // For email scanning tasks, update entire companies list
               await this.refreshAllCompanies();
@@ -537,19 +537,21 @@ document.addEventListener("alpine:init", () => {
     },
 
     // New method to fetch and update a single company
-    async fetchAndUpdateCompany(companyName) {
+    async fetchAndUpdateCompany(companyId) {
       try {
-        const response = await fetch(`/api/companies/${companyName}`);
+        const response = await fetch(`/api/companies/${companyId}`);
         if (!response.ok) {
-          console.error(`Failed to fetch company data for ${companyName}`);
+          console.error(`Failed to fetch company data for ${companyId}`);
           return;
         }
 
         const updatedCompany = await response.json();
-        console.log(`Fetched fresh data for ${companyName}:`, updatedCompany);
+        console.log(`Fetched fresh data for ${companyId}:`, updatedCompany);
 
         // Find and replace the company in our array
-        const index = this.companies.findIndex((c) => c.name === companyName);
+        const index = this.companies.findIndex(
+          (c) => c.company_id === companyId
+        );
         if (index !== -1) {
           // Make sure to preserve details object structure
           this.companies[index] = {
@@ -558,7 +560,10 @@ document.addEventListener("alpine:init", () => {
           };
 
           // If this is also the current editing company, update that reference
-          if (this.editingCompany && this.editingCompany.name === companyName) {
+          if (
+            this.editingCompany &&
+            this.editingCompany.company_id === companyId
+          ) {
             Object.assign(this.editingCompany, updatedCompany);
             this.editingReply = updatedCompany.reply_message;
           }
@@ -626,7 +631,7 @@ document.addEventListener("alpine:init", () => {
       try {
         // Call the ignore and archive endpoint
         const response = await fetch(
-          `/api/companies/${company.name}/ignore_and_archive`,
+          `/api/companies/${company.company_id}/ignore_and_archive`,
           {
             method: "POST",
           }
@@ -642,7 +647,7 @@ document.addEventListener("alpine:init", () => {
         const data = await response.json();
 
         // Fetch fresh company data
-        await this.fetchAndUpdateCompany(company.name);
+        await this.fetchAndUpdateCompany(company.company_id);
 
         this.showSuccess("Message archived without reply");
         this.cancelEdit();
@@ -665,7 +670,7 @@ document.addEventListener("alpine:init", () => {
       company.promising = value;
 
       // Save to backend
-      fetch(`/api/companies/${company.name}/details`, {
+      fetch(`/api/companies/${company.company_id}/details`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
