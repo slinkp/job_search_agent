@@ -36,7 +36,7 @@ class ResearchStepError(BaseModel):
 class Event(BaseModel):
 
     id: Optional[int] = None
-    company_name: str
+    company_id: str
     event_type: EventType
     timestamp: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
@@ -308,7 +308,7 @@ class RecruiterMessage(BaseModel):
 
     Attributes:
         message_id: Unique Gmail message ID for this specific message
-        company_name: Name of the company this message is associated with
+        company_id: ID of the company this message is associated with
         message: The content of the message
         subject: Email subject line
         sender: Email sender (recruiter's email address)
@@ -318,7 +318,7 @@ class RecruiterMessage(BaseModel):
     """
 
     message_id: str = ""
-    company_name: str = ""
+    company_id: str = ""
     message: str = ""
     subject: Optional[str] = ""
     sender: Optional[str] = ""
@@ -354,6 +354,7 @@ class CompanyStatus(BaseModel):
 
 
 class Company(BaseModel):
+    company_id: str
     name: str
     updated_at: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
@@ -393,7 +394,7 @@ class Company(BaseModel):
         if self.recruiter_message is None:
             # Create a minimal RecruiterMessage if none exists
             self.recruiter_message = RecruiterMessage(
-                message=message, company_name=self.name
+                message=message, company_id=self.company_id
             )
         else:
             self.recruiter_message.message = message
@@ -447,7 +448,8 @@ class CompanyRepository:
                 conn.execute(
                     """
                     CREATE TABLE IF NOT EXISTS companies (
-                        name TEXT PRIMARY KEY,
+                        company_id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
                         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                         details TEXT NOT NULL DEFAULT '{}',
                         status TEXT NOT NULL DEFAULT '{}',  -- New status column with default empty JSON
@@ -459,14 +461,14 @@ class CompanyRepository:
                     """
                     CREATE TABLE IF NOT EXISTS recruiter_messages (
                         message_id TEXT PRIMARY KEY,
-                        company_name TEXT NOT NULL,
+                        company_id TEXT NOT NULL,
                         subject TEXT DEFAULT '',
                         sender TEXT DEFAULT '',
                         message TEXT DEFAULT '',
                         thread_id TEXT NOT NULL,
                         email_thread_link TEXT DEFAULT '',
                         date TEXT DEFAULT '',
-                        FOREIGN KEY (company_name) REFERENCES companies (name)
+                        FOREIGN KEY (company_id) REFERENCES companies (company_id)
                     )
                 """
                 )
@@ -474,11 +476,11 @@ class CompanyRepository:
                     """
                     CREATE TABLE IF NOT EXISTS events (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        company_name TEXT NOT NULL,
+                        company_id TEXT NOT NULL,
                         event_type TEXT NOT NULL,
                         timestamp TEXT NOT NULL DEFAULT (datetime('now')),
                         details TEXT,
-                        FOREIGN KEY (company_name) REFERENCES companies (name)
+                        FOREIGN KEY (company_id) REFERENCES companies (company_id)
                     )
                 """
                 )
@@ -495,33 +497,33 @@ class CompanyRepository:
         finally:
             connection.close()
 
-    def get(self, name: str) -> Optional[Company]:
+    def get(self, company_id: str) -> Optional[Company]:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT name, updated_at, details, status, reply_message FROM companies WHERE name = ?",
-                (name,),
+                "SELECT company_id, name, updated_at, details, status, reply_message FROM companies WHERE company_id = ?",
+                (company_id,),
             )
             row = cursor.fetchone()
             company = self._deserialize_company(row) if row else None  # noqa: B950
             if company:
-                message = self._get_recruiter_message(name, conn)
+                message = self._get_recruiter_message(company_id, conn)
                 company.recruiter_message = message
         return company
 
-    def get_recruiter_message(self, company_name: str) -> Optional[RecruiterMessage]:
+    def get_recruiter_message(self, company_id: str) -> Optional[RecruiterMessage]:
         """
-        Get a single recruiter message by company name.
+        Get a single recruiter message by company id.
         """
         with self._get_connection() as conn:
-            return self._get_recruiter_message(company_name, conn)
+            return self._get_recruiter_message(company_id, conn)
 
     def _get_recruiter_message(
-        self, company_name: str, conn: sqlite3.Connection
+        self, company_id: str, conn: sqlite3.Connection
     ) -> Optional[RecruiterMessage]:
         cursor = conn.execute(
-            "SELECT message_id, company_name, subject, sender, message, thread_id, email_thread_link, date FROM recruiter_messages WHERE company_name = ?",
-            (company_name,),
+            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date FROM recruiter_messages WHERE company_id = ?",
+            (company_id,),
         )
         row = cursor.fetchone()
         if row:  # noqa: B950
@@ -538,7 +540,7 @@ class CompanyRepository:
 
             recruiter_message = RecruiterMessage(
                 message_id=row[0],
-                company_name=row[1],
+                company_id=row[1],
                 subject=row[2],
                 sender=row[3],
                 message=row[4],
@@ -570,12 +572,12 @@ class CompanyRepository:
             conn.execute(
                 """
                 INSERT INTO recruiter_messages (
-                    message_id, company_name, subject, sender, message, thread_id, email_thread_link, date
+                    message_id, company_id, subject, sender, message, thread_id, email_thread_link, date
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     message.message_id,
-                    message.company_name,
+                    message.company_id,
                     message.subject,  # noqa: B950
                     message.sender,
                     message.message,
@@ -589,11 +591,11 @@ class CompanyRepository:
             conn.execute(
                 """
                 UPDATE recruiter_messages
-                SET company_name = ?, subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?
+                SET company_id = ?, subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?
                 WHERE message_id = ?
                 """,
                 (
-                    message.company_name,
+                    message.company_id,
                     message.subject,
                     message.sender,
                     message.message,
@@ -608,13 +610,13 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT name, updated_at, details, status, reply_message FROM companies"
+                "SELECT company_id, name, updated_at, details, status, reply_message FROM companies"
             )
             companies = [self._deserialize_company(row) for row in cursor.fetchall()]
             if include_messages:
                 # Don't worry about this being slow for now
                 for comp in companies:
-                    message = self._get_recruiter_message(comp.name, conn)
+                    message = self._get_recruiter_message(comp.company_id, conn)
                     comp.recruiter_message = message
             return companies
 
@@ -625,10 +627,11 @@ class CompanyRepository:
                     conn.execute(
                         """
                         INSERT INTO companies (
-                            name, updated_at, details, status, reply_message
-                        ) VALUES (?, ?, ?, ?, ?)
+                            company_id, name, updated_at, details, status, reply_message
+                        ) VALUES (?, ?, ?, ?, ?, ?)
                         """,
                         (
+                            company.company_id,
                             company.name,
                             company.updated_at.isoformat(),
                             json.dumps(
@@ -643,17 +646,17 @@ class CompanyRepository:
 
                     # Save the recruiter message if it exists
                     if company.recruiter_message:
-                        company.recruiter_message.company_name = company.name
+                        company.recruiter_message.company_id = company.company_id
                         self._upsert_recruiter_message(company.recruiter_message, conn)
 
                     conn.commit()
                     refreshed_company = self.get(
-                        company.name
+                        company.company_id
                     )  # To include generated timestamp
                     assert refreshed_company is not None
                     return refreshed_company
                 except sqlite3.IntegrityError:
-                    raise ValueError(f"Company {company.name} already exists")
+                    raise ValueError(f"Company {company.company_id} already exists")
 
     def update(self, company: Company) -> Company:
         with self.lock:  # Lock for writes
@@ -665,43 +668,45 @@ class CompanyRepository:
                         status = ?,
                         reply_message = ?,
                         updated_at = datetime('now')
-                    WHERE name = ?
+                    WHERE company_id = ?
                     """,
                     (
                         json.dumps(company.details.model_dump(), cls=CustomJSONEncoder),
                         json.dumps(company.status.model_dump(), cls=CustomJSONEncoder),
                         company.reply_message,
-                        company.name,
+                        company.company_id,
                     ),
                 )
 
                 if cursor.rowcount == 0:
-                    raise ValueError(f"Company {company.name} not found")
+                    raise ValueError(f"Company {company.company_id} not found")
 
                 # Update or create the recruiter message if it exists
                 if company.recruiter_message:
-                    company.recruiter_message.company_name = company.name
+                    company.recruiter_message.company_id = company.company_id
                     self._upsert_recruiter_message(company.recruiter_message, conn)
 
                 conn.commit()
                 refreshed_company = self.get(
-                    company.name
+                    company.company_id
                 )  # To include generated timestamp
                 assert refreshed_company is not None
                 return refreshed_company
 
-    def delete(self, name: str) -> None:
+    def delete(self, company_id: str) -> None:
         with self.lock:  # Lock for writes
             with self._get_connection() as conn:
-                cursor = conn.execute("DELETE FROM companies WHERE name = ?", (name,))
+                cursor = conn.execute(
+                    "DELETE FROM companies WHERE company_id = ?", (company_id,)
+                )
                 if cursor.rowcount == 0:
-                    raise ValueError(f"Company {name} not found")
+                    raise ValueError(f"Company {company_id} not found")
                 conn.commit()
 
     def _deserialize_company(self, row: tuple) -> Company:
         """Convert a database row into a Company object."""
         assert row is not None
-        name, updated_at, details_json, status_json, reply_message = row
+        company_id, name, updated_at, details_json, status_json, reply_message = row
         details_dict = json.loads(details_json)
 
         # Parse the status JSON or use empty dict if NULL
@@ -736,6 +741,7 @@ class CompanyRepository:
                 status_dict["research_errors"] = details_dict.pop("research_errors")
 
         return Company(
+            company_id=company_id,
             name=name,
             updated_at=updated_at_dt,
             details=CompaniesSheetRow(**details_dict),
@@ -752,11 +758,11 @@ class CompanyRepository:
             with self._get_connection() as conn:
                 cursor = conn.execute(
                     """
-                    INSERT INTO events (company_name, event_type, timestamp, details)
+                    INSERT INTO events (company_id, event_type, timestamp, details)
                     VALUES (?, ?, ?, ?)
                     """,
                     (
-                        event.company_name,
+                        event.company_id,
                         event.event_type.value,
                         event.timestamp.isoformat(),
                         event.details,
@@ -768,21 +774,21 @@ class CompanyRepository:
                 return event
 
     def get_events(
-        self, company_name: Optional[str] = None, event_type: Optional[EventType] = None
+        self, company_id: Optional[str] = None, event_type: Optional[EventType] = None
     ) -> List[Event]:
-        """Get events, optionally filtered by company name and/or event type"""
-        query = "SELECT id, company_name, event_type, timestamp, details FROM events"
+        """Get events, optionally filtered by company id and/or event type"""
+        query = "SELECT id, company_id, event_type, timestamp, details FROM events"
         params = []
 
-        if company_name or event_type:
+        if company_id or event_type:
             query += " WHERE"
 
-            if company_name:
-                query += " company_name = ?"
-                params.append(company_name)
+            if company_id:
+                query += " company_id = ?"
+                params.append(company_id)
 
             if event_type:
-                if company_name:
+                if company_id:
                     query += " AND"
                 query += " event_type = ?"
                 params.append(event_type.value)
@@ -795,11 +801,11 @@ class CompanyRepository:
             for row in cursor.fetchall():
                 if row is None:
                     continue
-                id, company_name, event_type_str, timestamp, details = row
+                id, company_id, event_type_str, timestamp, details = row
                 events.append(
                     Event(
                         id=id,
-                        company_name=company_name or "",
+                        company_id=company_id or "",
                         event_type=EventType(event_type_str),
                         timestamp=dateutil.parser.parse(timestamp),
                         details=details,
@@ -811,6 +817,7 @@ class CompanyRepository:
 # Sample data
 SAMPLE_COMPANIES = [
     Company(
+        company_id="shopify",
         name="Shopify",
         details=CompaniesSheetRow(
             name="Shopify",
@@ -826,7 +833,7 @@ SAMPLE_COMPANIES = [
         ),
         recruiter_message=RecruiterMessage(
             message_id="1111",
-            company_name="Shopify",
+            company_id="shopify",
             message="Hi Paul, are you interested in working as a staff developer at Shopify? Salary is $12k/year.  Regards, Bobby Bobberson",
             subject="Staff Developer Role at Shopify",
             sender="Bobby Bobberson",
@@ -836,6 +843,7 @@ SAMPLE_COMPANIES = [
         ),
     ),
     Company(
+        company_id="rippling",
         name="Rippling",
         details=CompaniesSheetRow(
             name="Rippling",
@@ -848,7 +856,7 @@ SAMPLE_COMPANIES = [
         ),
         recruiter_message=RecruiterMessage(
             message_id="2222",
-            company_name="Rippling",
+            company_id="rippling",
             message="Hi Paul! Interested in a senior backend role at Rippling working with AI? Work from anywhere. It pays $999,999. - Mark Marker",
             subject="Senior Backend Role at Rippling",
             sender="Mark Marker",
@@ -946,14 +954,14 @@ if __name__ == "__main__":
         if args.event_type:
             event_type = EventType(args.event_type)
 
-        events = repo.get_events(company_name=args.company, event_type=event_type)
+        events = repo.get_events(company_id=args.company, event_type=event_type)
         if not events:
             print("No events found matching the criteria")
         else:
             print(f"Found {len(events)} events:")
             for event in events:
                 print(f"ID: {event.id}")
-                print(f"Company: {event.company_name}")
+                print(f"Company: {event.company_id}")
                 print(f"Type: {event.event_type.value}")
                 print(f"Timestamp: {event.timestamp}")
                 print("-" * 40)
