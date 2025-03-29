@@ -26,7 +26,6 @@ def mock_company_repo():
 def mock_jobsearch():
     with patch("libjobsearch.JobSearch", autospec=True) as mock:
         instance = mock.return_value
-        instance.send_reply_and_archive = Mock(return_value=True)
         yield instance
 
 
@@ -170,8 +169,7 @@ def test_process_next_task_no_tasks(daemon):
 
 
 def test_do_research_new_company(daemon, test_company, mock_spreadsheet):
-    company_name = "Test Corp"
-    args = {"company_name": company_name}
+    args = {"company_id": "test-corp", "company_name": "Test Corp"}
 
     # Company doesn't exist yet
     daemon.company_repo.get.return_value = None
@@ -180,15 +178,14 @@ def test_do_research_new_company(daemon, test_company, mock_spreadsheet):
     daemon.do_research(args)
 
     daemon.jobsearch.research_company.assert_called_once_with(
-        company_name, model=daemon.ai_model
+        test_company.name, model=daemon.ai_model
     )
     daemon.company_repo.create.assert_called_once_with(test_company)
     mock_spreadsheet.assert_called_once_with(test_company.details, daemon.args)
 
 
 def test_do_research_existing_company(daemon, test_company, mock_spreadsheet):
-    company_name = "Test Corp"
-    args = {"company_name": company_name}
+    args = {"company_id": "test-corp", "company_name": "Test Corp"}
 
     # Create existing company with initial data
     existing_company = test_company
@@ -201,7 +198,7 @@ def test_do_research_existing_company(daemon, test_company, mock_spreadsheet):
     daemon.do_research(args)
 
     daemon.jobsearch.research_company.assert_called_once_with(
-        company_name, model=daemon.ai_model
+        test_company.name, model=daemon.ai_model
     )
 
     # Verify existing company was updated with new details
@@ -213,8 +210,7 @@ def test_do_research_existing_company(daemon, test_company, mock_spreadsheet):
 
 def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet):
     """Test research error handling for a new company."""
-    company_name = "Test Corp"
-    args = {"company_name": company_name}
+    args = {"company_id": "test-corp", "company_name": "Test Corp"}
 
     # Company doesn't exist yet
     daemon.company_repo.get.return_value = None
@@ -226,7 +222,7 @@ def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet):
     # Verify minimal company was created with error
     assert daemon.company_repo.create.call_count == 1
     created_company = daemon.company_repo.create.call_args[0][0]
-    assert created_company.name == company_name
+    assert created_company.name == test_company.name
     assert "Research failed" in created_company.details.notes
     assert len(created_company.status.research_errors) == 1
     assert created_company.status.research_errors[0].step == "research_company"
@@ -234,19 +230,19 @@ def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet):
     mock_spreadsheet.assert_called_once_with(created_company.details, daemon.args)
 
 
-def test_do_send_and_archive(daemon, test_company_with_reply):
-    company_name = "Test Corp"
-    args = {"company_name": company_name}
+def test_do_send_and_archive(daemon, test_company_with_reply, mock_email):
+    args = {"company_id": "test-corp"}
 
     daemon.company_repo.get.return_value = test_company_with_reply
+    mock_email.return_value = True
 
     daemon.do_send_and_archive(args)
 
-    daemon.jobsearch.send_reply_and_archive.assert_called_once_with(
+    mock_email.assert_called_once_with(
         message_id=test_company_with_reply.recruiter_message.message_id,
         thread_id=test_company_with_reply.recruiter_message.thread_id,
         reply=test_company_with_reply.reply_message,
-        company_name=company_name,
+        company_id="test-corp",
     )
 
     assert test_company_with_reply.details.current_state == "30. replied to recruiter"
@@ -256,8 +252,7 @@ def test_do_send_and_archive(daemon, test_company_with_reply):
 
 def test_do_send_and_archive_dry_run(daemon, test_company_with_reply, mock_email):
     daemon.dry_run = True
-    company_name = "Test Corp"
-    args = {"company_name": company_name}
+    args = {"company_id": "test-corp"}
 
     daemon.company_repo.get.return_value = test_company_with_reply
 
@@ -267,8 +262,7 @@ def test_do_send_and_archive_dry_run(daemon, test_company_with_reply, mock_email
 
 def test_do_generate_reply(daemon, test_company_with_message):
     """Test generating a reply for a company."""
-    company_name = "Test Corp"
-    args = {"company_name": company_name}
+    args = {"company_id": "test-corp"}
 
     daemon.company_repo.get.return_value = test_company_with_message
     daemon.jobsearch.generate_reply.return_value = "Generated reply"
@@ -284,8 +278,7 @@ def test_do_generate_reply(daemon, test_company_with_message):
 
 def test_do_generate_reply_missing_company(daemon):
     """Test generating a reply when company doesn't exist."""
-    company_name = "Test Corp"
-    args = {"company_name": company_name}
+    args = {"company_id": "test-corp"}
 
     daemon.company_repo.get.return_value = None
 
@@ -295,8 +288,7 @@ def test_do_generate_reply_missing_company(daemon):
 
 def test_do_generate_reply_missing_recruiter_message(daemon, test_company):
     """Test generating a reply when company has no recruiter message."""
-    company_name = "Test Corp"
-    args = {"company_name": company_name}
+    args = {"company_id": "test-corp"}
 
     daemon.company_repo.get.return_value = test_company
 
@@ -388,8 +380,7 @@ def test_do_find_companies_in_recruiter_messages_error(daemon, test_recruiter_me
 
 def test_do_ignore_and_archive(daemon, test_company):
     """Test ignoring and archiving a company's message."""
-    company_name = "Test Corp"
-    args = {"company_name": company_name}
+    args = {"company_id": "test-corp"}
 
     daemon.company_repo.get.return_value = test_company
 
@@ -411,8 +402,7 @@ def test_do_ignore_and_archive(daemon, test_company):
 
 def test_do_ignore_and_archive_missing_company(daemon):
     """Test ignoring and archiving when company doesn't exist."""
-    company_name = "Test Corp"
-    args = {"company_name": company_name}
+    args = {"company_id": "test-corp"}
 
     daemon.company_repo.get.return_value = None
 

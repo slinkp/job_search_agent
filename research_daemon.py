@@ -96,21 +96,18 @@ class ResearchDaemon:
                 logger.info(f"Task {task_id} completed")
 
     def do_research(self, args: dict):
+        company_id = args["company_id"]
         company_name = args["company_name"]
-        # Generate company_id from name
-        company_id = company_name.lower().replace(" ", "-")
 
         existing = self.company_repo.get(company_id)
         company = None
-        content = company_name
+        content = existing and existing.name or company_name
         recruiter_message = None
-        if existing:
-            recruiter_message = existing.recruiter_message
-            if recruiter_message:
-                content = recruiter_message
-                logger.info(
-                    f"Using existing initial message: {recruiter_message.message[:400]}"
-                )
+        if existing and existing.recruiter_message:
+            content += "\n\n" + existing.recruiter_message.message
+            logger.info(
+                f"Using existing initial message: {existing.recruiter_message.message[:400]}"
+            )
 
         try:
             # TODO: Pass more context from email, etc.
@@ -127,6 +124,7 @@ class ResearchDaemon:
             if existing:
                 logger.info(f"Updating company {company_name}")
                 existing.details = company.details
+                existing.name = company.name or existing.name
                 existing.status.research_errors = research_errors
                 self.company_repo.update(existing)
                 company = existing
@@ -162,7 +160,7 @@ class ResearchDaemon:
                 self.company_repo.create(company)
                 # Try to update the spreadsheet with minimal info
                 try:
-                    libjobsearch.upsert_company_in_spreadsheet(minimal_row, self.args)
+                    libjobsearch.upsert_company_in_spreadsheet(company.details, self.args)
                 except Exception as spreadsheet_error:
                     logger.exception(f"Failed to update spreadsheet: {spreadsheet_error}")
 
@@ -170,16 +168,16 @@ class ResearchDaemon:
 
     def do_generate_reply(self, args: dict):
         # TODO: Use LLM to generate reply
-        assert "company_name" in args
-        company = self.company_repo.get(args["company_name"])
+        assert "company_id" in args
+        company = self.company_repo.get(args["company_id"])
         assert company is not None
         assert company.recruiter_message is not None
-        logger.info(f"Generating reply for {args['company_name']}")
+        logger.info(f"Generating reply for {company.company_id}")
         # TODO: Include more company info context in reply args
         reply = self.jobsearch.generate_reply(company.initial_message)
         company.reply_message = reply
         self.company_repo.update(company)
-        logger.info(f"Updated reply for {args['company_name']}")
+        logger.info(f"Updated reply for {company.company_id}")
 
     def do_find_companies_in_recruiter_messages(self, args: dict):
         max_messages = args.get("max_messages", 100)
@@ -217,41 +215,44 @@ class ResearchDaemon:
 
     def do_send_and_archive(self, args: dict):
         """Handle sending a reply and archiving the message."""
-        company_name = args.get("company_name")
-        if not company_name:
-            raise ValueError("Missing company_name in task args")
+        company_id = args.get("company_id")
+        if not company_id:
+            raise ValueError("Missing company_id in task args")
 
-        logger.info(f"Sending reply and archiving for company: {company_name}")
-        company = self.company_repo.get(company_name)
+        logger.info(f"Sending reply and archiving for company: {company_id}")
+        company = self.company_repo.get(company_id)
         if not company:
-            raise ValueError(f"Company not found: {company_name}")
+            raise ValueError(f"Company not found: {company_id}")
 
         if not company.reply_message:
-            raise ValueError(f"No reply message for company: {company_name}")
+            raise ValueError(f"No reply message for company: {company_id}")
 
         if not company.recruiter_message or not company.recruiter_message.message_id:
             logger.warning("No recruiter message found for company, skipping")
             return
 
         logger.info(f"Message ID: {company.recruiter_message.message_id}")
-        try:
-            success = self.jobsearch.send_reply_and_archive(
-                thread_id=company.recruiter_message.thread_id,
-                message_id=company.recruiter_message.message_id,
-                reply=company.reply_message,
-                company_name=company.name,
-            )
 
-            if success:
-                logger.info(
-                    f"Successfully sent reply to {company_name} and archived the thread"
+        # Add dry run check before attempting to send
+        if not self.dry_run:
+            try:
+                success = libjobsearch.send_reply_and_archive(
+                    thread_id=company.recruiter_message.thread_id,
+                    message_id=company.recruiter_message.message_id,
+                    reply=company.reply_message,
+                    company_id=company_id,
                 )
-            else:
-                logger.error(f"Failed to send reply to {company_name}")
-                raise RuntimeError(f"Failed to send reply to {company_name}")
-        except Exception as e:
-            logger.exception(f"Error sending reply: {e}")
-            raise
+
+                if success:
+                    logger.info(
+                        f"Successfully sent reply to {company_id} and archived the thread"
+                    )
+                else:
+                    logger.error(f"Failed to send reply to {company_id}")
+                    raise RuntimeError(f"Failed to send reply to {company_id}")
+            except Exception as e:
+                logger.exception(f"Error sending reply: {e}")
+                raise
 
         # Mark the company as sent/archived in the spreadsheet data
         company.details.current_state = "30. replied to recruiter"
@@ -263,13 +264,13 @@ class ResearchDaemon:
         """
         Archives a company's message without sending a reply.
         """
-        company_name = args["company_name"]
-        logger.info(f"Ignoring and archiving message for {company_name}")
+        company_id = args["company_id"]
+        logger.info(f"Ignoring and archiving message for {company_id}")
 
         # Get the company
-        company = models.company_repository().get(company_name)
+        company = self.company_repo.get(company_id)
         if not company:
-            logger.error(f"Company {company_name} not found")
+            logger.error(f"Company {company_id} not found")
             return {"error": "Company not found"}
 
         # Archive the message in Gmail
@@ -282,7 +283,7 @@ class ResearchDaemon:
         )
         models.company_repository().create_event(event)
 
-        logger.info(f"Successfully archived message for {company_name}")
+        logger.info(f"Successfully archived message for {company_id}")
         # Mark the company as sent/archived in the spreadsheet data
         company.details.current_state = "70. ruled out, without reply"
         company.details.updated = datetime.date.today()
