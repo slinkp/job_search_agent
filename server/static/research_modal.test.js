@@ -76,25 +76,44 @@ describe("Research Company Modal", () => {
       },
 
       async submitResearchCompany() {
+        // Check if either URL or name is provided
         if (!this.researchCompanyForm.url && !this.researchCompanyForm.name) {
           return;
         }
 
-        const body = {};
-        if (this.researchCompanyForm.url) {
-          body.url = this.researchCompanyForm.url;
-        }
-        if (this.researchCompanyForm.name) {
-          body.name = this.researchCompanyForm.name;
+        // Check URL validity if provided
+        const urlInput = document.querySelector("#company-url");
+        if (this.researchCompanyForm.url && !urlInput.validity.valid) {
+          return;
         }
 
-        await fetch("/api/companies", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        });
+        try {
+          this.researchingCompany = true;
+
+          const body = {};
+          if (this.researchCompanyForm.url) {
+            body.url = this.researchCompanyForm.url;
+          }
+          if (this.researchCompanyForm.name) {
+            body.name = this.researchCompanyForm.name;
+          }
+
+          const response = await fetch("/api/companies", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to start research");
+          }
+        } catch (error) {
+          console.error("Failed to research company:", error);
+        } finally {
+          this.researchingCompany = false;
+        }
       },
     }));
 
@@ -165,6 +184,78 @@ describe("Research Company Modal", () => {
 
     // Form should not submit (URL validation)
     expect(urlInput.validity.valid).toBe(false);
+
+    // Try to submit with empty URL and name
+    urlInput.value = "";
+    urlInput.dispatchEvent(new Event("input"));
+    form.dispatchEvent(new Event("submit"));
+
+    // Verify fetch was not called
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("shows loading state during submission", async () => {
+    const openButton = document.querySelector("button");
+    const form = document.querySelector("form");
+    const urlInput = form.querySelector('input[type="url"]');
+    const submitButton = form.querySelector('button[type="submit"]');
+    const loadingSpinner = submitButton.querySelector(".loading-spinner");
+
+    // Open the modal
+    openButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Set valid URL
+    urlInput.value = "https://example.com";
+    urlInput.dispatchEvent(new Event("input"));
+
+    // Submit should not be disabled initially
+    expect(submitButton.hasAttribute("disabled")).toBe(false);
+    expect(getComputedStyle(loadingSpinner).display).toBe("none");
+
+    // Mock fetch to return a delayed response
+    global.fetch = vi.fn(
+      () =>
+        new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
+    );
+
+    // Submit the form
+    form.dispatchEvent(new Event("submit"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Button should be disabled and spinner shown during submission
+    expect(submitButton.hasAttribute("disabled")).toBe(true);
+    expect(getComputedStyle(loadingSpinner).display).not.toBe("none");
+  });
+
+  it("handles API errors", async () => {
+    const openButton = document.querySelector("button");
+    const form = document.querySelector("form");
+    const urlInput = form.querySelector('input[type="url"]');
+
+    // Open the modal
+    openButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Set valid URL
+    urlInput.value = "https://example.com";
+    urlInput.dispatchEvent(new Event("input"));
+
+    // Mock fetch to return an error
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ error: "Failed to start research" }),
+      })
+    );
+
+    // Submit the form
+    form.dispatchEvent(new Event("submit"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Modal should stay open on error
+    const modal = document.querySelector("#research-company-modal");
+    expect(modal.getAttribute("x-show")).toBe("researchCompanyModalOpen");
   });
 
   it("submits form with valid data", async () => {
