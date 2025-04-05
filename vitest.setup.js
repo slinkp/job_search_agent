@@ -1,5 +1,5 @@
 import { Window } from "happy-dom";
-import { afterAll, afterEach, beforeAll } from "vitest";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
 // Set up global window object
 beforeAll(() => {
@@ -9,18 +9,19 @@ beforeAll(() => {
   global.document = window.document;
   global.navigator = window.navigator;
 
-  // Mock Alpine.js
-  window.Alpine = {
-    start: () => {},
-    data: (name, data) => data,
-    store: {},
-  };
+  // Mock fetch if not already mocked
+  if (!global.fetch) {
+    global.fetch = vi.fn();
+  }
 });
 
 // Clean up after each test
 afterEach(() => {
   // Reset the document body
   document.body.innerHTML = "";
+
+  // Reset all mocks
+  vi.resetAllMocks();
 });
 
 // Clean up after all tests
