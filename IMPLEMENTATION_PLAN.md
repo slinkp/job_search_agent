@@ -9,21 +9,21 @@
 - [x] Add tests for the updated functionality
 
 ### b. Add new endpoint
-- [ ] Add `/api/companies` POST endpoint to create/research a (possibly new, possibly known) company
-  - [ ] args can be company URL or company name
-- [ ] Add route in `server/app.py`
-- [ ] Add request validation for URL
-- [ ] Return research task ID and status
-- [ ] Add unit tests for new endpoint
-- [ ] Add tests for URL validation
-- [ ] Add tests for error handling
+- [x] Add `/api/companies` POST endpoint to create/research a (possibly new, possibly known) company
+  - [x] args can be company URL or company name
+- [x] Add route in `server/app.py`
+- [x] Add request validation for URL
+- [x] Return research task ID and status
+- [x] Add unit tests for new endpoint
+- [x] Add tests for URL validation
+- [x] Add tests for error handling
 
 ### c. Backend Tests
-- [ ] Add unit test for new endpoint. This will go in a new file. Use pytest
-- [ ] Add tests for URL validation
-- [ ] Add tests for error handling
-- [ ] Add/modify tests for changes to research_daemon
-- [ ] Add/modify tests for any other changed backend code
+- [x] Add unit test for new endpoint. This will go in a new file. Use pytest
+- [x] Add tests for URL validation
+- [x] Add tests for error handling
+- [x] Add/modify tests for changes to research_daemon
+- [x] Add/modify tests for any other changed backend code
 
 ## 2. Frontend Changes
 

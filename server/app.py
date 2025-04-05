@@ -308,6 +308,43 @@ def patch_company_details(request) -> dict:
     return company_dict["details"]
 
 
+@view_config(route_name="companies", renderer="json", request_method="POST")
+def research_by_url_or_name(request):
+    """Start research for a company based on URL or name."""
+    try:
+        body = request.json_body
+        company_url = body.get("url", "").strip()
+        company_name = body.get("name", "").strip()
+
+        if not company_url and not company_name:
+            request.response.status = 400
+            return {"error": "Either company URL or name must be provided"}
+
+        # Create a new task
+        task_args = {}
+        if company_url:
+            task_args["company_url"] = company_url
+        if company_name:
+            task_args["company_name"] = company_name
+
+        task_id = tasks.task_manager().create_task(
+            tasks.TaskType.COMPANY_RESEARCH,
+            task_args,
+        )
+        logger.info(
+            f"Research requested for company with URL: {company_url}, name: {company_name}, task_id: {task_id}"
+        )
+
+        return {
+            "task_id": task_id,
+            "status": tasks.TaskStatus.PENDING.value,
+        }
+    except Exception as e:
+        logger.exception("Error creating company research task")
+        request.response.status = 500
+        return {"error": str(e)}
+
+
 def main(global_config, **settings):
     with Configurator(settings=settings) as config:
         # Enable debugtoolbar for development
