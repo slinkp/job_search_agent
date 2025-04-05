@@ -66,6 +66,14 @@ document.addEventListener("alpine:init", () => {
     sortField: "name",
     sortAsc: true,
     filterMode: "all", // "all", "with-replies", "without-replies"
+    // Research company modal state
+    researchCompanyModalOpen: false,
+    researchingCompany: false,
+    researchCompanyForm: {
+      url: "",
+      name: "",
+    },
+    researchCompanyTaskId: null,
 
     isUrl(value) {
       return typeof value === "string" && value.startsWith("http");
@@ -691,6 +699,108 @@ document.addEventListener("alpine:init", () => {
           // Revert the local change if the server update failed
           company.promising = null;
         });
+    },
+
+    showResearchCompanyModal() {
+      this.researchCompanyModalOpen = true;
+      this.researchCompanyForm = {
+        url: "",
+        name: "",
+      };
+    },
+
+    closeResearchCompanyModal() {
+      this.researchCompanyModalOpen = false;
+    },
+
+    async submitResearchCompany() {
+      try {
+        // Validate form
+        if (!this.researchCompanyForm.url && !this.researchCompanyForm.name) {
+          this.showError("Please provide either a company URL or name");
+          return;
+        }
+
+        this.researchingCompany = true;
+
+        // Prepare request body
+        const body = {};
+        if (this.researchCompanyForm.url) {
+          body.url = this.researchCompanyForm.url;
+        }
+        if (this.researchCompanyForm.name) {
+          body.name = this.researchCompanyForm.name;
+        }
+
+        // Submit research request
+        const response = await fetch("/api/companies", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(
+            error.error || `Failed to start research: ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+        this.researchCompanyTaskId = data.task_id;
+
+        // Close modal and show success message
+        this.closeResearchCompanyModal();
+        this.showSuccess(
+          "Company research started. This may take a few minutes."
+        );
+
+        // Poll for task completion
+        this.pollResearchCompanyTask();
+      } catch (err) {
+        console.error("Failed to research company:", err);
+        this.showError(
+          err.message || "Failed to start research. Please try again."
+        );
+      } finally {
+        this.researchingCompany = false;
+      }
+    },
+
+    async pollResearchCompanyTask() {
+      if (!this.researchCompanyTaskId) return;
+
+      try {
+        const response = await fetch(
+          `/api/tasks/${this.researchCompanyTaskId}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to check task status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.status === "completed") {
+          this.showSuccess("Company research completed!");
+          this.researchCompanyTaskId = null;
+          await this.refreshAllCompanies();
+        } else if (data.status === "failed") {
+          this.showError(`Research failed: ${data.error || "Unknown error"}`);
+          this.researchCompanyTaskId = null;
+        } else {
+          // Task still running, check again in 5 seconds
+          setTimeout(() => this.pollResearchCompanyTask(), 5000);
+        }
+      } catch (err) {
+        console.error("Error polling research task:", err);
+        this.showError(
+          "Failed to check research status. Please refresh the page."
+        );
+        this.researchCompanyTaskId = null;
+      }
     },
   }));
 });
