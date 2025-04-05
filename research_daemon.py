@@ -303,6 +303,7 @@ if __name__ == "__main__":
         action="store_true",
         help="Run browser in visible mode (not headless)",
     )
+    parser.set_defaults(recruiter_message_limit=0)
     args = parser.parse_args()
 
     setup_logging(args.verbose)
