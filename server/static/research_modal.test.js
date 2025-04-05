@@ -1,7 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("Research Company Modal", () => {
   let Alpine;
+
+  // Import Alpine.js once before all tests
+  beforeAll(async () => {
+    Alpine = (await import("alpinejs")).default;
+    window.Alpine = Alpine;
+    Alpine.start();
+  });
 
   beforeEach(async () => {
     // Mock fetch
@@ -43,10 +50,6 @@ describe("Research Company Modal", () => {
         </div>
       </main>
     `;
-
-    // Import and initialize Alpine.js
-    Alpine = (await import("alpinejs")).default;
-    window.Alpine = Alpine;
 
     // Initialize Alpine.js with the actual component data
     Alpine.data("companyList", () => ({
@@ -95,10 +98,20 @@ describe("Research Company Modal", () => {
       },
     }));
 
-    Alpine.start();
-
     // Wait for Alpine to process initial state
     await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  // Clean up after each test
+  afterEach(() => {
+    // Reset the document body
+    document.body.innerHTML = "";
+  });
+
+  // Clean up after all tests
+  afterAll(() => {
+    // Clean up Alpine.js
+    delete window.Alpine;
   });
 
   it("opens when clicking the research button", async () => {
