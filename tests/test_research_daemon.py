@@ -41,7 +41,7 @@ def args():
 @pytest.fixture
 def cache_settings():
     return libjobsearch.CacheSettings(
-        clear_all_cache=False, clear_cache=[], cache_until=None, no_cache=False
+        clear_all_cache=False, clear_cache=[], cache_until=None, no_cache=True
     )
 
 
@@ -411,3 +411,68 @@ def test_do_ignore_and_archive_missing_company(daemon):
     assert result == {"error": "Company not found"}
     daemon.company_repo.update.assert_not_called()
     daemon.company_repo.create_event.assert_not_called()
+
+
+def test_do_research_with_url(daemon, test_company, mock_spreadsheet):
+    """Test research using a company URL."""
+    args = {"company_url": "https://example.com"}
+
+    # Company doesn't exist yet
+    daemon.company_repo.get.return_value = None
+    daemon.jobsearch.research_company.return_value = test_company
+
+    daemon.do_research(args)
+
+    daemon.jobsearch.research_company.assert_called_once_with(
+        "https://example.com", model=daemon.ai_model
+    )
+    daemon.company_repo.create.assert_called_once_with(test_company)
+    mock_spreadsheet.assert_called_once_with(test_company.details, daemon.args)
+
+
+def test_do_research_with_url_and_name(daemon, test_company, mock_spreadsheet):
+    """Test research using both URL and company name."""
+    args = {"company_url": "https://example.com", "company_name": "Test Corp"}
+
+    # Company doesn't exist yet
+    daemon.company_repo.get.return_value = None
+    daemon.jobsearch.research_company.return_value = test_company
+
+    daemon.do_research(args)
+
+    daemon.jobsearch.research_company.assert_called_once_with(
+        "https://example.com", model=daemon.ai_model
+    )
+    daemon.company_repo.create.assert_called_once_with(test_company)
+    mock_spreadsheet.assert_called_once_with(test_company.details, daemon.args)
+
+
+def test_do_research_with_unknown_company_name(daemon, mock_spreadsheet):
+    """Test research when no company name is provided."""
+    args = {"company_url": "https://example.com"}
+    error = ValueError("Research failed")
+
+    # Company doesn't exist yet
+    daemon.company_repo.get.return_value = None
+    daemon.jobsearch.research_company.side_effect = error
+
+    with pytest.raises(ValueError):
+        daemon.do_research(args)
+
+    # Verify minimal company was created with error
+    assert daemon.company_repo.create.call_count == 1
+    created_company = daemon.company_repo.create.call_args[0][0]
+    assert created_company.name.startswith("<UNKNOWN")
+    assert "Research failed" in created_company.details.notes
+    assert len(created_company.status.research_errors) == 1
+    assert created_company.status.research_errors[0].step == "research_company"
+    assert "Research failed" in created_company.status.research_errors[0].error
+    mock_spreadsheet.assert_called_once_with(created_company.details, daemon.args)
+
+
+def test_generate_company_id(daemon):
+    """Test the company ID generation function."""
+    assert daemon._generate_company_id("Test Corp") == "test-corp"
+    assert daemon._generate_company_id("ACME Corporation") == "acme-corporation"
+    assert daemon._generate_company_id("Test Corp!") == "test-corp!"
+    assert daemon._generate_company_id("  Test Corp  ") == "test-corp"

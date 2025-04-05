@@ -6,7 +6,7 @@
 - [x] Modify `do_research` to handle receiving a URL and/or a name in addition to or instead of existing args
 - [x] Reuse existing research code from `research_company`
 - [x] Handle errors and create minimal company record if research fails
-- [ ] Add tests for the updated functionality
+- [x] Add tests for the updated functionality
 
 ### b. Add new endpoint
 - [ ] Add `/api/companies` POST endpoint to create/research a (possibly new, possibly known) company

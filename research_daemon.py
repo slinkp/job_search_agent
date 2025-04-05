@@ -95,20 +95,53 @@ class ResearchDaemon:
                     logger.error(f"Ignoring unsupported task type: {task_type}")
                 logger.info(f"Task {task_id} completed")
 
-    def do_research(self, args: dict):
-        company_id = args["company_id"]
-        company_name = args["company_name"]
+    def _generate_company_id(self, name: str) -> str:
+        """Generate a company ID from a name by converting to lowercase and replacing spaces with dashes."""
+        # TODO: move to libjobsearch.py and use it both places
+        return name.strip().lower().replace(" ", "-")
 
-        existing = self.company_repo.get(company_id)
-        company = None
-        content = existing and existing.name or company_name
-        recruiter_message = None
-        if existing and existing.recruiter_message:
-            content += "\n\n" + existing.recruiter_message.message
+    def do_research(self, args: dict):
+        # Extract args, with URL and name being optional
+        company_id = args.get("company_id", "").strip()
+        company_name = args.get("company_name", "").strip()
+        company_url = args.get("company_url", "").strip()
+
+        # If we have a company_id, try to get the existing company
+        existing = None
+        if company_id:
+            existing = self.company_repo.get(company_id)
+        elif company_name:
+            # If we have a company name, try to find an existing company with that name
+            # TODO: Repo could support search by name, possibly with fuzzy matching
+            existing = self.company_repo.get(company_name)
+
+        # If we found an existing company, use its name if no name was provided
+        if existing and not company_name:
+            company_name = existing.name
+
+        # Determine what content to use for research
+        content = None
+        if company_url:
+            # If we have a URL, use it directly
+            content = company_url
+        elif existing and existing.recruiter_message:
+            # If we have an existing company with a recruiter message, use that
+            content = existing.recruiter_message.message
+            if company_name:
+                content = f"Company name: {company_name}\n\n{content}"
             logger.info(
                 f"Using existing initial message: {existing.recruiter_message.message[:400]}"
             )
+        elif company_name:
+            # If we just have a name, use that
+            content = company_name
+        else:
+            # We need at least a URL or a name
+            raise ValueError(
+                "Either company_url or company_name or company_id must be provided"
+            )
 
+        company = None
         try:
             # TODO: Pass more context from email, etc.
             # And anything we know about the company already?
@@ -122,25 +155,31 @@ class ResearchDaemon:
                     logger.warning(f"  - {err.step}: {err.error}")
 
             if existing:
-                logger.info(f"Updating company {company_name}")
+                logger.info(f"Updating company {company_name or existing.name}")
                 existing.details = company.details
                 existing.name = company.name or existing.name
                 existing.status.research_errors = research_errors
                 self.company_repo.update(existing)
                 company = existing
             else:
-                logger.info(f"Creating company {company_name}")
+                logger.info(f"Creating company {company.name}")
                 self.company_repo.create(company)
 
             # Update the spreadsheet with the researched company data
             libjobsearch.upsert_company_in_spreadsheet(company.details, self.args)
 
         except Exception as e:
-            logger.exception(f"Error researching company {company_name}")
+            logger.exception(f"Error researching company {company_name or 'unknown'}")
             # Create a minimal company record with the error if it doesn't exist
             if existing is None and company is None:
+                # Use the same unknown company name logic as in libjobsearch.py
+                if not company_name:
+                    company_name = f"<UNKNOWN {int(time.time() * 1000 * 1000)}>"
+                    logger.warning(f"Company name not found, using {company_name}")
+
                 minimal_row = models.CompaniesSheetRow(
                     name=company_name,
+                    url=company_url or "",
                     notes=f"Research failed: {str(e)}",
                 )
                 company_status = models.CompanyStatus(
@@ -152,7 +191,7 @@ class ResearchDaemon:
                     ],
                 )
                 company = models.Company(
-                    company_id=company_id,
+                    company_id=company_id or self._generate_company_id(company_name),
                     name=company_name,
                     details=minimal_row,
                     status=company_status,
