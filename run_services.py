@@ -4,7 +4,6 @@ import logging
 import signal
 import subprocess
 import sys
-from typing import List
 
 import libjobsearch
 from logsetup import setup_logging
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class ServiceManager:
     def __init__(self):
-        self.processes: List[subprocess.Popen] = []
+        self.processes: dict[str, subprocess.Popen] = {}
         self.running = True
 
         # Set up signal handlers
@@ -65,7 +64,7 @@ class ServiceManager:
                 stderr=subprocess.PIPE,
                 universal_newlines=True,
             )
-            self.processes.append(research_proc)
+            self.processes["research"] = research_proc
             logger.info("Started research daemon")
 
             # Start web server
@@ -79,15 +78,16 @@ class ServiceManager:
                 stderr=subprocess.PIPE,
                 universal_newlines=True,
             )
-            self.processes.append(server_proc)
+            self.processes["server"] = server_proc
             logger.info("Started web server")
 
             # Wait for processes to complete
             while self.running:
-                if any(proc.poll() is not None for proc in self.processes):
-                    logger.error("One of the services died unexpectedly")
-                    self.handle_shutdown(None, None)
-                    break
+                for procname, proc in self.processes.items():
+                    if proc.poll() is not None:
+                        logger.error(f"{procname} died unexpectedly")
+                        self.handle_shutdown(None, None)
+                        break
 
         except Exception as e:
             logger.error(f"Error starting services: {e}")
@@ -97,13 +97,15 @@ class ServiceManager:
         logger.info("Shutting down services...")
         self.running = False
 
-        for proc in self.processes:
+        for procname, proc in self.processes.items():
             if proc.poll() is None:  # If process is still running
                 proc.terminate()
                 try:
                     proc.wait(timeout=5)  # Wait up to 5 seconds for graceful shutdown
                 except subprocess.TimeoutExpired:
-                    logger.warning("Process didn't terminate gracefully, forcing...")
+                    logger.warning(
+                        f"Process {procname} didn't terminate gracefully, forcing..."
+                    )
                     proc.kill()
 
         sys.exit(0)
