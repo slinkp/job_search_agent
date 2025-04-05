@@ -9,7 +9,7 @@ import models
 from logsetup import setup_logging
 from tasks import TaskManager, TaskStatus, TaskType, task_manager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("research_daemon")
 
 
 class TaskStatusContext:

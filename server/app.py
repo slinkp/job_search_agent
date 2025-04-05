@@ -63,7 +63,7 @@ def setup_colored_logging():
 
 
 # Get our application logger
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("server.app")
 
 
 @view_config(route_name="company", renderer="json", request_method="GET")
