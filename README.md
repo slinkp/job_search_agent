@@ -108,7 +108,6 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [ ] Support extracting and researching companies that aren't from recruiter
         mail
     - [ ] distinguish these from recruiter companies in the company list
-    - [ ] support manually adding by name or URL
     - [ ] support linkedin job alert email
     - [ ] support "welcome to the jungle" job alert email
   - [x] Build a RAG chain trained on those messages
@@ -190,6 +189,9 @@ Won't work if follow-ups are not threaded, but that can't be helped.
           - [ ] message id
           - [ ] thread link
         - [ ] Handle multiple messages for same company??
+  - [ ] support manually adding companies
+      - [ ] By URL. Likely from a job listing
+      - [ ] By name
   - [x] List pending companies
     - [x] Display known data
     - [x] Link to original message, if any (maybe just gmail link?)
