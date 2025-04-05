@@ -1,4 +1,15 @@
 #!/bin/bash
 
-coverage run -m pytest $* || exit 1
+# Run Python tests with coverage
+coverage run -m pytest $* 
+PYTHON_EXIT=$?
+
+# Always show coverage report
 coverage report && coverage html
+
+# Run JavaScript tests
+npm test -- --run
+JS_EXIT=$?
+
+# Exit with failure if either test suite failed
+[ $PYTHON_EXIT -ne 0 ] || [ $JS_EXIT -ne 0 ] && exit 1
