@@ -28,20 +28,20 @@
 ## 2. Frontend Changes
 
 ### a. Add UI Components
-- [ ] Add "Research a company" button at top of company list
-- [ ] Create modal dialog for entering company URL and/or name
-- [ ] Add form validation for URL input
-- [ ] Add loading state and error handling
-- [ ] Add success feedback
+- [x] Add "Research a company" button at top of company list
+- [x] Create modal dialog for entering company URL and/or name
+- [x] Add form validation for URL input
+- [x] Add loading state and error handling
+- [x] Add success feedback
 - [ ] Add tests for UI components
 - [ ] Add tests for form validation
 - [ ] Add tests for error states
 
 ### b. Add API Integration
-- [ ] Add method to call new endpoint
-- [ ] Add task polling for company creation
-- [ ] Update company list on success
-- [ ] Handle errors and show feedback
+- [x] Add method to call new endpoint
+- [x] Add task polling for company creation
+- [x] Update company list on success
+- [x] Handle errors and show feedback
 - [ ] Add tests for API integration
 - [ ] Add tests for task polling
 - [ ] Add tests for error handling
