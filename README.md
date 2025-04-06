@@ -169,7 +169,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
 - [x] UX: Proof-of-concept command line
     - [x] Chose command line for first pass (running libjobsearch.py as a script)
     - [x] Edit reply via texteditor
-- [ ] **UX!** 
+- [x] **UX!** 
   - [x] Decide on framework for this.
     - [x] Chose SPWA using Alpine.js and Pico.css frontend
     - [x] Chose pyramid for simple REST API backend
@@ -181,17 +181,9 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] Button to scan email and select how many
       - [x] Make it optional whether we do research automatically (default: no)
       - [ ] Show more detailed progress info?
-      - [ ] Make sure we only pull in new companies
-        - [ ] Add to db only if doesn't exist
-        - [ ] Check spreadsheet and db for existing match:
-          - [ ] company name - fuzzy match? normalize?
-            - [ ] support merging?
-          - [ ] message id
-          - [ ] thread link
-        - [ ] Handle multiple messages for same company??
-  - [ ] support manually adding companies
-      - [ ] By URL. Likely from a job listing
-      - [ ] By name
+  - [x] support manually adding companies
+      - [x] By URL. Likely from a job listing
+      - [x] By name
   - [x] List pending companies
     - [x] Display known data
     - [x] Link to original message, if any (maybe just gmail link?)
@@ -210,7 +202,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
             formatted like  "YYYY/MM/DD 3:42pm (X days ago)"
       - [x] Add link to email thread from the reply page
       - [ ] "Mark as manually replied" button
-        - [ ] Optionally add link to an existing thread?
+        - [ ] Optionally manual add link to an existing email thread?
     - [x] "Send and archive" button
     - [ ] "Save gmail draft" button
       - [ ] Track and show the state of this so we don't regenerate or edit and send
@@ -230,23 +222,35 @@ Won't work if follow-ups are not threaded, but that can't be helped.
       - [x] Chose sqlite for task db
     - [x] Support processing old unprocessed tasks
       - [x] Works, does oldest first
-      - [ ] Probably should have a sensible cutoff age, eg don't auto-apply
-            a task older than 2 days
-      - [ ] Also support cleaning up / discarding old ones
-      - [ ] Maybe all this should be shown in the UX.
-            Think of it kind of like the print job queue on eg MacOS.
   - [x] "Ignore and archive" feature
      - [x] button, backend api, task, and task handler for this
      - [x] add function to libjobsearch: sends no message; archives the
            recruiter message
      - [x] updates status in actual spreadsheet to "70. ruled out - didn't reply"
      - [x] new "archived" icon & filter for this in web app
+  - [ ] Make sure we only add new companies
+     - [ ] Add to db only if doesn't exist
+     - [ ] Check spreadsheet and db for existing match:
+         - [ ] by company name - fuzzy match? normalize?
+         - [ ] by message id?
+         - [ ] by thread link?
+         - [ ] support merging duplicates?
+  - [ ] Handle multiple messages for same company??
+  - [ ] Better management of background tasks
+     - [ ] Probably should have a sensible cutoff age, eg don't auto-apply
+           a task older than 1 day?
+     - [ ] Display tasks (filterable by status) in UX
+     - [ ] Actions:
+       - [ ] Discard old tasks
+       - [ ] Force retry failed tasks
 - [ ] Q: If this app has all the same data as spreadsheet, then we can drop the
       spreadsheet
     - [ ] Make the web app more browsable / readable
     - [ ] Two sources of truth sucks; i'm currently treating the sheet as canonical
     - [ ] First pull in all the old data from the sheet
     - [ ] Make all fields easily hand-editable in the app
+    - [ ] Figure out what spreadsheet features are actually useful and
+          duplicate those
     - [ ] Make it trivial to modify the db schema while preserving existing
           data
           - [ ] we may need an ORM with migrations, sigh.
