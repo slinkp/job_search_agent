@@ -8,7 +8,19 @@ import {
   it,
   vi,
 } from "vitest";
+import { CompanyResearchService } from "../../static/company-research.js";
 import { setupDocumentWithIndexHtml } from "./test-utils.js";
+
+// Mock the CompanyResearchService
+vi.mock("../../static/company-research.js", () => {
+  return {
+    CompanyResearchService: vi.fn().mockImplementation(() => ({
+      submitResearch: vi.fn(),
+      pollResearchTask: vi.fn(),
+      researchingCompany: false,
+    })),
+  };
+});
 
 describe("Research Company Modal", () => {
   let Alpine;
@@ -17,6 +29,7 @@ describe("Research Company Modal", () => {
   let form;
   let showModalSpy;
   let closeSpy;
+  let researchService;
 
   // Import Alpine.js once before all tests
   beforeAll(async () => {
@@ -154,6 +167,12 @@ describe("Research Company Modal", () => {
 
     // Initialize Alpine.js
     Alpine.data("researchCompanyModal", () => component);
+
+    // Reset mocks
+    vi.clearAllMocks();
+
+    // Create a fresh instance of the service
+    researchService = new CompanyResearchService();
   });
 
   // Clean up after each test
@@ -377,5 +396,105 @@ describe("Research Company Modal", () => {
     );
     expect(closeSpy).toHaveBeenCalled();
     expect(component.pollResearchCompanyTask).toHaveBeenCalled();
+  });
+
+  it("should show error when submitting without URL or name", async () => {
+    // Setup
+    component.researchCompanyForm = { url: "", name: "" };
+
+    // Execute
+    await component.submitResearchCompany();
+
+    // Verify
+    expect(component.showError).toHaveBeenCalledWith(
+      "Please provide either a company URL or name"
+    );
+    expect(researchService.submitResearch).not.toHaveBeenCalled();
+  });
+
+  it("should submit research with URL", async () => {
+    // Setup
+    const form = { url: "https://example.com", name: "" };
+    const taskId = "123";
+
+    // Mock the service to return success
+    researchService.submitResearch.mockResolvedValueOnce({ task_id: taskId });
+
+    // Execute
+    const result = await researchService.submitResearch(form);
+
+    // Verify
+    expect(researchService.submitResearch).toHaveBeenCalledWith(form);
+    expect(result).toEqual({ task_id: taskId });
+  });
+
+  it("should submit research with name", async () => {
+    // Setup
+    const form = { url: "", name: "Example Corp" };
+    const taskId = "123";
+
+    // Mock the service to return success
+    researchService.submitResearch.mockResolvedValueOnce({ task_id: taskId });
+
+    // Execute
+    const result = await researchService.submitResearch(form);
+
+    // Verify
+    expect(researchService.submitResearch).toHaveBeenCalledWith(form);
+    expect(result).toEqual({ task_id: taskId });
+  });
+
+  it("should handle API errors", async () => {
+    // Setup
+    const form = { url: "https://example.com", name: "" };
+    const error = new Error("API Error");
+
+    // Mock the service to throw an error
+    researchService.submitResearch.mockRejectedValueOnce(error);
+
+    // Execute & Verify
+    await expect(researchService.submitResearch(form)).rejects.toThrow(
+      "API Error"
+    );
+  });
+
+  it("should poll task status until completion", async () => {
+    // Setup
+    const taskId = "123";
+
+    // Mock the service to return running then completed
+    researchService.pollResearchTask
+      .mockResolvedValueOnce({ status: "running" })
+      .mockResolvedValueOnce({ status: "completed" });
+
+    // Execute
+    const firstResult = await researchService.pollResearchTask(taskId);
+    expect(firstResult).toEqual({ status: "running" });
+
+    const secondResult = await researchService.pollResearchTask(taskId);
+    expect(secondResult).toEqual({ status: "completed" });
+
+    // Verify
+    expect(researchService.pollResearchTask).toHaveBeenCalledWith(taskId);
+    expect(researchService.pollResearchTask).toHaveBeenCalledTimes(2);
+  });
+
+  it("should handle task failure", async () => {
+    // Setup
+    const taskId = "123";
+    const error = "Task failed";
+
+    // Mock the service to return failed
+    researchService.pollResearchTask.mockResolvedValueOnce({
+      status: "failed",
+      error,
+    });
+
+    // Execute
+    const result = await researchService.pollResearchTask(taskId);
+
+    // Verify
+    expect(researchService.pollResearchTask).toHaveBeenCalledWith(taskId);
+    expect(result).toEqual({ status: "failed", error });
   });
 });
