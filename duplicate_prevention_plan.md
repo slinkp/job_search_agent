@@ -7,7 +7,7 @@ This plan outlines the steps to prevent duplicate companies (based on name) from
 - [x] **Implement Normalization Utility:** Create a simple, reusable function `normalize_company_name(name: str) -> str` (perhaps in `models.py`) that performs `name.strip().lower()`.
 - [x] **Test Normalization Utility:** Add unit tests for the new
       `normalize_company_name` function.
-- [ ] Find any code where we already normalize company names to company ID and
+- [x] Find any code where we already normalize company names to company ID and
       call this new function. Confirm that all existing tests pass.
 - [x] **Add `CompanyRepository.get_by_normalized_name`:**
     - [x] Add a new method `get_by_normalized_name(self, name: str) -> Optional[Company]` to `models.CompanyRepository`.

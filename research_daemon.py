@@ -7,6 +7,7 @@ import time
 import libjobsearch
 import models
 from logsetup import setup_logging
+from models import normalize_company_name
 from tasks import TaskManager, TaskStatus, TaskType, task_manager
 
 logger = logging.getLogger("research_daemon")
@@ -96,9 +97,9 @@ class ResearchDaemon:
                 logger.info(f"Task {task_id} completed")
 
     def _generate_company_id(self, name: str) -> str:
-        """Generate a company ID from a name by converting to lowercase and replacing spaces with dashes."""
-        # TODO: move to libjobsearch.py and use it both places
-        return name.strip().lower().replace(" ", "-")
+        """Generate a company ID from a name by normalizing it."""
+        # Use the normalize_company_name function from models.py
+        return normalize_company_name(name)
 
     def do_research(self, args: dict):
         # Extract args, with URL and name being optional
