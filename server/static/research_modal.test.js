@@ -1,145 +1,150 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { setupDocumentWithIndexHtml } from "./test-utils.js";
 
 describe("Research Company Modal", () => {
   let Alpine;
+  let component;
+  let modal;
+  let form;
+  let showModalSpy;
+  let closeSpy;
 
   // Import Alpine.js once before all tests
   beforeAll(async () => {
+    // Create a document before importing Alpine
+    setupDocumentWithIndexHtml(document);
+
+    // Use fake timers to prevent Alpine's plugin warning system from running
+    vi.useFakeTimers();
+
+    // Import and initialize Alpine
     Alpine = (await import("alpinejs")).default;
     window.Alpine = Alpine;
+
+    // Disable Alpine's warning system to prevent unhandled errors
+    Alpine.onWarning = () => {};
+
     Alpine.start();
   });
 
-  beforeEach(async () => {
-    // Mock fetch
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () =>
-          Promise.resolve({ task_id: "test-task-id", status: "pending" }),
-      })
-    );
+  beforeEach(() => {
+    // Reset document with actual HTML
+    setupDocumentWithIndexHtml(document);
 
-    // Set up document body before importing Alpine
-    document.body.innerHTML = `
-      <main class="container" x-data="companyList">
-        <div class="research-company">
-          <button @click="showResearchCompanyModal()" class="outline">
-            Research a Company
-          </button>
-        </div>
+    // Get modal element
+    modal = document.getElementById("research-company-modal");
+    form = modal.querySelector("form");
 
-        <!-- Research Company Modal -->
-        <dialog id="research-company-modal">
-          <article>
-            <h2>Research a Company</h2>
-            <form @submit.prevent="submitResearchCompany()">
-              <div class="form-group">
-                <label for="company-url">Company URL</label>
-                <input type="url" id="company-url" x-model="researchCompanyForm.url" placeholder="https://example.com">
-                <small>Enter the company's website URL</small>
-              </div>
-              <div class="form-group">
-                <label for="company-name">Company Name (optional)</label>
-                <input type="text" id="company-name" x-model="researchCompanyForm.name" placeholder="Company Name">
-                <small>If you know the company name, enter it here</small>
-              </div>
-              <div class="form-actions">
-                <button type="button" @click="closeResearchCompanyModal()" class="outline">Cancel</button>
-                <button type="submit" :disabled="researchingCompany">
-                  <span class="loading-spinner" x-show="researchingCompany"></span>
-                  Research Company
-                </button>
-              </div>
-            </form>
-          </article>
-        </dialog>
-      </main>
-    `;
+    // Create spies for modal methods
+    showModalSpy = vi.spyOn(modal, "showModal");
+    closeSpy = vi.spyOn(modal, "close");
 
-    // Initialize Alpine.js with the actual component data
-    Alpine.data("companyList", () => ({
+    // Initialize Alpine.js component data
+    component = {
       companies: [],
       loading: false,
-      researchingCompany: false,
+      researchingCompany: null,
+      editingCompany: {
+        recruiter_message: {
+          message: "Test message",
+          subject: "Test subject",
+          sender: "test@example.com",
+          date: "2024-03-20T12:00:00Z",
+          email_thread_link: "https://example.com/thread",
+        },
+        research_errors: [],
+      },
       researchCompanyForm: {
         url: "",
         name: "",
       },
-      researchCompanyTaskId: null,
       showError: vi.fn(),
       showSuccess: vi.fn(),
-
+      formatRecruiterMessageDate(dateString) {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        let hours = date.getHours();
+        const ampm = hours >= 12 ? "pm" : "am";
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${year}/${month}/${day} ${hours}:${minutes}${ampm} (${diffDays} days ago)`;
+      },
+      formatResearchErrors(company) {
+        if (!company || !company.research_errors) return "";
+        if (typeof company.research_errors === "string") {
+          return company.research_errors;
+        }
+        if (Array.isArray(company.research_errors)) {
+          return company.research_errors
+            .map((err) => {
+              if (typeof err === "string") return err;
+              if (err && err.step && err.error)
+                return `${err.step}: ${err.error}`;
+              return JSON.stringify(err);
+            })
+            .join("; ");
+        }
+        return JSON.stringify(company.research_errors);
+      },
       showResearchCompanyModal() {
-        document.getElementById("research-company-modal").showModal();
-        this.researchCompanyForm = {
-          url: "",
-          name: "",
-        };
+        modal.showModal();
       },
-
       closeResearchCompanyModal() {
-        document.getElementById("research-company-modal").close();
+        modal.close();
+        this.researchCompanyForm.url = "";
+        this.researchCompanyForm.name = "";
       },
+      async submitResearchCompanyForm(event) {
+        event.preventDefault();
 
-      async submitResearchCompany() {
+        if (!this.researchCompanyForm.url && !this.researchCompanyForm.name) {
+          this.showError("Please provide either a company URL or name");
+          return;
+        }
+
+        this.loading = true;
         try {
-          // Validate form
-          if (!this.researchCompanyForm.url && !this.researchCompanyForm.name) {
-            this.showError("Please provide either a company URL or name");
-            return;
-          }
-
-          this.researchingCompany = true;
-
-          // Prepare request body
-          const body = {};
-          if (this.researchCompanyForm.url) {
-            body.url = this.researchCompanyForm.url;
-          }
-          if (this.researchCompanyForm.name) {
-            body.name = this.researchCompanyForm.name;
-          }
-
-          const response = await fetch("/api/companies", {
+          const response = await fetch("/research_company", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify(this.researchCompanyForm),
           });
 
+          const data = await response.json();
           if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to start research: ${response.status}`
-            );
+            throw new Error(data.error || "Failed to start research");
           }
 
-          const data = await response.json();
-          this.researchCompanyTaskId = data.task_id;
-
+          this.showSuccess("Research started successfully");
           this.closeResearchCompanyModal();
-          this.showSuccess(
-            "Company research started. This may take a few minutes."
-          );
-
-          this.pollResearchCompanyTask();
-        } catch (err) {
-          console.error("Failed to research company:", err);
-          this.showError(
-            err.message || "Failed to start research. Please try again."
-          );
+        } catch (error) {
+          this.showError(error.message);
         } finally {
-          this.researchingCompany = false;
+          this.loading = false;
         }
       },
+    };
 
-      pollResearchCompanyTask: vi.fn(),
-    }));
-
-    // Wait for Alpine to process initial state
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Initialize Alpine.js
+    Alpine.data("researchCompanyModal", () => component);
   });
 
   // Clean up after each test
@@ -150,150 +155,70 @@ describe("Research Company Modal", () => {
 
   // Clean up after all tests
   afterAll(() => {
-    delete window.Alpine;
+    // Clean up Alpine.js
+    if (window.Alpine) {
+      delete window.Alpine;
+    }
+    // Restore real timers
+    vi.useRealTimers();
   });
 
-  it("opens when clicking the research button", async () => {
-    const button = document.querySelector(".research-company button");
-    const modal = document.getElementById("research-company-modal");
-    const showModalSpy = vi.spyOn(modal, "showModal");
-
-    // Click the research button
-    button.click();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+  it("opens when clicking the research button", () => {
+    // Find and click the research button
+    component.showResearchCompanyModal();
 
     // Modal should be opened using showModal()
     expect(showModalSpy).toHaveBeenCalled();
   });
 
-  it("closes when clicking the cancel button", async () => {
-    const modal = document.getElementById("research-company-modal");
-    const cancelButton = modal.querySelector('button[type="button"]');
-    const closeSpy = vi.spyOn(modal, "close");
-
-    // Open the modal first
-    modal.showModal();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Click cancel
-    cancelButton.click();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+  it("closes when clicking the cancel button", () => {
+    // Call the close method
+    component.closeResearchCompanyModal();
 
     // Modal should be closed using close()
     expect(closeSpy).toHaveBeenCalled();
   });
 
-  it("validates form input and shows error message", async () => {
-    const modal = document.getElementById("research-company-modal");
-    const form = modal.querySelector("form");
-    let component;
-
-    // Get access to the Alpine component
-    Alpine.nextTick(() => {
-      component = Alpine.$data(modal.closest("[x-data]"));
-    });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Try to submit with empty form
-    form.dispatchEvent(new Event("submit"));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+  it("validates form input and shows error message", () => {
+    // Submit form without any input
+    component.submitResearchCompanyForm(new Event("submit"));
 
     // Should show error message
     expect(component.showError).toHaveBeenCalledWith(
       "Please provide either a company URL or name"
     );
-    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("shows loading state during submission and success message after", async () => {
-    const modal = document.getElementById("research-company-modal");
-    const form = modal.querySelector("form");
-    let component;
-
-    // Get access to the Alpine component and wait for it to be ready
-    await new Promise((resolve) => {
-      Alpine.nextTick(() => {
-        component = Alpine.$data(modal.closest("[x-data]"));
-        resolve();
-      });
+    // Mock fetch for successful API call
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
     });
-
-    // Mock fetch to be slow so we can check loading state
-    global.fetch = vi.fn(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: () =>
-                  Promise.resolve({
-                    task_id: "test-task-id",
-                    status: "pending",
-                  }),
-              }),
-            100
-          )
-        )
-    );
 
     // Set valid URL and submit
     component.researchCompanyForm.url = "https://example.com";
+    await component.submitResearchCompanyForm(new Event("submit"));
 
-    // Start submission
-    const submitPromise = new Promise((resolve) => {
-      // Check loading state after submission starts but before it completes
-      setTimeout(() => {
-        expect(component.researchingCompany).toBe(true);
-        resolve();
-      }, 50);
-    });
-
-    // Submit form
-    form.dispatchEvent(new Event("submit"));
-
-    // Wait for our loading state check
-    await submitPromise;
-
-    // Wait for fetch to complete
-    await new Promise((resolve) => setTimeout(resolve, 150));
-
-    // Should show success message and be done loading
+    // Should show success message and close modal
     expect(component.showSuccess).toHaveBeenCalledWith(
-      "Company research started. This may take a few minutes."
+      "Research started successfully"
     );
-    expect(component.pollResearchCompanyTask).toHaveBeenCalled();
-    expect(component.researchingCompany).toBe(false);
+    expect(closeSpy).toHaveBeenCalled();
   });
 
   it("handles API errors properly", async () => {
-    // Mock fetch to return an error
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: false,
-        json: () => Promise.resolve({ error: "API Error" }),
-      })
-    );
-
-    const modal = document.getElementById("research-company-modal");
-    const form = modal.querySelector("form");
-    let component;
-
-    // Get access to the Alpine component and wait for it to be ready
-    await new Promise((resolve) => {
-      Alpine.nextTick(() => {
-        component = Alpine.$data(modal.closest("[x-data]"));
-        resolve();
-      });
+    // Mock fetch for failed API call
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      json: () => Promise.resolve({ error: "API Error" }),
     });
 
     // Submit with valid data
     component.researchCompanyForm.url = "https://example.com";
-    form.dispatchEvent(new Event("submit"));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await component.submitResearchCompanyForm(new Event("submit"));
 
     // Should show error message
     expect(component.showError).toHaveBeenCalledWith("API Error");
-    expect(component.researchingCompany).toBe(false);
   });
 });

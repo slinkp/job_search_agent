@@ -1,5 +1,6 @@
 import { Window } from "happy-dom";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
+import { setupDocumentWithIndexHtml } from "./server/static/test-utils.js";
 
 // Set up global window object
 beforeAll(() => {
@@ -8,6 +9,9 @@ beforeAll(() => {
   global.window = window;
   global.document = window.document;
   global.navigator = window.navigator;
+
+  // Set up document with actual HTML to prevent Alpine.js errors
+  setupDocumentWithIndexHtml(document);
 
   // Mock fetch if not already mocked
   if (!global.fetch) {
