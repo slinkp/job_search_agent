@@ -176,6 +176,10 @@ class BaseGoogleSheetClient:
         self.doc_id = doc_id
         creds = authorize()
         self.range_name = range_name
+        # Google has weird append behavior to find the right end,
+        # as per https://developers.google.com/sheets/api/guides/values#appending_values.
+        # Be careful: range names are 1-indexed whereas FIRST_DATA_ROW is 0-indexed
+        self.append_range_name = range_name.split("!")[0] + f"!A{FIRST_DATA_ROW + 1}"
         self.sheet_id = sheet_id
         self.service = build("sheets", "v4", credentials=creds)
 
@@ -273,10 +277,11 @@ class BaseGoogleSheetClient:
             # range: range in a1 notation. Not needed though?
         }
         values = self.service.spreadsheets().values()
-        result = values.append(
+        values.append(
             spreadsheetId=self.doc_id,
-            range=self.range_name,
-            valueInputOption="USER_ENTERED",  # TODO: what's this?
+            range=self.append_range_name,
+            valueInputOption="USER_ENTERED",  # Interpret values, eg dates.
+            insertDataOption="INSERT_ROWS",  # Append rows, not overwrite cells.
             body=body,
         ).execute()
         logger.info(f"{len(rows)} rows appended.")
