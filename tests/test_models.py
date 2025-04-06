@@ -13,6 +13,7 @@ from models import (
     EventType,
     RecruiterMessage,
     company_repository,
+    normalize_company_name,
 )
 
 TEST_DB_PATH = "data/_test_companies.db"
@@ -532,3 +533,21 @@ class TestCompany:
         company.initial_message = "New message"
         assert company.recruiter_message is not None
         assert company.recruiter_message.message == "New message"
+
+
+@pytest.mark.parametrize(
+    "input_name, expected_output",
+    [
+        ("Test Company", "test-company"),
+        ("  Test   Company  ", "test-company"),
+        ("TEST COMPANY", "test-company"),
+        ("test company", "test-company"),
+        (" TestCo ", "testco"),
+        ("Another Multi Word Name", "another-multi-word-name"),
+        ("", ""),
+        ("   ", ""),
+    ],
+)
+def test_normalize_company_name(input_name, expected_output):
+    """Test the company name normalization function."""
+    assert normalize_company_name(input_name) == expected_output

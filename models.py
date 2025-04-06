@@ -13,6 +13,13 @@ import dateutil.parser
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
 
+def normalize_company_name(name: str) -> str:
+    """Normalize company name for consistent comparison (lowercase, strip whitespace)."""
+    normalized = name.strip().lower()
+    normalized = "-".join(normalized.split())
+    return normalized
+
+
 class EventType(enum.Enum):
     REPLY_SENT = "reply_sent"
     RESEARCH_COMPLETED = "research_completed"
