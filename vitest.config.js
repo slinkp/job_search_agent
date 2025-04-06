@@ -23,5 +23,10 @@ export default defineConfig({
 
     // Watch for changes in these directories
     watchExclude: ["node_modules/**", "coverage/**", ".git/**"],
+
+    // In ms.
+    testTimeout: 1000,
+    hookTimeout: 1000,
+    teardownTimeout: 2000,
   },
 });
