@@ -9,14 +9,11 @@
       href="https://unpkg.com/@picocss/pico@1/css/pico.min.css"
     />
     <link rel="stylesheet" href="/static/styles.css" />
-    <script
-      defer
-      src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"
-    ></script>
     <script src="/static/app.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   </head>
   <body>
-    <main class="container" x-data="companyList">
+    <main class="container" x-data="companyList" x-init="init()">
       <h1>Companies Dashboard</h1>
 
       <div x-show="loading">Loading...</div>
@@ -318,32 +315,32 @@
           </div>
         </article>
       </dialog>
-    </main>
 
-    <!-- Research Company Modal -->
-    <div id="research-company-modal" class="modal" x-show="researchCompanyModalOpen" x-cloak>
-      <div class="modal-content">
-        <h2>Research a Company</h2>
-        <form @submit.prevent="submitResearchCompany()">
-          <div class="form-group">
-            <label for="company-url">Company URL</label>
-            <input type="url" id="company-url" x-model="researchCompanyForm.url" placeholder="https://example.com">
-            <small>Enter the company's website URL</small>
-          </div>
-          <div class="form-group">
-            <label for="company-name">Company Name (optional)</label>
-            <input type="text" id="company-name" x-model="researchCompanyForm.name" placeholder="Company Name">
-            <small>If you know the company name, enter it here</small>
-          </div>
-          <div class="form-actions">
-            <button type="button" @click="closeResearchCompanyModal()" class="outline">Cancel</button>
-            <button type="submit" :disabled="researchingCompany">
-              <span class="loading-spinner" x-show="researchingCompany"></span>
-              Research Company
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <!-- Research Company Modal -->
+      <dialog id="research-company-modal">
+        <article>
+          <h2>Research a Company</h2>
+          <form @submit.prevent="submitResearchCompany()">
+            <div class="form-group">
+              <label for="company-url">Company URL</label>
+              <input type="url" id="company-url" x-model="researchCompanyForm.url" placeholder="https://example.com">
+              <small>Enter the company's website URL</small>
+            </div>
+            <div class="form-group">
+              <label for="company-name">Company Name (optional)</label>
+              <input type="text" id="company-name" x-model="researchCompanyForm.name" placeholder="Company Name">
+              <small>If you know the company name, enter it here</small>
+            </div>
+            <div class="form-actions">
+              <button type="button" @click="closeResearchCompanyModal()" class="outline">Cancel</button>
+              <button type="submit" :disabled="researchingCompany">
+                <span class="loading-spinner" x-show="researchingCompany"></span>
+                Research Company
+              </button>
+            </div>
+          </form>
+        </article>
+      </dialog>
+    </main>
   </body>
 </html>

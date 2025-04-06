@@ -365,7 +365,6 @@ button.secondary:focus {
 
 /* Research Company Modal */
 .modal {
-  display: none;
   position: fixed;
   z-index: 1000;
   left: 0;
@@ -373,13 +372,6 @@ button.secondary:focus {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-}
-
-.modal[x-cloak] {
-  display: none;
-}
-
-.modal:not([x-cloak]) {
   display: flex;
   align-items: center;
   justify-content: center;

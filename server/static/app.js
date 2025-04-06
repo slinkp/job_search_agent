@@ -80,6 +80,7 @@ document.addEventListener("alpine:init", () => {
     },
 
     async init() {
+      console.log("Initializing companyList component");
       this.loading = true;
       try {
         await this.refreshAllCompanies();
@@ -583,9 +584,11 @@ document.addEventListener("alpine:init", () => {
 
     // New method to refresh all companies
     async refreshAllCompanies() {
+      console.log("Refreshing all companies");
       try {
         const response = await fetch("/api/companies");
         const data = await response.json();
+        console.log("Got companies json response");
         this.companies = data.map((company) => ({
           ...company,
           details: company.details || {},
@@ -702,19 +705,25 @@ document.addEventListener("alpine:init", () => {
     },
 
     showResearchCompanyModal() {
-      this.researchCompanyModalOpen = true;
+      console.log("showResearchCompanyModal called");
+      document.getElementById("research-company-modal").showModal();
       this.researchCompanyForm = {
         url: "",
         name: "",
       };
+      console.log("Modal form reset");
     },
 
     closeResearchCompanyModal() {
-      this.researchCompanyModalOpen = false;
+      document.getElementById("research-company-modal").close();
     },
 
     async submitResearchCompany() {
       try {
+        console.log(
+          "submitResearchCompany called with form data:",
+          this.researchCompanyForm
+        );
         // Validate form
         if (!this.researchCompanyForm.url && !this.researchCompanyForm.name) {
           this.showError("Please provide either a company URL or name");
@@ -722,6 +731,7 @@ document.addEventListener("alpine:init", () => {
         }
 
         this.researchingCompany = true;
+        console.log("Set researchingCompany to true");
 
         // Prepare request body
         const body = {};
@@ -731,8 +741,10 @@ document.addEventListener("alpine:init", () => {
         if (this.researchCompanyForm.name) {
           body.name = this.researchCompanyForm.name;
         }
+        console.log("Prepared request body:", body);
 
         // Submit research request
+        console.log("Submitting POST to /api/companies");
         const response = await fetch("/api/companies", {
           method: "POST",
           headers: {
@@ -743,12 +755,14 @@ document.addEventListener("alpine:init", () => {
 
         if (!response.ok) {
           const error = await response.json();
+          console.error("API error response:", error);
           throw new Error(
             error.error || `Failed to start research: ${response.status}`
           );
         }
 
         const data = await response.json();
+        console.log("API success response:", data);
         this.researchCompanyTaskId = data.task_id;
 
         // Close modal and show success message
@@ -758,6 +772,7 @@ document.addEventListener("alpine:init", () => {
         );
 
         // Poll for task completion
+        console.log("Starting to poll task:", this.researchCompanyTaskId);
         this.pollResearchCompanyTask();
       } catch (err) {
         console.error("Failed to research company:", err);
@@ -766,6 +781,7 @@ document.addEventListener("alpine:init", () => {
         );
       } finally {
         this.researchingCompany = false;
+        console.log("Set researchingCompany back to false");
       }
     },
 
