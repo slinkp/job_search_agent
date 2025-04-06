@@ -179,31 +179,38 @@ class ResearchDaemon:
                 for err in research_errors:
                     logger.warning(f"  - {err.step}: {err.error}")
 
+            # Set up result_company (will be either existing or new)
+            result_company = None
+
             if existing:
+                # Update existing company with new research results
                 logger.info(f"Updating company {company_name or existing.name}")
                 existing.details = company.details
                 existing.name = company.name or existing.name
                 existing.status.research_errors = research_errors
                 self.company_repo.update(existing)
-                company = existing
+                result_company = existing
             else:
                 # Check for duplicates by normalized name
-                existing = self.company_repo.get_by_normalized_name(company.name)
-                if existing:
+                normalized_match = self.company_repo.get_by_normalized_name(company.name)
+                if normalized_match:
+                    # Update the existing company found via normalized name
                     logger.info(
-                        f"Found existing company with normalized name match: {existing.name}"
+                        f"Found existing company with normalized name match: {normalized_match.name}"
                     )
-                    existing.details = company.details
-                    existing.name = company.name or existing.name
-                    existing.status.research_errors = research_errors
-                    self.company_repo.update(existing)
-                    company = existing
+                    normalized_match.details = company.details
+                    normalized_match.name = company.name or normalized_match.name
+                    normalized_match.status.research_errors = research_errors
+                    self.company_repo.update(normalized_match)
+                    result_company = normalized_match
                 else:
+                    # Create a new company
                     logger.info(f"Creating company {company.name}")
                     self.company_repo.create(company)
+                    result_company = company
 
-            # Update the spreadsheet with the researched company data
-            libjobsearch.upsert_company_in_spreadsheet(company.details, self.args)
+            # Update the spreadsheet with the researched company data - moved to end of try block
+            libjobsearch.upsert_company_in_spreadsheet(result_company.details, self.args)
 
         except Exception as e:
             logger.exception(f"Error researching company {company_name or 'unknown'}")
@@ -222,17 +229,6 @@ class ResearchDaemon:
                     existing.details.notes or ""
                 ) + f"\nResearch failed: {str(e)}"
                 self.company_repo.update(existing)
-
-                # Try to update the spreadsheet
-                try:
-                    libjobsearch.upsert_company_in_spreadsheet(
-                        existing.details, self.args
-                    )
-                except Exception as spreadsheet_error:
-                    logger.exception(f"Failed to update spreadsheet: {spreadsheet_error}")
-
-                # Re-raise the original exception
-                raise
 
             # Create a minimal company record if no existing company was found
             # Use the same unknown company name logic as in libjobsearch.py
@@ -260,6 +256,7 @@ class ResearchDaemon:
                 details=minimal_row,
                 status=company_status,
             )
+
             # Check for duplicates by normalized name
             normalized_company = self.company_repo.get_by_normalized_name(company.name)
             if normalized_company:
@@ -272,6 +269,7 @@ class ResearchDaemon:
                 company = normalized_company
             else:
                 self.company_repo.create(company)
+
             # Try to update the spreadsheet with minimal info
             try:
                 libjobsearch.upsert_company_in_spreadsheet(company.details, self.args)
