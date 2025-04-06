@@ -3,6 +3,7 @@ import datetime
 import logging
 import signal
 import time
+from typing import Optional
 
 import libjobsearch
 import models
@@ -101,7 +102,7 @@ class ResearchDaemon:
         # Use the normalize_company_name function from models.py
         return normalize_company_name(name)
 
-    def do_research(self, args: dict):
+    def do_research(self, args: dict) -> Optional[models.Company]:
         # Extract args, with URL and name being optional
         company_id = args.get("company_id", "").strip()
         company_name = args.get("company_name", "").strip()
@@ -228,6 +229,7 @@ class ResearchDaemon:
                     logger.exception(f"Failed to update spreadsheet: {spreadsheet_error}")
 
             raise
+        return existing or company
 
     def do_generate_reply(self, args: dict):
         # TODO: Use LLM to generate reply
