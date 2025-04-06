@@ -9,6 +9,7 @@ import {
   vi,
 } from "vitest";
 import { CompanyResearchService } from "../../static/company-research.js";
+import { cleanupAlpine, setupAlpine } from "./alpine-setup.js";
 import { setupDocumentWithIndexHtml } from "./test-utils.js";
 
 // Mock the CompanyResearchService
@@ -33,29 +34,7 @@ describe("Research Company Modal", () => {
 
   // Import Alpine.js once before all tests
   beforeAll(async () => {
-    // Create a document before importing Alpine
-    setupDocumentWithIndexHtml(document);
-
-    // Mock MutationObserver
-    global.MutationObserver = class {
-      constructor(callback) {
-        this.callback = callback;
-      }
-      observe() {}
-      disconnect() {}
-    };
-
-    // Use fake timers to prevent Alpine's plugin warning system from running
-    vi.useFakeTimers();
-
-    // Import and initialize Alpine
-    Alpine = (await import("alpinejs")).default;
-    window.Alpine = Alpine;
-
-    // Disable Alpine's warning system to prevent unhandled errors
-    Alpine.onWarning = () => {};
-
-    Alpine.start();
+    Alpine = await setupAlpine();
   });
 
   beforeEach(() => {
@@ -64,42 +43,29 @@ describe("Research Company Modal", () => {
 
     // Get modal element
     modal = document.getElementById("research-company-modal");
+    if (!modal) {
+      throw new Error(
+        "Modal element not found in the DOM. HTML might not be loaded correctly."
+      );
+    }
+
     form = modal.querySelector("form");
 
     // Create spies for modal methods
     showModalSpy = vi.spyOn(modal, "showModal");
     closeSpy = vi.spyOn(modal, "close");
 
-    // Initialize Alpine.js component data
+    // Get the Alpine component instance
+    // This is our test component that will be used exclusively for these tests
     component = {
-      companies: [],
-      loading: false,
-      researchingCompany: null,
-      researchCompanyTaskId: null,
-      editingCompany: {
-        recruiter_message: {
-          message: "Test message",
-          subject: "Test subject",
-          sender: "test@example.com",
-          date: "2024-03-20T12:00:00Z",
-          email_thread_link: "https://example.com/thread",
-        },
-        research_errors: [],
-      },
       researchCompanyForm: {
         url: "",
         name: "",
       },
+      researchingCompany: false,
+      researchCompanyTaskId: null,
       showError: vi.fn(),
       showSuccess: vi.fn(),
-      formatRecruiterMessageDate(dateString) {
-        // Simple mock that returns a canned string for testing
-        return dateString ? "2024/03/20 12:00pm (0 days ago)" : "";
-      },
-      formatResearchErrors(company) {
-        // Simple mock that returns a canned string for testing
-        return company?.research_errors ? "Test research error" : "";
-      },
       showResearchCompanyModal() {
         modal.showModal();
       },
@@ -119,22 +85,14 @@ describe("Research Company Modal", () => {
 
           this.researchingCompany = true;
 
-          // Prepare request body
-          const body = {};
-          if (this.researchCompanyForm.url) {
-            body.url = this.researchCompanyForm.url;
-          }
-          if (this.researchCompanyForm.name) {
-            body.name = this.researchCompanyForm.name;
-          }
-
           // Submit research request
           const response = await fetch("/api/companies", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              url: this.researchCompanyForm.url,
+              name: this.researchCompanyForm.name,
+            }),
           });
 
           if (!response.ok) {
@@ -165,7 +123,7 @@ describe("Research Company Modal", () => {
       },
     };
 
-    // Initialize Alpine.js
+    // Register the component in Alpine
     Alpine.data("researchCompanyModal", () => component);
 
     // Reset mocks
@@ -177,27 +135,17 @@ describe("Research Company Modal", () => {
 
   // Clean up after each test
   afterEach(() => {
-    document.body.innerHTML = "";
     vi.clearAllMocks();
   });
 
   // Clean up after all tests
   afterAll(() => {
-    // Clean up Alpine.js
-    if (window.Alpine) {
-      delete window.Alpine;
-    }
-    // Restore real timers
-    vi.useRealTimers();
-    // Restore original MutationObserver
-    delete global.MutationObserver;
+    cleanupAlpine();
   });
 
   it("opens when clicking the research button", () => {
-    // Find and click the research button
+    // Test the component function directly
     component.showResearchCompanyModal();
-
-    // Modal should be opened using showModal()
     expect(showModalSpy).toHaveBeenCalled();
   });
 

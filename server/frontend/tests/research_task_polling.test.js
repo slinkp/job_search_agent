@@ -8,6 +8,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { cleanupAlpine, setupAlpine } from "./alpine-setup.js";
 import { setupDocumentWithIndexHtml } from "./test-utils.js";
 
 describe("Research Task Polling", () => {
@@ -17,46 +18,21 @@ describe("Research Task Polling", () => {
 
   // Import Alpine.js once before all tests
   beforeAll(async () => {
-    // Create a document before importing Alpine
-    setupDocumentWithIndexHtml(document);
-
-    // Mock MutationObserver
-    global.MutationObserver = class {
-      constructor(callback) {
-        this.callback = callback;
-      }
-      observe() {}
-      disconnect() {}
-    };
-
-    // Use fake timers to prevent Alpine's plugin warning system from running
-    vi.useFakeTimers();
-
-    // Import and initialize Alpine
-    Alpine = (await import("alpinejs")).default;
-    window.Alpine = Alpine;
-
-    // Disable Alpine's warning system to prevent unhandled errors
-    Alpine.onWarning = () => {};
-
-    Alpine.start();
+    Alpine = await setupAlpine();
   });
 
   beforeEach(() => {
     // Reset document with actual HTML
     setupDocumentWithIndexHtml(document);
 
-    // Initialize component with minimal required properties
+    // Initialize our test component
     component = {
-      companies: [],
-      loading: false,
-      researchingCompany: null,
       showError: vi.fn(),
       showSuccess: vi.fn(),
       refreshAllCompanies: vi.fn(),
       // Helper method to simulate form submission
       async submitResearchCompanyForm(event) {
-        event.preventDefault();
+        if (event) event.preventDefault();
 
         // Simulate successful API call
         const response = await fetch("/research_company", {
@@ -81,26 +57,18 @@ describe("Research Task Polling", () => {
     pollResearchCompanyTask = vi.fn();
     component.pollResearchCompanyTask = pollResearchCompanyTask;
 
-    // Initialize Alpine.js
+    // Register our test component with Alpine
     Alpine.data("researchTaskPolling", () => component);
   });
 
   // Clean up after each test
   afterEach(() => {
-    document.body.innerHTML = "";
     vi.clearAllMocks();
   });
 
   // Clean up after all tests
   afterAll(() => {
-    // Clean up Alpine.js
-    if (window.Alpine) {
-      delete window.Alpine;
-    }
-    // Restore real timers
-    vi.useRealTimers();
-    // Restore original MutationObserver
-    delete global.MutationObserver;
+    cleanupAlpine();
   });
 
   it("starts polling after successful submission", async () => {
@@ -110,8 +78,8 @@ describe("Research Task Polling", () => {
       json: () => Promise.resolve({ success: true, task_id: "123" }),
     });
 
-    // Simulate form submission that starts polling
-    await component.submitResearchCompanyForm(new Event("submit"));
+    // Call the submission method directly
+    await component.submitResearchCompanyForm();
 
     // Should start polling with the task ID
     expect(component.pollResearchCompanyTask).toHaveBeenCalledWith("123");
@@ -141,7 +109,7 @@ describe("Research Task Polling", () => {
     });
 
     // Simulate form submission to start polling
-    await component.submitResearchCompanyForm(new Event("submit"));
+    await component.submitResearchCompanyForm();
 
     // First poll should have started
     expect(pollCount).toBe(1);
@@ -174,7 +142,7 @@ describe("Research Task Polling", () => {
     });
 
     // Simulate form submission to start polling
-    await component.submitResearchCompanyForm(new Event("submit"));
+    await component.submitResearchCompanyForm();
 
     // First poll should have failed
     expect(pollCount).toBe(1);
@@ -212,7 +180,7 @@ describe("Research Task Polling", () => {
     });
 
     // Simulate form submission to start polling
-    await component.submitResearchCompanyForm(new Event("submit"));
+    await component.submitResearchCompanyForm();
 
     // First poll should schedule next check
     expect(pollCount).toBe(1);
@@ -277,7 +245,7 @@ describe("Research Task Polling", () => {
     });
 
     // Simulate form submission to start polling
-    await component.submitResearchCompanyForm(new Event("submit"));
+    await component.submitResearchCompanyForm();
 
     // First poll should schedule next check
     expect(pollCount).toBe(1);

@@ -155,12 +155,14 @@ document.addEventListener("alpine:init", () => {
       },
 
       editReply(company) {
+        console.log("editReply called with company:", company);
         this.editingCompany = company;
         this.editingReply = company.reply_message;
         document.getElementById("editModal").showModal();
       },
 
       cancelEdit() {
+        console.log("cancelEdit called, clearing editingCompany");
         this.editingCompany = null;
         this.editingReply = "";
         document.getElementById("editModal").close();
@@ -313,6 +315,8 @@ document.addEventListener("alpine:init", () => {
       },
 
       isGeneratingMessage(company) {
+        if (this.loading) return false;
+        if (!company) return false;
         return this.generatingMessages.has(company.name);
       },
 
