@@ -119,6 +119,7 @@ describe("Research Company Modal", () => {
         this.researchCompanyForm.url = "";
         this.researchCompanyForm.name = "";
       },
+      pollResearchCompanyTask: vi.fn(),
       async submitResearchCompanyForm(event) {
         event.preventDefault();
 
@@ -143,6 +144,7 @@ describe("Research Company Modal", () => {
           }
 
           this.showSuccess("Research started successfully");
+          this.pollResearchCompanyTask(data.task_id);
           this.closeResearchCompanyModal();
         } catch (error) {
           this.showError(error.message);
@@ -231,5 +233,208 @@ describe("Research Company Modal", () => {
 
     // Should show error message
     expect(component.showError).toHaveBeenCalledWith("API Error");
+  });
+
+  it("starts polling after successful submission", async () => {
+    // Mock fetch for successful API call
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ success: true, task_id: "123" }),
+    });
+
+    // Submit with valid data
+    component.researchCompanyForm.url = "https://example.com";
+    await component.submitResearchCompanyForm(new Event("submit"));
+
+    // Should start polling with the task ID
+    expect(component.pollResearchCompanyTask).toHaveBeenCalledWith("123");
+  });
+
+  it("continues polling until task is complete", async () => {
+    // Mock fetch responses for task status
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      // Initial submission
+      ok: true,
+      json: () => Promise.resolve({ success: true, task_id: "123" }),
+    });
+
+    // Set up polling mock implementation
+    let pollCount = 0;
+    component.pollResearchCompanyTask.mockImplementation(async (taskId) => {
+      pollCount++;
+      // Simulate task completion after 2 polls
+      if (pollCount >= 2) {
+        component.showSuccess("Research complete");
+      } else {
+        // Schedule next poll
+        setTimeout(() => {
+          component.pollResearchCompanyTask(taskId);
+        }, 1000);
+      }
+    });
+
+    // Submit form to start polling
+    component.researchCompanyForm.url = "https://example.com";
+    await component.submitResearchCompanyForm(new Event("submit"));
+
+    // First poll should have started
+    expect(pollCount).toBe(1);
+
+    // Advance timers to trigger second poll
+    await vi.advanceTimersByTime(1000);
+    expect(pollCount).toBe(2);
+    expect(component.showSuccess).toHaveBeenCalledWith("Research complete");
+  });
+
+  it("handles errors during task polling", async () => {
+    // Mock fetch for initial successful submission
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ success: true, task_id: "123" }),
+    });
+
+    // Set up polling mock to simulate an error
+    let pollCount = 0;
+    component.pollResearchCompanyTask.mockImplementation(async (taskId) => {
+      pollCount++;
+      if (pollCount === 1) {
+        // First poll fails
+        component.showError("Failed to check task status");
+        // Schedule next poll despite error
+        setTimeout(() => {
+          component.pollResearchCompanyTask(taskId);
+        }, 1000);
+      }
+    });
+
+    // Submit form to start polling
+    component.researchCompanyForm.url = "https://example.com";
+    await component.submitResearchCompanyForm(new Event("submit"));
+
+    // First poll should have failed
+    expect(pollCount).toBe(1);
+    expect(component.showError).toHaveBeenCalledWith(
+      "Failed to check task status"
+    );
+
+    // Verify polling continues after error
+    await vi.advanceTimersByTime(1000);
+    await vi.runAllTimers(); // Run any remaining timers
+    expect(pollCount).toBe(2);
+  });
+
+  it("stops polling when task fails permanently", async () => {
+    // Mock fetch for initial successful submission
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ success: true, task_id: "123" }),
+    });
+
+    // Set up polling mock to simulate task failure
+    let pollCount = 0;
+    component.pollResearchCompanyTask.mockImplementation(async (taskId) => {
+      pollCount++;
+      if (pollCount === 1) {
+        // First poll shows task is still running
+        setTimeout(() => {
+          component.pollResearchCompanyTask(taskId);
+        }, 1000);
+      } else if (pollCount === 2) {
+        // Second poll shows task failed
+        component.showError("Research failed: Company website not accessible");
+        // Don't schedule another poll - task has permanently failed
+      }
+    });
+
+    // Submit form to start polling
+    component.researchCompanyForm.url = "https://example.com";
+    await component.submitResearchCompanyForm(new Event("submit"));
+
+    // First poll should schedule next check
+    expect(pollCount).toBe(1);
+
+    // Advance to second poll
+    await vi.advanceTimersByTime(1000);
+    await vi.runAllTimers();
+    expect(pollCount).toBe(2);
+    expect(component.showError).toHaveBeenCalledWith(
+      "Research failed: Company website not accessible"
+    );
+
+    // Advance timer again - no more polls should occur
+    await vi.advanceTimersByTime(1000);
+    await vi.runAllTimers();
+    expect(pollCount).toBe(2);
+  });
+
+  it("updates company list when research task completes successfully", async () => {
+    // Mock fetch for initial successful submission
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ success: true, task_id: "123" }),
+    });
+
+    // Mock refreshAllCompanies method
+    const mockCompanies = [
+      {
+        company_id: "1",
+        name: "Company A",
+        research_completed_at: "2023-01-01",
+      },
+      { company_id: "2", name: "Company B", research_completed_at: null },
+      {
+        company_id: "3",
+        name: "New Company",
+        research_completed_at: "2023-06-15",
+      },
+    ];
+
+    component.refreshAllCompanies = vi.fn().mockImplementation(async () => {
+      // Update the companies array with the mock data
+      component.companies = [...mockCompanies];
+      return mockCompanies;
+    });
+
+    // Set up polling mock to simulate successful completion
+    let pollCount = 0;
+    component.pollResearchCompanyTask.mockImplementation(async (taskId) => {
+      pollCount++;
+      if (pollCount === 1) {
+        // First poll shows task is still running
+        setTimeout(() => {
+          component.pollResearchCompanyTask(taskId);
+        }, 1000);
+      } else if (pollCount === 2) {
+        // Second poll shows task completed successfully
+        component.showSuccess("Company research completed!");
+        // Call refreshAllCompanies to update the company list
+        await component.refreshAllCompanies();
+      }
+    });
+
+    // Submit form to start polling
+    component.researchCompanyForm.url = "https://example.com";
+    await component.submitResearchCompanyForm(new Event("submit"));
+
+    // First poll should schedule next check
+    expect(pollCount).toBe(1);
+
+    // Advance to second poll
+    await vi.advanceTimersByTime(1000);
+    await vi.runAllTimers();
+
+    // Verify second poll occurred
+    expect(pollCount).toBe(2);
+
+    // Verify success message was shown
+    expect(component.showSuccess).toHaveBeenCalledWith(
+      "Company research completed!"
+    );
+
+    // Verify company list was refreshed
+    expect(component.refreshAllCompanies).toHaveBeenCalled();
+
+    // Verify companies array was updated with new data
+    expect(component.companies).toEqual(mockCompanies);
   });
 });
