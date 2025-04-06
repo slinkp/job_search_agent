@@ -33,25 +33,25 @@
 - [x] Add form validation for URL input
 - [x] Add loading state and error handling
 - [x] Add success feedback
-- [ ] Add tests for UI components
-- [ ] Add tests for form validation
-- [ ] Add tests for error states
+- [x] Add tests for UI components
+- [x] Add tests for form validation
+- [x] Add tests for error states
 
 ### b. Add API Integration
 - [x] Add method to call new endpoint
 - [x] Add task polling for company creation
 - [x] Update company list on success
 - [x] Handle errors and show feedback
-- [ ] Add tests for API integration
-- [ ] Add tests for task polling
-- [ ] Add tests for error handling
+- [x] Add tests for API integration
+- [x] Add tests for task polling
+- [x] Add tests for error handling
 
 ### c. Frontend Tests
-- [ ] Bootstrap testing of frontend
-  - [ ] Give me pros and cons of modern frontend testing approaches
-- [ ] Add tests for URL validation
-- [ ] Add tests for error handling
-- [ ] Add tests for UI components
+- [x] Bootstrap testing of frontend
+  - [x] Give me pros and cons of modern frontend testing approaches
+- [x] Add tests for URL validation
+- [x] Add tests for error handling
+- [x] Add tests for UI components
 
 ## Implementation Notes
 

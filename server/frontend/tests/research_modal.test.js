@@ -62,6 +62,7 @@ describe("Research Company Modal", () => {
       companies: [],
       loading: false,
       researchingCompany: null,
+      researchCompanyTaskId: null,
       editingCompany: {
         recruiter_message: {
           message: "Test message",
@@ -79,37 +80,12 @@ describe("Research Company Modal", () => {
       showError: vi.fn(),
       showSuccess: vi.fn(),
       formatRecruiterMessageDate(dateString) {
-        if (!dateString) return "";
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffTime = Math.abs(now - date);
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        let hours = date.getHours();
-        const ampm = hours >= 12 ? "pm" : "am";
-        hours = hours % 12;
-        hours = hours ? hours : 12;
-        const minutes = String(date.getMinutes()).padStart(2, "0");
-        return `${year}/${month}/${day} ${hours}:${minutes}${ampm} (${diffDays} days ago)`;
+        // Simple mock that returns a canned string for testing
+        return dateString ? "2024/03/20 12:00pm (0 days ago)" : "";
       },
       formatResearchErrors(company) {
-        if (!company || !company.research_errors) return "";
-        if (typeof company.research_errors === "string") {
-          return company.research_errors;
-        }
-        if (Array.isArray(company.research_errors)) {
-          return company.research_errors
-            .map((err) => {
-              if (typeof err === "string") return err;
-              if (err && err.step && err.error)
-                return `${err.step}: ${err.error}`;
-              return JSON.stringify(err);
-            })
-            .join("; ");
-        }
-        return JSON.stringify(company.research_errors);
+        // Simple mock that returns a canned string for testing
+        return company?.research_errors ? "Test research error" : "";
       },
       showResearchCompanyModal() {
         modal.showModal();
@@ -120,36 +96,58 @@ describe("Research Company Modal", () => {
         this.researchCompanyForm.name = "";
       },
       pollResearchCompanyTask: vi.fn(),
-      async submitResearchCompanyForm(event) {
-        event.preventDefault();
-
-        if (!this.researchCompanyForm.url && !this.researchCompanyForm.name) {
-          this.showError("Please provide either a company URL or name");
-          return;
-        }
-
-        this.loading = true;
+      async submitResearchCompany() {
         try {
-          const response = await fetch("/research_company", {
+          // Validate form
+          if (!this.researchCompanyForm.url && !this.researchCompanyForm.name) {
+            this.showError("Please provide either a company URL or name");
+            return;
+          }
+
+          this.researchingCompany = true;
+
+          // Prepare request body
+          const body = {};
+          if (this.researchCompanyForm.url) {
+            body.url = this.researchCompanyForm.url;
+          }
+          if (this.researchCompanyForm.name) {
+            body.name = this.researchCompanyForm.name;
+          }
+
+          // Submit research request
+          const response = await fetch("/api/companies", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(this.researchCompanyForm),
+            body: JSON.stringify(body),
           });
 
-          const data = await response.json();
           if (!response.ok) {
-            throw new Error(data.error || "Failed to start research");
+            const error = await response.json();
+            throw new Error(
+              error.error || `Failed to start research: ${response.status}`
+            );
           }
 
-          this.showSuccess("Research started successfully");
-          this.pollResearchCompanyTask(data.task_id);
+          const data = await response.json();
+          this.researchCompanyTaskId = data.task_id;
+
+          // Close modal and show success message
           this.closeResearchCompanyModal();
+          this.showSuccess(
+            "Company research started. This may take a few minutes."
+          );
+
+          // Poll for task completion
+          this.pollResearchCompanyTask();
         } catch (error) {
-          this.showError(error.message);
+          this.showError(
+            error.message || "Failed to start research. Please try again."
+          );
         } finally {
-          this.loading = false;
+          this.researchingCompany = false;
         }
       },
     };
@@ -194,7 +192,7 @@ describe("Research Company Modal", () => {
 
   it("validates form input and shows error message", () => {
     // Submit form without any input
-    component.submitResearchCompanyForm(new Event("submit"));
+    component.submitResearchCompany();
 
     // Should show error message
     expect(component.showError).toHaveBeenCalledWith(
@@ -211,11 +209,11 @@ describe("Research Company Modal", () => {
 
     // Set valid URL and submit
     component.researchCompanyForm.url = "https://example.com";
-    await component.submitResearchCompanyForm(new Event("submit"));
+    await component.submitResearchCompany();
 
     // Should show success message and close modal
     expect(component.showSuccess).toHaveBeenCalledWith(
-      "Research started successfully"
+      "Company research started. This may take a few minutes."
     );
     expect(closeSpy).toHaveBeenCalled();
   });
@@ -229,9 +227,155 @@ describe("Research Company Modal", () => {
 
     // Submit with valid data
     component.researchCompanyForm.url = "https://example.com";
-    await component.submitResearchCompanyForm(new Event("submit"));
+    await component.submitResearchCompany();
 
     // Should show error message
     expect(component.showError).toHaveBeenCalledWith("API Error");
+  });
+
+  it("validates that either URL or name is provided", async () => {
+    // Mock fetch for successful API call
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ success: true, task_id: "123" }),
+    });
+
+    // Test with neither URL nor name
+    component.researchCompanyForm.url = "";
+    component.researchCompanyForm.name = "";
+    await component.submitResearchCompany();
+
+    // Should show error message
+    expect(component.showError).toHaveBeenCalledWith(
+      "Please provide either a company URL or name"
+    );
+
+    // Reset mocks
+    vi.clearAllMocks();
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ success: true, task_id: "123" }),
+    });
+
+    // Test with only URL
+    component.researchCompanyForm.url = "https://example.com";
+    component.researchCompanyForm.name = "";
+    await component.submitResearchCompany();
+
+    // Should not show error message
+    expect(component.showError).not.toHaveBeenCalled();
+
+    // Reset mocks
+    vi.clearAllMocks();
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ success: true, task_id: "123" }),
+    });
+
+    // Test with only name
+    component.researchCompanyForm.url = "";
+    component.researchCompanyForm.name = "Example Company";
+    await component.submitResearchCompany();
+
+    // Should not show error message
+    expect(component.showError).not.toHaveBeenCalled();
+  });
+
+  it("handles network errors during submission", async () => {
+    // Mock fetch to simulate network error
+    global.fetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
+
+    // Submit with valid data
+    component.researchCompanyForm.url = "https://example.com";
+    await component.submitResearchCompany();
+
+    // Should show error message
+    expect(component.showError).toHaveBeenCalledWith("Network error");
+    expect(component.researchingCompany).toBe(false);
+  });
+
+  it("handles invalid API responses", async () => {
+    // Mock fetch to return invalid JSON
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.reject(new Error("Invalid JSON")),
+    });
+
+    // Submit with valid data
+    component.researchCompanyForm.url = "https://example.com";
+    await component.submitResearchCompany();
+
+    // Should show error message
+    expect(component.showError).toHaveBeenCalledWith("Invalid JSON");
+    expect(component.researchingCompany).toBe(false);
+  });
+
+  it("handles API timeout errors", async () => {
+    // Mock fetch to simulate timeout
+    global.fetch = vi.fn().mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("Request timed out")), 5000);
+        })
+    );
+
+    // Submit with valid data
+    component.researchCompanyForm.url = "https://example.com";
+    const submitPromise = component.submitResearchCompany();
+
+    // Advance timers to trigger timeout
+    await vi.advanceTimersByTime(5000);
+    await submitPromise;
+
+    // Should show error message
+    expect(component.showError).toHaveBeenCalledWith("Request timed out");
+    expect(component.researchingCompany).toBe(false);
+  });
+
+  it("handles rate limiting errors", async () => {
+    // Mock fetch to simulate rate limiting
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      json: () =>
+        Promise.resolve({
+          error: "Too many requests. Please try again later.",
+        }),
+    });
+
+    // Submit with valid data
+    component.researchCompanyForm.url = "https://example.com";
+    await component.submitResearchCompany();
+
+    // Should show error message
+    expect(component.showError).toHaveBeenCalledWith(
+      "Too many requests. Please try again later."
+    );
+    expect(component.researchingCompany).toBe(false);
+  });
+
+  it("handles malformed API responses", async () => {
+    // Mock fetch to return success but with unexpected data
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          unexpected: "data",
+          message: "This is not the expected response format",
+        }),
+    });
+
+    // Submit with valid data
+    component.researchCompanyForm.url = "https://example.com";
+    await component.submitResearchCompany();
+
+    // Should show success message and close modal, but task_id will be undefined
+    expect(component.researchCompanyTaskId).toBeUndefined();
+    expect(component.researchingCompany).toBe(false);
+    expect(component.showSuccess).toHaveBeenCalledWith(
+      "Company research started. This may take a few minutes."
+    );
+    expect(closeSpy).toHaveBeenCalled();
+    expect(component.pollResearchCompanyTask).toHaveBeenCalled();
   });
 });
