@@ -305,34 +305,14 @@ class ResearchDaemon:
                 f"Processing message {i+1} of {len(messages)} [max {max_messages}]..."
             )
             try:
-                company = self.jobsearch.research_company(
-                    message,
-                    model=self.ai_model,
-                    do_advanced=args.get("do_research", False),
-                )
-                company_row = company.details
-                if company_row.name is None:
-                    logger.warning("No company extracted from message, skipping")
-                    continue
-
-                # Check for duplicates by normalized name
-                existing = self.company_repo.get_by_normalized_name(company_row.name)
-                if existing:
-                    logger.info(
-                        f"Found existing company with normalized name match: {existing.name}"
-                    )
-                    existing.details = company.details
-                    self.company_repo.update(existing)
-                    company = existing
-                else:
-                    self.company_repo.create(company)
-                    logger.info(
-                        f"Created company {company_row.name} from recruiter message"
-                    )
+                company = self.do_research({"content": message.message or ""})
             except Exception:
-                logger.exception("Error processing recruiter message")
+                logger.exception("Unexpected error processing recruiter message {i + 1}")
                 continue
-        logger.info("Finished processing recruiter messages")
+            if company is None:
+                logger.warning("No company extracted from message {i + 1}, skipping")
+                continue
+            logger.info("Finished processing recruiter messages")
 
     def do_send_and_archive(self, args: dict):
         """Handle sending a reply and archiving the message."""

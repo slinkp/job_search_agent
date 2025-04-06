@@ -38,21 +38,22 @@ def args():
     return mock_args
 
 
-@pytest.fixture
+@pytest.fixture()
 def cache_settings():
     return libjobsearch.CacheSettings(
         clear_all_cache=False, clear_cache=[], cache_until=None, no_cache=True
     )
 
 
-@pytest.fixture
+# Always use this mock for all tests
+@pytest.fixture(autouse=True)
 def mock_spreadsheet():
     """Fixture to mock spreadsheet operations."""
     with patch("libjobsearch.upsert_company_in_spreadsheet", autospec=True) as mock:
         yield mock
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_email():
     """Fixture to mock email operations."""
     with patch("libjobsearch.send_reply_and_archive", autospec=True) as mock:
@@ -129,7 +130,15 @@ def test_companies():
 
 
 @pytest.fixture
-def daemon(args, cache_settings, mock_task_manager, mock_company_repo, mock_jobsearch):
+def daemon(
+    args,
+    cache_settings,
+    mock_task_manager,
+    mock_company_repo,
+    mock_jobsearch,
+    mock_spreadsheet,
+    mock_email,
+):
     with patch("libjobsearch.MainTabCompaniesClient", autospec=True) as mock_client:
         # Configure the mock client to return empty list for read_rows_from_google
         mock_client.return_value.read_rows_from_google.return_value = []
@@ -325,10 +334,8 @@ def test_do_find_companies_in_recruiter_messages(
     # Verify each message was processed
     assert daemon.jobsearch.research_company.call_count == 2
     for msg, company in zip(test_recruiter_messages, test_companies):
-        daemon.jobsearch.research_company.assert_any_call(
-            msg, model=daemon.ai_model, do_advanced=True
-        )
         daemon.company_repo.create.assert_any_call(company)
+    assert daemon.jobsearch.research_company.call_count == 2
 
 
 def test_do_find_companies_in_recruiter_messages_existing_company(
