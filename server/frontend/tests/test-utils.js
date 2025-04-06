@@ -6,7 +6,7 @@ import path from "path";
  * @returns {string} The HTML content
  */
 export function loadIndexHtml() {
-  const indexPath = path.resolve(__dirname, "index.html");
+  const indexPath = path.resolve(__dirname, "../../static/index.html");
   return fs.readFileSync(indexPath, "utf8");
 }
 

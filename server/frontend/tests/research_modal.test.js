@@ -23,6 +23,15 @@ describe("Research Company Modal", () => {
     // Create a document before importing Alpine
     setupDocumentWithIndexHtml(document);
 
+    // Mock MutationObserver
+    global.MutationObserver = class {
+      constructor(callback) {
+        this.callback = callback;
+      }
+      observe() {}
+      disconnect() {}
+    };
+
     // Use fake timers to prevent Alpine's plugin warning system from running
     vi.useFakeTimers();
 
@@ -161,6 +170,8 @@ describe("Research Company Modal", () => {
     }
     // Restore real timers
     vi.useRealTimers();
+    // Restore original MutationObserver
+    delete global.MutationObserver;
   });
 
   it("opens when clicking the research button", () => {
