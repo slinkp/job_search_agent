@@ -179,9 +179,11 @@ def test_do_research_new_company(daemon, test_company, mock_spreadsheet):
 
     daemon.do_research(args)
 
-    daemon.jobsearch.research_company.assert_called_once_with(
-        test_company.name, model=daemon.ai_model
-    )
+    assert daemon.jobsearch.research_company.call_count == 1
+    # Inspect the call args
+    call_args = daemon.jobsearch.research_company.call_args
+    assert f"Company name: {test_company.name}" in call_args[0][0]
+    assert call_args[1] == {"model": daemon.ai_model}
     daemon.company_repo.create.assert_called_once_with(test_company)
     mock_spreadsheet.assert_called_once_with(test_company.details, daemon.args)
 
@@ -199,9 +201,11 @@ def test_do_research_existing_company(daemon, test_company, mock_spreadsheet):
 
     daemon.do_research(args)
 
-    daemon.jobsearch.research_company.assert_called_once_with(
-        test_company.name, model=daemon.ai_model
-    )
+    assert daemon.jobsearch.research_company.call_count == 1
+    # Inspect the call args
+    call_args = daemon.jobsearch.research_company.call_args
+    assert f"Company name: {test_company.name}" in call_args[0][0]
+    assert call_args[1] == {"model": daemon.ai_model}
 
     # Verify existing company was updated with new details
     assert existing_company.details == research_result.details
@@ -437,9 +441,12 @@ def test_do_research_with_url(daemon, test_company, mock_spreadsheet):
 
     daemon.do_research(args)
 
-    daemon.jobsearch.research_company.assert_called_once_with(
-        "https://example.com", model=daemon.ai_model
-    )
+    assert daemon.jobsearch.research_company.call_count == 1
+    # Inspect the call args
+    call_args = daemon.jobsearch.research_company.call_args
+    assert "Company URL: https://example.com" in call_args[0][0]
+    assert call_args[1] == {"model": daemon.ai_model}
+
     daemon.company_repo.create.assert_called_once_with(test_company)
     mock_spreadsheet.assert_called_once_with(test_company.details, daemon.args)
 
@@ -456,9 +463,13 @@ def test_do_research_with_url_and_name(daemon, test_company, mock_spreadsheet):
 
     daemon.do_research(args)
 
-    daemon.jobsearch.research_company.assert_called_once_with(
-        "https://example.com", model=daemon.ai_model
-    )
+    assert daemon.jobsearch.research_company.call_count == 1
+    # Inspect the call args
+    call_args = daemon.jobsearch.research_company.call_args
+    assert "Company name: Test Corp" in call_args[0][0]
+    assert "Company URL: https://example.com" in call_args[0][0]
+    assert call_args[1] == {"model": daemon.ai_model}
+
     daemon.company_repo.create.assert_called_once_with(test_company)
     mock_spreadsheet.assert_called_once_with(test_company.details, daemon.args)
 
@@ -561,3 +572,131 @@ def test_do_research_error_with_normalized_name_duplicate(
     # Verify error was recorded in existing company
     assert "Research failed" in existing_company.status.research_errors[0].error
     mock_spreadsheet.assert_called_once_with(existing_company.details, daemon.args)
+
+
+def test_get_content_for_research_with_company(daemon, test_company_with_message):
+    """Test get_content_for_research with a company that has name, URL and recruiter message."""
+    # Set up test company with URL
+    test_company_with_message.details.url = "https://example.com"
+
+    result = daemon.get_content_for_research(
+        company=test_company_with_message,
+        company_name="",
+        company_url="",
+        content="",
+    )
+
+    assert result["company_name"] == test_company_with_message.name
+    assert result["company_url"] == test_company_with_message.details.url
+    assert result["content"].startswith(f"Company name: {test_company_with_message.name}")
+    assert f"Company URL: {test_company_with_message.details.url}" in result["content"]
+    assert test_company_with_message.recruiter_message.message in result["content"]
+
+
+def test_get_content_for_research_with_name_only(daemon):
+    """Test get_content_for_research with only a company name."""
+    result = daemon.get_content_for_research(
+        company=None,
+        company_name="Test Corp",
+        company_url="",
+        content="",
+    )
+
+    assert result["company_name"] == "Test Corp"
+    assert result["company_url"] == ""
+    assert result["content"] == "Company name: Test Corp"
+
+
+def test_get_content_for_research_with_url_only(daemon):
+    """Test get_content_for_research with only a URL."""
+    result = daemon.get_content_for_research(
+        company=None,
+        company_name="",
+        company_url="https://example.com",
+        content="",
+    )
+
+    assert result["company_name"] == ""
+    assert result["company_url"] == "https://example.com"
+    assert result["content"] == "Company URL: https://example.com"
+
+
+def test_get_content_for_research_with_name_and_url(daemon):
+    """Test get_content_for_research with both name and URL."""
+    result = daemon.get_content_for_research(
+        company=None,
+        company_name="Test Corp",
+        company_url="https://example.com",
+        content="",
+    )
+
+    assert result["company_name"] == "Test Corp"
+    assert result["company_url"] == "https://example.com"
+    assert (
+        result["content"] == "Company name: Test Corp\n\nCompany URL: https://example.com"
+    )
+
+
+def test_get_content_for_research_with_content(daemon):
+    """Test get_content_for_research with custom content."""
+    result = daemon.get_content_for_research(
+        company=None,
+        company_name="Test Corp",
+        company_url="https://example.com",
+        content="This is a job description for Test Corp.",
+    )
+
+    assert result["company_name"] == "Test Corp"
+    assert result["company_url"] == "https://example.com"
+    assert result["content"].startswith("Company name: Test Corp")
+    assert "Company URL: https://example.com" in result["content"]
+    assert result["content"].endswith("This is a job description for Test Corp.")
+
+
+def test_get_content_for_research_with_no_content(daemon):
+    """Test get_content_for_research with no searchable content."""
+    with pytest.raises(
+        ValueError,
+        match="No searchable found via any of content, name, url, or existing company",
+    ):
+        daemon.get_content_for_research(
+            company=None,
+            company_name="",
+            company_url="",
+            content="",
+        )
+
+
+def test_get_content_for_research_override_company_details(daemon, test_company):
+    """Test get_content_for_research with overridden company details."""
+    # Set up test company with URL
+    test_company.details.url = "https://example.com"
+
+    result = daemon.get_content_for_research(
+        company=test_company,
+        company_name="Override Corp",
+        company_url="https://override.com",
+        content="Custom content",
+    )
+
+    assert result["company_name"] == "Override Corp"
+    assert result["company_url"] == "https://override.com"
+    assert result["content"].startswith("Company name: Override Corp")
+    assert "Company URL: https://override.com" in result["content"]
+    assert result["content"].endswith("Custom content")
+
+
+def test_get_content_for_research_whitespace_handling(daemon):
+    """Test get_content_for_research with whitespace in inputs."""
+    result = daemon.get_content_for_research(
+        company=None,
+        company_name="  Test Corp  ",
+        company_url="  https://example.com  ",
+        content="  This is content with whitespace  ",
+    )
+
+    assert result["company_name"] == "Test Corp"
+    assert result["company_url"] == "https://example.com"
+    assert "Company name: Test Corp" in result["content"]
+    assert "Company URL: https://example.com" in result["content"]
+    assert result["content"].endswith("This is content with whitespace")

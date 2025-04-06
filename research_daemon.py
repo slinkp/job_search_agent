@@ -102,11 +102,47 @@ class ResearchDaemon:
         # Use the normalize_company_name function from models.py
         return normalize_company_name(name)
 
+    def get_content_for_research(
+        self,
+        company: Optional[models.Company],
+        company_name: Optional[str],
+        company_url: Optional[str],
+        content: Optional[str],
+    ) -> dict[str, str]:
+
+        content = (content or "").strip()
+        company_name = (company_name or "").strip()
+        company_url = (company_url or "").strip()
+        if company:
+            company_name = (company_name or company.name or "").strip()
+            company_url = (company_url or company.details.url or "").strip()
+            if not content and company.recruiter_message:
+                content = (company.recruiter_message.message or "").strip()
+                logger.info(f"Using existing initial message: {content[:400]}")
+
+        # Augment content with company name and URL if available
+        if company_url:
+            content = f"Company URL: {company_url}\n\n{content}"
+        if company_name:
+            content = f"Company name: {company_name}\n\n{content}"
+
+        content = content.strip()
+        if not content:
+            raise ValueError(
+                f"No searchable found via any of content, name, url, or existing company"
+            )
+        return {
+            "content": content,
+            "company_name": company_name,
+            "company_url": company_url,
+        }
+
     def do_research(self, args: dict) -> Optional[models.Company]:
         # Extract args, with URL and name being optional
         company_id = args.get("company_id", "").strip()
         company_name = args.get("company_name", "").strip()
         company_url = args.get("company_url", "").strip()
+        content = args.get("content", "").strip()
 
         # If we have a company_id, try to get the existing company
         existing = None
@@ -114,34 +150,21 @@ class ResearchDaemon:
             existing = self.company_repo.get(company_id)
         elif company_name:
             # If we have a company name, try to find an existing company with that name
-            # TODO: Repo could support search by name, possibly with fuzzy matching
-            existing = self.company_repo.get(company_name)
-
-        # If we found an existing company, use its name if no name was provided
-        if existing and not company_name:
-            company_name = existing.name
+            existing = self.company_repo.get_by_normalized_name(company_name)
 
         # Determine what content to use for research
-        content = None
-        if company_url:
-            # If we have a URL, use it directly
-            content = company_url
-        elif existing and existing.recruiter_message:
-            # If we have an existing company with a recruiter message, use that
-            content = existing.recruiter_message.message
-            if company_name:
-                content = f"Company name: {company_name}\n\n{content}"
-            logger.info(
-                f"Using existing initial message: {existing.recruiter_message.message[:400]}"
-            )
-        elif company_name:
-            # If we just have a name, use that
-            content = company_name
-        else:
-            # We need at least a URL or a name
-            raise ValueError(
-                "Either company_url or company_name or company_id must be provided"
-            )
+        content_for_research = self.get_content_for_research(
+            company=existing,
+            company_name=company_name,
+            company_url=company_url,
+            content=content,
+        )
+        content = content_for_research["content"]
+        if content is None:
+            raise ValueError("No content for research")
+
+        company_name = content_for_research["company_name"]
+        company_url = content_for_research["company_url"]
 
         company = None
         try:
@@ -184,49 +207,76 @@ class ResearchDaemon:
 
         except Exception as e:
             logger.exception(f"Error researching company {company_name or 'unknown'}")
-            # Create a minimal company record with the error if it doesn't exist
-            if existing is None and company is None:
-                # Use the same unknown company name logic as in libjobsearch.py
-                if not company_name:
-                    company_name = f"<UNKNOWN {int(time.time() * 1000 * 1000)}>"
-                    logger.warning(f"Company name not found, using {company_name}")
 
-                minimal_row = models.CompaniesSheetRow(
-                    name=company_name,
-                    url=company_url or "",
-                    notes=f"Research failed: {str(e)}",
-                )
-                company_status = models.CompanyStatus(
-                    research_errors=[
-                        models.ResearchStepError(
-                            step="research_company",
-                            error=f"Complete research failure: {str(e)}",
-                        )
-                    ],
-                )
-                company = models.Company(
-                    company_id=company_id or self._generate_company_id(company_name),
-                    name=company_name,
-                    details=minimal_row,
-                    status=company_status,
-                )
-                # Check for duplicates by normalized name
-                existing = self.company_repo.get_by_normalized_name(company.name)
-                if existing:
-                    logger.info(
-                        f"Found existing company with normalized name match: {existing.name}"
+            # If we already found an existing company by ID or normalized name, update it with the error
+            if existing:
+                # Record error in existing company
+                error_message = f"Complete research failure: {str(e)}"
+                existing.status.research_errors.append(
+                    models.ResearchStepError(
+                        step="research_company",
+                        error=error_message,
                     )
-                    existing.details = company.details
-                    existing.status = company.status
-                    self.company_repo.update(existing)
-                    company = existing
-                else:
-                    self.company_repo.create(company)
-                # Try to update the spreadsheet with minimal info
+                )
+                existing.details.notes = (
+                    existing.details.notes or ""
+                ) + f"\nResearch failed: {str(e)}"
+                self.company_repo.update(existing)
+
+                # Try to update the spreadsheet
                 try:
-                    libjobsearch.upsert_company_in_spreadsheet(company.details, self.args)
+                    libjobsearch.upsert_company_in_spreadsheet(
+                        existing.details, self.args
+                    )
                 except Exception as spreadsheet_error:
                     logger.exception(f"Failed to update spreadsheet: {spreadsheet_error}")
+
+                # Re-raise the original exception
+                raise
+
+            # Create a minimal company record if no existing company was found
+            # Use the same unknown company name logic as in libjobsearch.py
+            # TODO: put this in a function and use both places.
+            if not company_name:
+                company_name = f"<UNKNOWN {int(time.time() * 1000 * 1000)}>"
+                logger.warning(f"Company name not found, using {company_name}")
+
+            minimal_row = models.CompaniesSheetRow(
+                name=company_name,
+                url=company_url or "",
+                notes=f"Research failed: {str(e)}",
+            )
+            company_status = models.CompanyStatus(
+                research_errors=[
+                    models.ResearchStepError(
+                        step="research_company",
+                        error=f"Complete research failure: {str(e)}",
+                    )
+                ],
+            )
+            company = models.Company(
+                company_id=company_id or self._generate_company_id(company_name),
+                name=company_name,
+                details=minimal_row,
+                status=company_status,
+            )
+            # Check for duplicates by normalized name
+            normalized_company = self.company_repo.get_by_normalized_name(company.name)
+            if normalized_company:
+                logger.info(
+                    f"Found existing company with normalized name match: {normalized_company.name}"
+                )
+                normalized_company.details = company.details
+                normalized_company.status = company.status
+                self.company_repo.update(normalized_company)
+                company = normalized_company
+            else:
+                self.company_repo.create(company)
+            # Try to update the spreadsheet with minimal info
+            try:
+                libjobsearch.upsert_company_in_spreadsheet(company.details, self.args)
+            except Exception as spreadsheet_error:
+                logger.exception(f"Failed to update spreadsheet: {spreadsheet_error}")
 
             raise
         return existing or company
