@@ -9,16 +9,16 @@ This plan outlines the steps to prevent duplicate companies (based on name) from
       `normalize_company_name` function.
 - [ ] Find any code where we already normalize company names to company ID and
       call this new function. Confirm that all existing tests pass.
-- [ ] **Add `CompanyRepository.get_by_normalized_name`:**
-    - [ ] Add a new method `get_by_normalized_name(self, name: str) -> Optional[Company]` to `models.CompanyRepository`.
-    - [ ] This method should take a company name, normalize it using
+- [x] **Add `CompanyRepository.get_by_normalized_name`:**
+    - [x] Add a new method `get_by_normalized_name(self, name: str) -> Optional[Company]` to `models.CompanyRepository`.
+    - [x] This method should take a company name, normalize it using
           `normalize_company_name`, and query the database for a company where
           its `name` matches when normalized the same way (TBD how best to do
           this as we don't want to duplicate the normalization logic in sqlite
           and we may do further normalization in future;
           suggest some alternatives when we get to this step)
-    - [ ] If a match is found, deserialize and return the `Company` object; otherwise, return `None`.
-    - [ ] **Test `CompanyRepository.get_by_normalized_name`:** Add unit tests for the new repository method, testing both finding and not finding companies, including case/whitespace variations.
+    - [x] If a match is found, deserialize and return the `Company` object; otherwise, return `None`.
+    - [x] **Test `CompanyRepository.get_by_normalized_name`:** Add unit tests for the new repository method, testing both finding and not finding companies, including case/whitespace variations.
 - [ ] **Modify Company Creation Logic:**
     - [ ] Locate the points in `research_daemon.py` and any other files where a
           new `Company` object is instantiated *before* being passed to

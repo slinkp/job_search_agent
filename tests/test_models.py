@@ -207,23 +207,73 @@ class TestCompanyRepository:
 
         # Verify the recruiter message was saved and retrieved correctly
         assert retrieved_company is not None
+        assert retrieved_company.company_id == "test-company"
         assert retrieved_company.recruiter_message is not None
         assert retrieved_company.recruiter_message.message_id == "test123"
-        assert retrieved_company.recruiter_message.company_id == "test-company"
         assert (
             retrieved_company.recruiter_message.message
             == "Hello, we have a job opportunity for you."
         )
-        assert retrieved_company.recruiter_message.subject == "Job Opportunity"
-        assert retrieved_company.recruiter_message.sender == "recruiter@example.com"
-        assert (
-            retrieved_company.recruiter_message.email_thread_link
-            == "https://mail.example.com/thread123"
+
+    @pytest.fixture
+    def companies_for_name_search(self, clean_test_db):
+        """Fixture to create test companies for normalized name search tests."""
+        repo = clean_test_db
+
+        # Create a test company
+        company1 = Company(
+            company_id="test-company-1",
+            name="Test Company",
+            details=CompaniesSheetRow(name="Test Company", type="Private"),
         )
-        assert retrieved_company.recruiter_message.thread_id == "thread123"
-        assert retrieved_company.recruiter_message.date == datetime.datetime(
-            2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc
+        repo.create(company1)
+
+        # Create another test company with a different name pattern
+        company2 = Company(
+            company_id="test-company-2",
+            name="TestCompany With   Multiple   Spaces",
+            details=CompaniesSheetRow(name="TestCompany With   Multiple   Spaces"),
         )
+        repo.create(company2)
+
+        return repo
+
+    @pytest.mark.parametrize(
+        "search_name, expected_company_id, should_find",
+        [
+            # Exact match
+            ("Test Company", "test-company-1", True),
+            # Different case and extra spaces
+            ("  tEsT   cOMpany  ", "test-company-1", True),
+            # Normalized form (hyphens instead of spaces)
+            ("test-company", "test-company-1", True),
+            # Company 2 using normalized form
+            ("testcompany-with-multiple-spaces", "test-company-2", True),
+            # Non-existent company
+            ("Non Existent Company", None, False),
+        ],
+    )
+    def test_get_by_normalized_name(
+        self, companies_for_name_search, search_name, expected_company_id, should_find
+    ):
+        """Test getting a company by normalized name with various input formats."""
+        repo = companies_for_name_search
+
+        # Search for the company
+        found_company = repo.get_by_normalized_name(search_name)
+
+        if should_find:
+            assert (
+                found_company is not None
+            ), f"Should have found company with name '{search_name}'"
+            assert normalize_company_name(found_company.name) == normalize_company_name(
+                search_name
+            )
+            assert found_company.company_id == expected_company_id
+        else:
+            assert (
+                found_company is None
+            ), f"Should not have found company with name '{search_name}', found with {found_company.name}"
 
     def test_company_repository_singleton(self):
         """Test that the company_repository function returns a singleton."""

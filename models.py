@@ -525,6 +525,35 @@ class CompanyRepository:
         with self._get_connection() as conn:
             return self._get_recruiter_message(company_id, conn)
 
+    def get_by_normalized_name(self, name: str) -> Optional[Company]:
+        """
+        Get a company by its normalized name (case-insensitive, whitespace-insensitive).
+
+        Args:
+            name: The company name to search for
+
+        Returns:
+            The Company if found, None otherwise
+        """
+        normalized_name = normalize_company_name(name)
+
+        with self._get_connection() as conn:
+            # Query for companies where the normalized version of the name matches
+            cursor = conn.execute(
+                "SELECT company_id, name, updated_at, details, status, reply_message FROM companies"
+            )
+            for row in cursor.fetchall():
+                # We normalize each company name from the database and compare.
+                # This is slow, but fine since we expect to have O(100) companies at most.
+                company_id, db_name = row[0], row[1]
+                if normalize_company_name(db_name) == normalized_name:
+                    company = self._deserialize_company(row)
+                    message = self._get_recruiter_message(company_id, conn)
+                    company.recruiter_message = message
+                    return company
+
+        return None
+
     def _get_recruiter_message(
         self, company_id: str, conn: sqlite3.Connection
     ) -> Optional[RecruiterMessage]:
