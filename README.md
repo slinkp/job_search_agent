@@ -228,10 +228,17 @@ Won't work if follow-ups are not threaded, but that can't be helped.
            recruiter message
      - [x] updates status in actual spreadsheet to "70. ruled out - didn't reply"
      - [x] new "archived" icon & filter for this in web app
+  - [ ] Support importing companies from spreadsheet
+     - [ ] Add button to UX for this
+     - [ ] Add a background task
+     - [ ] It should use existing name normalization to check for duplicates
+           in which case, merge the spreadsheet data into the db data and vice versa.
+           (Spreadsheet data wins over DB data if both exist)
   - [ ] Make sure we only add new companies
-     - [ ] Add to db only if doesn't exist
+     - [x] Add to db only if doesn't exist
      - [ ] Check spreadsheet and db for existing match:
-         - [ ] by company name - fuzzy match? normalize?
+         - [ ] by company name - normalized
+         - [ ] by fuzzy match on name?
          - [ ] by message id?
          - [ ] by thread link?
          - [ ] support merging duplicates?
