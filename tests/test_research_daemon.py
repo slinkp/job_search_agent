@@ -173,6 +173,8 @@ def test_do_research_new_company(daemon, test_company, mock_spreadsheet):
 
     # Company doesn't exist yet
     daemon.company_repo.get.return_value = None
+    # No duplicate by normalized name
+    daemon.company_repo.get_by_normalized_name.return_value = None
     daemon.jobsearch.research_company.return_value = test_company
 
     daemon.do_research(args)
@@ -214,6 +216,8 @@ def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet):
 
     # Company doesn't exist yet
     daemon.company_repo.get.return_value = None
+    # No duplicate by normalized name
+    daemon.company_repo.get_by_normalized_name.return_value = None
     daemon.jobsearch.research_company.side_effect = ValueError("Research failed")
 
     with pytest.raises(ValueError):
@@ -304,6 +308,8 @@ def test_do_find_companies_in_recruiter_messages(
 
     daemon.jobsearch.get_new_recruiter_messages.return_value = test_recruiter_messages
     daemon.company_repo.get.return_value = None  # Companies don't exist yet
+    # No duplicates by normalized name
+    daemon.company_repo.get_by_normalized_name.return_value = None
     daemon.jobsearch.research_company.side_effect = test_companies
     daemon.running = True  # Ensure daemon stays running
 
@@ -327,8 +333,11 @@ def test_do_find_companies_in_recruiter_messages_existing_company(
     """Test finding companies when some already exist."""
     args = {"max_messages": 2, "do_research": True}
 
-    # First company exists, second doesn't
+    # First company exists by ID, second doesn't
     daemon.company_repo.get.side_effect = [test_companies[0], None]
+
+    # For the normalization check, make the first one a hit and the second one a miss
+    daemon.company_repo.get_by_normalized_name.side_effect = [test_companies[0], None]
 
     daemon.jobsearch.get_new_recruiter_messages.return_value = test_recruiter_messages
     daemon.jobsearch.research_company.return_value = test_companies[1]
@@ -338,7 +347,10 @@ def test_do_find_companies_in_recruiter_messages_existing_company(
 
     # Verify only second company was created
     assert daemon.company_repo.create.call_count == 1
-    daemon.company_repo.create.assert_called_once()
+    daemon.company_repo.create.assert_called_once_with(test_companies[1])
+
+    # Verify first company was updated with research results
+    daemon.company_repo.update.assert_called_once_with(test_companies[0])
 
 
 def test_do_find_companies_in_recruiter_messages_no_company_name(
@@ -419,6 +431,8 @@ def test_do_research_with_url(daemon, test_company, mock_spreadsheet):
 
     # Company doesn't exist yet
     daemon.company_repo.get.return_value = None
+    # No duplicate by normalized name
+    daemon.company_repo.get_by_normalized_name.return_value = None
     daemon.jobsearch.research_company.return_value = test_company
 
     daemon.do_research(args)
@@ -436,6 +450,8 @@ def test_do_research_with_url_and_name(daemon, test_company, mock_spreadsheet):
 
     # Company doesn't exist yet
     daemon.company_repo.get.return_value = None
+    # No duplicate by normalized name
+    daemon.company_repo.get_by_normalized_name.return_value = None
     daemon.jobsearch.research_company.return_value = test_company
 
     daemon.do_research(args)
@@ -454,6 +470,8 @@ def test_do_research_with_unknown_company_name(daemon, mock_spreadsheet):
 
     # Company doesn't exist yet
     daemon.company_repo.get.return_value = None
+    # No duplicate by normalized name
+    daemon.company_repo.get_by_normalized_name.return_value = None
     daemon.jobsearch.research_company.side_effect = error
 
     with pytest.raises(ValueError):
@@ -476,3 +494,70 @@ def test_generate_company_id(daemon):
     assert daemon._generate_company_id("ACME Corporation") == "acme-corporation"
     assert daemon._generate_company_id("Test Corp!") == "test-corp!"
     assert daemon._generate_company_id("  Test Corp  ") == "test-corp"
+
+
+def test_do_research_with_normalized_name_duplicate(
+    daemon, test_company, mock_spreadsheet
+):
+    """Test research when we find a duplicate by normalized name."""
+    args = {"company_name": "TEST CORP"}  # Different case but same normalized name
+
+    # Company doesn't exist by ID
+    daemon.company_repo.get.return_value = None
+
+    # But exists with normalized name
+    existing_company = test_company
+    daemon.company_repo.get_by_normalized_name.return_value = existing_company
+
+    # New research results
+    new_company = models.Company(
+        company_id="test-corp",
+        name="TEST CORP",  # Different case
+        details=models.CompaniesSheetRow(name="TEST CORP", url="https://example.com"),
+        status=models.CompanyStatus(),
+    )
+    daemon.jobsearch.research_company.return_value = new_company
+
+    daemon.do_research(args)
+
+    # Verify we looked up by normalized name
+    daemon.company_repo.get_by_normalized_name.assert_called_once_with("TEST CORP")
+
+    # Verify existing company was updated with new details but not created
+    daemon.company_repo.create.assert_not_called()
+    daemon.company_repo.update.assert_called_once_with(existing_company)
+
+    # Verify the existing company was updated with the new details
+    assert existing_company.details == new_company.details
+    # Verify the name was updated to the new name or kept if the new one is empty
+    assert existing_company.name == "TEST CORP"
+
+    mock_spreadsheet.assert_called_once_with(existing_company.details, daemon.args)
+
+
+def test_do_research_error_with_normalized_name_duplicate(
+    daemon, test_company, mock_spreadsheet
+):
+    """Test research error handling when we find a duplicate by normalized name."""
+    args = {"company_name": "TEST CORP"}
+
+    # Company doesn't exist by ID
+    daemon.company_repo.get.return_value = None
+
+    # But exists with normalized name
+    existing_company = test_company
+    daemon.company_repo.get_by_normalized_name.return_value = existing_company
+
+    # Research fails
+    daemon.jobsearch.research_company.side_effect = ValueError("Research failed")
+
+    with pytest.raises(ValueError):
+        daemon.do_research(args)
+
+    # Verify existing company was updated with error details but no new company was created
+    daemon.company_repo.create.assert_not_called()
+    daemon.company_repo.update.assert_called_once_with(existing_company)
+
+    # Verify error was recorded in existing company
+    assert "Research failed" in existing_company.status.research_errors[0].error
+    mock_spreadsheet.assert_called_once_with(existing_company.details, daemon.args)

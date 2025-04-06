@@ -19,13 +19,14 @@ This plan outlines the steps to prevent duplicate companies (based on name) from
           suggest some alternatives when we get to this step)
     - [x] If a match is found, deserialize and return the `Company` object; otherwise, return `None`.
     - [x] **Test `CompanyRepository.get_by_normalized_name`:** Add unit tests for the new repository method, testing both finding and not finding companies, including case/whitespace variations.
-- [ ] **Modify Company Creation Logic:**
-    - [ ] Locate the points in `research_daemon.py` and any other files where a
+- [x] **Modify Company Creation Logic:**
+    - [x] Locate the points in `research_daemon.py` and any other files where a
           new `Company` object is instantiated *before* being passed to
           `CompanyRepository.create` or `CompanyRepository
-    - [ ] Before calling `repo.create(company)`, call `existing_company = repo.get_by_normalized_name(company_name)`.
-    - [ ] If `existing_company` is not `None`, do *not* call `repo.create`. Instead, use the `existing_company` for subsequent operations (like associating the message or task).
-    - [ ] Log a message at INFO when a duplicate is detected and creation is skipped.
+    - [x] Before calling `repo.create(company)`, call `existing_company = repo.get_by_normalized_name(company_name)`.
+    - [x] If `existing_company` is not `None`, do *not* call `repo.create`. Instead, use the `existing_company` for subsequent operations (like associating the message or task).
+    - [x] Log a message at INFO when a duplicate is detected and creation is skipped.
 - [ ] **Update/Add Integration Tests:**
-    - Review existing integration tests where companies are created to ensure they account for the new duplicate check.
-    - Add new integration tests specifically verifying that processing input for a company name that already exists (normalized) does not create a new database entry, but potentially associates the new data (like a message) with the existing company. 
+    - [x] Update existing tests to properly mock the `get_by_normalized_name` method.
+    - [x] Add new test cases specifically testing the duplicate prevention logic: `test_do_research_with_normalized_name_duplicate` and `test_do_research_error_with_normalized_name_duplicate`.
+    - [ ] Add additional integration tests verifying that processing input for a company name that already exists (normalized) associates the new data with the existing company. 

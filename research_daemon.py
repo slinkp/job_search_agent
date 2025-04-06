@@ -163,8 +163,20 @@ class ResearchDaemon:
                 self.company_repo.update(existing)
                 company = existing
             else:
-                logger.info(f"Creating company {company.name}")
-                self.company_repo.create(company)
+                # Check for duplicates by normalized name
+                existing = self.company_repo.get_by_normalized_name(company.name)
+                if existing:
+                    logger.info(
+                        f"Found existing company with normalized name match: {existing.name}"
+                    )
+                    existing.details = company.details
+                    existing.name = company.name or existing.name
+                    existing.status.research_errors = research_errors
+                    self.company_repo.update(existing)
+                    company = existing
+                else:
+                    logger.info(f"Creating company {company.name}")
+                    self.company_repo.create(company)
 
             # Update the spreadsheet with the researched company data
             libjobsearch.upsert_company_in_spreadsheet(company.details, self.args)
@@ -197,7 +209,18 @@ class ResearchDaemon:
                     details=minimal_row,
                     status=company_status,
                 )
-                self.company_repo.create(company)
+                # Check for duplicates by normalized name
+                existing = self.company_repo.get_by_normalized_name(company.name)
+                if existing:
+                    logger.info(
+                        f"Found existing company with normalized name match: {existing.name}"
+                    )
+                    existing.details = company.details
+                    existing.status = company.status
+                    self.company_repo.update(existing)
+                    company = existing
+                else:
+                    self.company_repo.create(company)
                 # Try to update the spreadsheet with minimal info
                 try:
                     libjobsearch.upsert_company_in_spreadsheet(company.details, self.args)
@@ -242,12 +265,20 @@ class ResearchDaemon:
                     logger.warning("No company extracted from message, skipping")
                     continue
 
-                if self.company_repo.get(company_row.name) is not None:
-                    logger.info(f"Company {company_row.name} already exists, skipping")
-                    continue
-
-                self.company_repo.create(company)
-                logger.info(f"Created company {company_row.name} from recruiter message")
+                # Check for duplicates by normalized name
+                existing = self.company_repo.get_by_normalized_name(company_row.name)
+                if existing:
+                    logger.info(
+                        f"Found existing company with normalized name match: {existing.name}"
+                    )
+                    existing.details = company.details
+                    self.company_repo.update(existing)
+                    company = existing
+                else:
+                    self.company_repo.create(company)
+                    logger.info(
+                        f"Created company {company_row.name} from recruiter message"
+                    )
             except Exception:
                 logger.exception("Error processing recruiter message")
                 continue
