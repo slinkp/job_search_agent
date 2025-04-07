@@ -1,3 +1,8 @@
+---
+description: 
+globs: *.js,*.jsx,*.ts,*.tsx,*.html,*.css
+alwaysApply: false
+---
 # Frontend Development Best Practices
 
 Standards for frontend development, debugging, and component implementation.
