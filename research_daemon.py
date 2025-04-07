@@ -422,6 +422,9 @@ class ResearchDaemon:
             "error_details": [],
             "current_company": None,
             "percent_complete": 0,
+            "start_time": datetime.datetime.now(datetime.timezone.utc),
+            "end_time": None,
+            "duration_seconds": 0,
         }
 
         # Get task_id from the TaskStatusContext if available
@@ -548,8 +551,65 @@ class ResearchDaemon:
                 {"company": "N/A", "error": f"Global import error: {str(e)}"}
             )
 
+        # Record end time and calculate duration
+        stats["end_time"] = datetime.datetime.now(datetime.timezone.utc)
+        stats["duration_seconds"] = (
+            stats["end_time"] - stats["start_time"]
+        ).total_seconds()
+
+        # Generate and log summary
+        summary = self.format_import_summary(stats)
+        logger.info(f"Import summary:\n{summary}")
+
         # Return final stats
         return stats
+
+    def format_import_summary(self, stats: dict) -> str:
+        """Format import statistics into a human-readable summary.
+
+        Args:
+            stats: Dictionary containing import statistics
+
+        Returns:
+            Formatted summary as a string
+        """
+        if not stats.get("end_time"):
+            stats["end_time"] = datetime.datetime.now(datetime.timezone.utc)
+
+        if not stats.get("duration_seconds") and stats.get("start_time"):
+            stats["duration_seconds"] = (
+                stats["end_time"] - stats["start_time"]
+            ).total_seconds()
+
+        duration_str = f"{stats['duration_seconds']:.1f} seconds"
+        if stats["duration_seconds"] > 60:
+            minutes = stats["duration_seconds"] / 60
+            duration_str = f"{minutes:.1f} minutes"
+
+        summary = [
+            "=" * 40,
+            "SPREADSHEET IMPORT SUMMARY",
+            "=" * 40,
+            f"Start time: {stats['start_time'].strftime('%Y-%m-%d %H:%M:%S')}",
+            f"End time: {stats['end_time'].strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Duration: {duration_str}",
+            f"Companies found in spreadsheet: {stats['total_found']}",
+            f"Companies processed: {stats['processed']}",
+            f"Companies created: {stats['created']}",
+            f"Companies updated: {stats['updated']}",
+            f"Companies skipped: {stats['skipped']}",
+            f"Errors encountered: {stats['errors']}",
+        ]
+
+        # Add error details if any
+        if stats["errors"] > 0 and stats.get("error_details"):
+            summary.append("\nError details:")
+            for i, error in enumerate(stats["error_details"], 1):
+                company = error.get("company", "Unknown")
+                error_msg = error.get("error", "Unknown error")
+                summary.append(f"{i}. {company}: {error_msg}")
+
+        return "\n".join(summary)
 
 
 if __name__ == "__main__":

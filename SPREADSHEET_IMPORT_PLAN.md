@@ -100,10 +100,10 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
   - [x] Test error handling during progress updates
 
 ### 10. Add Import Results Summary Logic
-- [ ] Create a structure to report import results (total imported, duplicates, errors)
-- [ ] Update the task handler to generate this summary
-- [ ] Add tests for the summary generation
-- [ ] Add error logging for failed imports
+- [x] Create a structure to report import results (total imported, duplicates, errors)
+- [x] Update the task handler to generate this summary
+- [x] Add tests for the summary generation
+- [x] Add error logging for failed imports
 
 ### 11. Implement Frontend Changes
 - [ ] Add a new button to the UI for importing companies

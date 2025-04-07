@@ -771,10 +771,9 @@ def test_do_import_companies_from_spreadsheet(
 
     daemon._current_task_context = FakeContext()
 
-    # Set daemon to running mode to prevent early termination
+    # Ensure the daemon is in running state
     daemon.running = True
 
-    # Run the import task
     result = daemon.do_import_companies_from_spreadsheet({})
 
     # Verify results
@@ -876,3 +875,66 @@ def test_import_progress_tracking(
     assert final_update["processed"] == 10
     assert final_update["created"] == 10
     assert final_update["percent_complete"] == 100
+
+
+def test_format_import_summary(daemon):
+    """Test formatting the import summary."""
+    import datetime
+
+    # Create test stats
+    start_time = datetime.datetime(2023, 1, 15, 10, 30, 0, tzinfo=datetime.timezone.utc)
+    end_time = datetime.datetime(2023, 1, 15, 10, 35, 30, tzinfo=datetime.timezone.utc)
+
+    stats = {
+        "total_found": 50,
+        "processed": 48,
+        "created": 30,
+        "updated": 15,
+        "skipped": 3,
+        "errors": 2,
+        "start_time": start_time,
+        "end_time": end_time,
+        "duration_seconds": (end_time - start_time).total_seconds(),
+        "error_details": [
+            {"company": "Error Company", "error": "Test error message"},
+            {"company": "Another Company", "error": "Another error"},
+        ],
+    }
+
+    # Get the formatted summary
+    summary = daemon.format_import_summary(stats)
+
+    # Verify the summary contains all the key information
+    assert "SPREADSHEET IMPORT SUMMARY" in summary
+    assert f"Start time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}" in summary
+    assert f"End time: {end_time.strftime('%Y-%m-%d %H:%M:%S')}" in summary
+    assert "Duration: 5.5 minutes" in summary
+    assert "Companies found in spreadsheet: 50" in summary
+    assert "Companies processed: 48" in summary
+    assert "Companies created: 30" in summary
+    assert "Companies updated: 15" in summary
+    assert "Companies skipped: 3" in summary
+    assert "Errors encountered: 2" in summary
+    assert "Error details:" in summary
+    assert "1. Error Company: Test error message" in summary
+    assert "2. Another Company: Another error" in summary
+
+    # Test with no errors
+    stats["errors"] = 0
+    stats["error_details"] = []
+    summary_no_errors = daemon.format_import_summary(stats)
+    assert "Error details:" not in summary_no_errors
+
+    # Test with missing end_time
+    stats_no_end = {
+        "total_found": 50,
+        "processed": 48,
+        "created": 30,
+        "updated": 15,
+        "skipped": 3,
+        "errors": 0,
+        "start_time": start_time,
+    }
+    summary_auto_end = daemon.format_import_summary(stats_no_end)
+    assert "End time:" in summary_auto_end
+    assert "Duration:" in summary_auto_end
