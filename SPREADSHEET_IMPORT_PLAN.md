@@ -23,8 +23,8 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
 - [x] Understand how name normalization works for finding duplicates
 
 ### 2. Create a New Task Type in the Backend
-- [ ] Add a new `IMPORT_COMPANIES_FROM_SPREADSHEET` task type to `TaskType` enum in `tasks.py`
-- [ ] Write tests to ensure the new task type is recognized by the system
+- [x] Add a new `IMPORT_COMPANIES_FROM_SPREADSHEET` task type to `TaskType` enum in `tasks.py`
+- [x] Write tests to ensure the new task type is recognized by the system
 
 ### 3. Use Existing Spreadsheet Client for Data Retrieval
 - [ ] Review the existing `MainTabCompaniesClient` class in `spreadsheet_client.py`

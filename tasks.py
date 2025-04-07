@@ -46,6 +46,7 @@ class TaskType(Enum):
     FIND_COMPANIES_FROM_RECRUITER_MESSAGES = "find_companies_from_recruiter_messages"
     SEND_AND_ARCHIVE = "send_and_archive"
     IGNORE_AND_ARCHIVE = "ignore_and_archive"
+    IMPORT_COMPANIES_FROM_SPREADSHEET = "import_companies_from_spreadsheet"
 
 
 class TaskManager:
