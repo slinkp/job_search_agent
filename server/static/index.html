@@ -43,6 +43,12 @@
           </button>
         </div>
 
+        <div class="import-companies">
+          <button @click="importCompaniesFromSpreadsheet()" class="outline" :disabled="importingCompanies">
+            Import Companies
+          </button>
+        </div>
+
         <div class="list-controls">
           <div class="filter-controls">
             <button @click="filterMode = 'all'" class="filter-button outline" :class="{ 'active': filterMode === 'all' }">

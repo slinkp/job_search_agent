@@ -104,6 +104,10 @@ function createMockCompanyList() {
     emailScanTaskId: null,
     emailScanStatus: null,
     emailScanError: null,
+    importingCompanies: false,
+    importTaskId: null,
+    importStatus: null,
+    importError: null,
     sortField: "name",
     sortAsc: true,
     filterMode: "all",
@@ -145,6 +149,10 @@ function createMockCompanyList() {
     },
     getEmailScanStatusClass() {
       return {};
+    },
+    importCompaniesFromSpreadsheet() {
+      // Stub method
+      console.log("Import companies stub called");
     },
     get filteredCompanies() {
       return [];
