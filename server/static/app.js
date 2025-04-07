@@ -328,17 +328,32 @@ document.addEventListener("alpine:init", () => {
       async pollTaskStatus(company, taskType) {
         const isMessage = taskType === "message";
         const isScanningEmails = taskType === "scan_emails";
+        const isImportingCompanies = taskType === "import_companies";
         const trackingSet = isMessage
           ? this.generatingMessages
           : isScanningEmails
           ? new Set(["scan_emails"]) // Single-item set for email scanning task
+          : isImportingCompanies
+          ? new Set(["import_companies"]) // Single-item set for import task
           : this.researchingCompanies;
         const taskIdField = isMessage ? "message_task_id" : "research_task_id";
         const statusField = isMessage ? "message_status" : "research_status";
         const errorField = isMessage ? "message_error" : "research_error";
 
-        const taskId = company ? company[taskIdField] : this.emailScanTaskId;
-        const trackingKey = company ? company.name : "scan_emails";
+        const taskId = company
+          ? company[taskIdField]
+          : isScanningEmails
+          ? this.emailScanTaskId
+          : isImportingCompanies
+          ? this.importTaskId
+          : null;
+        const trackingKey = company
+          ? company.name
+          : isScanningEmails
+          ? "scan_emails"
+          : isImportingCompanies
+          ? "import_companies"
+          : "";
 
         console.log(`Starting poll for ${taskType}`, {
           companyName: company?.name,
@@ -355,8 +370,10 @@ document.addEventListener("alpine:init", () => {
             // Update the status based on task type
             if (company) {
               company[statusField] = task.status;
-            } else {
+            } else if (isScanningEmails) {
               this.emailScanStatus = task.status;
+            } else if (isImportingCompanies) {
+              this.importStatus = task.status;
             }
 
             if (task.status === "completed" || task.status === "failed") {
@@ -366,9 +383,12 @@ document.addEventListener("alpine:init", () => {
                 console.log(`Task failed for ${trackingKey}:`, task.error);
                 if (company) {
                   company[errorField] = task.error;
-                } else {
+                } else if (isScanningEmails) {
                   this.emailScanError = task.error;
                   this.scanningEmails = false;
+                } else if (isImportingCompanies) {
+                  this.importError = task.error;
+                  this.importingCompanies = false;
                 }
               }
 
@@ -376,9 +396,20 @@ document.addEventListener("alpine:init", () => {
                 // Get fresh data for this company
                 await this.fetchAndUpdateCompany(company.company_id);
               } else {
-                // For email scanning tasks, update entire companies list
+                // For email scanning or import tasks, update entire companies list
                 await this.refreshAllCompanies();
-                this.scanningEmails = false;
+                if (isScanningEmails) {
+                  this.scanningEmails = false;
+                } else if (isImportingCompanies) {
+                  this.importingCompanies = false;
+
+                  // Show result message for import
+                  if (task.status === "completed" && task.result) {
+                    const result = task.result;
+                    const msg = `Import completed! Created: ${result.created}, Updated: ${result.updated}, Skipped: ${result.skipped}, Errors: ${result.errors}`;
+                    this.showSuccess(msg);
+                  }
+                }
               }
 
               trackingSet.delete(trackingKey);
@@ -388,9 +419,14 @@ document.addEventListener("alpine:init", () => {
             await new Promise((resolve) => setTimeout(resolve, 1000));
           } catch (err) {
             console.error(`Failed to poll ${taskType} status:`, err);
-            if (!company) {
+            if (company) {
+              // Do nothing, keep polling
+            } else if (isScanningEmails) {
               this.emailScanError = "Failed to check task status";
               this.scanningEmails = false;
+            } else if (isImportingCompanies) {
+              this.importError = "Failed to check task status";
+              this.importingCompanies = false;
             }
             trackingSet.delete(trackingKey);
             break;

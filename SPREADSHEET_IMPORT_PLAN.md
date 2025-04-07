@@ -108,7 +108,7 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
 ### 11. Implement Frontend Changes
 - [x] Add a new button to the UI for importing companies
 - [ ] Add a function to handle the button click
-- [ ] Add a modal dialog to confirm the import action with options
+- [x] Update task polling to handle import task status and results
 - [ ] Add progress indicator for ongoing import
 - [ ] Add results display for completed import
 - [ ] Add tests for new UI components
