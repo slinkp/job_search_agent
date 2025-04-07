@@ -1,18 +1,22 @@
 import datetime
 import json
 import os
+from datetime import date
 
 import pytest
+from freezegun import freeze_time
 
 from models import (
     CompaniesSheetRow,
     Company,
     CompanyRepository,
+    CompanyStatus,
     CustomJSONEncoder,
     Event,
     EventType,
     RecruiterMessage,
     company_repository,
+    merge_company_data,
     normalize_company_name,
 )
 
@@ -601,3 +605,178 @@ class TestCompany:
 def test_normalize_company_name(input_name, expected_output):
     """Test the company name normalization function."""
     assert normalize_company_name(input_name) == expected_output
+
+
+@freeze_time("2023-01-15")
+def test_merge_company_data_basic():
+    """Test merging data from spreadsheet to existing company - basic case."""
+    # Create existing company with initial data
+    existing_company = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+            type="Tech",
+            valuation="500M",
+            funding_series="Series A",
+            url="test.com",
+            updated=date(2022, 12, 1),
+        ),
+        status=CompanyStatus(),
+    )
+
+    # Create spreadsheet row with updated data
+    sheet_row = CompaniesSheetRow(
+        name="Test Corp",
+        type="AI",  # Changed
+        valuation="1B",  # Changed
+        funding_series="Series B",  # Changed
+        headquarters="San Francisco",  # New field
+    )
+
+    # Merge data
+    merged_company = merge_company_data(existing_company, sheet_row)
+
+    # Verify spreadsheet values were used for non-empty fields
+    assert merged_company.details.type == "AI"
+    assert merged_company.details.valuation == "1B"
+    assert merged_company.details.funding_series == "Series B"
+    assert merged_company.details.headquarters == "San Francisco"
+
+    # Verify database values were preserved for fields not in spreadsheet
+    assert merged_company.details.url == "test.com"
+
+    # Verify updated date is set to today
+    assert merged_company.details.updated == date(2023, 1, 15)
+
+
+@freeze_time("2023-01-15")
+def test_merge_company_data_empty_values():
+    """Test merging data with empty values in spreadsheet."""
+    # Create existing company with initial data
+    existing_company = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+            type="Tech",
+            valuation="500M",
+            url="test.com",
+        ),
+        status=CompanyStatus(),
+    )
+
+    # Create spreadsheet row with some empty values
+    sheet_row = CompaniesSheetRow(
+        name="Test Corp",
+        type="",  # Empty
+        valuation="1B",  # Changed
+        url=None,  # None/null
+    )
+
+    # Merge data
+    merged_company = merge_company_data(existing_company, sheet_row)
+
+    # Verify empty spreadsheet values don't override existing values
+    assert merged_company.details.type == "Tech"  # Preserved
+    assert merged_company.details.valuation == "1B"  # Updated
+    assert merged_company.details.url == "test.com"  # Preserved
+
+
+@freeze_time("2023-01-15")
+def test_merge_company_data_date_fields():
+    """Test merging data with date fields."""
+    # Create existing company with initial data
+    existing_company = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+            started=date(2018, 5, 10),  # Older date
+            end_date=date(2022, 3, 15),  # Newer date
+            updated=date(2022, 12, 1),
+        ),
+        status=CompanyStatus(),
+    )
+
+    # Create spreadsheet row with date fields
+    sheet_row = CompaniesSheetRow(
+        name="Test Corp",
+        started=date(2020, 1, 1),  # Newer date than existing
+        end_date=date(2021, 10, 5),  # Older date than existing
+    )
+
+    # Merge data
+    merged_company = merge_company_data(existing_company, sheet_row)
+
+    # Verify the most recent date is used
+    assert merged_company.details.started == date(2020, 1, 1)  # Use newer date from sheet
+    assert merged_company.details.end_date == date(2022, 3, 15)  # Keep newer date from DB
+
+    # Updated is always today
+    assert merged_company.details.updated == date(2023, 1, 15)
+
+
+@freeze_time("2023-01-15")
+def test_merge_company_data_notes_field():
+    """Test merging data with notes field."""
+    # Create existing company with notes
+    existing_company = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+            notes="Original notes from database",
+        ),
+        status=CompanyStatus(),
+    )
+
+    # Create spreadsheet row with notes
+    sheet_row = CompaniesSheetRow(
+        name="Test Corp",
+        notes="Additional notes from spreadsheet",
+    )
+
+    # Merge data
+    merged_company = merge_company_data(existing_company, sheet_row)
+
+    # Verify notes were appended, not replaced
+    assert "Original notes from database" in merged_company.details.notes
+    assert "Additional notes from spreadsheet" in merged_company.details.notes
+
+    # Verify there's a separator
+    assert "\n---\n" in merged_company.details.notes
+
+
+@freeze_time("2023-01-15")
+def test_merge_company_data_empty_notes():
+    """Test merging data with empty notes field."""
+    # Existing company with notes
+    existing_company = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+            notes="Original notes",
+        ),
+        status=CompanyStatus(),
+    )
+
+    # Spreadsheet row with empty notes
+    sheet_row = CompaniesSheetRow(
+        name="Test Corp",
+        notes="",
+    )
+
+    # Merge data
+    merged_company = merge_company_data(existing_company, sheet_row)
+
+    # Verify original notes are preserved
+    assert merged_company.details.notes == "Original notes"
+
+    # Empty DB notes, non-empty sheet notes
+    existing_company.details.notes = ""
+    sheet_row.notes = "New notes"
+
+    merged_company = merge_company_data(existing_company, sheet_row)
+    assert merged_company.details.notes == "New notes"

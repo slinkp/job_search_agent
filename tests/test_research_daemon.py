@@ -48,8 +48,8 @@ def cache_settings():
 
 # Always use this mock for all tests
 @pytest.fixture(autouse=True)
-def mock_spreadsheet():
-    """Fixture to mock spreadsheet operations."""
+def mock_spreadsheet_upsert():
+    """Fixture to mock spreadsheet upsert operations."""
     with patch("libjobsearch.upsert_company_in_spreadsheet", autospec=True) as mock:
         yield mock
 
@@ -131,20 +131,26 @@ def test_companies():
 
 
 @pytest.fixture
+def mock_spreadsheet_client():
+    with patch("spreadsheet_client.MainTabCompaniesClient", autospec=True) as mock:
+        yield mock
+
+
+@pytest.fixture
 def daemon(
     args,
     cache_settings,
     mock_task_manager,
     mock_company_repo,
     mock_jobsearch,
-    mock_spreadsheet,
+    mock_spreadsheet_upsert,
     mock_email,
+    mock_spreadsheet_client,
 ):
-    with patch("libjobsearch.MainTabCompaniesClient", autospec=True) as mock_client:
-        # Configure the mock client to return empty list for read_rows_from_google
-        mock_client.return_value.read_rows_from_google.return_value = []
-        daemon = ResearchDaemon(args, cache_settings)
-        return daemon
+    # Configure the mock client to return empty list for read_rows_from_google
+    mock_spreadsheet_client.return_value.read_rows_from_google.return_value = []
+    daemon = ResearchDaemon(args, cache_settings)
+    return daemon
 
 
 def test_task_status_context_success(mock_task_manager):
@@ -178,7 +184,7 @@ def test_process_next_task_no_tasks(daemon):
     daemon.task_mgr.get_next_pending_task.assert_called_once()
 
 
-def test_do_research_new_company(daemon, test_company, mock_spreadsheet):
+def test_do_research_new_company(daemon, test_company, mock_spreadsheet_upsert):
     args = {"company_id": "test-corp", "company_name": "Test Corp"}
 
     # Company doesn't exist yet
@@ -195,10 +201,10 @@ def test_do_research_new_company(daemon, test_company, mock_spreadsheet):
     assert f"Company name: {test_company.name}" in call_args[0][0]
     assert call_args[1] == {"model": daemon.ai_model}
     daemon.company_repo.create.assert_called_once_with(test_company)
-    mock_spreadsheet.assert_called_once_with(test_company.details, daemon.args)
+    mock_spreadsheet_upsert.assert_called_once_with(test_company.details, daemon.args)
 
 
-def test_do_research_existing_company(daemon, test_company, mock_spreadsheet):
+def test_do_research_existing_company(daemon, test_company, mock_spreadsheet_upsert):
     args = {"company_id": "test-corp", "company_name": "Test Corp"}
 
     # Create existing company with initial data
@@ -221,10 +227,10 @@ def test_do_research_existing_company(daemon, test_company, mock_spreadsheet):
     assert existing_company.details == research_result.details
     assert existing_company.status.research_errors == []
     daemon.company_repo.update.assert_called_once_with(existing_company)
-    mock_spreadsheet.assert_called_once_with(existing_company.details, daemon.args)
+    mock_spreadsheet_upsert.assert_called_once_with(existing_company.details, daemon.args)
 
 
-def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet):
+def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet_upsert):
     """Test research error handling for a new company."""
     args = {"company_id": "test-corp", "company_name": "Test Corp"}
 
@@ -245,7 +251,7 @@ def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet):
     assert len(created_company.status.research_errors) == 1
     assert created_company.status.research_errors[0].step == "research_company"
     assert "Research failed" in created_company.status.research_errors[0].error
-    mock_spreadsheet.assert_called_once_with(created_company.details, daemon.args)
+    mock_spreadsheet_upsert.assert_called_once_with(created_company.details, daemon.args)
 
 
 def test_do_send_and_archive(daemon, test_company_with_reply, mock_email):
@@ -437,7 +443,7 @@ def test_do_ignore_and_archive_missing_company(daemon):
     daemon.company_repo.create_event.assert_not_called()
 
 
-def test_do_research_with_url(daemon, test_company, mock_spreadsheet):
+def test_do_research_with_url(daemon, test_company, mock_spreadsheet_upsert):
     """Test research using a company URL."""
     args = {"company_url": "https://example.com"}
 
@@ -456,10 +462,10 @@ def test_do_research_with_url(daemon, test_company, mock_spreadsheet):
     assert call_args[1] == {"model": daemon.ai_model}
 
     daemon.company_repo.create.assert_called_once_with(test_company)
-    mock_spreadsheet.assert_called_once_with(test_company.details, daemon.args)
+    mock_spreadsheet_upsert.assert_called_once_with(test_company.details, daemon.args)
 
 
-def test_do_research_with_url_and_name(daemon, test_company, mock_spreadsheet):
+def test_do_research_with_url_and_name(daemon, test_company, mock_spreadsheet_upsert):
     """Test research using both URL and company name."""
     args = {"company_url": "https://example.com", "company_name": "Test Corp"}
 
@@ -479,10 +485,10 @@ def test_do_research_with_url_and_name(daemon, test_company, mock_spreadsheet):
     assert call_args[1] == {"model": daemon.ai_model}
 
     daemon.company_repo.create.assert_called_once_with(test_company)
-    mock_spreadsheet.assert_called_once_with(test_company.details, daemon.args)
+    mock_spreadsheet_upsert.assert_called_once_with(test_company.details, daemon.args)
 
 
-def test_do_research_with_unknown_company_name(daemon, mock_spreadsheet):
+def test_do_research_with_unknown_company_name(daemon, mock_spreadsheet_upsert):
     """Test research when no company name is provided."""
     args = {"company_url": "https://example.com"}
     error = ValueError("Research failed")
@@ -504,7 +510,7 @@ def test_do_research_with_unknown_company_name(daemon, mock_spreadsheet):
     assert len(created_company.status.research_errors) == 1
     assert created_company.status.research_errors[0].step == "research_company"
     assert "Research failed" in created_company.status.research_errors[0].error
-    mock_spreadsheet.assert_called_once_with(created_company.details, daemon.args)
+    mock_spreadsheet_upsert.assert_called_once_with(created_company.details, daemon.args)
 
 
 def test_generate_company_id(daemon):
@@ -516,7 +522,7 @@ def test_generate_company_id(daemon):
 
 
 def test_do_research_with_normalized_name_duplicate(
-    daemon, test_company, mock_spreadsheet
+    daemon, test_company, mock_spreadsheet_upsert
 ):
     """Test research when we find a duplicate by normalized name."""
     args = {"company_name": "TEST CORP"}  # Different case but same normalized name
@@ -551,11 +557,11 @@ def test_do_research_with_normalized_name_duplicate(
     # Verify the name was updated to the new name or kept if the new one is empty
     assert existing_company.name == "TEST CORP"
 
-    mock_spreadsheet.assert_called_once_with(existing_company.details, daemon.args)
+    mock_spreadsheet_upsert.assert_called_once_with(existing_company.details, daemon.args)
 
 
 def test_do_research_error_with_normalized_name_duplicate(
-    daemon, test_company, mock_spreadsheet
+    daemon, test_company, mock_spreadsheet_upsert
 ):
     """Test research error handling when we find a duplicate by normalized name."""
     args = {"company_name": "TEST CORP"}
@@ -580,7 +586,7 @@ def test_do_research_error_with_normalized_name_duplicate(
 
     # Verify error was recorded in existing company
     assert "Research failed" in existing_company.status.research_errors[0].error
-    mock_spreadsheet.assert_called_once_with(existing_company.details, daemon.args)
+    mock_spreadsheet_upsert.assert_called_once_with(existing_company.details, daemon.args)
 
 
 def test_get_content_for_research_with_company(daemon, test_company_with_message):
@@ -712,84 +718,84 @@ def test_get_content_for_research_whitespace_handling(daemon):
 
 
 @freeze_time("2023-01-15")
-def test_do_import_companies_from_spreadsheet(daemon, mock_company_repo):
+def test_do_import_companies_from_spreadsheet(
+    daemon, mock_company_repo, mock_spreadsheet_client
+):
     """Test importing companies from spreadsheet."""
-    # Mock the MainTabCompaniesClient
-    with patch("research_daemon.MainTabCompaniesClient") as mock_client_class:
-        # Setup test data - create mock sheet rows
-        sheet_rows = [
-            CompaniesSheetRow(
-                name="Existing Company",
-                type="Tech",
-                valuation="1B",
-                funding_series="Series B",
-            ),
-            CompaniesSheetRow(
-                name="New Company", type="AI", valuation="500M", funding_series="Series A"
-            ),
-            CompaniesSheetRow(name="Error Company", type="Healthcare", valuation="100M"),
-        ]
-
-        # Setup mock client
-        mock_client = mock_client_class.return_value
-        mock_client.read_rows_from_google.return_value = sheet_rows
-
-        # Mock existing company in repo
-        existing_company = Company(
-            company_id="existingcompany",
+    mock_client = mock_spreadsheet_client.return_value
+    # Setup test data - create mock sheet rows
+    sheet_rows = [
+        CompaniesSheetRow(
             name="Existing Company",
-            details=CompaniesSheetRow(
-                type="Tech",
-                valuation="500M",  # Old value that should be updated
-                funding_series="Series B",
-                updated=date(2022, 12, 1),
-            ),
-            status=CompanyStatus(),
-        )
+            type="Tech",
+            valuation="1B",
+            funding_series="Series B",
+        ),
+        CompaniesSheetRow(
+            name="New Company", type="AI", valuation="500M", funding_series="Series A"
+        ),
+        CompaniesSheetRow(name="Error Company", type="Healthcare", valuation="100M"),
+    ]
 
-        # Configure repository mock - first company exists, second doesn't
-        def get_by_normalized_name_side_effect(name):
-            if "existing" in name.lower():
-                return existing_company
-            elif "error" in name.lower():
-                raise Exception("Test error")
-            return None
+    # Setup mock client
+    mock_client.read_rows_from_google.return_value = sheet_rows
 
-        mock_company_repo.get_by_normalized_name.side_effect = (
-            get_by_normalized_name_side_effect
-        )
+    # Mock existing company in repo
+    existing_company = Company(
+        company_id="existingcompany",
+        name="Existing Company",
+        details=CompaniesSheetRow(
+            type="Tech",
+            valuation="500M",  # Old value that should be updated
+            funding_series="Series B",
+            updated=date(2022, 12, 1),
+        ),
+        status=CompanyStatus(),
+    )
 
-        # Set daemon to running mode to prevent early termination
-        daemon.running = True
+    # Configure repository mock - first company exists, second doesn't
+    def get_by_normalized_name_side_effect(name):
+        if "existing" in name.lower():
+            return existing_company
+        elif "error" in name.lower():
+            raise Exception("Test error")
+        return None
 
-        # Run the import task
-        result = daemon.do_import_companies_from_spreadsheet({})
+    mock_company_repo.get_by_normalized_name.side_effect = (
+        get_by_normalized_name_side_effect
+    )
 
-        # Verify results
-        assert result["total_found"] == 3
-        assert result["processed"] == 3
-        assert result["created"] == 1
-        assert result["updated"] == 1
-        assert result["errors"] == 1
+    # Set daemon to running mode to prevent early termination
+    daemon.running = True
 
-        # Verify repository interactions
-        assert mock_company_repo.get_by_normalized_name.call_count == 3
-        assert mock_company_repo.update.call_count == 1
-        assert mock_company_repo.create.call_count == 1
+    # Run the import task
+    result = daemon.do_import_companies_from_spreadsheet({})
 
-        # Verify company update
-        update_call_args = mock_company_repo.update.call_args[0][0]
-        assert update_call_args.company_id == "existingcompany"
-        assert update_call_args.details.valuation == "1B"  # Should be updated value
-        assert update_call_args.details.updated == date(2023, 1, 15)
+    # Verify results
+    assert result["total_found"] == 3
+    assert result["processed"] == 3
+    assert result["created"] == 1
+    assert result["updated"] == 1
+    assert result["errors"] == 1
 
-        # Verify company creation
-        create_call_args = mock_company_repo.create.call_args[0][0]
-        assert create_call_args.company_id == "new-company"
-        assert create_call_args.name == "New Company"
-        assert create_call_args.details.type == "AI"
-        assert create_call_args.details.valuation == "500M"
-        assert create_call_args.details.updated == date(2023, 1, 15)
+    # Verify repository interactions
+    assert mock_company_repo.get_by_normalized_name.call_count == 3
+    assert mock_company_repo.update.call_count == 1
+    assert mock_company_repo.create.call_count == 1
 
-        # Verify notes contain import info
-        assert "Imported from spreadsheet on 2023-01-15" in create_call_args.details.notes
+    # Verify company update
+    update_call_args = mock_company_repo.update.call_args[0][0]
+    assert update_call_args.company_id == "existingcompany"
+    assert update_call_args.details.valuation == "1B"  # Should be updated value
+    assert update_call_args.details.updated == date(2023, 1, 15)
+
+    # Verify company creation
+    create_call_args = mock_company_repo.create.call_args[0][0]
+    assert create_call_args.company_id == "new-company"
+    assert create_call_args.name == "New Company"
+    assert create_call_args.details.type == "AI"
+    assert create_call_args.details.valuation == "500M"
+    assert create_call_args.details.updated == date(2023, 1, 15)
+
+    # Verify notes contain import info
+    assert "Imported from spreadsheet on 2023-01-15" in create_call_args.details.notes

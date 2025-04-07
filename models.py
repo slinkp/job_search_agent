@@ -956,6 +956,58 @@ def serialize_company(company: Company):
     return data
 
 
+def merge_company_data(
+    existing_company: Company, sheet_row: CompaniesSheetRow
+) -> Company:
+    """Merge data from a spreadsheet row into an existing company.
+
+    Rules for merging:
+    1. Spreadsheet values take precedence if non-empty
+    2. For date fields (except 'updated'), use the most recent date
+    3. For notes field, append spreadsheet info instead of replacing
+    4. Always update the 'updated' field to today
+
+    Args:
+        existing_company: The company from the database
+        sheet_row: The company data from the spreadsheet
+
+    Returns:
+        The updated company with merged data
+    """
+    company = existing_company
+
+    for field_name in sheet_row.model_fields.keys():
+        sheet_value = getattr(sheet_row, field_name)
+
+        if sheet_value in (None, "", []):
+            continue
+
+        # Special handling for date fields (except 'updated')
+        if isinstance(sheet_value, datetime.date) and field_name != "updated":
+            # For date fields, use most recent date
+            db_value = getattr(company.details, field_name)
+            if db_value and db_value > sheet_value:
+                continue  # Keep the DB value if more recent
+
+        # Special handling for notes field - append instead of replace
+        if field_name == "notes" and getattr(company.details, "notes"):
+            existing_notes = getattr(company.details, "notes")
+            if sheet_value and existing_notes:
+                # Combine notes with a separator
+                setattr(
+                    company.details, field_name, f"{existing_notes}\n---\n{sheet_value}"
+                )
+                continue
+
+        # For all other fields, spreadsheet value takes precedence
+        setattr(company.details, field_name, sheet_value)
+
+    # Always update the date to today
+    company.details.updated = datetime.date.today()
+
+    return company
+
+
 if __name__ == "__main__":
     import argparse
 

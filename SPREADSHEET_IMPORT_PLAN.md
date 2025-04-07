@@ -55,22 +55,22 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
   - [x] Test no-match cases
 
 ### 6. Implement Merge Logic for Company Data
-- [ ] Create a new `merge_company_data` function that:
-  - [ ] Takes a DB company and a spreadsheet company as input
-  - [ ] Iterates through all fields in `CompaniesSheetRow`
-  - [ ] For each field:
-    - [ ] Check if spreadsheet has non-empty value
-    - [ ] If so, use the spreadsheet value
-    - [ ] If not, preserve the database value
-  - [ ] Apply special handling for date fields (use most recent date)
-  - [ ] Apply special handling for notes (append rather than replace)
-  - [ ] Return the merged company object
-- [ ] Add tests for merging functionality with various scenarios:
-  - [ ] Test when spreadsheet data is more recent
-  - [ ] Test when DB data has fields not in spreadsheet
-  - [ ] Test when both have data in same fields
-  - [ ] Test special handling for notes field (should append)
-  - [ ] Test empty/null value handling
+- [x] Create a new `merge_company_data` function that:
+  - [x] Takes a DB company and a spreadsheet company as input
+  - [x] Iterates through all fields in `CompaniesSheetRow`
+  - [x] For each field:
+    - [x] Check if spreadsheet has non-empty value
+    - [x] If so, use the spreadsheet value
+    - [x] If not, preserve the database value
+  - [x] Apply special handling for date fields (use most recent date)
+  - [x] Apply special handling for notes (append rather than replace)
+  - [x] Return the merged company object
+- [x] Add tests for merging functionality with various scenarios:
+  - [x] Test when spreadsheet data is more recent
+  - [x] Test when DB data has fields not in spreadsheet
+  - [x] Test when both have data in same fields
+  - [x] Test special handling for notes field (should append)
+  - [x] Test empty/null value handling
 
 ### 7. Update Database Schema (if needed)
 - [ ] Check if database schema needs updates to track imported companies

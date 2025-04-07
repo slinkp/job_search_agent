@@ -9,8 +9,6 @@ import libjobsearch
 import models
 import spreadsheet_client
 from logsetup import setup_logging
-from models import normalize_company_name
-from spreadsheet_client import MainTabCompaniesClient
 from tasks import TaskManager, TaskStatus, TaskType, task_manager
 
 logger = logging.getLogger("research_daemon")
@@ -103,8 +101,7 @@ class ResearchDaemon:
 
     def _generate_company_id(self, name: str) -> str:
         """Generate a company ID from a name by normalizing it."""
-        # Use the normalize_company_name function from models.py
-        return normalize_company_name(name)
+        return models.normalize_company_name(name)
 
     def get_content_for_research(
         self,
@@ -437,7 +434,7 @@ class ResearchDaemon:
                 else spreadsheet_client.Config
             )
 
-            sheet_client = MainTabCompaniesClient(
+            sheet_client = spreadsheet_client.MainTabCompaniesClient(
                 doc_id=config.SHEET_DOC_ID,
                 sheet_id=config.TAB_1_GID,
                 range_name=config.TAB_1_RANGE,
@@ -469,7 +466,7 @@ class ResearchDaemon:
                         continue
 
                     # Normalized name for duplicate checking
-                    company_id = normalize_company_name(company_name)
+                    company_id = models.normalize_company_name(company_name)
 
                     # Check if company already exists in database
                     existing_company = self.company_repo.get_by_normalized_name(
@@ -479,31 +476,7 @@ class ResearchDaemon:
                     if existing_company:
                         # Company exists, merge data (spreadsheet data takes precedence)
                         logger.info(f"Updating existing company: {company_name}")
-
-                        # Prioritize spreadsheet values for all fields
-                        for field_name in sheet_row.model_fields.keys():
-                            sheet_value = getattr(sheet_row, field_name)
-                            # If the sheet value is not empty/None, use it
-                            if sheet_value not in (None, "", []):
-                                # Special handling for date fields
-                                if (
-                                    isinstance(sheet_value, datetime.date)
-                                    and field_name != "updated"
-                                ):
-                                    # For date fields except 'updated', use most recent date
-                                    db_value = getattr(
-                                        existing_company.details, field_name
-                                    )
-                                    if db_value and db_value > sheet_value:
-                                        continue  # Keep the DB value if more recent
-
-                                # Set the value from spreadsheet
-                                setattr(existing_company.details, field_name, sheet_value)
-
-                        # Always update the date to today
-                        existing_company.details.updated = datetime.date.today()
-
-                        # Update in database
+                        models.merge_company_data(existing_company, sheet_row)
                         self.company_repo.update(existing_company)
                         stats["updated"] += 1
                     else:
