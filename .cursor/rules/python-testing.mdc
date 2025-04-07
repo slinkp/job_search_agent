@@ -1,8 +1,6 @@
 ---
 description: Standards for writing Python tests using pytest, fixtures, and mocking
-globs: 
-  - tests/**/test_*.py
-  - tests/**/*_test.py
+globs: tests/**/test*.py
 alwaysApply: false
 ---
 # Python Testing Standards
