@@ -854,6 +854,41 @@ document.addEventListener("alpine:init", () => {
         // This is just a stub to fix the error
         console.log("Import companies stub called");
       },
+
+      async importCompaniesFromSpreadsheet() {
+        if (this.importingCompanies) {
+          return; // Already importing
+        }
+
+        this.importingCompanies = true;
+        this.importError = null;
+        this.importStatus = "pending";
+
+        try {
+          const response = await fetch("/api/import_companies", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || response.statusText);
+          }
+
+          const data = await response.json();
+          this.importTaskId = data.task_id;
+
+          // Start polling for task status
+          this.pollTaskStatus(null, "import_companies");
+        } catch (error) {
+          console.error("Error starting import:", error);
+          this.importingCompanies = false;
+          this.importError = error.message;
+          this.showError(`Failed to start import: ${error.message}`);
+        }
+      },
     };
   });
 });
