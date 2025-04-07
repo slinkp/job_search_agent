@@ -286,7 +286,7 @@ class BaseGoogleSheetClient:
         ).execute()
         logger.info(f"{len(rows)} rows appended.")
 
-    def read_rows_from_google(self) -> list[models.BaseSheetRow]:
+    def read_rows_from_google(self) -> list[models.CompaniesSheetRow]:
         values = self.service.spreadsheets().values()
         result = values.get(spreadsheetId=self.doc_id, range=self.range_name).execute()
         values = result.get("values", [])
