@@ -98,6 +98,15 @@ def test_research_error(mock_task_manager):
     assert response["error"] == "Task creation failed"
 
 
+def test_research_by_url_or_name_no_params():
+    """Test research with missing parameters."""
+    request = DummyRequest(json_body={})
+
+    response = server.app.research_by_url_or_name(request)
+
+    assert response["error"] == "Either company URL or name must be provided"
+
+
 def test_import_companies_from_spreadsheet(mock_task_manager):
     """Test importing companies from spreadsheet."""
     request = DummyRequest(json_body={})
