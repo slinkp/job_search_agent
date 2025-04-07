@@ -23,10 +23,24 @@ coverage report && coverage html
 npm test -- --run
 JS_EXIT=$?
 
+EXIT_CODE=0
+
+echo '=== Test summary ================================================'
+echo
+
 if [ $PYTHON_EXIT -ne 0 ]; then
-    exit $PYTHON_EXIT
-elif [ $JS_EXIT -ne 0 ]; then
-    exit $JS_EXIT
+    EXIT_CODE=$PYTHON_EXIT
+    echo ' !!! Python tests FAILED' >&2
+else
+    echo ' Python tests ok'
 fi
 
+if [ $JS_EXIT -ne 0 ]; then
+    EXIT_CODE=$JS_EXIT
+    echo ' !!! JS tests FAILED' >&2
+else
+    echo ' JS tests ok'
+fi
+echo
+exit $EXIT_CODE
 
