@@ -32,27 +32,27 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
 - [x] Add tests for spreadsheet reading if not already covered
 
 ### 4. Add the Task Handler Function in Research Daemon
-- [ ] Add a new method `do_import_companies_from_spreadsheet` in `ResearchDaemon` class:
-  - [ ] Connect to spreadsheet and fetch all company rows
-  - [ ] For each row, normalize company name for duplicate checking
-  - [ ] Check if company already exists in database
-  - [ ] Apply merge logic if duplicate exists
-  - [ ] Create new company if no duplicate exists
-  - [ ] Update task with progress information
-  - [ ] Generate summary statistics upon completion
-- [ ] Add handling of the new task type in `process_next_task`
-- [ ] Add tests for the new method using mock spreadsheet client
+- [x] Add a new method `do_import_companies_from_spreadsheet` in `ResearchDaemon` class:
+  - [x] Connect to spreadsheet and fetch all company rows
+  - [x] For each row, normalize company name for duplicate checking
+  - [x] Check if company already exists in database
+  - [x] Apply merge logic if duplicate exists
+  - [x] Create new company if no duplicate exists
+  - [x] Update task with progress information
+  - [x] Generate summary statistics upon completion
+- [x] Add handling of the new task type in `process_next_task`
+- [x] Add tests for the new method using mock spreadsheet client
 
 ### 5. Implement Name Normalization and Duplicate Detection Logic
-- [ ] Review existing `normalize_company_name` function in `models.py`
-- [ ] Implement function to check for duplicate companies between spreadsheet and database
-  - [ ] First check using exact normalized name match
+- [x] Review existing `normalize_company_name` function in `models.py`
+- [x] Implement function to check for duplicate companies between spreadsheet and database
+  - [x] First check using exact normalized name match
   - [ ] If no match, implement optional fuzzy matching with configurable threshold
-  - [ ] Return matched company or None
-- [ ] Add tests for duplicate detection logic:
-  - [ ] Test exact match cases
+  - [x] Return matched company or None
+- [x] Add tests for duplicate detection logic:
+  - [x] Test exact match cases
   - [ ] Test fuzzy match cases
-  - [ ] Test no-match cases
+  - [x] Test no-match cases
 
 ### 6. Implement Merge Logic for Company Data
 - [ ] Create a new `merge_company_data` function that:

@@ -2,6 +2,7 @@ from datetime import date
 from unittest.mock import Mock, patch
 
 import pytest
+from freezegun import freeze_time
 
 import libjobsearch
 import models
@@ -708,3 +709,87 @@ def test_get_content_for_research_whitespace_handling(daemon):
     assert "Company name: Test Corp" in result["content"]
     assert "Company URL: https://example.com" in result["content"]
     assert result["content"].endswith("This is content with whitespace")
+
+
+@freeze_time("2023-01-15")
+def test_do_import_companies_from_spreadsheet(daemon, mock_company_repo):
+    """Test importing companies from spreadsheet."""
+    # Mock the MainTabCompaniesClient
+    with patch("research_daemon.MainTabCompaniesClient") as mock_client_class:
+        # Setup test data - create mock sheet rows
+        sheet_rows = [
+            CompaniesSheetRow(
+                name="Existing Company",
+                type="Tech",
+                valuation="1B",
+                funding_series="Series B",
+            ),
+            CompaniesSheetRow(
+                name="New Company", type="AI", valuation="500M", funding_series="Series A"
+            ),
+            CompaniesSheetRow(name="Error Company", type="Healthcare", valuation="100M"),
+        ]
+
+        # Setup mock client
+        mock_client = mock_client_class.return_value
+        mock_client.read_rows_from_google.return_value = sheet_rows
+
+        # Mock existing company in repo
+        existing_company = Company(
+            company_id="existingcompany",
+            name="Existing Company",
+            details=CompaniesSheetRow(
+                type="Tech",
+                valuation="500M",  # Old value that should be updated
+                funding_series="Series B",
+                updated=date(2022, 12, 1),
+            ),
+            status=CompanyStatus(),
+        )
+
+        # Configure repository mock - first company exists, second doesn't
+        def get_by_normalized_name_side_effect(name):
+            if "existing" in name.lower():
+                return existing_company
+            elif "error" in name.lower():
+                raise Exception("Test error")
+            return None
+
+        mock_company_repo.get_by_normalized_name.side_effect = (
+            get_by_normalized_name_side_effect
+        )
+
+        # Set daemon to running mode to prevent early termination
+        daemon.running = True
+
+        # Run the import task
+        result = daemon.do_import_companies_from_spreadsheet({})
+
+        # Verify results
+        assert result["total_found"] == 3
+        assert result["processed"] == 3
+        assert result["created"] == 1
+        assert result["updated"] == 1
+        assert result["errors"] == 1
+
+        # Verify repository interactions
+        assert mock_company_repo.get_by_normalized_name.call_count == 3
+        assert mock_company_repo.update.call_count == 1
+        assert mock_company_repo.create.call_count == 1
+
+        # Verify company update
+        update_call_args = mock_company_repo.update.call_args[0][0]
+        assert update_call_args.company_id == "existingcompany"
+        assert update_call_args.details.valuation == "1B"  # Should be updated value
+        assert update_call_args.details.updated == date(2023, 1, 15)
+
+        # Verify company creation
+        create_call_args = mock_company_repo.create.call_args[0][0]
+        assert create_call_args.company_id == "new-company"
+        assert create_call_args.name == "New Company"
+        assert create_call_args.details.type == "AI"
+        assert create_call_args.details.valuation == "500M"
+        assert create_call_args.details.updated == date(2023, 1, 15)
+
+        # Verify notes contain import info
+        assert "Imported from spreadsheet on 2023-01-15" in create_call_args.details.notes

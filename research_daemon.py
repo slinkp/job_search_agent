@@ -7,8 +7,10 @@ from typing import Optional
 
 import libjobsearch
 import models
+import spreadsheet_client
 from logsetup import setup_logging
 from models import normalize_company_name
+from spreadsheet_client import MainTabCompaniesClient
 from tasks import TaskManager, TaskStatus, TaskType, task_manager
 
 logger = logging.getLogger("research_daemon")
@@ -93,6 +95,8 @@ class ResearchDaemon:
                     self.do_send_and_archive(task_args)
                 elif task_type == TaskType.IGNORE_AND_ARCHIVE:
                     self.do_ignore_and_archive(task_args)
+                elif task_type == TaskType.IMPORT_COMPANIES_FROM_SPREADSHEET:
+                    self.do_import_companies_from_spreadsheet(task_args)
                 else:
                     logger.error(f"Ignoring unsupported task type: {task_type}")
                 logger.info(f"Task {task_id} completed")
@@ -392,6 +396,175 @@ class ResearchDaemon:
         self.company_repo.update(company)
 
         return {"status": "success"}
+
+    def do_import_companies_from_spreadsheet(self, args: dict):
+        """Import companies from the spreadsheet into the database.
+
+        This will:
+        1. Fetch all company rows from the spreadsheet
+        2. For each company, check if it already exists in the DB by normalized name
+        3. If it exists, merge the spreadsheet data with the DB data (spreadsheet values take precedence)
+        4. If it doesn't exist, create a new company in the DB
+
+        Args:
+            args: Task arguments (not used for this task)
+
+        Returns:
+            Dict with statistics about the import process
+        """
+        logger.info("Starting import of companies from spreadsheet")
+
+        # Initialize statistics for tracking progress
+        stats = {
+            "total_found": 0,
+            "processed": 0,
+            "created": 0,
+            "updated": 0,
+            "errors": 0,
+            "skipped": 0,
+            "error_details": [],
+        }
+
+        # Get task_id from the TaskStatusContext if available
+        current_context = getattr(self, "_current_task_context", None)
+        task_id = getattr(current_context, "task_id", None) if current_context else None
+
+        try:
+            # Initialize spreadsheet client with the appropriate config
+            config = (
+                spreadsheet_client.TestConfig
+                if self.args.sheet == "test"
+                else spreadsheet_client.Config
+            )
+
+            sheet_client = MainTabCompaniesClient(
+                doc_id=config.SHEET_DOC_ID,
+                sheet_id=config.TAB_1_GID,
+                range_name=config.TAB_1_RANGE,
+            )
+
+            # Get all companies from spreadsheet
+            spreadsheet_rows = sheet_client.read_rows_from_google()
+            stats["total_found"] = len(spreadsheet_rows)
+
+            # Update task with initial stats if we have a task_id
+            if task_id:
+                self.task_mgr.update_task(task_id, TaskStatus.RUNNING, result=stats)
+
+            # Process each company from the spreadsheet
+            for i, sheet_row in enumerate(spreadsheet_rows):
+                stats["processed"] = i + 1
+
+                # Check if daemon is still running
+                if not self.running:
+                    logger.warning("Import interrupted - daemon shutting down")
+                    stats["skipped"] = stats["total_found"] - stats["processed"]
+                    break
+
+                try:
+                    company_name = sheet_row.name
+                    if not company_name:
+                        logger.warning(f"Skipping row {i+1} - no company name")
+                        stats["skipped"] += 1
+                        continue
+
+                    # Normalized name for duplicate checking
+                    company_id = normalize_company_name(company_name)
+
+                    # Check if company already exists in database
+                    existing_company = self.company_repo.get_by_normalized_name(
+                        company_name
+                    )
+
+                    if existing_company:
+                        # Company exists, merge data (spreadsheet data takes precedence)
+                        logger.info(f"Updating existing company: {company_name}")
+
+                        # Prioritize spreadsheet values for all fields
+                        for field_name in sheet_row.model_fields.keys():
+                            sheet_value = getattr(sheet_row, field_name)
+                            # If the sheet value is not empty/None, use it
+                            if sheet_value not in (None, "", []):
+                                # Special handling for date fields
+                                if (
+                                    isinstance(sheet_value, datetime.date)
+                                    and field_name != "updated"
+                                ):
+                                    # For date fields except 'updated', use most recent date
+                                    db_value = getattr(
+                                        existing_company.details, field_name
+                                    )
+                                    if db_value and db_value > sheet_value:
+                                        continue  # Keep the DB value if more recent
+
+                                # Set the value from spreadsheet
+                                setattr(existing_company.details, field_name, sheet_value)
+
+                        # Always update the date to today
+                        existing_company.details.updated = datetime.date.today()
+
+                        # Update in database
+                        self.company_repo.update(existing_company)
+                        stats["updated"] += 1
+                    else:
+                        # Create new company
+                        logger.info(f"Creating new company: {company_name}")
+
+                        # Always set the updated date to today
+                        sheet_row.updated = datetime.date.today()
+
+                        # Create company with just the basic fields - CompanyStatus doesn't have
+                        # imported_from_spreadsheet or imported_at fields
+                        new_company = models.Company(
+                            company_id=company_id,
+                            name=company_name,
+                            details=sheet_row,
+                            status=models.CompanyStatus(),
+                        )
+
+                        # Add import metadata to notes field instead
+                        import_note = f"Imported from spreadsheet on {datetime.date.today().isoformat()}"
+                        if new_company.details.notes:
+                            new_company.details.notes += f"\n{import_note}"
+                        else:
+                            new_company.details.notes = import_note
+
+                        self.company_repo.create(new_company)
+                        stats["created"] += 1
+
+                    # Update task progress every few companies or at the end
+                    if task_id and (i % 5 == 0 or i == len(spreadsheet_rows) - 1):
+                        self.task_mgr.update_task(
+                            task_id, TaskStatus.RUNNING, result=stats
+                        )
+
+                except Exception as e:
+                    logger.exception(
+                        f"Error processing company {getattr(sheet_row, 'name', 'unknown')}"
+                    )
+                    stats["errors"] += 1
+                    stats["error_details"].append(
+                        {
+                            "company": getattr(sheet_row, "name", "unknown"),
+                            "error": str(e),
+                        }
+                    )
+
+            # Final log of results
+            logger.info(
+                f"Import completed. Created: {stats['created']}, "
+                f"Updated: {stats['updated']}, Errors: {stats['errors']}"
+            )
+
+        except Exception as e:
+            logger.exception("Error during spreadsheet import")
+            stats["errors"] += 1
+            stats["error_details"].append(
+                {"company": "N/A", "error": f"Global import error: {str(e)}"}
+            )
+
+        # Return final stats
+        return stats
 
 
 if __name__ == "__main__":
