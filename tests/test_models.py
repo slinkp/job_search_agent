@@ -780,3 +780,22 @@ def test_merge_company_data_empty_notes():
 
     merged_company = merge_company_data(existing_company, sheet_row)
     assert merged_company.details.notes == "New notes"
+
+
+def test_company_status_import_tracking():
+    """Test that the CompanyStatus class properly tracks import information."""
+    # Create a new CompanyStatus with default values
+    status = CompanyStatus()
+    assert status.imported_from_spreadsheet is False
+    assert status.imported_at is None
+
+    # Create a CompanyStatus with import information
+    import_time = datetime.datetime.now(datetime.timezone.utc)
+    status = CompanyStatus(imported_from_spreadsheet=True, imported_at=import_time)
+
+    # Test serialization includes the new fields
+    status_dict = status.model_dump()
+    assert "imported_from_spreadsheet" in status_dict
+    assert status_dict["imported_from_spreadsheet"] is True
+    assert "imported_at" in status_dict
+    assert status_dict["imported_at"] == import_time

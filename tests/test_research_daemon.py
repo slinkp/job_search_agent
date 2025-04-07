@@ -788,6 +788,8 @@ def test_do_import_companies_from_spreadsheet(
     assert update_call_args.company_id == "existingcompany"
     assert update_call_args.details.valuation == "1B"  # Should be updated value
     assert update_call_args.details.updated == date(2023, 1, 15)
+    assert update_call_args.status.imported_from_spreadsheet is True
+    assert update_call_args.status.imported_at is not None
 
     # Verify company creation
     create_call_args = mock_company_repo.create.call_args[0][0]
@@ -796,6 +798,5 @@ def test_do_import_companies_from_spreadsheet(
     assert create_call_args.details.type == "AI"
     assert create_call_args.details.valuation == "500M"
     assert create_call_args.details.updated == date(2023, 1, 15)
-
-    # Verify notes contain import info
-    assert "Imported from spreadsheet on 2023-01-15" in create_call_args.details.notes
+    assert create_call_args.status.imported_from_spreadsheet is True
+    assert create_call_args.status.imported_at is not None

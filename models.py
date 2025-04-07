@@ -342,6 +342,12 @@ class CompanyStatus(BaseModel):
     research_completed_at: Optional[datetime.datetime] = None
     archived_at: Optional[datetime.datetime] = None
     reply_sent_at: Optional[datetime.datetime] = None  # When we sent a reply
+    imported_from_spreadsheet: bool = (
+        False  # Whether this company was imported from spreadsheet
+    )
+    imported_at: Optional[datetime.datetime] = (
+        None  # When the company was imported from spreadsheet
+    )
     updated_at: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
     )

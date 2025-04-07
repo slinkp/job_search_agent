@@ -477,6 +477,13 @@ class ResearchDaemon:
                         # Company exists, merge data (spreadsheet data takes precedence)
                         logger.info(f"Updating existing company: {company_name}")
                         models.merge_company_data(existing_company, sheet_row)
+
+                        # Mark as imported and set timestamp
+                        existing_company.status.imported_from_spreadsheet = True
+                        existing_company.status.imported_at = datetime.datetime.now(
+                            datetime.timezone.utc
+                        )
+
                         self.company_repo.update(existing_company)
                         stats["updated"] += 1
                     else:
@@ -486,21 +493,16 @@ class ResearchDaemon:
                         # Always set the updated date to today
                         sheet_row.updated = datetime.date.today()
 
-                        # Create company with just the basic fields - CompanyStatus doesn't have
-                        # imported_from_spreadsheet or imported_at fields
+                        # Create company with import tracking fields
                         new_company = models.Company(
                             company_id=company_id,
                             name=company_name,
                             details=sheet_row,
-                            status=models.CompanyStatus(),
+                            status=models.CompanyStatus(
+                                imported_from_spreadsheet=True,
+                                imported_at=datetime.datetime.now(datetime.timezone.utc),
+                            ),
                         )
-
-                        # Add import metadata to notes field instead
-                        import_note = f"Imported from spreadsheet on {datetime.date.today().isoformat()}"
-                        if new_company.details.notes:
-                            new_company.details.notes += f"\n{import_note}"
-                        else:
-                            new_company.details.notes = import_note
 
                         self.company_repo.create(new_company)
                         stats["created"] += 1

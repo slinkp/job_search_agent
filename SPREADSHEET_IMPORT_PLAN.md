@@ -73,9 +73,9 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
   - [x] Test empty/null value handling
 
 ### 7. Update Database Schema (if needed)
-- [ ] Check if database schema needs updates to track imported companies
-- [ ] Create migration if necessary
-- [ ] Add a new field to `CompanyStatus` to track import source and timestamp
+- [x] Check if database schema needs updates to track imported companies
+- [x] Create migration if necessary - no it wasn't
+- [x] Add a new field to `CompanyStatus` to track import source and timestamp
 
 ### 8. Add API Endpoint for Initiating Import
 - [ ] Add a new route in `server/app.py`:
