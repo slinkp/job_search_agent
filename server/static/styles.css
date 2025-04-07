@@ -371,24 +371,19 @@ button.secondary:focus {
   top: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.7) !important;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.modal .dialog-content {
-  background-color: white;
+.modal-content {
+  background-color: var(--background-color);
   padding: 20px;
   border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.modal-actions {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
 }
 
 .form-group {
@@ -418,7 +413,31 @@ button.secondary:focus {
   margin-bottom: 15px;
 }
 
-/* Import modal specific styles */
-#import-companies-modal .dialog-content {
-  min-width: 500px;
+/* Import progress indicator */
+.import-progress {
+  margin-top: 8px;
+  font-size: 0.85em;
+  width: 100%;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--primary);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted-color);
+  font-size: 0.8em;
 } 

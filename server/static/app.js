@@ -360,6 +360,20 @@ document.addEventListener("alpine:init", () => {
           taskId,
         });
 
+        // Initialize importStatus if needed before polling starts
+        if (
+          isImportingCompanies &&
+          (!this.importStatus || typeof this.importStatus !== "object")
+        ) {
+          this.importStatus = {
+            percent_complete: 0,
+            current_company: "",
+            processed: 0,
+            total_found: 0,
+            status: "pending",
+          };
+        }
+
         while (trackingSet.has(trackingKey)) {
           try {
             const response = await fetch(`/api/tasks/${taskId}`);
@@ -373,7 +387,31 @@ document.addEventListener("alpine:init", () => {
             } else if (isScanningEmails) {
               this.emailScanStatus = task.status;
             } else if (isImportingCompanies) {
-              this.importStatus = task.status;
+              // Ensure importStatus is always an object with default values to prevent null references
+              if (!this.importStatus || typeof this.importStatus !== "object") {
+                this.importStatus = {
+                  percent_complete: 0,
+                  current_company: "",
+                  processed: 0,
+                  total_found: 0,
+                  status: task.status || "pending",
+                };
+              } else {
+                // Just update the status field
+                this.importStatus.status = task.status;
+              }
+
+              // Update the progress information if available in the task result
+              if (task.result) {
+                const total = task.result.total_found || 0;
+                const processed = task.result.processed || 0;
+
+                this.importStatus = {
+                  ...this.importStatus,
+                  ...task.result,
+                  percent_complete: total > 0 ? (processed / total) * 100 : 0,
+                };
+              }
             }
 
             if (task.status === "completed" || task.status === "failed") {
@@ -772,6 +810,22 @@ document.addEventListener("alpine:init", () => {
         document.getElementById("research-company-modal").close();
       },
 
+      showImportCompaniesModal() {
+        // Show the import companies modal dialog
+        document.getElementById("import-companies-modal").showModal();
+      },
+
+      closeImportCompaniesModal() {
+        // Close the import companies modal dialog
+        document.getElementById("import-companies-modal").close();
+      },
+
+      confirmImportCompanies() {
+        // Close the modal and start the import
+        this.closeImportCompaniesModal();
+        this.importCompaniesFromSpreadsheet();
+      },
+
       async submitResearchCompany() {
         try {
           console.log(
@@ -860,16 +914,20 @@ document.addEventListener("alpine:init", () => {
           return; // Already importing
         }
 
+        this.closeImportCompaniesModal();
         this.importingCompanies = true;
         this.importError = null;
-        this.importStatus = "pending";
+        this.importStatus = {
+          percent_complete: 0,
+          current_company: "",
+          processed: 0,
+          total_found: 0,
+          status: "pending",
+        };
 
         try {
           const response = await fetch("/api/import_companies", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
           });
 
           if (!response.ok) {
@@ -888,19 +946,6 @@ document.addEventListener("alpine:init", () => {
           this.importError = error.message;
           this.showError(`Failed to start import: ${error.message}`);
         }
-      },
-
-      showImportCompaniesModal() {
-        document.getElementById("import-companies-modal").showModal();
-      },
-
-      closeImportCompaniesModal() {
-        document.getElementById("import-companies-modal").close();
-      },
-
-      confirmImportCompanies() {
-        this.closeImportCompaniesModal();
-        this.importCompaniesFromSpreadsheet();
       },
     };
   });

@@ -110,7 +110,7 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
 - [x] Add a function to handle the button click
 - [x] Update task polling to handle import task status and results
 - [x] Add a modal dialog to confirm the import action with options
-- [ ] Add progress indicator for ongoing import
+- [x] Add progress indicator for ongoing import
 - [ ] Add results display for completed import
 - [ ] Add tests for new UI components
 

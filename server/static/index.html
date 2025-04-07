@@ -47,6 +47,15 @@
           <button @click="showImportCompaniesModal()" class="outline">
             Import Companies
           </button>
+          <div class="import-progress" x-show="importingCompanies">
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: importStatus && importStatus.percent_complete ? `${importStatus.percent_complete}%` : '0%' }"></div>
+            </div>
+            <div class="progress-text">
+              <span x-text="importStatus && importStatus.current_company ? `Processing: ${importStatus.current_company}` : 'Starting import...'"></span>
+              <span x-show="importStatus && typeof importStatus.percent_complete !== 'undefined'" x-text="importStatus && typeof importStatus.percent_complete !== 'undefined' && !isNaN(importStatus.percent_complete) ? `${Math.round(Number(importStatus.percent_complete))}%` : '0%'"></span>
+            </div>
+          </div>
         </div>
 
         <div class="list-controls">
@@ -351,20 +360,22 @@
         </article>
       </dialog>
 
-      <!-- Add this dialog for confirming import -->
-      <dialog id="import-companies-modal" class="modal">
-        <div class="dialog-content">
+      <!-- Import Companies Modal -->
+      <dialog id="import-companies-modal">
+        <article>
           <h2>Import Companies from Spreadsheet</h2>
-          <p>This will import all companies from the configured Google Spreadsheet into the database.</p>
-          <p>Existing companies will be updated with spreadsheet data where available.</p>
-          
-          <div class="modal-actions">
-            <button @click="closeImportCompaniesModal()" class="secondary">Cancel</button>
-            <button @click="confirmImportCompanies()" class="primary" :disabled="importingCompanies">
-              <span x-text="importingCompanies ? 'Importing...' : 'Start Import'"></span>
+          <p>
+            This will import all companies from the configured spreadsheet into the database.
+            Existing companies will be updated with data from the spreadsheet if they match by name.
+          </p>
+          <div class="form-actions">
+            <button type="button" @click="closeImportCompaniesModal()" class="outline">Cancel</button>
+            <button type="button" @click="confirmImportCompanies()" :disabled="importingCompanies">
+              <span class="loading-spinner" x-show="importingCompanies"></span>
+              Start Import
             </button>
           </div>
-        </div>
+        </article>
       </dialog>
     </main>
   </body>
