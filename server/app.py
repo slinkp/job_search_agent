@@ -345,6 +345,31 @@ def research_by_url_or_name(request):
         return {"error": str(e)}
 
 
+@view_config(route_name="import_companies", renderer="json", request_method="POST")
+def import_companies_from_spreadsheet(request):
+    """Start a task to import companies from the spreadsheet."""
+    try:
+        # No special arguments needed for this task
+        task_args = {}
+
+        # Optional parameters could be added here in the future
+
+        task_id = tasks.task_manager().create_task(
+            tasks.TaskType.IMPORT_COMPANIES_FROM_SPREADSHEET,
+            task_args,
+        )
+        logger.info(f"Spreadsheet import requested, task_id: {task_id}")
+
+        return {
+            "task_id": task_id,
+            "status": tasks.TaskStatus.PENDING.value,
+        }
+    except Exception as e:
+        logger.exception("Error creating spreadsheet import task")
+        request.response.status = 500
+        return {"error": str(e)}
+
+
 def main(global_config, **settings):
     with Configurator(settings=settings) as config:
         # Enable debugtoolbar for development
@@ -373,6 +398,7 @@ def main(global_config, **settings):
         )
         config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_route("company_details", "/api/companies/{company_id}/details")
+        config.add_route("import_companies", "/api/import_companies")
         config.add_static_view(name='static', path='static')
         config.scan()
 

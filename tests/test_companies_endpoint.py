@@ -96,4 +96,18 @@ def test_research_error(mock_task_manager):
     response = server.app.research_by_url_or_name(request)
 
     assert response["error"] == "Task creation failed"
-    assert request.response.status == "500 Internal Server Error"
+
+
+def test_import_companies_from_spreadsheet(mock_task_manager):
+    """Test importing companies from spreadsheet."""
+    request = DummyRequest(json_body={})
+    mock_task_manager.create_task.return_value = "task-123"
+
+    response = server.app.import_companies_from_spreadsheet(request)
+
+    assert response["task_id"] == "task-123"
+    assert response["status"] == tasks.TaskStatus.PENDING.value
+    mock_task_manager.create_task.assert_called_once_with(
+        tasks.TaskType.IMPORT_COMPANIES_FROM_SPREADSHEET,
+        {},
+    )

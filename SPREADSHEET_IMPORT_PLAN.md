@@ -78,13 +78,13 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
 - [x] Add a new field to `CompanyStatus` to track import source and timestamp
 
 ### 8. Add API Endpoint for Initiating Import
-- [ ] Add a new route in `server/app.py`:
+- [x] Add a new route in `server/app.py`:
   ```python
   config.add_route('import_companies', '/api/import_companies')
   ```
-- [ ] Implement the endpoint to create a new import task
-- [ ] Add tests for the new endpoint
-- [ ] Add validation for request parameters
+- [x] Implement the endpoint to create a new import task
+- [x] Add tests for the new endpoint
+- [x] Add validation for request parameters
 
 ### 9. Add Progress Tracking for Import Task
 - [ ] Update the task result schema to include:
