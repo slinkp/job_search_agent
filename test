@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# TODO - fix why these are needed at import time?
+# it messes up tests run by the cursor agent which
+# doesn't load my direnv settings.
+# Putting these here as a temporary hack.
+export SHEET_DOC_ID="sheet_xyz"
+export TAB_1_GID='0'  # Main tab for companies
+export TAB_1_RANGE='Active!A3:AE'  # Remember ranges are half-open
+
+export TEST_SHEET_DOC_ID='sheet_test_xyz'
+export TEST_TAB_1_GID='xyz'
+export TEST_TAB_1_RANGE="$TAB_1_RANGE"
+
 # Run Python tests with coverage
 coverage run -m pytest $* 
 PYTHON_EXIT=$?
@@ -13,3 +25,5 @@ JS_EXIT=$?
 
 # Exit with failure if either test suite failed
 [ $PYTHON_EXIT -ne 0 ] || [ $JS_EXIT -ne 0 ] && exit 1
+
+
