@@ -431,6 +431,8 @@ class CustomJSONEncoder(json.JSONEncoder):
                 "error": obj.error,
                 "timestamp": obj.timestamp.isoformat() if obj.timestamp else None,
             }
+        if isinstance(obj, Company):
+            return serialize_company(obj)
         return super().default(obj)
 
 

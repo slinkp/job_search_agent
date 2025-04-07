@@ -230,7 +230,7 @@ def test_do_research_existing_company(daemon, test_company, mock_spreadsheet_ups
     mock_spreadsheet_upsert.assert_called_once_with(existing_company.details, daemon.args)
 
 
-def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet_upsert):
+def test_do_research_error_new_company(mock_spreadsheet_upsert, daemon, test_company):
     """Test research error handling for a new company."""
     args = {"company_id": "test-corp", "company_name": "Test Corp"}
 
@@ -240,18 +240,20 @@ def test_do_research_error_new_company(daemon, test_company, mock_spreadsheet_up
     daemon.company_repo.get_by_normalized_name.return_value = None
     daemon.jobsearch.research_company.side_effect = ValueError("Research failed")
 
-    with pytest.raises(ValueError):
-        daemon.do_research(args)
+    # Call the function - it should handle the error internally
+    result = daemon.do_research(args)
 
     # Verify minimal company was created with error
     assert daemon.company_repo.create.call_count == 1
-    created_company = daemon.company_repo.create.call_args[0][0]
-    assert created_company.name == test_company.name
-    assert "Research failed" in created_company.details.notes
-    assert len(created_company.status.research_errors) == 1
-    assert created_company.status.research_errors[0].step == "research_company"
-    assert "Research failed" in created_company.status.research_errors[0].error
-    mock_spreadsheet_upsert.assert_called_once_with(created_company.details, daemon.args)
+    error_company = daemon.company_repo.create.call_args[0][0]
+    assert error_company.name == test_company.name
+    assert "Research failed" in error_company.details.notes
+    assert len(error_company.status.research_errors) == 1
+    assert error_company.status.research_errors[0].step == "research_company"
+    assert "Research failed" in error_company.status.research_errors[0].error
+
+    # Check the spreadsheet update was attempted
+    mock_spreadsheet_upsert.assert_called_once_with(error_company.details, daemon.args)
 
 
 def test_do_send_and_archive(daemon, test_company_with_reply, mock_email):
@@ -488,7 +490,7 @@ def test_do_research_with_url_and_name(daemon, test_company, mock_spreadsheet_up
     mock_spreadsheet_upsert.assert_called_once_with(test_company.details, daemon.args)
 
 
-def test_do_research_with_unknown_company_name(daemon, mock_spreadsheet_upsert):
+def test_do_research_with_unknown_company_name(mock_spreadsheet_upsert, daemon):
     """Test research when no company name is provided."""
     args = {"company_url": "https://example.com"}
     error = ValueError("Research failed")
@@ -499,18 +501,20 @@ def test_do_research_with_unknown_company_name(daemon, mock_spreadsheet_upsert):
     daemon.company_repo.get_by_normalized_name.return_value = None
     daemon.jobsearch.research_company.side_effect = error
 
-    with pytest.raises(ValueError):
-        daemon.do_research(args)
+    # Call the function - it should handle the error internally
+    result = daemon.do_research(args)
 
     # Verify minimal company was created with error
     assert daemon.company_repo.create.call_count == 1
-    created_company = daemon.company_repo.create.call_args[0][0]
-    assert created_company.name.startswith("<UNKNOWN")
-    assert "Research failed" in created_company.details.notes
-    assert len(created_company.status.research_errors) == 1
-    assert created_company.status.research_errors[0].step == "research_company"
-    assert "Research failed" in created_company.status.research_errors[0].error
-    mock_spreadsheet_upsert.assert_called_once_with(created_company.details, daemon.args)
+    error_company = daemon.company_repo.create.call_args[0][0]
+    assert error_company.name.startswith("<UNKNOWN")
+    assert "Research failed" in error_company.details.notes
+    assert len(error_company.status.research_errors) == 1
+    assert error_company.status.research_errors[0].step == "research_company"
+    assert "Research failed" in error_company.status.research_errors[0].error
+
+    # Check the spreadsheet update was attempted
+    mock_spreadsheet_upsert.assert_called_once_with(error_company.details, daemon.args)
 
 
 def test_generate_company_id(daemon):
@@ -560,8 +564,9 @@ def test_do_research_with_normalized_name_duplicate(
     mock_spreadsheet_upsert.assert_called_once_with(existing_company.details, daemon.args)
 
 
+@patch("libjobsearch.upsert_company_in_spreadsheet")
 def test_do_research_error_with_normalized_name_duplicate(
-    daemon, test_company, mock_spreadsheet_upsert
+    mock_spreadsheet_upsert, daemon, test_company
 ):
     """Test research error handling when we find a duplicate by normalized name."""
     args = {"company_name": "TEST CORP"}
@@ -576,17 +581,24 @@ def test_do_research_error_with_normalized_name_duplicate(
     # Research fails
     daemon.jobsearch.research_company.side_effect = ValueError("Research failed")
 
-    with pytest.raises(ValueError):
-        daemon.do_research(args)
+    # Call the function - it should handle the error internally
+    result = daemon.do_research(args)
 
     # Verify existing company was updated with error details but no new company was created
     daemon.company_repo.create.assert_not_called()
-    # Verify the existing company was updated at least once.
-    assert daemon.company_repo.update.call_count >= 1
+    daemon.company_repo.update.assert_called_once_with(existing_company)
 
     # Verify error was recorded in existing company
+    assert len(existing_company.status.research_errors) == 1
+    assert existing_company.status.research_errors[0].step == "research_company"
     assert "Research failed" in existing_company.status.research_errors[0].error
+    assert "Research failed" in existing_company.details.notes
+
+    # Verify the spreadsheet update was attempted
     mock_spreadsheet_upsert.assert_called_once_with(existing_company.details, daemon.args)
+
+    # Verify the function returned the existing company
+    assert result is existing_company
 
 
 def test_get_content_for_research_with_company(daemon, test_company_with_message):

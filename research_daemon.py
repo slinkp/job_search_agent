@@ -31,11 +31,15 @@ class TaskStatusContext:
         if exc_type is None:
             # Only include result if it's not None
             if self.result is not None:
-                logger.info(
-                    f"Setting task {self.task_id} to COMPLETED with result: {self.result}"
-                )
+                # When result is a Company object, only store its company_id to avoid serialization issues
+                if isinstance(self.result, models.Company):
+                    result = {"company_id": self.result.company_id}
+                else:
+                    result = self.result
                 self.task_mgr.update_task(
-                    self.task_id, TaskStatus.COMPLETED, result=self.result
+                    self.task_id,
+                    TaskStatus.COMPLETED,
+                    result=result,
                 )
             else:
                 logger.info(f"Setting task {self.task_id} to COMPLETED with no result")
@@ -192,7 +196,7 @@ class ResearchDaemon:
 
         company_name = content_for_research["company_name"]
         company_url = content_for_research["company_url"]
-
+        result_company = None
         company = None
         try:
             # TODO: Pass more context from email, etc.
@@ -205,9 +209,6 @@ class ResearchDaemon:
                 logger.warning(f"Research completed with {len(research_errors)} errors:")
                 for err in research_errors:
                     logger.warning(f"  - {err.step}: {err.error}")
-
-            # Set up result_company (will be either existing or new)
-            result_company = None
 
             if existing:
                 # Update existing company with new research results
@@ -236,9 +237,6 @@ class ResearchDaemon:
                     self.company_repo.create(company)
                     result_company = company
 
-            # Update the spreadsheet with the researched company data - moved to end of try block
-            libjobsearch.upsert_company_in_spreadsheet(result_company.details, self.args)
-
         except Exception as e:
             logger.exception(f"Error researching company {company_name or 'unknown'}")
 
@@ -256,55 +254,47 @@ class ResearchDaemon:
                     existing.details.notes or ""
                 ) + f"\nResearch failed: {str(e)}"
                 self.company_repo.update(existing)
-
-            # Create a minimal company record if no existing company was found
-            # Use the same unknown company name logic as in libjobsearch.py
-            # TODO: put this in a function and use both places.
-            if not company_name:
-                company_name = f"<UNKNOWN {int(time.time() * 1000 * 1000)}>"
-                logger.warning(f"Company name not found, using {company_name}")
-
-            minimal_row = models.CompaniesSheetRow(
-                name=company_name,
-                url=company_url or "",
-                notes=f"Research failed: {str(e)}",
-            )
-            company_status = models.CompanyStatus(
-                research_errors=[
-                    models.ResearchStepError(
-                        step="research_company",
-                        error=f"Complete research failure: {str(e)}",
-                    )
-                ],
-            )
-            company = models.Company(
-                company_id=company_id or self._generate_company_id(company_name),
-                name=company_name,
-                details=minimal_row,
-                status=company_status,
-            )
-
-            # Check for duplicates by normalized name
-            normalized_company = self.company_repo.get_by_normalized_name(company.name)
-            if normalized_company:
-                logger.info(
-                    f"Found existing company with normalized name match: {normalized_company.name}"
-                )
-                normalized_company.details = company.details
-                normalized_company.status = company.status
-                self.company_repo.update(normalized_company)
-                company = normalized_company
+                result_company = existing
             else:
-                self.company_repo.create(company)
+                # Create a minimal company record if no existing company was found
+                # Use the same unknown company name logic as in libjobsearch.py
+                # TODO: put this in a function and use both places.
+                if not company_name:
+                    company_name = f"<UNKNOWN {int(time.time() * 1000 * 1000)}>"
+                    logger.warning(f"Company name not found, using {company_name}")
 
-            # Try to update the spreadsheet with minimal info
+                minimal_row = models.CompaniesSheetRow(
+                    name=company_name,
+                    url=company_url or "",
+                    notes=f"Research failed: {str(e)}",
+                )
+                company_status = models.CompanyStatus(
+                    research_errors=[
+                        models.ResearchStepError(
+                            step="research_company",
+                            error=f"Complete research failure: {str(e)}",
+                        )
+                    ],
+                )
+                company = models.Company(
+                    company_id=self._generate_company_id(company_name),
+                    name=company_name,
+                    details=minimal_row,
+                    status=company_status,
+                )
+
+                self.company_repo.create(company)
+                result_company = company
+
+        if result_company is not None:
             try:
-                libjobsearch.upsert_company_in_spreadsheet(company.details, self.args)
+                libjobsearch.upsert_company_in_spreadsheet(
+                    result_company.details, self.args
+                )
             except Exception as spreadsheet_error:
                 logger.exception(f"Failed to update spreadsheet: {spreadsheet_error}")
-
-            raise
-        return existing or company
+                raise
+        return result_company
 
     def do_generate_reply(self, args: dict):
         # TODO: Use LLM to generate reply
@@ -333,13 +323,14 @@ class ResearchDaemon:
             )
             try:
                 company = self.do_research({"content": message.message or ""})
+                if company is None:
+                    logger.warning(f"No company extracted from message {i + 1}, skipping")
+                    continue
             except Exception:
-                logger.exception("Unexpected error processing recruiter message {i + 1}")
+                logger.exception(f"Unexpected error processing recruiter message {i + 1}")
                 continue
-            if company is None:
-                logger.warning("No company extracted from message {i + 1}, skipping")
-                continue
-            logger.info("Finished processing recruiter messages")
+
+        logger.info("Finished processing recruiter messages")
 
     def do_send_and_archive(self, args: dict):
         """Handle sending a reply and archiving the message."""
