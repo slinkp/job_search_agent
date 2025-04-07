@@ -27,9 +27,9 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
 - [x] Write tests to ensure the new task type is recognized by the system
 
 ### 3. Use Existing Spreadsheet Client for Data Retrieval
-- [ ] Review the existing `MainTabCompaniesClient` class in `spreadsheet_client.py`
-- [ ] Verify that `read_rows_from_google()` method returns data in the expected format
-- [ ] Add tests for spreadsheet reading if not already covered
+- [x] Review the existing `MainTabCompaniesClient` class in `spreadsheet_client.py`
+- [x] Verify that `read_rows_from_google()` method returns data in the expected format
+- [x] Add tests for spreadsheet reading if not already covered
 
 ### 4. Add the Task Handler Function in Research Daemon
 - [ ] Add a new method `do_import_companies_from_spreadsheet` in `ResearchDaemon` class:
