@@ -112,7 +112,7 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
 - [x] Add a modal dialog to confirm the import action with options
 - [x] Add progress indicator for ongoing import
 - [x] Add results display for completed import
-- [ ] Add tests for new UI components
+- [x] Add tests for new UI components
 
 ### 12. End-to-End Testing
 - [ ] Create comprehensive integration tests for the entire import flow

@@ -370,6 +370,10 @@ document.addEventListener("alpine:init", () => {
             current_company: "",
             processed: 0,
             total_found: 0,
+            created: 0,
+            updated: 0,
+            skipped: 0,
+            errors: 0,
             status: "pending",
           };
         }
@@ -387,30 +391,84 @@ document.addEventListener("alpine:init", () => {
             } else if (isScanningEmails) {
               this.emailScanStatus = task.status;
             } else if (isImportingCompanies) {
-              // Ensure importStatus is always an object with default values to prevent null references
-              if (!this.importStatus || typeof this.importStatus !== "object") {
-                this.importStatus = {
-                  percent_complete: 0,
-                  current_company: "",
-                  processed: 0,
-                  total_found: 0,
-                  status: task.status || "pending",
-                };
-              } else {
-                // Just update the status field
-                this.importStatus.status = task.status;
-              }
+              console.log("Poll response for import task:", task);
+              console.log(
+                "Current importStatus before update:",
+                JSON.stringify(this.importStatus)
+              );
+
+              this.importStatus = task.status;
 
               // Update the progress information if available in the task result
               if (task.result) {
-                const total = task.result.total_found || 0;
-                const processed = task.result.processed || 0;
+                console.log(
+                  "Raw task result received:",
+                  JSON.stringify(task.result)
+                );
+
+                // Save current values to preserve them if they're not in the new result
+                const currentCreated =
+                  this.importStatus && this.importStatus.created
+                    ? this.importStatus.created
+                    : 0;
+                const currentUpdated =
+                  this.importStatus && this.importStatus.updated
+                    ? this.importStatus.updated
+                    : 0;
+                const currentSkipped =
+                  this.importStatus && this.importStatus.skipped
+                    ? this.importStatus.skipped
+                    : 0;
+                const currentErrors =
+                  this.importStatus && this.importStatus.errors
+                    ? this.importStatus.errors
+                    : 0;
 
                 this.importStatus = {
                   ...this.importStatus,
                   ...task.result,
-                  percent_complete: total > 0 ? (processed / total) * 100 : 0,
+                  current_company:
+                    task.result.current_company ||
+                    (this.importStatus && this.importStatus.current_company
+                      ? this.importStatus.current_company
+                      : ""),
+                  percent_complete:
+                    task.result.total_found > 0
+                      ? (task.result.processed / task.result.total_found) * 100
+                      : 0,
+                  // Use task.result values if present, otherwise keep current values
+                  created:
+                    task.result.created !== undefined
+                      ? task.result.created
+                      : currentCreated,
+                  updated:
+                    task.result.updated !== undefined
+                      ? task.result.updated
+                      : currentUpdated,
+                  skipped:
+                    task.result.skipped !== undefined
+                      ? task.result.skipped
+                      : currentSkipped,
+                  errors:
+                    task.result.errors !== undefined
+                      ? task.result.errors
+                      : currentErrors,
                 };
+
+                console.log(
+                  "Updated importStatus after merge:",
+                  JSON.stringify(this.importStatus)
+                );
+
+                // Log completed import results for debugging
+                if (task.status === "completed") {
+                  console.log(
+                    "Import completed with results:",
+                    JSON.stringify(this.importStatus)
+                  );
+                }
+              } else {
+                console.warn("No result data in the task:", task);
               }
             }
 
@@ -442,10 +500,52 @@ document.addEventListener("alpine:init", () => {
                   this.importingCompanies = false;
 
                   // Show result message for import
-                  if (task.status === "completed" && task.result) {
-                    const result = task.result;
-                    const msg = `Import completed! Created: ${result.created}, Updated: ${result.updated}, Skipped: ${result.skipped}, Errors: ${result.errors}`;
-                    this.showSuccess(msg);
+                  if (task.status === "completed") {
+                    console.log("Import task completed. Full task data:", task);
+
+                    // Even if there's no result in the final task response,
+                    // we may have collected statistics during the polling process
+                    if (!task.result && this.importStatus) {
+                      console.log(
+                        "No result in completed task, using collected importStatus:",
+                        this.importStatus
+                      );
+
+                      // Show success message with the stats we've collected
+                      const created = this.importStatus.created || 0;
+                      const updated = this.importStatus.updated || 0;
+                      const skipped = this.importStatus.skipped || 0;
+                      const errors = this.importStatus.errors || 0;
+
+                      const msg = `Import completed! Created: ${created}, Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}`;
+                      this.showSuccess(msg);
+
+                      // Reset importStatus since we're done and only using alert
+                      this.importStatus = null;
+                    } else if (task.result) {
+                      const result = task.result;
+                      console.log("Import result data is present:", result);
+
+                      const msg = `Import completed! Created: ${
+                        result.created || 0
+                      }, Updated: ${result.updated || 0}, Skipped: ${
+                        result.skipped || 0
+                      }, Errors: ${result.errors || 0}`;
+                      this.showSuccess(msg);
+
+                      // Reset importStatus since we're done and only using alert
+                      this.importStatus = null;
+                    } else {
+                      console.error(
+                        "Import task completed but no result data available!"
+                      );
+                      this.showError(
+                        "Import completed but no statistics available"
+                      );
+
+                      // Reset importStatus
+                      this.importStatus = null;
+                    }
                   }
                 }
               }
@@ -922,8 +1022,17 @@ document.addEventListener("alpine:init", () => {
           current_company: "",
           processed: 0,
           total_found: 0,
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          errors: 0,
           status: "pending",
         };
+
+        console.log(
+          "Starting import with initial importStatus:",
+          JSON.stringify(this.importStatus)
+        );
 
         try {
           const response = await fetch("/api/import_companies", {
@@ -937,6 +1046,7 @@ document.addEventListener("alpine:init", () => {
 
           const data = await response.json();
           this.importTaskId = data.task_id;
+          console.log("Import task created with ID:", this.importTaskId);
 
           // Start polling for task status
           this.pollTaskStatus(null, "import_companies");

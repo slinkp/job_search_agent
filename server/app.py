@@ -205,6 +205,19 @@ def get_task_status(request):
         request.response.status = 404
         return {"error": "Task not found"}
 
+    # Log task details for debugging
+    status_value = task["status"].value if task["status"] else "None"
+    has_result = task["result"] is not None
+    result_summary = str(task["result"])[:200] + "..." if task["result"] else "None"
+
+    logger.info(
+        f"Returning task {task_id} status: {status_value}, has_result: {has_result}"
+    )
+    logger.info(f"Task result summary: {result_summary}")
+
+    if task["status"].value == "completed" and not has_result:
+        logger.warning(f"Task {task_id} is completed but has no result data!")
+
     return task
 
 

@@ -56,17 +56,6 @@
               <span x-show="importStatus && typeof importStatus.percent_complete !== 'undefined'" x-text="importStatus && typeof importStatus.percent_complete !== 'undefined' && !isNaN(importStatus.percent_complete) ? `${Math.round(Number(importStatus.percent_complete))}%` : '0%'"></span>
             </div>
           </div>
-          <!-- Import Results Summary -->
-          <div class="import-results" x-show="importStatus && importStatus.status === 'completed' && !importingCompanies">
-            <h4>Import Results</h4>
-            <div class="results-summary">
-              <div><strong>Created:</strong> <span x-text="importStatus && importStatus.created !== undefined ? importStatus.created : 0"></span></div>
-              <div><strong>Updated:</strong> <span x-text="importStatus && importStatus.updated !== undefined ? importStatus.updated : 0"></span></div>
-              <div><strong>Skipped:</strong> <span x-text="importStatus && importStatus.skipped !== undefined ? importStatus.skipped : 0"></span></div>
-              <div><strong>Errors:</strong> <span x-text="importStatus && importStatus.errors !== undefined ? importStatus.errors : 0"></span></div>
-            </div>
-            <button @click="importStatus = null" class="small">Dismiss</button>
-          </div>
         </div>
 
         <div class="list-controls">

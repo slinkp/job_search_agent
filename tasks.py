@@ -27,6 +27,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
+import models
+
 logger = logging.getLogger(__name__)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -104,18 +106,44 @@ class TaskManager:
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
 
-        if row:
-            return {
-                "id": row[0],
-                "type": TaskType(row[1]),
-                "args": json.loads(row[2]),
-                "status": TaskStatus(row[3]),
-                "result": json.loads(row[4]) if row[4] else None,
-                "error": row[5],
-                "created_at": row[6],
-                "updated_at": row[7],
-            }
-        return None
+        if not row:
+            logger.warning(f"Task {task_id} not found")
+            return None
+
+        result_str = row[4]
+        result_data = None
+
+        if result_str:
+            try:
+                result_data = json.loads(result_str)
+                logger.info(f"Task {task_id}: Successfully loaded result JSON")
+            except json.JSONDecodeError as e:
+                logger.error(f"Task {task_id}: Failed to decode result JSON: {e}")
+                logger.error(f"Raw result data: {result_str}")
+        else:
+            logger.info(f"Task {task_id}: No result data stored")
+
+        args_data = {}
+        try:
+            args_data = json.loads(row[2])
+        except json.JSONDecodeError:
+            logger.error(f"Task {task_id}: Failed to decode args JSON")
+
+        task_data = {
+            "id": row[0],
+            "type": TaskType(row[1]),
+            "args": args_data,
+            "status": TaskStatus(row[3]),
+            "result": result_data,
+            "error": row[5],
+            "created_at": row[6],
+            "updated_at": row[7],
+        }
+        logger.info(
+            f"Retrieved task {task_id}: status={task_data['status'].value}, "
+            f"has_result={result_data is not None}"
+        )
+        return task_data
 
     def update_task(
         self,
@@ -124,6 +152,8 @@ class TaskManager:
         result: Optional[dict] = None,
         error: str = "",
     ):
+        encoder = models.CustomJSONEncoder()
+        result_str = encoder.encode(result) if result else None
         with self.lock:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
@@ -134,7 +164,7 @@ class TaskManager:
                     """,
                     (
                         status.value,
-                        json.dumps(result) if result else None,
+                        result_str,
                         error,
                         datetime.utcnow().isoformat(),
                         task_id,

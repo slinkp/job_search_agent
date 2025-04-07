@@ -3,7 +3,7 @@ import datetime
 import logging
 import signal
 import time
-from typing import Optional
+from typing import Any, Optional
 
 import libjobsearch
 import models
@@ -20,6 +20,8 @@ class TaskStatusContext:
         self.task_mgr = task_mgr
         self.task_id = task_id
         self.task_type = task_type
+        # Use Any type to allow any result type
+        self.result: Any = None
 
     def __enter__(self):
         self.task_mgr.update_task(self.task_id, TaskStatus.RUNNING)
@@ -27,8 +29,19 @@ class TaskStatusContext:
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None:
-            self.task_mgr.update_task(self.task_id, TaskStatus.COMPLETED)
+            # Only include result if it's not None
+            if self.result is not None:
+                logger.info(
+                    f"Setting task {self.task_id} to COMPLETED with result: {self.result}"
+                )
+                self.task_mgr.update_task(
+                    self.task_id, TaskStatus.COMPLETED, result=self.result
+                )
+            else:
+                logger.info(f"Setting task {self.task_id} to COMPLETED with no result")
+                self.task_mgr.update_task(self.task_id, TaskStatus.COMPLETED)
         else:
+            logger.error(f"Task {self.task_id} failed with error: {str(exc_value)}")
             self.task_mgr.update_task(
                 self.task_id, TaskStatus.FAILED, error=str(exc_value)
             )
@@ -82,21 +95,34 @@ class ResearchDaemon:
             logger.info(
                 f"Processing task {task_id} of type {task_type} with args:\n{task_args}"
             )
-            with TaskStatusContext(self.task_mgr, task_id, task_type):
+            with TaskStatusContext(self.task_mgr, task_id, task_type) as context:
+                result = None
                 if task_type == TaskType.COMPANY_RESEARCH:
-                    self.do_research(task_args)
+                    result = self.do_research(task_args)
                 elif task_type == TaskType.GENERATE_REPLY:
-                    self.do_generate_reply(task_args)
+                    result = self.do_generate_reply(task_args)
                 elif task_type == TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES:
-                    self.do_find_companies_in_recruiter_messages(task_args)
+                    result = self.do_find_companies_in_recruiter_messages(task_args)
                 elif task_type == TaskType.SEND_AND_ARCHIVE:
-                    self.do_send_and_archive(task_args)
+                    result = self.do_send_and_archive(task_args)
                 elif task_type == TaskType.IGNORE_AND_ARCHIVE:
-                    self.do_ignore_and_archive(task_args)
+                    result = self.do_ignore_and_archive(task_args)
                 elif task_type == TaskType.IMPORT_COMPANIES_FROM_SPREADSHEET:
-                    self.do_import_companies_from_spreadsheet(task_args)
+                    result = self.do_import_companies_from_spreadsheet(task_args)
+                    logger.info(f"Import companies result: {result}")
                 else:
                     logger.error(f"Ignoring unsupported task type: {task_type}")
+
+                # Only set the result if it's not None
+                if result is not None:
+                    logger.info(
+                        f"Setting result on task context for task {task_id}: {result}"
+                    )
+                    context.result = result
+                else:
+                    logger.warning(
+                        f"No result returned from task handler for task {task_id}"
+                    )
                 logger.info(f"Task {task_id} completed")
 
     def _generate_company_id(self, name: str) -> str:
@@ -448,12 +474,14 @@ class ResearchDaemon:
             # Get all companies from spreadsheet
             spreadsheet_rows = sheet_client.read_rows_from_google()
             stats["total_found"] = len(spreadsheet_rows)
+            logger.info(f"Found {stats['total_found']} companies in spreadsheet")
 
             # Update task with initial stats if we have a task_id
             if task_id:
                 # Ensure processed is 0 for initial update
                 stats["processed"] = 0
                 stats["percent_complete"] = 0
+                logger.info(f"Updating task {task_id} with initial stats: {stats}")
                 self.task_mgr.update_task(task_id, TaskStatus.RUNNING, result=stats)
 
             # Process each company from the spreadsheet
@@ -477,6 +505,9 @@ class ResearchDaemon:
 
                     # Update current company being processed
                     stats["current_company"] = company_name
+                    logger.info(
+                        f"Processing company {i+1}/{stats['total_found']}: {company_name}"
+                    )
 
                     # Normalized name for duplicate checking
                     company_id = models.normalize_company_name(company_name)
@@ -522,6 +553,7 @@ class ResearchDaemon:
 
                     # Update task progress every few companies or at the end
                     if task_id and (i % 5 == 0 or i == len(spreadsheet_rows) - 1):
+                        logger.info(f"Updating task {task_id} with progress: {stats}")
                         self.task_mgr.update_task(
                             task_id, TaskStatus.RUNNING, result=stats
                         )
@@ -541,7 +573,8 @@ class ResearchDaemon:
             # Final log of results
             logger.info(
                 f"Import completed. Created: {stats['created']}, "
-                f"Updated: {stats['updated']}, Errors: {stats['errors']}"
+                f"Updated: {stats['updated']}, Errors: {stats['errors']} "
+                f"Skipped: {stats['skipped']}, Total: {stats['total_found']}"
             )
 
         except Exception as e:
@@ -560,6 +593,9 @@ class ResearchDaemon:
         # Generate and log summary
         summary = self.format_import_summary(stats)
         logger.info(f"Import summary:\n{summary}")
+
+        # Log final stats that will be returned
+        logger.info(f"Returning final import stats: {stats}")
 
         # Return final stats
         return stats
@@ -595,6 +631,7 @@ class ResearchDaemon:
             f"Duration: {duration_str}",
             f"Companies found in spreadsheet: {stats['total_found']}",
             f"Companies processed: {stats['processed']}",
+            "-" * 40,
             f"Companies created: {stats['created']}",
             f"Companies updated: {stats['updated']}",
             f"Companies skipped: {stats['skipped']}",
@@ -602,12 +639,13 @@ class ResearchDaemon:
         ]
 
         # Add error details if any
-        if stats["errors"] > 0 and stats.get("error_details"):
-            summary.append("\nError details:")
+        if stats.get("errors", 0) > 0 and stats.get("error_details"):
+            summary.append("-" * 40)
+            summary.append("Error details:")
             for i, error in enumerate(stats["error_details"], 1):
-                company = error.get("company", "Unknown")
-                error_msg = error.get("error", "Unknown error")
-                summary.append(f"{i}. {company}: {error_msg}")
+                summary.append(
+                    f"{i}. {error.get('company', 'Unknown')}: {error.get('error', 'Unknown error')}"
+                )
 
         return "\n".join(summary)
 
