@@ -889,6 +889,19 @@ document.addEventListener("alpine:init", () => {
           this.showError(`Failed to start import: ${error.message}`);
         }
       },
+
+      showImportCompaniesModal() {
+        document.getElementById("import-companies-modal").showModal();
+      },
+
+      closeImportCompaniesModal() {
+        document.getElementById("import-companies-modal").close();
+      },
+
+      confirmImportCompanies() {
+        this.closeImportCompaniesModal();
+        this.importCompaniesFromSpreadsheet();
+      },
     };
   });
 });

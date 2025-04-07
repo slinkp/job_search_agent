@@ -503,8 +503,8 @@ class ResearchDaemon:
                         # Create new company
                         logger.info(f"Creating new company: {company_name}")
 
-                        # Always set the updated date to today
-                        sheet_row.updated = datetime.date.today()
+                        if not sheet_row.updated:
+                            sheet_row.updated = datetime.date.today()
 
                         # Create company with import tracking fields
                         new_company = models.Company(

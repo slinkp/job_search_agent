@@ -23,7 +23,10 @@ coverage report && coverage html
 npm test -- --run
 JS_EXIT=$?
 
-# Exit with failure if either test suite failed
-[ $PYTHON_EXIT -ne 0 ] || [ $JS_EXIT -ne 0 ] && exit 1
+if [ $PYTHON_EXIT -ne 0 ]; then
+    exit $PYTHON_EXIT
+elif [ $JS_EXIT -ne 0 ]; then
+    exit $JS_EXIT
+fi
 
 

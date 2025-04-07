@@ -44,7 +44,7 @@
         </div>
 
         <div class="import-companies">
-          <button @click="importCompaniesFromSpreadsheet()" class="outline" :disabled="importingCompanies">
+          <button @click="showImportCompaniesModal()" class="outline">
             Import Companies
           </button>
         </div>
@@ -349,6 +349,22 @@
             </div>
           </form>
         </article>
+      </dialog>
+
+      <!-- Add this dialog for confirming import -->
+      <dialog id="import-companies-modal" class="modal">
+        <div class="dialog-content">
+          <h2>Import Companies from Spreadsheet</h2>
+          <p>This will import all companies from the configured Google Spreadsheet into the database.</p>
+          <p>Existing companies will be updated with spreadsheet data where available.</p>
+          
+          <div class="modal-actions">
+            <button @click="closeImportCompaniesModal()" class="secondary">Cancel</button>
+            <button @click="confirmImportCompanies()" class="primary" :disabled="importingCompanies">
+              <span x-text="importingCompanies ? 'Importing...' : 'Start Import'"></span>
+            </button>
+          </div>
+        </div>
       </dialog>
     </main>
   </body>
