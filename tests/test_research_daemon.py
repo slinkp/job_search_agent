@@ -765,6 +765,12 @@ def test_do_import_companies_from_spreadsheet(
         get_by_normalized_name_side_effect
     )
 
+    # Set a fake task context for task_id
+    class FakeContext:
+        task_id = "test-task-123"
+
+    daemon._current_task_context = FakeContext()
+
     # Set daemon to running mode to prevent early termination
     daemon.running = True
 
@@ -777,6 +783,9 @@ def test_do_import_companies_from_spreadsheet(
     assert result["created"] == 1
     assert result["updated"] == 1
     assert result["errors"] == 1
+    assert result["percent_complete"] == 100
+    assert "current_company" in result
+    assert result["error_details"][0]["company"] == "Error Company"
 
     # Verify repository interactions
     assert mock_company_repo.get_by_normalized_name.call_count == 3
@@ -800,3 +809,70 @@ def test_do_import_companies_from_spreadsheet(
     assert create_call_args.details.updated == date(2023, 1, 15)
     assert create_call_args.status.imported_from_spreadsheet is True
     assert create_call_args.status.imported_at is not None
+
+
+def test_import_progress_tracking(
+    daemon, mock_company_repo, mock_spreadsheet_client, monkeypatch
+):
+    """Test the progress tracking during spreadsheet import."""
+    # Mock task_mgr.update_task to capture progress updates
+    progress_updates = []
+
+    def mock_update_task(task_id, status, result=None):
+        if result:
+            progress_updates.append(result.copy())
+        return None
+
+    # Patch the update_task method
+    monkeypatch.setattr(daemon.task_mgr, "update_task", mock_update_task)
+
+    # Setup test data with 10 companies
+    sheet_rows = []
+    for i in range(10):
+        company_name = f"Company {i+1}"
+        sheet_rows.append(
+            CompaniesSheetRow(
+                name=company_name,
+                type="Tech",
+            )
+        )
+
+    # Mock the spreadsheet client
+    mock_client = mock_spreadsheet_client.return_value
+    mock_client.read_rows_from_google.return_value = sheet_rows
+
+    # No existing companies in DB
+    mock_company_repo.get_by_normalized_name.return_value = None
+
+    # Set a fake task context for task_id
+    class FakeContext:
+        task_id = "test-task-123"
+
+    daemon._current_task_context = FakeContext()
+
+    # Ensure the daemon is in running state
+    daemon.running = True
+
+    # Run the import
+    daemon.do_import_companies_from_spreadsheet({})
+
+    # Verify progress updates were made
+    assert len(progress_updates) > 0
+
+    # Verify first update has initial state
+    assert progress_updates[0]["total_found"] == 10
+    assert progress_updates[0]["processed"] == 0
+    assert progress_updates[0]["current_company"] is None
+    assert progress_updates[0]["percent_complete"] == 0
+
+    # Verify intermediate updates show progress
+    middle_update = progress_updates[len(progress_updates) // 2]
+    assert 0 < middle_update["processed"] < 10
+    assert middle_update["current_company"] is not None
+    assert 0 < middle_update["percent_complete"] < 100
+
+    # Verify final update shows completion
+    final_update = progress_updates[-1]
+    assert final_update["processed"] == 10
+    assert final_update["created"] == 10
+    assert final_update["percent_complete"] == 100

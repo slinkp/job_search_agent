@@ -420,6 +420,8 @@ class ResearchDaemon:
             "errors": 0,
             "skipped": 0,
             "error_details": [],
+            "current_company": None,
+            "percent_complete": 0,
         }
 
         # Get task_id from the TaskStatusContext if available
@@ -446,11 +448,16 @@ class ResearchDaemon:
 
             # Update task with initial stats if we have a task_id
             if task_id:
+                # Ensure processed is 0 for initial update
+                stats["processed"] = 0
+                stats["percent_complete"] = 0
                 self.task_mgr.update_task(task_id, TaskStatus.RUNNING, result=stats)
 
             # Process each company from the spreadsheet
             for i, sheet_row in enumerate(spreadsheet_rows):
                 stats["processed"] = i + 1
+                if len(spreadsheet_rows) > 0:
+                    stats["percent_complete"] = int((i + 1) / len(spreadsheet_rows) * 100)
 
                 # Check if daemon is still running
                 if not self.running:
@@ -464,6 +471,9 @@ class ResearchDaemon:
                         logger.warning(f"Skipping row {i+1} - no company name")
                         stats["skipped"] += 1
                         continue
+
+                    # Update current company being processed
+                    stats["current_company"] = company_name
 
                     # Normalized name for duplicate checking
                     company_id = models.normalize_company_name(company_name)

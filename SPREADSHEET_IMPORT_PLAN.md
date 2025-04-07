@@ -87,17 +87,17 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
 - [x] Add validation for request parameters
 
 ### 9. Add Progress Tracking for Import Task
-- [ ] Update the task result schema to include:
-  - [ ] Total companies found in spreadsheet
-  - [ ] Number processed so far
-  - [ ] Current company being processed
-  - [ ] Number of companies created
-  - [ ] Number of companies updated
-  - [ ] Errors encountered
-- [ ] Modify task handler to update progress as it processes companies
-- [ ] Add tests for progress tracking:
-  - [ ] Test progress updates at various stages
-  - [ ] Test error handling during progress updates
+- [x] Update the task result schema to include:
+  - [x] Total companies found in spreadsheet
+  - [x] Number processed so far
+  - [x] Current company being processed
+  - [x] Number of companies created
+  - [x] Number of companies updated
+  - [x] Errors encountered
+- [x] Modify task handler to update progress as it processes companies
+- [x] Add tests for progress tracking:
+  - [x] Test progress updates at various stages
+  - [x] Test error handling during progress updates
 
 ### 10. Add Import Results Summary Logic
 - [ ] Create a structure to report import results (total imported, duplicates, errors)
