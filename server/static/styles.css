@@ -440,4 +440,32 @@ button.secondary:focus {
   justify-content: space-between;
   color: var(--muted-color);
   font-size: 0.8em;
+}
+
+/* Import results summary */
+.import-results {
+  margin-top: 12px;
+  padding: 10px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  border-left: 3px solid var(--primary);
+}
+
+.import-results h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: var(--primary);
+}
+
+.results-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.import-results button {
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 0.8em;
 } 
