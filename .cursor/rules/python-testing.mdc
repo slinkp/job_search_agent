@@ -1,0 +1,128 @@
+---
+description: Standards for writing Python tests using pytest, fixtures, and mocking
+globs: 
+  - tests/**/test_*.py
+  - tests/**/*_test.py
+alwaysApply: false
+---
+# Python Testing Standards
+
+Standards for writing and organizing Python tests in this project.
+
+<rule>
+name: python_testing_standards
+description: Standards for writing Python tests using pytest and mocking
+filters:
+  # Match Python test files
+  - type: file_extension
+    pattern: "(_test|test_).*\\.py$"
+  # Match test-related content
+  - type: content
+    pattern: "(?s)(def test_|class Test|@pytest\\.)"
+
+actions:
+  - type: suggest
+    message: |
+      When writing Python tests:
+
+      1. Use pytest, not unittest:
+         ```python
+         # Good
+         def test_my_function():
+             assert result == expected
+
+         # Bad
+         class TestMyClass(unittest.TestCase):
+             def test_my_function(self):
+                 self.assertEqual(result, expected)
+         ```
+
+      2. Factor out reusable setup into fixtures. A fixture name should not start with test_:
+         ```python
+         @pytest.fixture
+         def my_test_data():
+             return {"key": "value"}
+
+         def test_with_fixture(my_test_data):
+             assert my_test_data["key"] == "value"
+         ```
+
+      3. Mock external services in fixtures:
+         ```python
+         @pytest.fixture(autouse=True)
+         def mock_external_service():
+             with mock.patch("module.ExternalService", autospec=True) as mock_service:
+                 yield mock_service
+         ```
+
+      4. Always use autospec and spec:
+         ```python
+         # Good - with autospec
+         @mock.patch("module.Service", autospec=True)
+         
+         # Good - with spec
+         mock_obj = Mock(spec=RealClass)
+         
+         # Bad
+         @mock.patch("module.Service")
+         mock_obj = Mock()
+         ```
+
+      5. Use parameterization for similar test cases:
+         ```python
+         @pytest.mark.parametrize("input,expected", [
+             ("case1", "result1"),
+             ("case2", "result2"),
+         ])
+         def test_parameterized(input, expected):
+             assert process(input) == expected
+         ```
+
+      6. Test container contents before size:
+         ```python
+         # Good
+         def test_list_contents():
+             result = get_items()
+             assert result[0] == "expected_item"
+             assert "other_expected_item" in result
+             assert len(result) == 1
+
+         # Bad
+         def test_list_contents():
+             result = get_items()
+             assert len(result) == 1  # Less informative if it fails
+         ```
+
+examples:
+  - input: |
+      # Bad: Using unittest
+      class TestFeature(unittest.TestCase):
+          def test_something(self):
+              self.assertEqual(1, 1)
+
+      # Bad: Mock without autospec
+      @mock.patch("module.Service")
+      def test_service(mock_service):
+          pass
+
+      # Bad: Size assertion before content
+      def test_results():
+          items = get_items()
+          assert len(items) == 2
+          assert "item1" in items
+  
+      # Good: Using pytest with fixtures and proper mocking
+      @pytest.fixture(autouse=True)
+      def mock_service():
+          with mock.patch("module.Service", autospec=True) as service:
+              yield service
+
+      def test_feature(mock_service):
+          result = process_data()
+          assert "expected" in result
+          assert len(result) == 1
+
+metadata:
+  priority: high
+  version: 1.0
+</rule>
