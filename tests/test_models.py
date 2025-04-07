@@ -646,8 +646,8 @@ def test_merge_company_data_basic():
     # Verify database values were preserved for fields not in spreadsheet
     assert merged_company.details.url == "test.com"
 
-    # Verify updated date is set to today
-    assert merged_company.details.updated == date(2023, 1, 15)
+    # Verify existing updated date is preserved when spreadsheet has no updated date
+    assert merged_company.details.updated == date(2022, 12, 1)
 
 
 @freeze_time("2023-01-15")
@@ -704,16 +704,90 @@ def test_merge_company_data_date_fields():
         name="Test Corp",
         started=date(2020, 1, 1),  # Newer date than existing
         end_date=date(2021, 10, 5),  # Older date than existing
+        updated=date(2023, 1, 10),  # Newer date than existing
     )
 
     # Merge data
     merged_company = merge_company_data(existing_company, sheet_row)
 
     # Verify the most recent date is used
-    assert merged_company.details.started == date(2020, 1, 1)  # Use newer date from sheet
-    assert merged_company.details.end_date == date(2022, 3, 15)  # Keep newer date from DB
+    assert merged_company.details.started == date(2020, 1, 1)
+    assert merged_company.details.end_date == date(2022, 3, 15)
+    assert merged_company.details.updated == date(2023, 1, 10)
 
-    # Updated is always today
+    # Now test with newer updated date in spreadsheet
+    # Create a fresh company for this test case to avoid state from previous test
+    existing_company_newer = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+            updated=date(2022, 12, 1),
+        ),
+        status=CompanyStatus(),
+    )
+
+    sheet_row_with_newer_date = CompaniesSheetRow(
+        name="Test Corp",
+        updated=date(2023, 1, 10),  # Newer date than existing
+    )
+
+    merged_company = merge_company_data(existing_company_newer, sheet_row_with_newer_date)
+    # Should use the newer date from the spreadsheet
+    assert merged_company.details.updated == date(2023, 1, 10)
+
+    # Test with older updated date in spreadsheet
+    # Create a fresh company for this test case to avoid state from previous test
+    existing_company_older = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+            updated=date(2022, 12, 1),
+        ),
+        status=CompanyStatus(),
+    )
+
+    sheet_row_with_older_date = CompaniesSheetRow(
+        name="Test Corp",
+        updated=date(2022, 11, 1),  # Older date than existing
+    )
+
+    merged_company = merge_company_data(existing_company_older, sheet_row_with_older_date)
+    # Should keep the newer date from the DB
+    assert merged_company.details.updated == date(2022, 12, 1)
+
+    # Test with no existing updated date but spreadsheet has one
+    existing_company_no_updated = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+            started=date(2018, 5, 10),
+        ),
+        status=CompanyStatus(),
+    )
+    merged_company = merge_company_data(
+        existing_company_no_updated, sheet_row_with_older_date
+    )
+    # Should use the spreadsheet date
+    assert merged_company.details.updated == date(2022, 11, 1)
+
+    # Test with neither having updated date - should use today
+    sheet_no_date = CompaniesSheetRow(name="Test Corp")
+
+    # Create a fresh company with no updated date for the final test
+    existing_company_no_date = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+        ),
+        status=CompanyStatus(),
+    )
+
+    merged_company = merge_company_data(existing_company_no_date, sheet_no_date)
+    # Should use today's date (which is frozen to 2023-01-15)
     assert merged_company.details.updated == date(2023, 1, 15)
 
 

@@ -730,6 +730,9 @@ def test_do_import_companies_from_spreadsheet(
             type="Tech",
             valuation="1B",
             funding_series="Series B",
+            updated=date(
+                2023, 1, 10
+            ),  # Add a more recent date than in the existing company
         ),
         CompaniesSheetRow(
             name="New Company", type="AI", valuation="500M", funding_series="Series A"
@@ -748,7 +751,7 @@ def test_do_import_companies_from_spreadsheet(
             type="Tech",
             valuation="500M",  # Old value that should be updated
             funding_series="Series B",
-            updated=date(2022, 12, 1),
+            updated=date(2022, 12, 1),  # Older date than in the spreadsheet
         ),
         status=CompanyStatus(),
     )
@@ -795,11 +798,13 @@ def test_do_import_companies_from_spreadsheet(
     update_call_args = mock_company_repo.update.call_args[0][0]
     assert update_call_args.company_id == "existingcompany"
     assert update_call_args.details.valuation == "1B"  # Should be updated value
-    assert update_call_args.details.updated == date(2023, 1, 15)
+    # Should use the newer date from the spreadsheet (2023-01-10), not today's date
+    assert update_call_args.details.updated == date(2023, 1, 10)
     assert update_call_args.status.imported_from_spreadsheet is True
     assert update_call_args.status.imported_at is not None
 
-    # Verify company creation
+    # Verify company creation for new company with no updated date
+    # Should use today's date (2023-01-15) since neither source has an updated date
     create_call_args = mock_company_repo.create.call_args[0][0]
     assert create_call_args.company_id == "new-company"
     assert create_call_args.name == "New Company"

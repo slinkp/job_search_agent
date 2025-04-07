@@ -969,9 +969,9 @@ def merge_company_data(
 
     Rules for merging:
     1. Spreadsheet values take precedence if non-empty
-    2. For date fields (except 'updated'), use the most recent date
+    2. For date fields, use the most recent date
+       a. For updated field, if neither exists, use today's date
     3. For notes field, append spreadsheet info instead of replacing
-    4. Always update the 'updated' field to today
 
     Args:
         existing_company: The company from the database
@@ -988,12 +988,11 @@ def merge_company_data(
         if sheet_value in (None, "", []):
             continue
 
-        # Special handling for date fields (except 'updated')
-        if isinstance(sheet_value, datetime.date) and field_name != "updated":
-            # For date fields, use most recent date
+        # Special handling for date fields: use the most recent date
+        if isinstance(sheet_value, datetime.date):
             db_value = getattr(company.details, field_name)
             if db_value and db_value > sheet_value:
-                continue  # Keep the DB value if more recent
+                continue
 
         # Special handling for notes field - append instead of replace
         if field_name == "notes" and getattr(company.details, "notes"):
@@ -1008,8 +1007,8 @@ def merge_company_data(
         # For all other fields, spreadsheet value takes precedence
         setattr(company.details, field_name, sheet_value)
 
-    # Always update the date to today
-    company.details.updated = datetime.date.today()
+    if not company.details.updated:
+        company.details.updated = datetime.date.today()
 
     return company
 
