@@ -1,0 +1,64 @@
+# Code Simplification Best Practices
+
+Standards for code simplification and refactoring approaches.
+
+<rule>
+name: code_simplification_practices
+description: Guidelines for simplifying and refactoring code with minimal changes
+filters:
+  - type: content
+    pattern: "(?s)function|class|method|def"
+
+actions:
+  - type: suggest
+    message: |
+      When simplifying or refactoring code:
+
+      1. Minimal Change Principle:
+         - Look for the most minimal change first
+         - Prefer removing code over adding new code
+         - Start with the simplest possible solution
+
+      2. Direct Delegation:
+         - Prioritize direct delegation over complex transformations
+         - If a method can handle a task completely, pass control directly
+         - Avoid unnecessary preprocessing or wrapping layers
+
+      3. Simplification Goals:
+         - Primary goal is reducing code, not augmenting it
+         - Remove unnecessary abstractions
+         - Eliminate redundant operations
+
+examples:
+  - input: |
+      // Bad: Adding complexity
+      function processData(data) {
+        const wrapper = new DataWrapper(data);
+        const processor = new DataProcessor();
+        return processor.process(wrapper.prepare());
+      }
+
+      // Good: Direct delegation
+      function processData(data) {
+        return dataProcessor.process(data);
+      }
+    output: "Simplified direct delegation approach"
+
+  - input: |
+      // Bad: Unnecessary preprocessing
+      function validateAndTransform(input) {
+        const validated = this.validate(input);
+        const preprocessed = this.preprocess(validated);
+        return this.transform(preprocessed);
+      }
+
+      // Good: Direct handling if possible
+      function validateAndTransform(input) {
+        return this.transform(input);
+      }
+    output: "Removed unnecessary preprocessing steps"
+
+metadata:
+  priority: high
+  version: 1.0
+</rule>
