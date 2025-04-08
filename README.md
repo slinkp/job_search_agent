@@ -228,12 +228,15 @@ Won't work if follow-ups are not threaded, but that can't be helped.
            recruiter message
      - [x] updates status in actual spreadsheet to "70. ruled out - didn't reply"
      - [x] new "archived" icon & filter for this in web app
-  - [ ] Support importing companies from spreadsheet
-     - [ ] Add button to UX for this
-     - [ ] Add a background task
-     - [ ] It should use existing name normalization to check for duplicates
+  - [x] Support importing companies from spreadsheet
+     - [x] Add button to UX for this
+     - [x] Add a background task
+     - [x] It should use existing name normalization to check for duplicates
            in which case, merge the spreadsheet data into the db data and vice versa.
            (Spreadsheet data wins over DB data if both exist)
+     - [x] Progress tracking and status updates during import
+     - [x] Detailed results summary showing created/updated/skipped companies
+     - [x] Error handling and reporting
   - [ ] Make sure we only add new companies
      - [x] Add to db only if doesn't exist
      - [ ] Check spreadsheet and db for existing match:
@@ -277,3 +280,32 @@ Prompt and responses are in
 tavily-prompt-strategy.md
 
 TL;DR consider a hybrid approach of a few strategically related prompts.
+
+# Features
+
+## Company Management
+
+### Importing Companies from Spreadsheet
+
+You can import companies from your Google Sheet into the application database. This is useful for:
+- Initial data migration
+- Syncing spreadsheet updates into the app
+- Bulk importing companies
+
+To import companies:
+1. Click the "Import Companies" button in the UI
+2. Confirm the import action in the dialog
+3. The import will run as a background task, showing progress
+4. When complete, you'll see a summary of:
+   - Companies created
+   - Companies updated
+   - Companies skipped
+   - Any errors encountered
+
+During import:
+- Existing companies are detected using name normalization
+- For matches, spreadsheet data is merged with database data (spreadsheet values take precedence)
+- The process is atomic - failed imports won't leave partial data
+- Progress is shown in real-time
+
+Note: The import uses the same Google Sheet configuration as the rest of the application.

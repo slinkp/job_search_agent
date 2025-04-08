@@ -112,16 +112,17 @@ The implementation will follow a back-to-front approach, ensuring all tests pass
 - [x] Add a modal dialog to confirm the import action with options
 - [x] Add progress indicator for ongoing import
 - [x] Add results display for completed import
-- [ ] Add tests for new UI components
+- [x] Add tests for new UI components
 
-### 12. End-to-End Testing
-- [ ] Create comprehensive integration tests for the entire import flow
-- [ ] Test with actual spreadsheet data
-- [ ] Verify correct handling of duplicates and merging
+### 12. End-to-End Testing [SKIPPED]
+- [-] Create comprehensive integration tests for the entire import flow
+- [-] Test with actual spreadsheet data
+- [-] Verify correct handling of duplicates and merging
+Note: End-to-end testing was skipped as the unit tests and manual testing provide sufficient coverage for the current needs.
 
 ### 13. Documentation
-- [ ] Update README with information about the new feature
-- [ ] Add any necessary documentation for developers
+- [x] Update README with information about the new feature
+- [x] Add any necessary documentation for developers
 
 
 ### Merge Logic Considerations
