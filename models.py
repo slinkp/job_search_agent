@@ -11,6 +11,7 @@ from typing import Any, ClassVar, Iterator, List, Optional
 
 import dateutil.parser
 from pydantic import BaseModel, Field, ValidationError, model_validator
+from typing_extensions import Self
 
 
 def normalize_company_name(name: str) -> str:
@@ -335,6 +336,14 @@ class RecruiterMessage(BaseModel):
     date: Optional[datetime.datetime] = None
 
 
+class FitCategory(str, enum.Enum):
+    """Categories for company fit decisions."""
+
+    GOOD = "good"
+    BAD = "bad"
+    NEEDS_MORE_INFO = "needs_more_info"
+
+
 class CompanyStatus(BaseModel):
     """Status and metadata about our interaction with a company."""
 
@@ -354,14 +363,36 @@ class CompanyStatus(BaseModel):
     )
 
     # Company fit decision fields
-    fit_category: Optional[str] = Field(
-        default=None
-    )  # "good", "bad", or "needs_more_info"
-    fit_confidence_score: Optional[float] = Field(default=None)  # 0.0 to 1.0
-    fit_decision_timestamp: Optional[datetime.datetime] = Field(default=None)
+    fit_category: Optional[FitCategory] = Field(
+        default=None, description="Whether this company is a good fit"
+    )
+    fit_confidence_score: Optional[float] = Field(
+        default=None,
+        description="Confidence score for the fit decision (0.0 to 1.0)",
+        ge=0.0,
+        le=1.0,
+    )
+    fit_decision_timestamp: Optional[datetime.datetime] = Field(
+        default=None, description="When the fit decision was made"
+    )
     fit_features_used: List[str] = Field(
-        default_factory=list
-    )  # List of feature names used in the decision
+        default_factory=list,
+        description="List of feature names used in making the fit decision",
+    )
+
+    @model_validator(mode="after")
+    def validate_fit_decision(self) -> Self:
+        """Validate that fit decision fields are consistent."""
+        if self.fit_category is not None:
+            if self.fit_confidence_score is None:
+                raise ValueError(
+                    "fit_confidence_score is required when fit_category is set"
+                )
+            if self.fit_decision_timestamp is None:
+                raise ValueError(
+                    "fit_decision_timestamp is required when fit_category is set"
+                )
+        return self
 
     @property
     def research_status(self) -> str:

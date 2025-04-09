@@ -14,6 +14,7 @@ from models import (
     CustomJSONEncoder,
     Event,
     EventType,
+    FitCategory,
     RecruiterMessage,
     company_repository,
     merge_company_data,
@@ -873,3 +874,51 @@ def test_company_status_import_tracking():
     assert status_dict["imported_from_spreadsheet"] is True
     assert "imported_at" in status_dict
     assert status_dict["imported_at"] == import_time
+
+
+def test_company_status_fit_decision():
+    """Test that the CompanyStatus class properly handles fit decisions."""
+    # Test default values
+    status = CompanyStatus()
+    assert status.fit_category is None
+    assert status.fit_confidence_score is None
+    assert status.fit_decision_timestamp is None
+    assert status.fit_features_used == []
+    assert not status.has_fit_decision
+
+    # Test valid fit category values
+    now = datetime.datetime.now(datetime.timezone.utc)
+    status = CompanyStatus(
+        fit_category=FitCategory.GOOD,
+        fit_confidence_score=0.9,
+        fit_decision_timestamp=now,
+        fit_features_used=["compensation", "location"],
+    )
+    assert status.fit_category == FitCategory.GOOD
+    assert status.fit_confidence_score == 0.9
+    assert status.fit_decision_timestamp == now
+    assert status.fit_features_used == ["compensation", "location"]
+    assert status.has_fit_decision
+
+    # Test serialization includes fit fields
+    status_dict = status.model_dump()
+    assert status_dict["fit_category"] == FitCategory.GOOD
+    assert status_dict["fit_confidence_score"] == 0.9
+    assert status_dict["fit_decision_timestamp"] == now
+    assert status_dict["fit_features_used"] == ["compensation", "location"]
+
+    # Test validation of fit category values
+    with pytest.raises(ValueError):
+        CompanyStatus(fit_category="good")  # Must use enum value, not string
+
+    # Test confidence score range validation
+    with pytest.raises(ValueError):
+        CompanyStatus(fit_category=FitCategory.GOOD, fit_confidence_score=1.5)
+    with pytest.raises(ValueError):
+        CompanyStatus(fit_category=FitCategory.GOOD, fit_confidence_score=-0.1)
+
+    # Test partial fit decision validation
+    with pytest.raises(ValueError):
+        CompanyStatus(fit_category=FitCategory.GOOD, fit_confidence_score=None)
+    with pytest.raises(ValueError):
+        CompanyStatus(fit_category=FitCategory.GOOD, fit_decision_timestamp=None)
