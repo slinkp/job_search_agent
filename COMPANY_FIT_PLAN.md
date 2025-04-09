@@ -2,6 +2,37 @@
 
 This plan outlines the steps needed to implement automated decision-making about whether a company is a good fit, while learning ML engineering practices through hands-on experience.
 
+## Working Process
+When implementing this plan, follow these rules strictly:
+
+1. **One Task at a Time**
+   - Work on exactly one checkbox item at a time
+   - After completing a single item, stop and ask for next steps
+   - Never check multiple boxes in one go
+
+2. **Test-Driven Development**
+   - Run all tests with `@test` before and after each change
+   - All tests must pass before moving to next item
+   - Create or modify test cases for any code changes
+   - Test both happy path and edge cases
+
+3. **Clarity First**
+   - If a task is unclear, ask questions before proceeding
+   - Complex items should be broken into sub-steps as the first action
+     - In that case, ask for approval of the new steps before proceeding
+   - Don't make assumptions about requirements
+
+4. **Handle Failures Gracefully**
+   - If you can't get code working after 5 iterations, stop
+   - Ask for advice before continuing further
+   - Document what you've tried and what failed
+
+5. **Definition of Done**
+   - All tests passing
+   - New tests added for new functionality
+   - Single checkbox item completed
+   - Ready to proceed to the next item after asking permission to do so
+
 ## Primary Goals
 1. Automate the process of identifying good-fit companies to save time and maintain consistency
 2. Learn practical ML engineering through building a real-world pipeline:
