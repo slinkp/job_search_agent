@@ -147,13 +147,18 @@ We'll use a Random Forest classifier as our learning vehicle, starting with comp
     - [ ] Features used in decision
     - [ ] Store in database as a blob on the Company model
   - [ ] All tests must pass before marking complete
-- [ ] Rate existing ~30 companies for initial dataset
-- [ ] Generate synthetic training data:
-  - [ ] Create prompt for LLM to generate diverse company profiles
-  - [ ] Generate 100+ synthetic companies with varying attributes
-  - [ ] Review and rate synthetic companies
-  - [ ] Store synthetic data with clear marking as synthetic
-
+- [ ] Rate company data for training, validation, and test data
+  - [ ] This should be a process where the user is presented with company data and asked to rate them good/bad/need more info. Do this via a script, not cursor chat
+  - [ ] The output should be captured as suitable training data for the model, eg in CSV format
+  - [ ] Start with existing ~30 companies in our google spreadsheet, for initial dataset
+  - [ ] Do initial training on this data to vet the code works. Don't expect accuracy yet.
+  - [ ] Generate synthetic training data:
+    - [ ] Create prompt for LLM to generate diverse company profiles
+    - [ ] Generate ~100 synthetic companies with varying attributes
+    - [ ] Have the user review and categorize synthetic companies using the same process as for the real data.
+    - [ ] Store synthetic data with clear marking as synthetic
+  - [ ] Train the model
+    - [ ] Iteratively refine until we decide it's accurate enough
 ### 2. Build Initial ML Pipeline (Single Feature)
 - [ ] Choose a framework for building the ML classifier.
   - [ ] Compare and contrast the pros and cons of various options eg fastai.
