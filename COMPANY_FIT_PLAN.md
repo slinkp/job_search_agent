@@ -11,7 +11,7 @@ When implementing this plan, follow these rules strictly:
    - Never check multiple boxes in one go
 
 2. **Test-Driven Development**
-   - Run all tests with `@test` before and after each change
+   - Run all tests with the command `./test` before and after each change
    - All tests must pass before moving to next item
    - Create or modify test cases for any code changes
    - Test both happy path and edge cases

@@ -28,6 +28,7 @@ class EventType(enum.Enum):
     RESEARCH_ERROR = "research_error"
     ARCHIVED = "archived"
     STATUS_CHANGED = "status_changed"
+    FIT_DECISION = "fit_decision"
 
 
 class ResearchStepError(BaseModel):
@@ -352,6 +353,16 @@ class CompanyStatus(BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
 
+    # Company fit decision fields
+    fit_category: Optional[str] = Field(
+        default=None
+    )  # "good", "bad", or "needs_more_info"
+    fit_confidence_score: Optional[float] = Field(default=None)  # 0.0 to 1.0
+    fit_decision_timestamp: Optional[datetime.datetime] = Field(default=None)
+    fit_features_used: List[str] = Field(
+        default_factory=list
+    )  # List of feature names used in the decision
+
     @property
     def research_status(self) -> str:
         if self.research_completed_at and not self.research_failed_at:
@@ -364,6 +375,11 @@ class CompanyStatus(BaseModel):
             else:
                 return "failed"
         return "none"
+
+    @property
+    def has_fit_decision(self) -> bool:
+        """Return True if a fit decision has been made for this company."""
+        return self.fit_category is not None and self.fit_decision_timestamp is not None
 
 
 class Company(BaseModel):
