@@ -143,20 +143,20 @@ We'll use a Random Forest classifier as our learning vehicle, starting with comp
 ## Implementation Steps
 
 ### 1. Initial Data Collection and Preparation
-- [ ] Create schema for storing company fit decisions:
-  - [ ] Write tests for company fit decision schema:
-    - [ ] Test serialization/deserialization of fit fields
-    - [ ] Test validation of fit category values
-    - [ ] Test confidence score range validation
-    - [ ] Test timestamp handling
-    - [ ] Test features list handling
-  - [ ] Implement schema in Company model:
-    - [ ] Categorize a company/role as good, bad, or more information needed
-    - [ ] Confidence score
-    - [ ] Timestamp of decision
-    - [ ] Features used in decision
-    - [ ] Store in database as a blob on the Company model
-  - [ ] All tests must pass before marking complete
+- [x] Create schema for storing company fit decisions:
+  - [x] Write tests for company fit decision schema:
+    - [x] Test serialization/deserialization of fit fields
+    - [x] Test validation of fit category values
+    - [x] Test confidence score range validation
+    - [x] Test timestamp handling
+    - [x] Test features list handling
+  - [x] Implement schema in Company model:
+    - [x] Categorize a company/role as good, bad, or more information needed
+    - [x] Confidence score
+    - [x] Timestamp of decision
+    - [x] Features used in decision
+    - [x] Store in database as a blob on the Company model
+  - [x] All tests must pass before marking complete
 - [ ] Rate company data for training, validation, and test data
   - [ ] This should be a process where the user is presented with company data and asked to rate them good/bad/need more info. Do this via a script, not cursor chat
   - [ ] The output should be captured as suitable training data for the model, eg in CSV format
