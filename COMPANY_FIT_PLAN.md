@@ -10,6 +10,7 @@ When implementing this plan, follow these rules strictly:
    - After completing a single item, stop and ask for next steps
    - Never check multiple boxes in one go
    - A task is NOT complete until ALL its test requirements are met
+   - Wait for explicit permission before implementing any task, even if you know what the next step is
 
 2. **Test-Driven Development**
    - Write tests BEFORE implementing functionality
@@ -24,6 +25,7 @@ When implementing this plan, follow these rules strictly:
    - Complex items should be broken into sub-steps as the first action
      - In that case, ask for approval of the new steps before proceeding
    - Don't make assumptions about requirements
+   - When asked about next steps, only describe them - do not implement without explicit instruction
 
 4. **Handle Failures Gracefully**
    - If you can't get code working after 5 iterations, stop
@@ -41,6 +43,12 @@ When implementing this plan, follow these rules strictly:
    - Implementation details, technical issues, and coding challenges should be handled in the code/comments/PRs
    - Only modify this plan to clarify requirements or adjust the high-level steps
    - Never add implementation-specific notes or debugging information to the plan
+
+7. **Task Flow**
+   1. Review current state and identify next task
+   2. Wait for explicit instruction to proceed
+   3. If instructed to proceed, follow test-driven development process
+   4. If only asked about next steps, provide description without implementation
 
 ## Primary Goals
 1. Automate the process of identifying good-fit companies to save time and maintain consistency
