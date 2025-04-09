@@ -5,6 +5,7 @@ from datetime import date
 
 import pytest
 from freezegun import freeze_time
+from pydantic import ValidationError
 
 from models import (
     CompaniesSheetRow,
@@ -877,48 +878,73 @@ def test_company_status_import_tracking():
 
 
 def test_company_status_fit_decision():
-    """Test that the CompanyStatus class properly handles fit decisions."""
-    # Test default values
-    status = CompanyStatus()
-    assert status.fit_category is None
-    assert status.fit_confidence_score is None
-    assert status.fit_decision_timestamp is None
-    assert status.fit_features_used == []
-    assert not status.has_fit_decision
-
-    # Test valid fit category values
+    """Test company fit decision fields validation and serialization."""
     now = datetime.datetime.now(datetime.timezone.utc)
+
+    # Test valid fit decision
     status = CompanyStatus(
         fit_category=FitCategory.GOOD,
         fit_confidence_score=0.9,
-        fit_decision_timestamp=now,
-        fit_features_used=["compensation", "location"],
+        fit_decision_timestamp=datetime.datetime(
+            2024, 1, 1, tzinfo=datetime.timezone.utc
+        ),
+        fit_features_used=["compensation", "location", "company_size"],
     )
     assert status.fit_category == FitCategory.GOOD
     assert status.fit_confidence_score == 0.9
-    assert status.fit_decision_timestamp == now
-    assert status.fit_features_used == ["compensation", "location"]
-    assert status.has_fit_decision
+    assert status.fit_features_used == ["compensation", "location", "company_size"]
+    assert status.has_fit_decision is True
 
-    # Test serialization includes fit fields
-    status_dict = status.model_dump()
-    assert status_dict["fit_category"] == FitCategory.GOOD
-    assert status_dict["fit_confidence_score"] == 0.9
-    assert status_dict["fit_decision_timestamp"] == now
-    assert status_dict["fit_features_used"] == ["compensation", "location"]
+    # Test serialization/deserialization
+    json_data = json.dumps(status.model_dump(), cls=CustomJSONEncoder)
+    loaded_status = CompanyStatus.model_validate_json(json_data)
+    assert loaded_status.fit_category == status.fit_category
+    assert loaded_status.fit_confidence_score == status.fit_confidence_score
+    assert loaded_status.fit_features_used == status.fit_features_used
+    assert loaded_status.fit_decision_timestamp == status.fit_decision_timestamp
 
-    # Test validation of fit category values
-    with pytest.raises(ValueError):
-        CompanyStatus(fit_category="good")  # Must use enum value, not string
+    # Test validation of invalid category
+    with pytest.raises(ValidationError) as exc_info:
+        CompanyStatus(fit_category="invalid")  # type: ignore
+    assert "Input should be 'good', 'bad' or 'needs_more_info'" in str(exc_info.value)
 
     # Test confidence score range validation
-    with pytest.raises(ValueError):
-        CompanyStatus(fit_category=FitCategory.GOOD, fit_confidence_score=1.5)
-    with pytest.raises(ValueError):
-        CompanyStatus(fit_category=FitCategory.GOOD, fit_confidence_score=-0.1)
+    with pytest.raises(ValidationError) as exc_info:
+        CompanyStatus(fit_confidence_score=-0.1)
+    assert "Input should be greater than or equal to 0" in str(exc_info.value)
+
+    with pytest.raises(ValidationError) as exc_info:
+        CompanyStatus(fit_confidence_score=1.1)
+    assert "Input should be less than or equal to 1" in str(exc_info.value)
+
+    # Test empty status
+    empty_status = CompanyStatus()
+    assert empty_status.fit_category is None
+    assert empty_status.fit_confidence_score is None
+    assert empty_status.fit_features_used == []
+    assert empty_status.has_fit_decision is False
 
     # Test partial fit decision validation
-    with pytest.raises(ValueError):
-        CompanyStatus(fit_category=FitCategory.GOOD, fit_confidence_score=None)
-    with pytest.raises(ValueError):
-        CompanyStatus(fit_category=FitCategory.GOOD, fit_decision_timestamp=None)
+    with pytest.raises(ValueError) as exc_info:
+        CompanyStatus(fit_category=FitCategory.GOOD)
+    assert "fit_confidence_score is required when fit_category is set" in str(
+        exc_info.value
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        CompanyStatus(fit_category=FitCategory.GOOD, fit_confidence_score=0.9)
+    assert "fit_decision_timestamp is required when fit_category is set" in str(
+        exc_info.value
+    )
+
+    # Test needs more info category
+    needs_info_status = CompanyStatus(
+        fit_category=FitCategory.NEEDS_MORE_INFO,
+        fit_confidence_score=1.0,
+        fit_decision_timestamp=datetime.datetime(
+            2024, 1, 1, tzinfo=datetime.timezone.utc
+        ),
+        fit_features_used=["compensation"],
+    )
+    assert needs_info_status.fit_category == FitCategory.NEEDS_MORE_INFO
+    assert needs_info_status.has_fit_decision is True

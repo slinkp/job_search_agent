@@ -11,6 +11,8 @@ When implementing this plan, follow these rules strictly:
    - Never check multiple boxes in one go
    - A task is NOT complete until ALL its test requirements are met
    - Wait for explicit permission before implementing any task, even if you know what the next step is
+   - When a task is complete, explicitly mark its checkbox with [x]
+   - Only mark a checkbox when ALL its sub-checkboxes (if any) are complete
 
 2. **Test-Driven Development**
    - Write tests BEFORE implementing functionality
