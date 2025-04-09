@@ -528,16 +528,25 @@ class ResearchDaemon:
                         if not sheet_row.updated:
                             sheet_row.updated = datetime.date.today()
 
-                        # Create company with import tracking fields
+                        # Create a new company, using status from existing company if found
                         new_company = models.Company(
                             company_id=company_id,
                             name=company_name,
-                            details=sheet_row,
-                            status=models.CompanyStatus(
-                                imported_from_spreadsheet=True,
-                                imported_at=datetime.datetime.now(datetime.timezone.utc),
+                            details=models.CompaniesSheetRow(),  # Start with empty details
+                            status=(
+                                existing_company.status
+                                if existing_company
+                                else models.CompanyStatus(
+                                    imported_from_spreadsheet=True,
+                                    imported_at=datetime.datetime.now(
+                                        datetime.timezone.utc
+                                    ),
+                                )
                             ),
                         )
+
+                        # Then use merge_company_data to properly merge the spreadsheet data
+                        new_company = models.merge_company_data(new_company, sheet_row)
 
                         self.company_repo.create(new_company)
                         stats["created"] += 1

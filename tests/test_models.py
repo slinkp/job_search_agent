@@ -817,6 +817,7 @@ def test_merge_company_data_notes_field():
     merged_company = merge_company_data(existing_company, sheet_row)
 
     # Verify notes were appended, not replaced
+    assert merged_company.details.notes is not None
     assert "Original notes from database" in merged_company.details.notes
     assert "Additional notes from spreadsheet" in merged_company.details.notes
 
@@ -948,3 +949,50 @@ def test_company_status_fit_decision():
     )
     assert needs_info_status.fit_category == FitCategory.NEEDS_MORE_INFO
     assert needs_info_status.has_fit_decision is True
+
+
+@freeze_time("2023-01-15")
+def test_merge_company_data_preserves_fit_decision():
+    """Test that merging data preserves fit decision information."""
+    # Create existing company with fit decision
+    existing_company = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+            type="Tech",
+            valuation="500M",
+        ),
+        status=CompanyStatus(
+            fit_category=FitCategory.GOOD,
+            fit_confidence_score=0.9,
+            fit_decision_timestamp=datetime.datetime(
+                2024, 1, 1, tzinfo=datetime.timezone.utc
+            ),
+            fit_features_used=["compensation", "location"],
+        ),
+    )
+
+    # Create spreadsheet row with updated data
+    sheet_row = CompaniesSheetRow(
+        name="Test Corp",
+        type="AI",  # Changed
+        valuation="1B",  # Changed
+        headquarters="San Francisco",  # New field
+    )
+
+    # Merge data
+    merged_company = merge_company_data(existing_company, sheet_row)
+
+    # Verify fit decision was preserved
+    assert merged_company.status.fit_category == FitCategory.GOOD
+    assert merged_company.status.fit_confidence_score == 0.9
+    assert merged_company.status.fit_decision_timestamp == datetime.datetime(
+        2024, 1, 1, tzinfo=datetime.timezone.utc
+    )
+    assert merged_company.status.fit_features_used == ["compensation", "location"]
+
+    # Also verify the spreadsheet data was merged correctly
+    assert merged_company.details.type == "AI"
+    assert merged_company.details.valuation == "1B"
+    assert merged_company.details.headquarters == "San Francisco"
