@@ -9,12 +9,15 @@ When implementing this plan, follow these rules strictly:
    - Work on exactly one checkbox item at a time
    - After completing a single item, stop and ask for next steps
    - Never check multiple boxes in one go
+   - A task is NOT complete until ALL its test requirements are met
 
 2. **Test-Driven Development**
+   - Write tests BEFORE implementing functionality
    - Run all tests with the command `./test` before and after each change
    - All tests must pass before moving to next item
    - Create or modify test cases for any code changes
    - Test both happy path and edge cases
+   - No checkbox can be marked complete without corresponding test coverage
 
 3. **Clarity First**
    - If a task is unclear, ask questions before proceeding
@@ -32,6 +35,12 @@ When implementing this plan, follow these rules strictly:
    - New tests added for new functionality
    - Single checkbox item completed
    - Ready to proceed to the next item after asking permission to do so
+
+6. **Plan vs Implementation**
+   - This plan document tracks WHAT needs to be done, not HOW
+   - Implementation details, technical issues, and coding challenges should be handled in the code/comments/PRs
+   - Only modify this plan to clarify requirements or adjust the high-level steps
+   - Never add implementation-specific notes or debugging information to the plan
 
 ## Primary Goals
 1. Automate the process of identifying good-fit companies to save time and maintain consistency
@@ -125,11 +134,19 @@ We'll use a Random Forest classifier as our learning vehicle, starting with comp
 
 ### 1. Initial Data Collection and Preparation
 - [ ] Create schema for storing company fit decisions:
-  - [ ] Categorize a company/role as good, bad, or more information needed
-  - [ ] Confidence score
-  - [ ] Timestamp of decision
-  - [ ] Features used in decision
-  - [ ] Store in database as a blob on the Company model
+  - [ ] Write tests for company fit decision schema:
+    - [ ] Test serialization/deserialization of fit fields
+    - [ ] Test validation of fit category values
+    - [ ] Test confidence score range validation
+    - [ ] Test timestamp handling
+    - [ ] Test features list handling
+  - [ ] Implement schema in Company model:
+    - [ ] Categorize a company/role as good, bad, or more information needed
+    - [ ] Confidence score
+    - [ ] Timestamp of decision
+    - [ ] Features used in decision
+    - [ ] Store in database as a blob on the Company model
+  - [ ] All tests must pass before marking complete
 - [ ] Rate existing ~30 companies for initial dataset
 - [ ] Generate synthetic training data:
   - [ ] Create prompt for LLM to generate diverse company profiles
