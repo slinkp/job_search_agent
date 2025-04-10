@@ -246,3 +246,137 @@ def test_rate_companies_normal_mode(mock_input, tmp_path, sample_company):
 
     # Verify rated company was not touched
     assert rated_company.status.fit_category == FitCategory.GOOD
+
+
+@patch("builtins.input")
+def test_rate_companies_with_skip(mock_input, tmp_path, sample_company):
+    """Test that skipping companies works correctly and preserves existing ratings."""
+    # Create two companies - one rated, one unrated
+    rated_company = sample_company
+    rated_company.status.fit_category = FitCategory.GOOD
+    rated_company.status.fit_confidence_score = 0.8
+    rated_company.status.fit_decision_timestamp = datetime.datetime.now(
+        datetime.timezone.utc
+    )
+
+    unrated_company = Company(
+        company_id="unrated-company",
+        name="Unrated Company",
+        details=CompaniesSheetRow(name="Unrated Company"),
+    )
+
+    # Set up input sequence: skip the unrated company
+    mock_input.side_effect = ["s"]  # Skip the unrated company
+    output_file = tmp_path / "test_ratings.csv"
+    repo = Mock()
+    repo.get_all.return_value = [rated_company, unrated_company]
+
+    # Run the rating process in normal mode (only shows unrated companies)
+    rate_companies(repo, str(output_file))
+
+    # Verify interactions
+    assert mock_input.call_count == 1  # Only called for unrated company
+    repo.update.assert_not_called()  # No updates since we skipped
+
+    # Verify company states weren't changed
+    assert rated_company.status.fit_category == FitCategory.GOOD
+    assert rated_company.status.fit_confidence_score == 0.8
+    assert unrated_company.status.fit_category is None
+
+    # Read and verify CSV contents - should include only the rated company
+    with open(output_file) as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    assert len(rows) == 1  # Only rated company should be in output
+
+    # Verify rated company data is in the output
+    rated_row = rows[0]
+    assert rated_row["company_id"] == "test-company"
+    assert rated_row["fit_category"] == "good"
+    assert float(rated_row["fit_confidence"]) == 0.8
+
+
+@patch("builtins.input")
+def test_rate_companies_with_skip_rerate_mode(mock_input, tmp_path, sample_company):
+    """Test skipping in re-rate mode."""
+    # Create two companies - both rated
+    company1 = sample_company
+    company1.status.fit_category = FitCategory.GOOD
+    company1.status.fit_confidence_score = 0.8
+    company1.status.fit_decision_timestamp = datetime.datetime.now(datetime.timezone.utc)
+
+    company2 = Company(
+        company_id="company2",
+        name="Company 2",
+        details=CompaniesSheetRow(name="Company 2"),
+    )
+    company2.status.fit_category = FitCategory.BAD
+    company2.status.fit_confidence_score = 0.9
+    company2.status.fit_decision_timestamp = datetime.datetime.now(datetime.timezone.utc)
+
+    # Set up input sequence: skip first company, rate second company
+    mock_input.side_effect = ["s", "1"]  # Skip first, rate second as good
+    output_file = tmp_path / "test_ratings.csv"
+    repo = Mock()
+    repo.get_all.return_value = [company1, company2]
+
+    # Run the rating process in re-rate mode (shows previously rated companies)
+    rate_companies(repo, str(output_file), rerate=True)
+
+    # Verify interactions
+    assert mock_input.call_count == 2  # Called for both companies
+    repo.update.assert_called_once_with(company2)  # Only second company was updated
+
+    # Verify company states
+    assert company1.status.fit_category == FitCategory.GOOD  # Unchanged
+    assert company1.status.fit_confidence_score == 0.8
+    assert company2.status.fit_category == FitCategory.GOOD  # Changed from BAD to GOOD
+
+    # Read and verify CSV contents - should include both companies
+    with open(output_file) as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    assert len(rows) == 2  # Both companies should be in output
+
+    # Verify first (skipped) company data
+    company1_row = next(row for row in rows if row["company_id"] == "test-company")
+    assert company1_row["fit_category"] == "good"
+    assert float(company1_row["fit_confidence"]) == 0.8
+
+    # Verify second (re-rated) company data
+    company2_row = next(row for row in rows if row["company_id"] == "company2")
+    assert company2_row["fit_category"] == "good"  # Changed from bad to good
+    assert float(company2_row["fit_confidence"]) == 0.8  # Default confidence
+
+
+@patch("builtins.input")
+def test_rate_companies_skip_unrated(mock_input, tmp_path, sample_company):
+    """Test that skipping an unrated company doesn't include it in output."""
+    # Create an unrated company
+    unrated_company = Company(
+        company_id="unrated-company",
+        name="Unrated Company",
+        details=CompaniesSheetRow(name="Unrated Company"),
+    )
+
+    mock_input.side_effect = ["s"]  # Skip the company
+    output_file = tmp_path / "test_ratings.csv"
+    repo = Mock()
+    repo.get_all.return_value = [unrated_company]
+
+    # Run the rating process
+    rate_companies(repo, str(output_file))
+
+    # Verify interactions
+    assert mock_input.call_count == 1  # Called once for the company
+    repo.update.assert_not_called()  # No updates should happen
+    assert unrated_company.status.fit_category is None  # Status should remain None
+
+    # Verify CSV contents - should be empty (just headers)
+    with open(output_file) as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    assert len(rows) == 0  # No companies should be in output

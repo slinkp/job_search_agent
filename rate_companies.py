@@ -2,9 +2,15 @@
 
 import csv
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from models import Company, CompanyRepository, FitCategory, company_repository
+from models import (
+    Company,
+    CompanyRepository,
+    FitCategory,
+    company_repository,
+    normalize_company_name,
+)
 
 
 def format_company_info(company: Company) -> str:
@@ -32,18 +38,21 @@ def format_company_info(company: Company) -> str:
     return "\n".join(info)
 
 
-def get_user_rating() -> Optional[FitCategory]:
+def get_user_rating() -> Union[FitCategory, str, None]:
     """Get rating input from user."""
     print("\nRate this company:")
     print("1. Good fit")
     print("2. Bad fit")
     print("3. Need more information")
+    print("s. Skip this company")
     print("q. Quit")
 
     while True:
-        choice = input("\nEnter your choice (1/2/3/q): ").strip().lower()
+        choice = input("\nEnter your choice (1/2/3/s/q): ").strip().lower()
         if choice == "q":
             return None
+        if choice == "s":
+            return "skip"
         if choice == "1":
             return FitCategory.GOOD
         if choice == "2":
@@ -124,7 +133,10 @@ def rate_companies(
     companies = repo.get_all()
     rated_companies = []
 
-    # Filter companies based on mode
+    # Add all previously rated companies to the output list
+    rated_companies.extend([c for c in companies if c.status.fit_category is not None])
+
+    # Then filter based on rating status
     companies_to_rate = [
         c
         for c in companies
@@ -160,8 +172,14 @@ def rate_companies(
             rating = get_user_rating()
             if rating is None:  # User quit
                 break
+            if rating == "skip":  # User skipped
+                print(f"\nSkipped rating for {company.name}")
+                continue
 
             # Update company status with the new rating
+            assert isinstance(
+                rating, FitCategory
+            )  # Type check since we've ruled out None and "skip"
             company.status.fit_category = rating
             company.status.fit_confidence_score = confidence
             company.status.fit_decision_timestamp = datetime.datetime.now(
@@ -170,7 +188,9 @@ def rate_companies(
 
             # Save to database
             repo.update(company)
-            rated_companies.append(company)
+            # Only add to rated_companies if it's not already there
+            if company not in rated_companies:
+                rated_companies.append(company)
 
             print(f"\nSaved rating for {company.name}")
 
@@ -206,7 +226,17 @@ if __name__ == "__main__":
         action="store_true",
         help="Re-rate previously rated companies instead of rating new ones",
     )
+    parser.add_argument(
+        "company_names",
+        nargs="*",
+        help="Optional list of company names to rate. If not provided, all companies will be shown.",
+    )
     args = parser.parse_args()
 
     repo = company_repository()
-    rate_companies(repo, args.output, args.confidence, args.rerate)
+    rate_companies(
+        repo,
+        args.output,
+        args.confidence,
+        args.rerate,
+    )
