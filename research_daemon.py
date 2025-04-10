@@ -503,10 +503,12 @@ class ResearchDaemon:
                     # Normalized name for duplicate checking
                     company_id = models.normalize_company_name(company_name)
 
-                    # Check if company already exists in database
-                    existing_company = self.company_repo.get_by_normalized_name(
-                        company_name
-                    )
+                    # Check both ways if company already exists in database
+                    existing_company = self.company_repo.get(company_id=company_id)
+                    if not existing_company:
+                        existing_company = self.company_repo.get_by_normalized_name(
+                            company_name
+                        )
 
                     if existing_company:
                         # Company exists, merge data (spreadsheet data takes precedence)
@@ -534,9 +536,7 @@ class ResearchDaemon:
                             name=company_name,
                             details=models.CompaniesSheetRow(),  # Start with empty details
                             status=(
-                                existing_company.status
-                                if existing_company
-                                else models.CompanyStatus(
+                                models.CompanyStatus(
                                     imported_from_spreadsheet=True,
                                     imported_at=datetime.datetime.now(
                                         datetime.timezone.utc

@@ -742,24 +742,32 @@ def test_do_import_companies_from_spreadsheet(
             type="Tech",
             valuation="1B",
             funding_series="Series B",
-            updated=date(
-                2023, 1, 10
-            ),  # Add a more recent date than in the existing company
+            updated=date(2023, 1, 10),  # More recent date than existing company
         ),
         CompaniesSheetRow(
-            name="New Company", type="AI", valuation="500M", funding_series="Series A"
+            name="New Company",
+            type="AI",
+            valuation="500M",
+            funding_series="Series A",
+            updated=None,  # No date set
         ),
-        CompaniesSheetRow(name="Error Company", type="Healthcare", valuation="100M"),
+        CompaniesSheetRow(
+            name="Error Company",
+            type="Healthcare",
+            valuation="100M",
+            updated=None,  # No date set
+        ),
     ]
 
     # Setup mock client
     mock_client.read_rows_from_google.return_value = sheet_rows
 
-    # Mock existing company in repo
+    # Mock existing company in repo with proper date objects
     existing_company = Company(
         company_id="existingcompany",
         name="Existing Company",
         details=CompaniesSheetRow(
+            name="Existing Company",
             type="Tech",
             valuation="500M",  # Old value that should be updated
             funding_series="Series B",
@@ -769,6 +777,11 @@ def test_do_import_companies_from_spreadsheet(
     )
 
     # Configure repository mock - first company exists, second doesn't
+    def get_side_effect(company_id):
+        if company_id == "existingcompany":
+            return existing_company
+        return None
+
     def get_by_normalized_name_side_effect(name):
         if "existing" in name.lower():
             return existing_company
@@ -776,6 +789,7 @@ def test_do_import_companies_from_spreadsheet(
             raise Exception("Test error")
         return None
 
+    mock_company_repo.get.side_effect = get_side_effect
     mock_company_repo.get_by_normalized_name.side_effect = (
         get_by_normalized_name_side_effect
     )
@@ -802,7 +816,10 @@ def test_do_import_companies_from_spreadsheet(
     assert result["error_details"][0]["company"] == "Error Company"
 
     # Verify repository interactions
-    assert mock_company_repo.get_by_normalized_name.call_count == 3
+    assert mock_company_repo.get.call_count == 3  # Called for all companies
+    assert (
+        mock_company_repo.get_by_normalized_name.call_count == 3
+    )  # Called for all companies that don't match by get()
     assert mock_company_repo.update.call_count == 1
     assert mock_company_repo.create.call_count == 1
 
@@ -827,6 +844,7 @@ def test_do_import_companies_from_spreadsheet(
     assert create_call_args.status.imported_at is not None
 
 
+@freeze_time("2023-01-15")
 def test_import_progress_tracking(
     daemon, mock_company_repo, mock_spreadsheet_client, monkeypatch
 ):
@@ -857,7 +875,8 @@ def test_import_progress_tracking(
     mock_client = mock_spreadsheet_client.return_value
     mock_client.read_rows_from_google.return_value = sheet_rows
 
-    # No existing companies in DB
+    # No existing companies in DB - mock both get methods
+    mock_company_repo.get.return_value = None
     mock_company_repo.get_by_normalized_name.return_value = None
 
     # Set a fake task context for task_id
@@ -892,6 +911,10 @@ def test_import_progress_tracking(
     assert final_update["processed"] == 10
     assert final_update["created"] == 10
     assert final_update["percent_complete"] == 100
+
+    # Verify repository interactions
+    assert mock_company_repo.get_by_normalized_name.call_count == 10
+    assert mock_company_repo.create.call_count == 10
 
 
 def test_format_import_summary(daemon):
