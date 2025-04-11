@@ -380,3 +380,94 @@ def test_rate_companies_skip_unrated(mock_input, tmp_path, sample_company):
         rows = list(reader)
 
     assert len(rows) == 0  # No companies should be in output
+
+
+@patch("builtins.input")
+def test_rate_companies_match_by_id(mock_input, tmp_path, sample_company):
+    """Test that companies can be matched by their ID."""
+    # Create a company with a different name than its ID
+    company = sample_company
+    company.company_id = "netflix"  # ID is lowercase normalized
+    company.name = "Netflix, Inc."  # Name has different format
+    company.status.fit_category = None  # Unrated
+
+    mock_input.side_effect = ["1"]  # Rate as good
+    output_file = tmp_path / "test_ratings.csv"
+    repo = Mock()
+    repo.get_all.return_value = [company]
+
+    # Run the rating process with the ID as input
+    rate_companies(repo, str(output_file), company_names=["Netflix"])
+
+    # Verify interactions
+    assert mock_input.call_count == 1  # Company was found and prompted for rating
+    repo.update.assert_called_once()  # Company was updated
+
+    # Verify the company was rated
+    assert company.status.fit_category == FitCategory.GOOD
+
+    # Read and verify CSV contents
+    with open(output_file) as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    assert len(rows) == 1  # Company was included in output
+    row = rows[0]
+    assert row["company_id"] == "netflix"
+    assert row["name"] == "Netflix, Inc."
+    assert row["fit_category"] == "good"
+
+
+@patch("builtins.input")
+def test_rate_companies_name_search_shows_all(mock_input, tmp_path, sample_company):
+    """Test that searching by name shows both rated and unrated companies regardless of rerate flag."""
+    # Create two companies with similar names - one rated, one unrated
+    rated_company = sample_company
+    rated_company.company_id = "netflix-1"
+    rated_company.name = "Netflix, Inc."
+    rated_company.status.fit_category = FitCategory.GOOD
+    rated_company.status.fit_confidence_score = 0.8
+    rated_company.status.fit_decision_timestamp = datetime.datetime.now(
+        datetime.timezone.utc
+    )
+
+    unrated_company = Company(
+        company_id="netflix-2",
+        name="Netflix Studios",
+        details=CompaniesSheetRow(name="Netflix Studios"),
+    )
+
+    mock_input.side_effect = ["s", "1"]  # Skip first company, rate second
+    output_file = tmp_path / "test_ratings.csv"
+    repo = Mock()
+    repo.get_all.return_value = [rated_company, unrated_company]
+
+    # Run the rating process with name search - should show both companies regardless of rerate flag
+    rate_companies(repo, str(output_file), company_names=["Netflix"])
+
+    # Verify both companies were shown for rating
+    assert mock_input.call_count == 2
+
+    # Verify only the second company was updated (since we skipped the first)
+    repo.update.assert_called_once_with(unrated_company)
+    assert unrated_company.status.fit_category == FitCategory.GOOD
+
+    # Read and verify CSV contents - should include both companies
+    with open(output_file) as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    assert len(rows) == 2  # Both companies should be in output
+
+    # Try again with rerate=True - should still show both companies
+    mock_input.reset_mock()
+    repo.reset_mock()
+    mock_input.side_effect = ["1", "s"]  # Rate first company, skip second
+
+    rate_companies(repo, str(output_file), rerate=True, company_names=["Netflix"])
+
+    # Verify both companies were shown again
+    assert mock_input.call_count == 2
+
+    # Verify only the rated company was updated this time
+    repo.update.assert_called_once_with(rated_company)

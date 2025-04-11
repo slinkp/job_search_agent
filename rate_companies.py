@@ -121,6 +121,7 @@ def rate_companies(
     output_file: str,
     confidence: float = 0.8,
     rerate: bool = False,
+    company_names: Optional[List[str]] = None,
 ):
     """Rate companies and save the results.
 
@@ -129,24 +130,43 @@ def rate_companies(
         output_file: Path to save the CSV output
         confidence: Confidence score to assign to manual ratings (0.0-1.0)
         rerate: If True, only show previously rated companies. If False, only show unrated companies.
+        company_names: Optional list of company names to rate. If provided, only these companies will be shown.
     """
     companies = repo.get_all()
     rated_companies = []
 
-    # Add all previously rated companies to the output list
-    rated_companies.extend([c for c in companies if c.status.fit_category is not None])
-
-    # Then filter based on rating status
-    companies_to_rate = [
-        c
-        for c in companies
-        if bool(c.status.fit_category)
-        == rerate  # Show rated in rerate mode, unrated in normal mode
-    ]
+    # First filter by company names if provided
+    if company_names:
+        normalized_names = [normalize_company_name(name) for name in company_names]
+        companies = [
+            c
+            for c in companies
+            if any(
+                norm_name in normalize_company_name(c.name) or norm_name == c.company_id
+                for norm_name in normalized_names
+            )
+        ]
+        if not companies:
+            print(
+                f"\nNo companies found matching the provided names: {', '.join(company_names)}"
+            )
+            return
+        # When searching by name, show all matching companies regardless of rating status
+        companies_to_rate = companies
+    else:
+        # Only apply rated/unrated filtering when not searching by name
+        companies_to_rate = [
+            c
+            for c in companies
+            if bool(c.status.fit_category)
+            == rerate  # Show rated in rerate mode, unrated in normal mode
+        ]
 
     if not companies_to_rate:
         print("\nNo companies found to rate.")
-        if rerate:
+        if company_names:
+            print(f"No companies found matching: {', '.join(company_names)}")
+        elif rerate:
             print("There are no previously rated companies.")
         else:
             print(
@@ -155,7 +175,9 @@ def rate_companies(
         return
 
     print(f"\nFound {len(companies_to_rate)} companies to rate.")
-    if rerate:
+    if company_names:
+        print(f"Rating companies matching: {', '.join(company_names)}")
+    elif rerate:
         print("Re-rating previously rated companies.")
     else:
         print("Rating only unrated companies.")
@@ -174,6 +196,9 @@ def rate_companies(
                 break
             if rating == "skip":  # User skipped
                 print(f"\nSkipped rating for {company.name}")
+                # If company was previously rated, add it to rated_companies
+                if company.status.fit_category:
+                    rated_companies.append(company)
                 continue
 
             # Update company status with the new rating
@@ -196,6 +221,11 @@ def rate_companies(
 
     except KeyboardInterrupt:
         print("\nRating process interrupted.")
+
+    # Add any previously rated companies that weren't processed in this session
+    for company in companies:
+        if company.status.fit_category and company not in rated_companies:
+            rated_companies.append(company)
 
     if rated_companies:
         save_ratings_to_csv(rated_companies, output_file)
@@ -239,4 +269,5 @@ if __name__ == "__main__":
         args.output,
         args.confidence,
         args.rerate,
+        args.company_names,
     )
