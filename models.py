@@ -11,14 +11,28 @@ from typing import Any, ClassVar, Iterator, List, Optional
 
 import dateutil.parser
 from pydantic import BaseModel, Field, ValidationError, model_validator
+from slugify import slugify
 from typing_extensions import Self
 
 
 def normalize_company_name(name: str) -> str:
-    """Normalize company name for consistent comparison (lowercase, strip whitespace)."""
-    normalized = name.strip().lower()
-    normalized = "-".join(normalized.split())
-    return normalized
+    """Normalize company name for consistent comparison and ID generation.
+
+    Uses python-slugify to convert the name to a URL-friendly slug:
+    - Converts to lowercase
+    - Replaces spaces and special chars with hyphens
+    - Removes non-alphanumeric chars
+    - Collapses multiple hyphens
+    - Replaces '&' with 'and'
+
+    Args:
+        name: The company name to normalize
+
+    Returns:
+        The normalized company name as a slug
+    """
+    replacements = [["&", "and"]]
+    return slugify(name.strip(), replacements=replacements)
 
 
 class EventType(enum.Enum):

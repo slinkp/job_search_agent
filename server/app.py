@@ -398,19 +398,19 @@ def main(global_config, **settings):
 
         # Routes
         config.add_route('home', '/')
-        config.add_route('companies', '/api/companies')
-        config.add_route("company", "/api/companies/{company_id}")
-        config.add_route("generate_message", "/api/companies/{company_id}/reply_message")
+        config.add_route("companies", "/api/companies")
         config.add_route("research", "/api/companies/{company_id}/research")
-        config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
+        config.add_route("generate_message", "/api/companies/{company_id}/reply_message")
         config.add_route(
             "send_and_archive", "/api/companies/{company_id}/send_and_archive"
         )
         config.add_route(
             "ignore_and_archive", "/api/companies/{company_id}/ignore_and_archive"
         )
-        config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_route("company_details", "/api/companies/{company_id}/details")
+        config.add_route("company", "/api/companies/{company_id}")
+        config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
+        config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_route("import_companies", "/api/import_companies")
         config.add_static_view(name='static', path='static')
         config.scan()

@@ -104,7 +104,7 @@
                 <span class="status-icon promising-positive" x-show="company.promising === true" title="Promising">👍</span>
                 <span class="status-icon promising-negative" x-show="company.promising === false" title="Not promising">👎</span>
               </div>
-              <a href="#" @click.prevent="document.getElementById(company.company_id).scrollIntoView({behavior: 'smooth'})" x-text="company.name" :id="company.company_id"></a>
+              <a href="#" @click.prevent="document.getElementById(encodeURIComponent(company.company_id)).scrollIntoView({behavior: 'smooth'})" x-text="company.name" :id="encodeURIComponent(company.company_id)"></a>
               updated <span x-text="company.updated_at"></span>
             </header>
             <div class="research-status">

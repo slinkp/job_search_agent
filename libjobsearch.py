@@ -452,8 +452,8 @@ class JobSearch:
         research_errors: list[models.ResearchStepError] = []
         assert company_info.name is not None
 
-        # Generate company_id from name
-        company_id = company_info.name.lower().replace(" ", "-")
+        # Generate company_id from name using consistent normalization
+        company_id = models.normalize_company_name(company_info.name)
 
         company = models.Company(
             company_id=company_id,

@@ -521,8 +521,10 @@ def test_generate_company_id(daemon):
     """Test the company ID generation function."""
     assert daemon._generate_company_id("Test Corp") == "test-corp"
     assert daemon._generate_company_id("ACME Corporation") == "acme-corporation"
-    assert daemon._generate_company_id("Test Corp!") == "test-corp!"
+    assert daemon._generate_company_id("Test Corp!") == "test-corp"
     assert daemon._generate_company_id("  Test Corp  ") == "test-corp"
+    assert daemon._generate_company_id("Test & Corp") == "test-and-corp"
+    assert daemon._generate_company_id("Test@Corp.com") == "test-corp-com"
 
 
 def test_do_research_with_normalized_name_duplicate(

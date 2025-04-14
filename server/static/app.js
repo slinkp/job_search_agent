@@ -740,7 +740,9 @@ document.addEventListener("alpine:init", () => {
       // New method to fetch and update a single company
       async fetchAndUpdateCompany(companyId) {
         try {
-          const response = await fetch(`/api/companies/${companyId}`);
+          const response = await fetch(
+            `/api/companies/${encodeURIComponent(companyId)}`
+          );
           if (!response.ok) {
             console.error(`Failed to fetch company data for ${companyId}`);
             return;
@@ -873,13 +875,16 @@ document.addEventListener("alpine:init", () => {
         company.promising = value;
 
         // Save to backend
-        fetch(`/api/companies/${company.company_id}/details`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ promising: value }),
-        })
+        fetch(
+          `/api/companies/${encodeURIComponent(company.company_id)}/details`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ promising: value }),
+          }
+        )
           .then((response) => {
             if (!response.ok) {
               throw new Error("Failed to update company promising status");
