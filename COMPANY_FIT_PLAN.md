@@ -157,9 +157,9 @@ We'll use a Random Forest classifier as our learning vehicle, starting with comp
     - [x] Features used in decision
     - [x] Store in database as a blob on the Company model
   - [x] All tests must pass before marking complete
-- [ ] Rate company data for training, validation, and test data
-  - [ ] This should be a process where the user is presented with company data and asked to rate them good/bad/need more info. Do this via a script, not cursor chat
-  - [ ] The output should be captured as suitable training data for the model, eg in CSV format
+- [x] Rate company data for training, validation, and test data
+  - [x] This should be a process where the user is presented with company data and asked to rate them good/bad/need more info. Do this via a script, not cursor chat
+  - [x] The output should be captured as suitable training data for the model, eg in CSV format
   - [ ] Start with existing ~30 companies in our google spreadsheet, for initial dataset
   - [ ] Do initial training on this data to vet the code works. Don't expect accuracy yet.
   - [ ] Generate synthetic training data:
@@ -167,18 +167,15 @@ We'll use a Random Forest classifier as our learning vehicle, starting with comp
     - [ ] Generate ~100 synthetic companies with varying attributes
     - [ ] Have the user review and categorize synthetic companies using the same process as for the real data.
     - [ ] Store synthetic data with clear marking as synthetic
-  - [ ] Train the model
-    - [ ] Iteratively refine until we decide it's accurate enough
-### 2. Build Initial ML Pipeline (Single Feature)
+### 2. Build Initial ML Pipeline
 - [ ] Choose a framework for building the ML classifier.
-  - [ ] Compare and contrast the pros and cons of various options eg fastai.
+  - [ ] Compare and contrast the pros and cons of various libraries eg fastai.
 - [ ] Set up ML training infrastructure:
   - [ ] Create data preprocessing pipeline
   - [ ] Implement Random Forest classifier
   - [ ] Add cross-validation
   - [ ] Set up model persistence
-- [ ] Train initial model using only compensation data:
-  - [ ] Extract compensation features (base, stock, bonus)
+- [ ] Train initial model:
   - [ ] Train on combined real + synthetic data
   - [ ] Evaluate performance using cross-validation
   - [ ] Analyze feature importance
