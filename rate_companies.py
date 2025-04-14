@@ -62,6 +62,13 @@ def get_user_rating() -> Union[FitCategory, str, None]:
         print("Invalid choice. Please try again.")
 
 
+def normalize_text(text: Optional[str]) -> Optional[str]:
+    """Replace any newlines in text with single spaces."""
+    if text is None:
+        return None
+    return " ".join(text.splitlines())
+
+
 def save_ratings_to_csv(companies: List[Company], filename: str):
     """Save the ratings to a CSV file for model training."""
     with open(filename, "w", newline="") as f:
@@ -93,19 +100,19 @@ def save_ratings_to_csv(companies: List[Company], filename: str):
             writer.writerow(
                 [
                     company.company_id,
-                    company.name,
-                    company.details.type,
+                    normalize_text(company.name),
+                    normalize_text(company.details.type),
                     company.details.valuation,
                     company.details.total_comp,
                     company.details.base,
                     company.details.rsu,
                     company.details.bonus,
-                    company.details.remote_policy,
+                    normalize_text(company.details.remote_policy),
                     company.details.eng_size,
                     company.details.total_size,
-                    company.details.headquarters,
-                    company.details.ny_address,
-                    company.details.ai_notes,
+                    normalize_text(company.details.headquarters),
+                    normalize_text(company.details.ny_address),
+                    normalize_text(company.details.ai_notes),
                     (
                         company.status.fit_category.value
                         if company.status.fit_category
