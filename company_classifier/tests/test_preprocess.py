@@ -87,7 +87,7 @@ def test_preprocessor_with_missing_values():
 
 
 def test_preprocessor_with_unknown_categories():
-    """Tests that the preprocessor errors on unknown categories."""
+    """Tests that the preprocessor handles unknown categories by encoding them as zeros."""
     train_data = pd.DataFrame(
         {
             "type": ["startup", "bigtech"],
@@ -117,9 +117,27 @@ def test_preprocessor_with_unknown_categories():
     preprocessor = CompanyPreprocessor()
     preprocessor.fit(train_data)
 
-    # Should raise an error due to unknown categories
-    with pytest.raises(ValueError):
-        preprocessor.transform(test_data)
+    # Transform should work with unknown categories
+    transformed = preprocessor.transform(test_data)
+
+    # Get the indices of categorical features in the transformed data
+    feature_names = preprocessor.get_feature_names()
+    type_cols = [
+        i for i, name in enumerate(feature_names) if name.startswith("cat__type_")
+    ]
+    policy_cols = [
+        i
+        for i, name in enumerate(feature_names)
+        if name.startswith("cat__remote_policy_")
+    ]
+
+    # Check that all categorical features are encoded as 0 for unknown categories
+    assert all(
+        transformed[0, type_cols] == 0
+    ), "Unknown type category should be encoded as all zeros"
+    assert all(
+        transformed[0, policy_cols] == 0
+    ), "Unknown policy category should be encoded as all zeros"
 
 
 def test_load_and_preprocess_data(tmp_path):

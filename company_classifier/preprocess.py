@@ -10,12 +10,13 @@ from typing import List, Optional, cast
 
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
 
 
-class CompanyPreprocessor:
+class CompanyPreprocessor(BaseEstimator, TransformerMixin):
     """Preprocesses company data for classification.
 
     This class handles all data preprocessing steps needed to convert raw company data
@@ -48,10 +49,11 @@ class CompanyPreprocessor:
         )
 
         # For categorical features, use mode imputation and one-hot encoding
+        # handle_unknown='ignore' will encode unknown categories as all zeros
         categorical_transformer = OneHotEncoder(
             drop="first",
             sparse_output=False,
-            handle_unknown="error",
+            handle_unknown="ignore",
         )
 
         self.pipeline = ColumnTransformer(
@@ -62,11 +64,12 @@ class CompanyPreprocessor:
             verbose_feature_names_out=True,
         )
 
-    def fit(self, X: pd.DataFrame) -> "CompanyPreprocessor":
+    def fit(self, X: pd.DataFrame, y=None) -> "CompanyPreprocessor":
         """Fits the preprocessing pipeline to the data.
 
         Args:
             X: DataFrame containing company features
+            y: Ignored. Present for scikit-learn compatibility.
 
         Returns:
             self: The fitted preprocessor
@@ -90,11 +93,12 @@ class CompanyPreprocessor:
             raise ValueError("Preprocessor must be fitted before transform")
         return cast(np.ndarray, self.pipeline.transform(X))
 
-    def fit_transform(self, X: pd.DataFrame) -> np.ndarray:
+    def fit_transform(self, X: pd.DataFrame, y=None) -> np.ndarray:
         """Fits the pipeline and transforms the data.
 
         Args:
             X: DataFrame containing company features
+            y: Ignored. Present for scikit-learn compatibility.
 
         Returns:
             np.ndarray: Preprocessed feature matrix
