@@ -12,7 +12,7 @@ from company_classifier.classifier import (
 )
 
 
-def load_real_data(csv_path="company_ratings.csv"):
+def load_real_data(csv_path: str) -> tuple[np.ndarray, np.ndarray]:
     """Load and prepare real company data."""
     df = pd.read_csv(csv_path)
 
@@ -39,10 +39,10 @@ def load_real_data(csv_path="company_ratings.csv"):
     return X, y
 
 
-def main():
+def main(csv_path: str):
     """Run classifier test on real data."""
     print("Loading real company data...")
-    X, y = load_real_data()
+    X, y = load_real_data(csv_path)
 
     print(f"\nDataset size: {len(X)} companies")
     print("\nClass distribution:")
@@ -77,4 +77,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--csv_path", type=str, default="company_ratings.csv")
+    args = parser.parse_args()
+    main(args.csv_path)
