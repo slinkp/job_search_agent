@@ -50,22 +50,17 @@ def test_preprocessor_transform(sample_data):
 
     # Check feature names are as expected
     feature_names = preprocessor.get_feature_names()
-    print("\nFeature names:", feature_names)  # Debug print
+    print("\nFeature names:", feature_names)  # Keep debug print for now
 
     # Verify all our original features are represented somehow
     for feature in preprocessor.numeric_features:
-        # Check the feature itself is present
         assert any(
-            feature in name for name in feature_names
+            f"num__{feature}" in name for name in feature_names
         ), f"Feature {feature} not found in {feature_names}"
-        # Check its missing indicator is present (format: num__missing_indicator_feature)
-        # assert any(
-        #    f"missing_indicator_{feature}" in name for name in feature_names
-        # ), f"Missing indicator for {feature} not found in {feature_names}"
 
     for feature in preprocessor.categorical_features:
         assert any(
-            feature in name for name in feature_names
+            f"cat__{feature}" in name for name in feature_names
         ), f"Feature {feature} not found in {feature_names}"
 
 
