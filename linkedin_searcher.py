@@ -59,9 +59,14 @@ class LinkedInSearcher:
 
     def screenshot(self, name: str):
         if self.debug:
-            path = f"debug_{name}_{datetime.now():%Y%m%d_%H%M%S}.png"
+            path = f"screenshots/debug_{name}_{datetime.now():%Y%m%d_%H%M%S}.png"
             print(f"Saving screenshot to {path}")
             self.page.screenshot(path=path)
+
+    def dump_html(self, name, content):
+        path = f"screenshots/debug_{name}_{datetime.now():%Y%m%d_%H%M%S}.html"
+        with open(path, 'w', encoding="utf8") as dumpfile:
+            dumpfile.write(content)
 
     def _wait(self, delay: float | int = 0):
         """Add random delay between actions"""
@@ -195,19 +200,11 @@ class LinkedInSearcher:
             try:
                 results_container = self.page.locator("div.search-results-container")
                 results_container.wait_for(state="visible", timeout=8000)
-                with open(
-                    f"debug_search_results_container_{datetime.now():%Y%m%d_%H%M%S}.html",
-                    "w",
-                    encoding="utf-8",
-                ) as f:
-                    f.write(results_container.evaluate("el => el.outerHTML"))
+                self.dump_html("search_results_container",
+                               results_container.evaluate("el => el.outerHTML"))
             except PlaywrightTimeout:
                 self.screenshot("search_results_timeout")
-                # Also capture page content for debugging
-                with open(
-                    f"debug_page_content_{datetime.now():%Y%m%d_%H%M%S}.html", "w"
-                ) as f:
-                    f.write(self.page.content())
+                self.dump_html("full_page_search_results_timeout", self.page.content())
                 print("Results container missing")
                 return []
 
@@ -220,13 +217,7 @@ class LinkedInSearcher:
                 return []
 
             # First try to get the HTML content of the page to analyze
-            page_html = self.page.content()
-            with open(
-                f"debug_full_page_{datetime.now():%Y%m%d_%H%M%S}.html",
-                "w",
-                encoding="utf-8",
-            ) as f:
-                f.write(page_html)
+            self.dump_html("full_page", self.page.content())
 
             # Get all result cards within search results container
             results = results_container.get_by_role("list").first.locator("li")
@@ -251,17 +242,13 @@ class LinkedInSearcher:
                         print(
                             f"Found connection: {connection['name']} - {connection['title']}"
                         )
-                except Exception as e:
-                    dumpfile = f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.html"
-                    print(f"Error parsing result {i}: {e}, writing to {dumpfile}")
-                    with open(dumpfile, "w", encoding="utf-8") as f:
-                        f.write(result.evaluate("el => el.outerHTML"))
-
+                except Exception:
+                    self.dump_html(f"result_{i}_exception", result.evaluate("el => el.outerHTML"))
                     if self.debug:
                         # Save screenshot of this specific result for visual debugging
                         try:
                             result.screenshot(
-                                path=f"debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.png"
+                                path=f"screenshots/debug_result_{i}_{datetime.now():%Y%m%d_%H%M%S}.png"
                             )
                         except Exception as screenshot_err:
                             print(f"Error capturing debug info: {screenshot_err}")

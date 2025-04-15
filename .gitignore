@@ -13,6 +13,7 @@ playwright-*-chrome
 .aider*cache*
 .coverage
 htmlcov
+screenshots/*
 
 # Troubleshooting images from screen scraping
 *not_visible.png
