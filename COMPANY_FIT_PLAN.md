@@ -132,14 +132,6 @@ Random Forest gives us the best balance for our goals:
 4. Future extensibility
 5. Reasonable implementation effort
 
-## Technical Approach
-We'll use a Random Forest classifier as our learning vehicle, starting with compensation data and incrementally adding features as we validate the approach. This classifier was chosen because:
-- Works well with small datasets
-- Handles mixed numerical/categorical features
-- Provides feature importance analysis
-- Relatively interpretable
-- Good introduction to ML pipelines
-
 ## Implementation Steps
 
 ### 1. Initial Data Collection and Preparation
@@ -160,19 +152,20 @@ We'll use a Random Forest classifier as our learning vehicle, starting with comp
 - [x] Rate company data for training, validation, and test data
   - [x] This should be a process where the user is presented with company data and asked to rate them good/bad/need more info. Do this via a script, not cursor chat
   - [x] The output should be captured as suitable training data for the model, eg in CSV format
-  - [ ] Start with existing ~30 companies in our google spreadsheet, for initial dataset
-  - [ ] Do initial training on this data to vet the code works. Don't expect accuracy yet.
+  - [x] Start with existing ~30 companies in our google spreadsheet, for initial dataset
+  - [x] Do initial training on this data to vet the code works. Don't expect accuracy yet.
   - [ ] Generate synthetic training data:
     - [ ] Create prompt for LLM to generate diverse company profiles
     - [ ] Generate ~100 synthetic companies with varying attributes
     - [ ] Have the user review and categorize synthetic companies using the same process as for the real data.
     - [ ] Store synthetic data with clear marking as synthetic
+
 ### 2. Build Initial ML Pipeline
-- [ ] Choose a framework for building the ML classifier.
-  - [ ] Compare and contrast the pros and cons of various libraries eg fastai.
-- [ ] Set up ML training infrastructure:
-  - [ ] Create data preprocessing pipeline
-  - [ ] Implement Random Forest classifier
+- [x] Choose a framework for building the ML classifier.
+  - [x] Compare and contrast the pros and cons of various libraries eg fastai.
+- [x] Set up ML training infrastructure:
+  - [x] Create data preprocessing pipeline
+  - [x] Implement Random Forest classifier
   - [ ] Add cross-validation
   - [ ] Set up model persistence
 - [ ] Train initial model:
@@ -219,6 +212,7 @@ We'll use a Random Forest classifier as our learning vehicle, starting with comp
   - [ ] After manual overrides
   - [ ] On demand
   - [ ] Integrate output into our google spreadsheet format.
+
 ### 6. Enhance UI
 - [ ] Add fit prediction display to company list:
   - [ ] Prediction (good/bad fit/more info needed)
