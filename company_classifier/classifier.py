@@ -136,6 +136,7 @@ class CompanyClassifier:
             Dictionary mapping feature names to their importance scores.
         """
         self._check_is_fitted()
+        assert self.feature_names_ is not None
 
         return dict(zip(self.feature_names_, self.model.feature_importances_))
 
