@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
@@ -25,17 +25,20 @@ class CompanyPreprocessor:
     into features suitable for machine learning models.
 
     Attributes:
-        numeric_features: List of numeric column names to process
+        comp_features: List of compensation-related numeric features
+        size_features: List of size-related numeric features
         categorical_features: List of categorical column names to process
         pipeline: sklearn Pipeline that performs the preprocessing
     """
 
     def __init__(self):
-        self.numeric_features: List[str] = [
+        self.comp_features: List[str] = [
             "total_comp",
             "base",
             "rsu",
             "bonus",
+        ]
+        self.size_features: List[str] = [
             "eng_size",
             "total_size",
         ]
@@ -45,30 +48,37 @@ class CompanyPreprocessor:
 
     def _build_pipeline(self) -> None:
         """Constructs the preprocessing pipeline."""
-        numeric_transformer = Pipeline(
-            steps=[
-                ("imputer", SimpleImputer(strategy="median")),
-                ("scaler", StandardScaler()),
-            ]
+        # For compensation features, use 0 for missing values and only scale non-missing values
+        comp_transformer = make_pipeline(
+            SimpleImputer(strategy="constant", fill_value=0, add_indicator=True),
+            StandardScaler(),
         )
 
-        categorical_transformer = Pipeline(
-            steps=[
-                ("imputer", SimpleImputer(strategy="constant", fill_value="unknown")),
-                (
-                    "onehot",
-                    OneHotEncoder(
-                        drop="first", sparse_output=False, handle_unknown="ignore"
-                    ),
-                ),
-            ]
+        # For size features, use median imputation
+        size_transformer = make_pipeline(
+            SimpleImputer(strategy="median", add_indicator=True),
+            StandardScaler(),
         )
 
+        # For categorical features, use unknown imputation and one-hot encoding
+        categorical_transformer = make_pipeline(
+            SimpleImputer(strategy="constant", fill_value="unknown"),
+            OneHotEncoder(drop="first", sparse_output=False, handle_unknown="ignore"),
+        )
+
+        # Create separate transformers for each feature type to handle missing indicators
+        comp_transformers = [
+            (f"comp_{feat}", comp_transformer, [feat]) for feat in self.comp_features
+        ]
+        size_transformers = [
+            (f"size_{feat}", size_transformer, [feat]) for feat in self.size_features
+        ]
+        cat_transformers = [("cat", categorical_transformer, self.categorical_features)]
+
+        # Combine all transformers
         self.pipeline = ColumnTransformer(
-            transformers=[
-                ("num", numeric_transformer, self.numeric_features),
-                ("cat", categorical_transformer, self.categorical_features),
-            ]
+            transformers=comp_transformers + size_transformers + cat_transformers,
+            verbose_feature_names_out=False,  # This ensures simpler feature names
         )
 
     def fit(self, X: pd.DataFrame) -> "CompanyPreprocessor":
@@ -97,7 +107,6 @@ class CompanyPreprocessor:
         """
         if self.pipeline is None:
             raise ValueError("Preprocessor must be fitted before transform")
-        # Cast to ndarray since we know we set sparse=False in OneHotEncoder
         return cast(np.ndarray, self.pipeline.transform(X))
 
     def fit_transform(self, X: pd.DataFrame) -> np.ndarray:
@@ -116,22 +125,31 @@ class CompanyPreprocessor:
 
         Returns:
             List[str]: Names of features after preprocessing, including
-                      transformed categorical features
+                      transformed categorical features and missing indicators
         """
         if self.pipeline is None:
             raise ValueError("Preprocessor must be fitted before getting feature names")
 
-        # Get feature names from the column transformer
+        # Get feature names from the pipeline
         feature_names = []
 
-        # Add numeric feature names (these stay the same)
-        feature_names.extend(self.numeric_features)
+        # Add compensation feature names and their missing indicators
+        for feat in self.comp_features:
+            feature_names.append(feat)
+            feature_names.append(f"{feat}_missing")
 
-        # Add transformed categorical feature names
-        cat_transformer = self.pipeline.named_transformers_["cat"]
-        onehot = cat_transformer.named_steps["onehot"]
-        cat_features = onehot.get_feature_names_out(self.categorical_features)
-        feature_names.extend(cat_features)
+        # Add size feature names and their missing indicators
+        for feat in self.size_features:
+            feature_names.append(feat)
+            feature_names.append(f"{feat}_missing")
+
+        # Add categorical feature names
+        cat_names = [
+            name
+            for name in self.pipeline.get_feature_names_out()
+            if name.startswith(tuple(self.categorical_features))
+        ]
+        feature_names.extend(cat_names)
 
         return feature_names
 
