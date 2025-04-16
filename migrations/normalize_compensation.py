@@ -70,6 +70,13 @@ def normalize_compensation(update_sheet: bool = False, sheet_type: str = "prod")
                 details.bonus = decimal.Decimal(str(new_bonus))
                 needs_update = True
 
+        if details.total_comp is None:
+            total_comp = (details.base or 0) + (details.rsu or 0) + (details.bonus or 0)
+            if total_comp != 0:
+                print(f"Filled in missing total_comp for {company.name}")
+                details.total_comp = decimal.Decimal(str(total_comp))
+                needs_update = True
+
         # Update the database if any values were normalized
         if needs_update:
             company.details = details
