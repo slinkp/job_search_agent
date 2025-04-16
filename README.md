@@ -126,7 +126,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
 - [x] Actually send email replies
 - [x] Re-label replied messages (so we know they don't need looking at again)
 - [x] Company research: general info
-  - [ ] If initial research finds a different company name than was in email: log warning and update
+  - [x] If initial research finds a different company name than was in email: log warning and update
         it. Known example: Capital Markets Placement -> iCapital
   - [x] Formalize my research steps:
   - [x] Try langchain with both anthropic and openai
@@ -149,12 +149,15 @@ Won't work if follow-ups are not threaded, but that can't be helped.
         - [ ] if all fields are full, mark research as done
         - [ ] see below about existing match
 - [x] Company research: Salary data from levels.fyi
+  - [ ] Don't override salary data if we already have it
+    - [ ] Maybe a dialog in UX?
   - [x] Drive browser - chose Playwright
   - [x] Extract salary data based on company name
   - [x] Extract job level comparable to Shopify staff eng
   - [x] Integrate salary with main script, add to spreadsheet
   - [x] Integrate level with main script, add to spreadsheet
 - [ ] Automatically decide whether the company is a good fit, yes/no
+  - [ ] Work through the feature plan in COMPANY_FIT_PLAN.md
 - [x] Company research: Find contacts in linkedin search
   - [x] Drive browser
   - [x] Search for 1st degree connections currently at company
@@ -240,7 +243,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
   - [ ] Make sure we only add new companies
      - [x] Add to db only if doesn't exist
      - [ ] Check spreadsheet and db for existing match:
-         - [ ] by company name - normalized
+         - [x] by company name - normalized
          - [ ] by fuzzy match on name?
          - [ ] by message id?
          - [ ] by thread link?
@@ -279,33 +282,26 @@ So I asked Tavily! (And chatgpt and claude.)
 Prompt and responses are in
 tavily-prompt-strategy.md
 
-TL;DR consider a hybrid approach of a few strategically related prompts.
+TL;DR using a hybrid approach of a few strategically related prompts.
 
-# Features
+# ISSUES TO FIX
+ 
+## Companies with jobs posted on notion get renamed "notion"
+2025-04-09
 
-## Company Management
+Example:
+i gave name "Cassidy AI" and URL
+ https://cassidyresources.notion.site/work-at-cassidy-769aa699ec7a47aa9c84097bad5052ac
+and it got saved with name "notion"
 
-### Importing Companies from Spreadsheet
 
-You can import companies from your Google Sheet into the application database. This is useful for:
-- Initial data migration
-- Syncing spreadsheet updates into the app
-- Bulk importing companies
+## Company renaming sometimes finds a worse name for research purposes
 
-To import companies:
-1. Click the "Import Companies" button in the UI
-2. Confirm the import action in the dialog
-3. The import will run as a background task, showing progress
-4. When complete, you'll see a summary of:
-   - Companies created
-   - Companies updated
-   - Companies skipped
-   - Any errors encountered
+Eg:
+AWS got renamed "amazon web services (AWS)"
+but on levels.fyi it's just "Amazon"
 
-During import:
-- Existing companies are detected using name normalization
-- For matches, spreadsheet data is merged with database data (spreadsheet values take precedence)
-- The process is atomic - failed imports won't leave partial data
-- Progress is shown in real-time
+Possible solution:
+Allow manual name override?
+And somehow mark it as override so it won't get auto-broken again?
 
-Note: The import uses the same Google Sheet configuration as the rest of the application.

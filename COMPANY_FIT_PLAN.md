@@ -219,9 +219,9 @@ Random Forest gives us the best balance for our goals:
   - [ ] Confidence score
   - [ ] Most influential features
 - [ ] Add detailed prediction view:
-  - [ ] Feature importance breakdown
+  - [ ] Feature importance breakdown - where would this belong?
   - [ ] Similar companies comparison **this is probably overkill**
-- [ ] Add manual rating input for new training data
+- [ ] Add manual rating input for overriding (and so we can improve future training)
 - [ ] Add tests for new UI components
 
 ### 7. Add Monitoring and Analytics
@@ -232,9 +232,9 @@ Random Forest gives us the best balance for our goals:
 
 ### 8. Documentation
 - [ ] Document ML pipeline in README, just an overview
+- [ ] Document retraining procedures
 - [ ] Document feature engineering process
 - [ ] Document model performance metrics
-- [ ] Document retraining procedures
 
 ### Considerations
 - Start simple with one feature, add complexity only when needed
