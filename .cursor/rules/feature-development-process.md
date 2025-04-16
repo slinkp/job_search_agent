@@ -13,11 +13,15 @@ This rule defines the standard process for developing new features in our codeba
 
 ### 2. Test-Driven Development
 - Write tests BEFORE implementing functionality
-- Run full test suite before and after each change
-- All tests must pass before task completion
-- Create/modify test cases for all code changes
-- Test both happy path and edge cases
-- No task is complete without corresponding test coverage
+- Run full test suite before and after each change by running the ./test command
+  - Do not guess which subset of tests to run. Run them all.
+- All tests must pass before task completion.
+- Create/modify test cases for all code changes.
+- Test both happy path and edge cases.
+- No task is complete without corresponding test coverage.
+  - But 100% coverage is often overkill. Focus on the most important cases.
+- When tests fail, think hard about whether the test is wrong or the code is wrong.
+  If there's any doubt, stop and explain your reasoning and ask how to proceed.
 
 ### 3. Requirements Clarity
 - If requirements are unclear, ask questions before proceeding
