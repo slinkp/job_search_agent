@@ -363,12 +363,10 @@ def upsert_company_in_spreadsheet(
         client.update_row_partial(
             existing_row_index, company_info, skip_empty_update_values=True
         )
-        logger.info(f"Updated company in spreadsheet: {company_info.name}")
     else:
         # Company doesn't exist, append a new row
         logger.info(f"Adding new company to spreadsheet: {company_info.name}")
         client.append_rows([company_info.as_list_of_str()])
-        logger.info(f"Added company to spreadsheet: {company_info.name}")
 
 
 class JobSearch:

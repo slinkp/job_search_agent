@@ -377,8 +377,12 @@ class BaseGoogleSheetClient:
         self, row_index: int, cell_updates: dict[int, Any] | models.BaseSheetRow,
         skip_empty_update_values: bool = False,
     ):
-        """Update specific cells in a row, leaving others untouched."""
+        """Update specific cells in a row, leaving others untouched.
+
+        Index is 0-based and accounts for FIRST_DATA_ROW.
+        """
         # TODO test this method
+        row_index += FIRST_DATA_ROW
         range_name = f"{self.range_name.split('!')[0]}!"
         batch_data = []
 
