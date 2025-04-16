@@ -19,15 +19,30 @@ This rule defines the standard process for developing new features in our codeba
 
 ### 2. Test-Driven Development
 - Write tests BEFORE implementing functionality
-- Run full test suite before and after each change by running the ./test command
-  - Do not guess which subset of tests to run. Run them all.
 - All tests must pass before task completion.
 - Create/modify test cases for all code changes.
+  - Always check if there's an existing file that's suitable for adding tests.
+    Only add new test files when adding tests that don't have a good home.
 - Test both happy path and edge cases.
 - No task is complete without corresponding test coverage.
   - But 100% coverage is often overkill. Focus on the most important cases.
 - When tests fail, think hard about whether the test is wrong or the code is wrong.
   If there's any doubt, stop and explain your reasoning and ask how to proceed.
+- ALWAYS use `./test` command for running tests
+  - NEVER use pytest directly
+  - NEVER run individual test files unless explicitly told to
+  - NEVER skip tests unless explicitly told to
+  - The `./test` command:
+    - Runs the complete test suite
+    - Ensures consistent test environment
+    - Automatically checks coverage
+    - Tests both frontend and backend
+  - Exceptions:
+    - None. If you think you need an exception, ask first
+  - Rationale:
+    - Running subset of tests can hide integration issues
+    - Different test commands may use different environments
+    - Full test suite catches unexpected side effects
 
 ### 3. Requirements Clarity
 - If requirements are unclear, ask questions before proceeding
