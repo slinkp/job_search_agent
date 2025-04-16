@@ -164,3 +164,57 @@ def test_load_and_preprocess_data(tmp_path):
     assert isinstance(y, np.ndarray)
     assert X.shape[0] == y.shape[0]
     assert y.dtype == np.int64
+
+
+def test_remote_policy_normalization():
+    """Tests that various remote policy descriptions are normalized correctly."""
+    data = pd.DataFrame(
+        {
+            "type": ["startup"] * 6,
+            "total_comp": [100000] * 6,
+            "base": [80000] * 6,
+            "rsu": [10000] * 6,
+            "bonus": [10000] * 6,
+            "remote_policy": [
+                "hybrid 2 days",
+                "hybrid. some managers allow fully remote",
+                "remote first",
+                "remote mostly",
+                "office required",
+                "onsite with relocation",
+            ],
+            "eng_size": [50] * 6,
+            "total_size": [100] * 6,
+        }
+    )
+
+    preprocessor = CompanyPreprocessor()
+    X_transformed = preprocessor.fit_transform(data)
+    feature_names = preprocessor.get_feature_names()
+
+    # Find indices of remote policy columns
+    policy_feature_indices = {
+        name: idx
+        for idx, name in enumerate(feature_names)
+        if name.startswith("cat__remote_policy_")
+    }
+
+    # Get the row values for each policy type
+    first_two_rows = X_transformed[0:2, list(policy_feature_indices.values())]
+    next_two_rows = X_transformed[2:4, list(policy_feature_indices.values())]
+    last_two_rows = X_transformed[4:6, list(policy_feature_indices.values())]
+
+    # Both hybrid variations should have identical encodings
+    assert np.array_equal(
+        first_two_rows[0], first_two_rows[1]
+    ), "Different hybrid policies should be encoded the same"
+
+    # Both remote variations should have identical encodings
+    assert np.array_equal(
+        next_two_rows[0], next_two_rows[1]
+    ), "Different remote policies should be encoded the same"
+
+    # Office and onsite should have identical encodings
+    assert np.array_equal(
+        last_two_rows[0], last_two_rows[1]
+    ), "Different office policies should be encoded the same"

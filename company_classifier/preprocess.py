@@ -4,9 +4,10 @@ Preprocessing pipeline for company classification.
 This module handles data preprocessing for the company fit classifier, including:
 - Handling missing values in numeric and categorical features
 - Encoding categorical variables
+- Normalizing remote policy values
 """
 
-from typing import List, Optional, cast
+from typing import List, Optional, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -14,6 +15,34 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
+
+
+class RemotePolicyNormalizer(BaseEstimator, TransformerMixin):
+    """Normalizes remote policy values to standard categories."""
+
+    def fit(self, X, y=None):
+        """Nothing to fit, just for sklearn compatibility."""
+        return self
+
+    def transform(self, X: Union[pd.Series, np.ndarray]) -> pd.Series:
+        """Normalizes remote policy values to standard categories."""
+
+        def standardize_policy(policy: str) -> str:
+            policy = str(policy).lower()
+            policy = "-".join(policy.split())
+            if "hybrid" in policy or "day" in policy or "some" in policy:
+                return "hybrid"
+            if "remote" in policy:
+                return "remote"
+            if "office" in policy or "onsite" in policy or "in-person" in policy:
+                return "office"
+            if "relocation" in policy:
+                return "relocation"
+            return policy
+
+        if isinstance(X, np.ndarray):
+            X = pd.Series(X)
+        return X.apply(standardize_policy)
 
 
 class CompanyPreprocessor(BaseEstimator, TransformerMixin):
@@ -39,6 +68,7 @@ class CompanyPreprocessor(BaseEstimator, TransformerMixin):
         ]
         self.categorical_features: List[str] = ["type", "remote_policy"]
         self.pipeline: Optional[ColumnTransformer] = None
+        self.remote_policy_normalizer = RemotePolicyNormalizer()
         self._build_pipeline()
 
     def _build_pipeline(self) -> None:
@@ -76,6 +106,13 @@ class CompanyPreprocessor(BaseEstimator, TransformerMixin):
         """
         if self.pipeline is None:
             self._build_pipeline()
+
+        # First normalize remote policy values
+        X = X.copy()
+        X["remote_policy"] = self.remote_policy_normalizer.fit_transform(
+            X["remote_policy"]
+        )
+
         assert self.pipeline is not None  # for type checker
         self.pipeline.fit(X)
         return self
@@ -91,19 +128,12 @@ class CompanyPreprocessor(BaseEstimator, TransformerMixin):
         """
         if self.pipeline is None:
             raise ValueError("Preprocessor must be fitted before transform")
+
+        # First normalize remote policy values
+        X = X.copy()
+        X["remote_policy"] = self.remote_policy_normalizer.transform(X["remote_policy"])
+
         return cast(np.ndarray, self.pipeline.transform(X))
-
-    def fit_transform(self, X: pd.DataFrame, y=None) -> np.ndarray:
-        """Fits the pipeline and transforms the data.
-
-        Args:
-            X: DataFrame containing company features
-            y: Ignored. Present for scikit-learn compatibility.
-
-        Returns:
-            np.ndarray: Preprocessed feature matrix
-        """
-        return self.fit(X).transform(X)
 
     def get_feature_names(self) -> List[str]:
         """Gets the names of features after preprocessing.
