@@ -3,8 +3,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report
-from sklearn.model_selection import cross_validate, train_test_split
-from sklearn.pipeline import Pipeline
+from sklearn.model_selection import train_test_split
 
 from company_classifier.classifier import (
     BAD_FIT,
@@ -12,7 +11,6 @@ from company_classifier.classifier import (
     NEED_MORE_INFO,
     CompanyClassifier,
 )
-from company_classifier.preprocess import CompanyPreprocessor
 
 
 def load_real_data(csv_path: str) -> tuple[pd.DataFrame, np.ndarray]:
@@ -83,19 +81,9 @@ def main(csv_path: str):
         )
     )
 
-    # Create a pipeline for cross-validation
-    print("\nPerforming 5-fold cross-validation...")
-    pipeline = Pipeline(
-        [("preprocessor", CompanyPreprocessor()), ("classifier", classifier.model)]
-    )
-
-    cv_results = cross_validate(
-        pipeline,
-        X,
-        y,
-        cv=5,
-        scoring=["accuracy", "precision_macro", "recall_macro", "f1_macro"],
-        return_train_score=True,
+    print("\nPerforming cross-validation...")
+    cv_results = classifier.cross_validate(
+        X, y, cv=5, scoring=["accuracy", "precision_macro", "recall_macro", "f1_macro"]
     )
 
     print("\nCross-validation results:")

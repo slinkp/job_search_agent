@@ -186,3 +186,43 @@ def test_classifier_predicts_need_more_info(sample_data):
 
     prediction = classifier.predict(test_case)
     assert prediction[0] == NEED_MORE_INFO  # Should identify missing data case
+
+
+def test_classifier_cross_validation(sample_data):
+    """Tests cross-validation functionality."""
+    classifier = CompanyClassifier()
+    X = sample_data.drop("fit_category", axis=1)
+    y = sample_data["fit_category"]
+
+    cv_results = classifier.cross_validate(
+        X, y, cv=3
+    )  # Use 3 folds due to small sample size
+
+    # Check that we have all expected scores
+    expected_metrics = [
+        "test_accuracy",
+        "train_accuracy",
+        "test_precision_macro",
+        "train_precision_macro",
+        "test_recall_macro",
+        "train_recall_macro",
+        "test_f1_macro",
+        "train_f1_macro",
+        "test_balanced_accuracy",  # New metric
+        "train_balanced_accuracy",  # New metric
+    ]
+    for metric in expected_metrics:
+        assert metric in cv_results
+        assert len(cv_results[metric]) == 3  # 3 folds
+        assert all(isinstance(score, float) for score in cv_results[metric])
+        assert all(0 <= score <= 1 for score in cv_results[metric])
+
+    # Check that training scores are better than or equal to test scores
+    # This helps detect if we're overfitting
+    assert np.mean(cv_results["train_accuracy"]) >= np.mean(cv_results["test_accuracy"])
+
+    # Verify balanced accuracy is higher than regular accuracy
+    # This indicates we're doing well across all classes, not just the majority class
+    assert np.mean(cv_results["test_balanced_accuracy"]) >= np.mean(
+        cv_results["test_accuracy"]
+    )

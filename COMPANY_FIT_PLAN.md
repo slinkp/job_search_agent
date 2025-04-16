@@ -166,7 +166,7 @@ Random Forest gives us the best balance for our goals:
 - [x] Set up ML training infrastructure:
   - [x] Create data preprocessing pipeline
   - [x] Implement Random Forest classifier
-  - [ ] Add cross-validation
+  - [x] Add cross-validation
   - [ ] Set up model persistence
 - [ ] Train initial model:
   - [ ] Train on combined real + synthetic data

@@ -3,6 +3,8 @@
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.exceptions import NotFittedError
+from sklearn.model_selection import cross_validate
+from sklearn.pipeline import Pipeline
 
 from .preprocess import CompanyPreprocessor
 
@@ -32,7 +34,7 @@ class CompanyClassifier:
         random_state : int, default=42
             Random state for reproducibility.
         """
-        self.preprocessor = CompanyPreprocessor()  # Missing indicators are always added
+        self.preprocessor = CompanyPreprocessor()
         self.model = RandomForestClassifier(
             n_estimators=100,
             max_depth=None,  # Let trees grow fully
@@ -47,6 +49,22 @@ class CompanyClassifier:
             n_jobs=-1,  # Use all available cores
         )
         self.feature_names_ = None
+        self._pipeline = None
+
+    @property
+    def pipeline(self):
+        """Get the scikit-learn pipeline combining preprocessing and classification.
+
+        Returns
+        -------
+        Pipeline
+            The scikit-learn pipeline
+        """
+        if self._pipeline is None:
+            self._pipeline = Pipeline(
+                [("preprocessor", self.preprocessor), ("classifier", self.model)]
+            )
+        return self._pipeline
 
     def fit(self, X, y):
         """Fit the classifier to training data.
@@ -126,6 +144,48 @@ class CompanyClassifier:
         predictions[max_probas < 0.5] = NEED_MORE_INFO
 
         return predictions
+
+    def cross_validate(self, X, y, cv=5, scoring=None):
+        """Perform cross-validation to evaluate the classifier.
+
+        Parameters
+        ----------
+        X : pandas.DataFrame
+            The input samples
+        y : array-like
+            The target values
+        cv : int, default=5
+            Number of folds for cross-validation
+        scoring : str or list of str, default=None
+            Scoring metrics to compute. If None, computes:
+            - 'accuracy': Standard accuracy
+            - 'balanced_accuracy': Accuracy that accounts for class imbalance
+            - 'precision_macro': Precision averaged over all classes
+            - 'recall_macro': Recall averaged over all classes
+            - 'f1_macro': F1 score averaged over all classes
+
+        Returns
+        -------
+        dict
+            Dictionary containing cross-validation results:
+            - test_*: Test scores for each metric
+            - train_*: Training scores for each metric
+            Each value is an array of scores, one per fold
+        """
+        if scoring is None:
+            scoring = [
+                "accuracy",
+                "balanced_accuracy",
+                "precision_macro",
+                "recall_macro",
+                "f1_macro",
+            ]
+
+        cv_results = cross_validate(
+            self.pipeline, X, y, cv=cv, scoring=scoring, return_train_score=True
+        )
+
+        return cv_results
 
     def feature_importance(self) -> dict[str, float]:
         """Get feature importance scores.
