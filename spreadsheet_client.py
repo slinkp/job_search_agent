@@ -30,18 +30,6 @@ FIRST_DATA_ROW = 2  # 0-indexed
 # Configure logging
 logger = logging.getLogger(__name__)
 
-from google.auth.exceptions import RefreshError
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-
-# If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-
-
-FIRST_DATA_ROW = 2  # 0-indexed
-
 
 @functools.cache
 def authorize() -> Credentials:
