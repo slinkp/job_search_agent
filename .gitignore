@@ -56,3 +56,6 @@ coverage/
 .vscode/
 *.swp
 *.swo
+
+
+*.ipynb_checkpoints/
