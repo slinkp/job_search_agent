@@ -34,7 +34,7 @@ class CompanyGenerationConfig:
     total_size_range: tuple[int, int] = (100, 30000)
 
     # Probabilities
-    prob_has_rsu: float = 0.7
+    prob_has_rsu: float = 0.5
     prob_has_bonus: float = 0.6
     prob_has_valuation: float = 0.8
     prob_has_size_data: float = 0.7
@@ -42,8 +42,8 @@ class CompanyGenerationConfig:
     # Company type distribution
     type_weights: Dict[CompanyType, float] = field(
         default_factory=lambda: {
-            CompanyType.PUBLIC: 0.4,
-            CompanyType.PRIVATE: 0.3,
+            CompanyType.PUBLIC: 0.2,
+            CompanyType.PRIVATE: 0.5,
             CompanyType.PRIVATE_UNICORN: 0.2,
             CompanyType.PRIVATE_FINANCE: 0.1,
         }
@@ -52,8 +52,8 @@ class CompanyGenerationConfig:
     def __post_init__(self):
         if self.type_weights is None:
             self.type_weights = {
-                CompanyType.PUBLIC: 0.4,
-                CompanyType.PRIVATE: 0.3,
+                CompanyType.PUBLIC: 0.2,
+                CompanyType.PRIVATE: 0.5,
                 CompanyType.PRIVATE_UNICORN: 0.2,
                 CompanyType.PRIVATE_FINANCE: 0.1,
             }
@@ -72,6 +72,7 @@ class RandomCompanyGenerator:
         "hybrid M-T-THu required",
         "office",
         "remote first",
+        "relocation required",
     ]
 
     # Real NYC office locations from our data
@@ -85,6 +86,11 @@ class RandomCompanyGenerator:
         "130 5th Ave",
         "1 Vanderbilt",
         "Noho office",
+        "Jersey City",
+        "242 W 41st St, New York, NY 10036",
+        None,
+        None,
+        None,
     ]
 
     def __init__(
@@ -105,12 +111,13 @@ class RandomCompanyGenerator:
         # Generate base compensation
         base = random.randint(*self.config.base_salary_range)
 
-        # RSUs more likely and higher for public/unicorn companies
+        # RSUs
         rsu = (
             random.randint(*self.config.rsu_range)
-            if random.random() < self.config.prob_has_rsu
+            if company_type in (CompanyType.PUBLIC, CompanyType.PRIVATE_UNICORN)
+            and random.random() < self.config.prob_has_rsu
             else 0
-        )
+            )
 
         # Bonuses more likely in finance
         bonus = (
@@ -180,10 +187,16 @@ class LLMCompanyGenerator:
     COMPANY_PROMPT = """
     Generate a realistic tech company profile for NYC with the following characteristics:
     
-    1. Use realistic compensation ranges based on company type and stage
-    2. Make remote work policies specific and detailed
-    3. Use real NYC office locations and neighborhoods
-    4. Include relevant AI/ML notes if applicable
+    1. Use realistic compensation ranges for staff software engineers, based on company type and stage
+    2. Make remote work policies specific and detailed.
+       In-office from 0 days per week (for fully remote companies) to 5
+       (for fully onsite companies).
+    3. Use real office locations and neighborhoods.
+       3a. Most generated companies should have an office in New York City metro area.
+       3b. Some may have a headquarters elsewhere in the world, AND a satellite office in NYC.
+       3c. Some may have no NYC office.
+    4. Include relevant AI/ML notes if applicable: whether and how AI is part of the company's
+       product offerings, technical strategy, and/or tech stack.
     5. Ensure all numeric fields are realistic and correlated
     
     Current company type: {company_type}
