@@ -105,10 +105,26 @@ Random Forest gives us the best balance for our goals:
   - [x] Start with existing ~30 companies in our google spreadsheet, for initial dataset
   - [x] Do initial training on this data to vet the code works. Don't expect accuracy yet.
   - [ ] Generate synthetic training data:
-    - [ ] Create prompt for LLM to generate diverse company profiles
-    - [ ] Generate ~100 synthetic companies with varying attributes
-    - [ ] Have the user review and categorize synthetic companies using the same process as for the real data.
-    - [ ] Store synthetic data with clear marking as synthetic
+    - [x] Implement RandomCompanyGenerator:
+        - [x] Random probabilities with realistic distribution
+    - [ ] Implement LLMCompanyGenerator:
+        - [ ] Create prompt for LLM to generate diverse company profiles
+        - [ ] Add error handling and validation
+        - [ ] Add synthetic data markers in company_id
+    - [ ] Implement HybridCompanyGenerator:
+        - [ ] Use random generation for numeric fields
+        - [ ] Use LLM for text fields and correlations
+        - [ ] Implement business rules for realism
+    - [ ] Generate initial test batch:
+        - [ ] Generate ~20 companies using each generator type
+        - [ ] Use rate_companies.py to validate quality
+        - [ ] Compare quality between generator types
+        - [ ] Select best performing generator
+    - [ ] Generate full dataset:
+        - [ ] Generate ~100 companies using chosen generator
+        - [ ] Use rate_companies.py to rate all companies
+        - [ ] Verify distribution matches real data
+        - [ ] Use existing train/val/test split functionality
 
 ### 2. Build Initial ML Pipeline
 - [x] Choose a framework for building the ML classifier.
