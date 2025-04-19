@@ -3,10 +3,21 @@ Synthetic data generation for company classification.
 Provides both random and LLM-based approaches for generating test data.
 """
 
+import json
+import os
 import random
+import sys
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
+
+from openai import OpenAI
+from openai.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
 
 
 class CompanyType(Enum):
@@ -182,67 +193,228 @@ class LLMCompanyGenerator:
     You are an expert at generating synthetic but realistic tech company data for the NYC market.
     Generate company profiles that reflect real patterns in compensation, remote work policies,
     and office locations. Focus on maintaining realistic relationships between fields.
+
+    Follow these business rules strictly:
+    1. Company type distribution:
+       - private: 50% (standard tech companies)
+       - public: 20% (established tech companies)
+       - private finance: 10% (fintech, trading firms)
+       - private unicorn: 20% (high-growth startups valued >$1B)
+
+    2. Compensation rules:
+       - Total comp range: $160,000 to $600,000
+       - RSU rules:
+         - Only public and private unicorn companies give RSUs
+         - Other types must have RSU = 0
+       - Bonus rules:
+         - private finance: high bonus ($100,000 - $450,000)
+         - other types: lower bonus ($0 - $50,000)
+       - Base salary should be reasonable given total comp target
     """
 
     COMPANY_PROMPT = """
     Generate a realistic tech company profile for NYC with the following characteristics:
     
-    1. Use realistic compensation ranges for staff software engineers, based on company type and stage
+    1. Use realistic compensation ranges for staff software engineers, based on company type:
+       - public: high base + RSUs, moderate bonus
+       - private: good base, no RSUs, low bonus
+       - private unicorn: good base + RSUs, low bonus
+       - private finance: highest base, no RSUs, very high bonus
+
     2. Make remote work policies specific and detailed.
        In-office from 0 days per week (for fully remote companies) to 5
        (for fully onsite companies).
+
     3. Use real office locations and neighborhoods.
        3a. Most generated companies should have an office in New York City metro area.
        3b. Some may have a headquarters elsewhere in the world, AND a satellite office in NYC.
        3c. Some may have no NYC office.
+
     4. Include relevant AI/ML notes if applicable: whether and how AI is part of the company's
        product offerings, technical strategy, and/or tech stack.
-    5. Ensure all numeric fields are realistic and correlated
-    
-    Current company type: {company_type}
-    Target compensation range: {comp_range}
-    
-    Format the response as a JSON object matching this structure:
-    {
-        "company_id": "synthetic-...",
-        "name": "...",
-        "type": "...",
-        "valuation": null or number,
+
+    5. Ensure all numeric fields are realistic and correlated.
+       - RSUs only for public/unicorn companies
+       - High bonuses only for finance companies
+       - Base salary should be market competitive
+
+    Return the data as a JSON object with these exact fields (no additional fields):
+    {{
+        "company_id": "synthetic-llm-XXXX",
+        "name": "Company name",
+        "type": "public|private|private unicorn|private finance",
+        "valuation": number or null,
         "total_comp": number,
         "base": number,
         "rsu": number,
         "bonus": number,
-        "remote_policy": "...",
-        "eng_size": null or number,
-        "total_size": null or number,
-        "headquarters": "..." or null,
-        "ny_address": "...",
-        "ai_notes": "..." or null,
-        "fit_category": "good" or "bad" or "needs_more_info",
+        "remote_policy": "string",
+        "eng_size": number or null,
+        "total_size": number or null,
+        "headquarters": "string" or null,
+        "ny_address": "string" or null,
+        "ai_notes": "string" or null,
+        "fit_category": "good|bad|needs_more_info",
         "fit_confidence": 0.8
-    }
+    }}
+
+    The numeric fields should follow these constraints from the config:
+    - base_salary_range: {base_salary_range}
+    - rsu_range: {rsu_range}
+    - bonus_range: {bonus_range}
+    - eng_size_range: {eng_size_range}
+    - total_size_range: {total_size_range}
+
+    Company type probabilities (FOLLOW THESE EXACTLY):
+    - public: 20%
+    - private: 50%
+    - private unicorn: 20%
+    - private finance: 10%
+
+    Compensation rules (FOLLOW THESE EXACTLY):
+    1. Total comp must be between $160,000 and $600,000
+    2. RSUs:
+       - Must be 0 for private and private finance companies
+       - Can be >0 only for public and private unicorn
+    3. Bonuses:
+       - private finance: $100,000 to $450,000
+       - other types: $0 to $50,000
     """
 
-    def __init__(self, config: Optional[CompanyGenerationConfig] = None):
+    def __init__(
+        self,
+        config: Optional[CompanyGenerationConfig] = None,
+        model: str = "gpt-4-turbo-preview",
+    ):
+        """Initialize the LLM generator with configuration.
+
+        Args:
+            config: Optional configuration for data generation
+            model: OpenAI model to use. One of: gpt-4-turbo-preview, gpt-4-0125-preview, gpt-3.5-turbo
+        """
         self.config = config or CompanyGenerationConfig()
-        # TODO: Initialize LLM client here
+        self.model = model
+
+        # Initialize OpenAI client
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY environment variable must be set")
+        self.client = OpenAI()
 
     def generate_company(self) -> Dict[str, Any]:
         """Generate a single synthetic company using LLM."""
-        # TODO: Implement LLM-based generation
-        raise NotImplementedError("LLM generation not yet implemented")
+        # Format prompt with config values
+        prompt = self.COMPANY_PROMPT.format(
+            base_salary_range=self.config.base_salary_range,
+            rsu_range=self.config.rsu_range,
+            bonus_range=self.config.bonus_range,
+            eng_size_range=self.config.eng_size_range,
+            total_size_range=self.config.total_size_range,
+        )
+
+        start_time = time.time()
+        print(f"Calling LLM...", end="", flush=True, file=sys.stderr)
+
+        # Call OpenAI API with proper message types
+        messages: List[ChatCompletionMessageParam] = [
+            ChatCompletionSystemMessageParam(role="system", content=self.SYSTEM_PROMPT),
+            ChatCompletionUserMessageParam(role="user", content=prompt),
+        ]
+
+        # Call OpenAI API
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0.7,  # Balance between creativity and consistency
+            response_format={"type": "json_object"},  # Ensure JSON output
+        )
+
+        duration = time.time() - start_time
+        print(f" done ({duration:.1f}s)", file=sys.stderr)
+
+        # Parse response
+        content = response.choices[0].message.content
+        if not content:
+            raise ValueError("Empty response from LLM")
+        company_data = json.loads(content)
+
+        # Validate required fields
+        required_fields = {
+            "company_id",
+            "name",
+            "type",
+            "total_comp",
+            "base",
+            "rsu",
+            "bonus",
+            "remote_policy",
+            "fit_category",
+            "fit_confidence",
+        }
+        if not all(field in company_data for field in required_fields):
+            raise ValueError(
+                f"Missing required fields in LLM response: {required_fields - set(company_data.keys())}"
+            )
+
+        # Validate numeric ranges
+        if not (
+            self.config.base_salary_range[0]
+            <= company_data["base"]
+            <= self.config.base_salary_range[1]
+        ):
+            raise ValueError(
+                f"Base salary {company_data['base']} outside valid range {self.config.base_salary_range}"
+            )
+        if company_data["rsu"] > 0 and not (
+            self.config.rsu_range[0] <= company_data["rsu"] <= self.config.rsu_range[1]
+        ):
+            raise ValueError(
+                f"RSU {company_data['rsu']} outside valid range {self.config.rsu_range}"
+            )
+        if company_data["bonus"] > 0 and not (
+            self.config.bonus_range[0]
+            <= company_data["bonus"]
+            <= self.config.bonus_range[1]
+        ):
+            raise ValueError(
+                f"Bonus {company_data['bonus']} outside valid range {self.config.bonus_range}"
+            )
+
+        # Validate company type
+        if company_data["type"] not in [t.value for t in CompanyType]:
+            raise ValueError(f"Invalid company type: {company_data['type']}")
+
+        # Validate fit category
+        if company_data["fit_category"] not in [t.value for t in FitCategory]:
+            raise ValueError(f"Invalid fit category: {company_data['fit_category']}")
+
+        return company_data
 
     def generate_companies(self, n: int) -> List[Dict[str, Any]]:
-        """Generate multiple synthetic companies using LLM."""
-        return [self.generate_company() for _ in range(n)]
+        """Generate multiple synthetic companies."""
+        companies = []
+        for i in range(n):
+            print(f"\nGenerating company {i+1}/{n}:", file=sys.stderr)
+            companies.append(self.generate_company())
+        return companies
 
 
 class HybridCompanyGenerator:
     """Combines random and LLM approaches for optimal synthetic data generation."""
 
-    def __init__(self, config: Optional[CompanyGenerationConfig] = None):
+    def __init__(
+        self,
+        config: Optional[CompanyGenerationConfig] = None,
+        model: str = "gpt-4-turbo-preview",
+    ):
+        """Initialize the hybrid generator.
+
+        Args:
+            config: Optional configuration for data generation
+            model: OpenAI model to use for LLM generation
+        """
         self.random_gen = RandomCompanyGenerator(config)
-        self.llm_gen = LLMCompanyGenerator(config)
+        self.llm_gen = LLMCompanyGenerator(config, model=model)
 
     def generate_company(self) -> Dict[str, Any]:
         """

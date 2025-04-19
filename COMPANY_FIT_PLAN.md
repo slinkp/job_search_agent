@@ -208,3 +208,42 @@ Random Forest gives us the best balance for our goals:
 - Monitor real vs synthetic data performance separately
 - Keep manual override option always available
 - Consider periodically retraining on only real data as more becomes available 
+
+
+### Result notes on LLM synthetic data generation
+
+Example calls like
+```
+time python company_classifier/generate_synthetic_data.py \
+  --generator llm --num-companies 10 \
+  --model gpt-4-0125-preview  --output-dir data/synthetic/llm-gpt-4-0125-preview
+```
+gpt-4-turbo-preview: 8.7 sec / company
+Nearly all types were "private unicorn", one "private"
+Filled out compensation amounts, pretty narrow range (220k-270k)
+All remote_policy were some hybrid variation
+Eng size 150-500.
+Total size 500-1200
+Nearly all headquarters SF.  Most NYC addresses "350 5th ave".
+Ai notes were extensive but pretty similar
+
+gpt-4-0125-preview: 8.8 sec / company
+Names repeated
+8 private unicorn, 2 private, no public or finance
+Comp 220k-275k
+All hybrid
+eng size 150-500
+total size 450-1200
+HQ either SF or empty
+NY address mostly 350 5th Ave
+AI notes decent, farily similar
+
+gpt-3-5-turbo:  1.9 sec / company
+ALL types were "private"
+Total comp range 180k-220k
+All remote some variation of hybrid
+Eng size 120-150
+Total size 400-5000
+All headquarters SF
+NY addresses mix of midtown, "main street brooklyn", wall st
+AI notes short but reasonable
