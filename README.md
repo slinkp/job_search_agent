@@ -110,6 +110,7 @@ Won't work if follow-ups are not threaded, but that can't be helped.
     - [ ] distinguish these from recruiter companies in the company list
     - [ ] support linkedin job alert email
     - [ ] support "welcome to the jungle" job alert email
+    - [ ] support https://hnhiring.me (hacker news hiring, better interface) 
   - [x] Build a RAG chain trained on those messages
     - [x] Understand the parts of the chain that I don't yet!
     - [x] What is RunnablePassThrough?
