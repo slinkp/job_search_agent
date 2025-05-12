@@ -23,7 +23,7 @@ actions:
     message: |
       When writing Python tests:
 
-      1. **Always use `autospec=True` or `spec=...` when mocking or patching.**
+      1. **Always use `mock.patch` or `mock.patch.object` (with `autospec=True` or `spec=...`) for mocking methods and functions.**
          - This prevents subtle bugs and ensures mocks match the real API.
          - Example:
            ```python
@@ -32,6 +32,7 @@ actions:
                ...
            ```
          - If you must omit `autospec`, document why in a comment.
+         - Only use `pytest`'s `monkeypatch` fixture for patching environment variables, dictionaries, or import paths—not for mocking methods or functions.
 
       2. Use pytest, not unittest:
          ```python
@@ -90,6 +91,7 @@ actions:
 
 common_mistakes:
   - Not using `autospec=True` in `patch` or `Mock`, leading to mocks that do not match the real API and can silently break when the real API changes.
+  - Using `monkeypatch` for mocking methods or functions instead of `mock.patch`/`mock.patch.object`.
   - Example:
     ```python
     # Bad: No autospec
@@ -101,9 +103,17 @@ common_mistakes:
     def test_service(mock_service):
         ...
     ```
+    # Bad: Using monkeypatch for methods
+    def test_bad(monkeypatch):
+        monkeypatch.setattr("module.Service.method", lambda: 42)
+    # Good: Use mock.patch.object
+    def test_good():
+        with mock.patch.object(Service, "method", autospec=True, return_value=42):
+            ...
 
 reviewer_checklist:
   - Reject any test PRs that use `patch` or `Mock` without `autospec=True` or `spec=...`.
+  - Reject any test PRs that use `monkeypatch` for mocking methods or functions (except for patching env vars, dicts, or import paths).
 
 examples:
   - input: |
@@ -126,15 +136,15 @@ examples:
       # Good: Using pytest with fixtures and proper mocking
       @pytest.fixture(autouse=True)
       def mock_service():
-          with mock.patch.object("module.Service", autospec=True) as service:
+          with mock.patch("module.Service", autospec=True) as service:
               yield service
 
       def test_feature(mock_service):
           result = process_data()
           assert "expected" in result
-          assert len("result") == 1
+          assert len(result) == 1
 
 metadata:
   priority: high
-  version: 1.1
+  version: 1.2
 </rule>
