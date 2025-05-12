@@ -10,10 +10,13 @@ import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional, cast
 
+from anthropic import Anthropic
+from anthropic.types import MessageParam
 from openai import OpenAI
 from openai.types.chat import (
+    ChatCompletion,
     ChatCompletionMessageParam,
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
@@ -285,21 +288,31 @@ class LLMCompanyGenerator:
         self,
         config: Optional[CompanyGenerationConfig] = None,
         model: str = "gpt-4-turbo-preview",
+        provider: Literal["openai", "anthropic"] = "openai",
     ):
         """Initialize the LLM generator with configuration.
 
         Args:
             config: Optional configuration for data generation
-            model: OpenAI model to use. One of: gpt-4-turbo-preview, gpt-4-0125-preview, gpt-3.5-turbo
+            model: Model to use. For OpenAI: gpt-4-turbo-preview, gpt-4-0125-preview, gpt-3.5-turbo
+                  For Anthropic: claude-3-opus-20240229, claude-3-sonnet-20240229
+            provider: Which LLM provider to use ("openai" or "anthropic")
         """
         self.config = config or CompanyGenerationConfig()
         self.model = model
+        self.provider = provider
 
-        # Initialize OpenAI client
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable must be set")
-        self.client = OpenAI()
+        # Initialize appropriate client
+        if provider == "openai":
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY environment variable must be set")
+            self.client = OpenAI()
+        else:  # anthropic
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+            if not api_key:
+                raise ValueError("ANTHROPIC_API_KEY environment variable must be set")
+            self.client = Anthropic()
 
     def generate_company(self) -> Dict[str, Any]:
         """Generate a single synthetic company using LLM."""
@@ -313,30 +326,71 @@ class LLMCompanyGenerator:
         )
 
         start_time = time.time()
-        print(f"Calling LLM...", end="", flush=True, file=sys.stderr)
+        print(f"Calling {self.provider} LLM...", end="", flush=True, file=sys.stderr)
 
-        # Call OpenAI API with proper message types
-        messages: List[ChatCompletionMessageParam] = [
-            ChatCompletionSystemMessageParam(role="system", content=self.SYSTEM_PROMPT),
-            ChatCompletionUserMessageParam(role="user", content=prompt),
-        ]
+        if self.provider == "openai":
+            # Call OpenAI API with proper message types
+            messages: List[ChatCompletionMessageParam] = [
+                ChatCompletionSystemMessageParam(
+                    role="system", content=self.SYSTEM_PROMPT
+                ),
+                ChatCompletionUserMessageParam(role="user", content=prompt),
+            ]
 
-        # Call OpenAI API
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=0.7,  # Balance between creativity and consistency
-            response_format={"type": "json_object"},  # Ensure JSON output
-        )
+            # Call OpenAI API
+            response = cast(
+                ChatCompletion,
+                self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.7,  # Balance between creativity and consistency
+                    response_format={"type": "json_object"},  # Ensure JSON output
+                ),
+            )
+            content = response.choices[0].message.content
+        else:  # anthropic
+            # Call Anthropic API with explicit JSON request
+            message: MessageParam = {
+                "role": "user",
+                "content": f"{prompt}\n\nPlease respond with a valid JSON object only, no other text.",
+            }
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=4096,
+                system=f"{self.SYSTEM_PROMPT}\n\nYou must respond with a valid JSON object only, no other text.",
+                messages=[message],
+                temperature=0.7,
+            )
+            # Extract content from the first content block
+            content = None
+            if response.content and len(response.content) > 0:
+                block = response.content[0]
+                if hasattr(block, "text"):
+                    content = block.text.strip()
+                    # Try to find JSON in the response
+                    try:
+                        # Find the first { and last }
+                        start = content.find("{")
+                        end = content.rfind("}") + 1
+                        if start >= 0 and end > start:
+                            content = content[start:end]
+                    except Exception as e:
+                        print(
+                            f"Warning: Failed to extract JSON from response: {e}",
+                            file=sys.stderr,
+                        )
+                        content = None
 
         duration = time.time() - start_time
         print(f" done ({duration:.1f}s)", file=sys.stderr)
 
-        # Parse response
-        content = response.choices[0].message.content
         if not content:
             raise ValueError("Empty response from LLM")
-        company_data = json.loads(content)
+        try:
+            company_data = json.loads(content)
+        except json.JSONDecodeError as e:
+            print(f"Error: Invalid JSON response from LLM: {content}", file=sys.stderr)
+            raise ValueError(f"Invalid JSON response from LLM: {e}")
 
         # Validate required fields
         required_fields = {
@@ -403,15 +457,17 @@ class HybridCompanyGenerator:
         self,
         config: Optional[CompanyGenerationConfig] = None,
         model: str = "gpt-4-turbo-preview",
+        provider: Literal["openai", "anthropic"] = "openai",
     ):
         """Initialize the hybrid generator.
 
         Args:
             config: Optional configuration for data generation
-            model: OpenAI model to use for LLM generation
+            model: Model to use for LLM generation
+            provider: LLM provider to use ("openai" or "anthropic")
         """
         self.random_gen = RandomCompanyGenerator(config)
-        self.llm_gen = LLMCompanyGenerator(config, model=model)
+        self.llm_gen = LLMCompanyGenerator(config, model=model, provider=provider)
 
     def generate_company(self) -> Dict[str, Any]:
         """
