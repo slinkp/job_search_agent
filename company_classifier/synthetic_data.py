@@ -357,28 +357,25 @@ class LLMCompanyGenerator:
             )
 
         # Validate numeric ranges
-        if not (
-            self.config.base_salary_range[0]
-            <= company_data["base"]
-            <= self.config.base_salary_range[1]
-        ):
-            raise ValueError(
-                f"Base salary {company_data['base']} outside valid range {self.config.base_salary_range}"
+        company_data["base"] = max(
+            self.config.base_salary_range[0],
+            min(company_data["base"], self.config.base_salary_range[1]),
+        )
+        if company_data["rsu"] > 0:
+            company_data["rsu"] = max(
+                self.config.rsu_range[0],
+                min(company_data["rsu"], self.config.rsu_range[1]),
             )
-        if company_data["rsu"] > 0 and not (
-            self.config.rsu_range[0] <= company_data["rsu"] <= self.config.rsu_range[1]
-        ):
-            raise ValueError(
-                f"RSU {company_data['rsu']} outside valid range {self.config.rsu_range}"
+        if company_data["bonus"] > 0:
+            company_data["bonus"] = max(
+                self.config.bonus_range[0],
+                min(company_data["bonus"], self.config.bonus_range[1]),
             )
-        if company_data["bonus"] > 0 and not (
-            self.config.bonus_range[0]
-            <= company_data["bonus"]
-            <= self.config.bonus_range[1]
-        ):
-            raise ValueError(
-                f"Bonus {company_data['bonus']} outside valid range {self.config.bonus_range}"
-            )
+
+        # Recalculate total comp to ensure it matches components
+        company_data["total_comp"] = (
+            company_data["base"] + company_data["rsu"] + company_data["bonus"]
+        )
 
         # Validate company type
         if company_data["type"] not in [t.value for t in CompanyType]:
