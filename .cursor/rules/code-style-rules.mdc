@@ -1,0 +1,24 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+When formatting Python code, be consistent with the Black formatter.
+
+Never, never change the order of function definitions, method definitions, or class declarations in any code file without being specifically told to do so. It creates huge diff noise, hides actually significant changes, and there is no benefit.
+
+When writing new comments: Leave out comments that just re-state what the code is obviously doing,
+such as intent that's communicated by variable or method names.
+
+Do not add comments that are commenting on steps in the development process the programmer is currently working through, such as "now adding the new object here". Those have no lasting value and become immediately obsolete.
+
+Add new comments if it's not obvious WHY the code is doing something; or if the implementation is complicated, explain the non-obvious things about how it works.
+
+For new classes, functions, and methods, add comments or docstrings that explain the big picture of why the object exists, but only if that can't be sufficiently communicated by a better name.
+
+When changing existing comments, only suggest changes that communicate different meaning or significantly increase clarity. Never reword existing comments in a superficial way.
+
+Never remove existing comments unless explicitly told to do so,
+or if the comment describes code that has been removed - or changed so much
+that the comment never applies.  If you think a comment should be removed, always ask first.
+

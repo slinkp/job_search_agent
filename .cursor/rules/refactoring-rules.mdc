@@ -1,0 +1,12 @@
+---
+description: Refactoring requests
+globs: 
+alwaysApply: false
+---
+When asked to refactor, do not change any behavior at the same time. Assume that refactors should be purely reorganizing code and make only the absolute minimum changes required to achieve the requested organization. Code that is moved during a refactor MUST have zero functional or stylistic changes. Existing structure, style, and comments MUST be preserved verbatim, except changes that
+are strictly necessary to support the refactor.
+
+Verify that tests pass before and after the refactor. Tests MUST not change except to make mandatory changes to call arguments, conventions, or return types.
+
+Unless explicitly instructed otherwise, always make the smallest possible refactoring on the way to the stated goal. Most refactorings can be broken down into a series of tiny steps with fully working code at every step. Always do that.
+
