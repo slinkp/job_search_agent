@@ -1,10 +1,16 @@
+import json
+import os
+import types
 from typing import Any, Dict, List
+from unittest.mock import patch
 
 import pytest
 
 from company_classifier.synthetic_data import (
+    CompanyGenerationConfig,
     CompanyType,
     FitCategory,
+    LLMCompanyGenerator,
     RandomCompanyGenerator,
 )
 
@@ -39,6 +45,29 @@ def sample_synthetic_company() -> Dict[Any, Any]:
 def generator():
     """Returns a RandomCompanyGenerator with a fixed seed for reproducibility."""
     return RandomCompanyGenerator(seed=42)
+
+
+@pytest.fixture
+def llm_company_response():
+    """Returns a sample LLM response for a synthetic company."""
+    return {
+        "company_id": "synthetic-llm-0001",
+        "name": "LLM Test Corp",
+        "type": "public",
+        "valuation": 500000,
+        "total_comp": 350000,
+        "base": 200000,
+        "rsu": 120000,
+        "bonus": 30000,
+        "remote_policy": "remote first",
+        "eng_size": 200,
+        "total_size": 2000,
+        "headquarters": "New York",
+        "ny_address": "123 LLM Ave",
+        "ai_notes": "AI-driven product",
+        "fit_category": "good",
+        "fit_confidence": 0.8,
+    }
 
 
 def test_synthetic_company_schema(sample_synthetic_company):
@@ -172,3 +201,44 @@ def test_synthetic_data_diversity(generator):
             assert (
                 company["total_size"] >= company["eng_size"]
             ), "Total size smaller than eng size"
+
+
+def test_llm_company_generator_output_structure(llm_company_response):
+    config = CompanyGenerationConfig()
+    with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}):
+        generator = LLMCompanyGenerator(config=config, model="gpt-4-turbo-preview")
+
+        def mock_openai_chat_completion_create(
+            self, model, messages, temperature, response_format
+        ):
+            class MockResponse:
+                class Choice:
+                    def __init__(self, content):
+                        self.message = types.SimpleNamespace(content=content)
+
+                def __init__(self, content):
+                    self.choices = [self.Choice(content)]
+
+            # Return the JSON string as the LLM would
+            return MockResponse(json.dumps(llm_company_response))
+
+        with patch.object(
+            generator.client.chat.completions,
+            "create",
+            autospec=True,
+            side_effect=lambda *args, **kwargs: mock_openai_chat_completion_create(
+                generator.client.chat.completions, *args, **kwargs
+            ),
+        ):
+            company = generator.generate_company()
+
+    # Check required fields
+    required_fields = set(llm_company_response.keys())
+    assert set(company.keys()) >= required_fields
+
+    # Check types and constraints
+    assert company["type"] in ["public", "private", "private unicorn", "private finance"]
+    assert 0 <= company["fit_confidence"] <= 1
+    assert company["fit_category"] in ["good", "bad", "needs_more_info"]
+    assert company["total_comp"] == company["base"] + company["rsu"] + company["bonus"]
+    assert company["company_id"].startswith("synthetic-llm-")

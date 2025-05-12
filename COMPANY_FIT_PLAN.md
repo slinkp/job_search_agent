@@ -107,10 +107,10 @@ Random Forest gives us the best balance for our goals:
   - [ ] Generate synthetic training data:
     - [x] Implement RandomCompanyGenerator:
         - [x] Random probabilities with realistic distribution
-    - [ ] Implement LLMCompanyGenerator:
-        - [ ] Create prompt for LLM to generate diverse company profiles
-        - [ ] Add error handling and validation
-        - [ ] Add synthetic data markers in company_id
+    - [x] Implement LLMCompanyGenerator:
+        - [x] Create prompt for LLM to generate diverse company profiles
+        - [x] Add error handling and validation
+        - [x] Add synthetic data markers in company_id
     - [ ] Implement HybridCompanyGenerator:
         - [ ] Use random generation for numeric fields
         - [ ] Use LLM for text fields and correlations
