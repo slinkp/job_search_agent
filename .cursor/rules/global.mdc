@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Always end every message to me with a single line containing only the word  "Meow."
