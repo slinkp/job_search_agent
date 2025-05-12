@@ -116,13 +116,13 @@ Random Forest gives us the best balance for our goals:
         - [x] Use LLM for text fields and correlations
         - [x] Implement business rules for realism
     - [ ] Generate initial test batch:
+        - [ ] Implement a way to score the realism and variety of generated companies.  Maybe by comparing to real company data we have? TBD
         - [ ] Generate ~20 companies using each generator type
-        - [ ] Use rate_companies.py to validate quality
-        - [ ] Compare quality between generator types
+        - [ ] Use the realism/variety score to compare generator types
         - [ ] Select best performing generator
     - [ ] Generate full dataset:
         - [ ] Generate ~100 companies using chosen generator
-        - [ ] Use rate_companies.py to rate all companies
+        - [ ] Use rate_companies.py to manually rate all companies
         - [ ] Verify distribution matches real data
         - [ ] Use existing train/val/test split functionality
 
