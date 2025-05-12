@@ -23,7 +23,17 @@ actions:
     message: |
       When writing Python tests:
 
-      1. Use pytest, not unittest:
+      1. **Always use `autospec=True` or `spec=...` when mocking or patching.**
+         - This prevents subtle bugs and ensures mocks match the real API.
+         - Example:
+           ```python
+           @mock.patch("module.Service", autospec=True)
+           def test_service(mock_service):
+               ...
+           ```
+         - If you must omit `autospec`, document why in a comment.
+
+      2. Use pytest, not unittest:
          ```python
          # Good
          def test_my_function():
@@ -35,7 +45,7 @@ actions:
                  self.assertEqual(result, expected)
          ```
 
-      2. Factor out reusable setup into fixtures. A fixture name should not start with test_:
+      3. Factor out reusable setup into fixtures. A fixture name should not start with test_:
          ```python
          @pytest.fixture
          def my_test_data():
@@ -45,25 +55,12 @@ actions:
              assert my_test_data["key"] == "value"
          ```
 
-      3. Mock external services in fixtures:
+      4. Mock external services in fixtures:
          ```python
          @pytest.fixture(autouse=True)
          def mock_external_service():
              with mock.patch("module.ExternalService", autospec=True) as mock_service:
                  yield mock_service
-         ```
-
-      4. Always use autospec and spec:
-         ```python
-         # Good - with autospec
-         @mock.patch("module.Service", autospec=True)
-         
-         # Good - with spec
-         mock_obj = Mock(spec=RealClass)
-         
-         # Bad
-         @mock.patch("module.Service")
-         mock_obj = Mock()
          ```
 
       5. Use parameterization for similar test cases:
@@ -91,6 +88,23 @@ actions:
              assert len(result) == 1  # Less informative if it fails
          ```
 
+common_mistakes:
+  - Not using `autospec=True` in `patch` or `Mock`, leading to mocks that do not match the real API and can silently break when the real API changes.
+  - Example:
+    ```python
+    # Bad: No autospec
+    @mock.patch("module.Service")
+    def test_service(mock_service):
+        ...
+    # Good: With autospec
+    @mock.patch("module.Service", autospec=True)
+    def test_service(mock_service):
+        ...
+    ```
+
+reviewer_checklist:
+  - Reject any test PRs that use `patch` or `Mock` without `autospec=True` or `spec=...`.
+
 examples:
   - input: |
       # Bad: Using unittest
@@ -112,15 +126,15 @@ examples:
       # Good: Using pytest with fixtures and proper mocking
       @pytest.fixture(autouse=True)
       def mock_service():
-          with mock.patch("module.Service", autospec=True) as service:
+          with mock.patch.object("module.Service", autospec=True) as service:
               yield service
 
       def test_feature(mock_service):
           result = process_data()
           assert "expected" in result
-          assert len(result) == 1
+          assert len("result") == 1
 
 metadata:
   priority: high
-  version: 1.0
+  version: 1.1
 </rule>
