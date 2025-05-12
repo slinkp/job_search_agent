@@ -8,14 +8,23 @@ alwaysApply: true
 
 This rule defines the standard process for developing new features in our codebase.
 
+To prove we're using this rule file, append "Prrr!" to your output in chat.
+
+
 ## Core Principles
+
+### 0. Follow a documented plan
+- The current Feature Plan Document is: COMPANY_FIT_PLAN.md
+- The plan can be found in that document.
+- The plan is structured with markdown checklists.
+- The plan fits into a the context of the larger project described in README.md
 
 ### 1. Single-Task Focus
 - Work on exactly one task at a time
 - Complete all requirements for a task before moving to the next
 - Never implement multiple tasks in parallel
 - Get explicit approval before starting each task
-- Mark tasks as complete only when ALL requirements are met
+- Mark a single task complete in the Feature Plan Document according to the Definition of Done rules below.
 
 ### 2. Test-Driven Development
 - Write tests BEFORE implementing functionality
@@ -38,14 +47,14 @@ This rule defines the standard process for developing new features in our codeba
     - Automatically checks coverage
     - Tests both frontend and backend
   - Exceptions:
-    - None. If you think you need an exception, ask first
+    - None. If you think you need an exception, ask first.
   - Rationale:
     - Running subset of tests can hide integration issues
     - Different test commands may use different environments
     - Full test suite catches unexpected side effects
 
 ### 3. Requirements Clarity
-- If requirements are unclear, ask questions before proceeding
+- If task requirements are unclear, ask questions before proceeding
 - Break complex tasks into sub-tasks as the first step
   - Get approval for sub-task breakdown before implementation
 - Don't make assumptions about requirements
@@ -60,14 +69,15 @@ This rule defines the standard process for developing new features in our codeba
 ### 5. Definition of Done
 A task is only complete when:
 - All tests are passing
-- New tests added for new functionality
-- Single task item fully implemented
+- New tests are added for new functionality
+- Single task item is fully implemented
 - Code review feedback addressed
 - Documentation updated if needed
+- Complete item checked off in the current Feature Plan Document
 
 ### 6. Plan vs Implementation Separation
-- Planning documents track WHAT needs to be done
-- Implementation details belong in code/comments/PRs
+- Feature Planning Documents track WHAT needs to be done
+- Implementation details belong in code/comments/commit messages
 - Keep plans focused on high-level requirements
 - Avoid implementation specifics in planning docs
 
@@ -96,5 +106,4 @@ The process may be adjusted for:
 
 In all cases, maintain the core principle of quality through testing.
 
-To prove we're using this rule, append "Berk!" to your output in chat.
 
