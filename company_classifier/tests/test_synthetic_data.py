@@ -1,6 +1,7 @@
 import json
 import os
 import types
+import unittest.mock as mock
 from typing import Any, Dict, List
 from unittest.mock import patch
 
@@ -10,6 +11,7 @@ from company_classifier.synthetic_data import (
     CompanyGenerationConfig,
     CompanyType,
     FitCategory,
+    HybridCompanyGenerator,
     LLMCompanyGenerator,
     RandomCompanyGenerator,
 )
@@ -68,6 +70,17 @@ def llm_company_response():
         "fit_category": "good",
         "fit_confidence": 0.8,
     }
+
+
+@pytest.fixture
+def hybrid_generator():
+    with mock.patch(
+        "company_classifier.synthetic_data.LLMCompanyGenerator.__init__",
+        return_value=None,
+    ):
+        return HybridCompanyGenerator(
+            config=CompanyGenerationConfig(), model="gpt-4-turbo-preview"
+        )
 
 
 def test_synthetic_company_schema(sample_synthetic_company):
@@ -242,3 +255,76 @@ def test_llm_company_generator_output_structure(llm_company_response):
     assert company["fit_category"] in ["good", "bad", "needs_more_info"]
     assert company["total_comp"] == company["base"] + company["rsu"] + company["bonus"]
     assert company["company_id"].startswith("synthetic-llm-")
+
+
+def test_hybrid_company_generator_output_structure(
+    hybrid_generator, llm_company_response
+):
+    with mock.patch.object(
+        type(hybrid_generator.llm_gen),
+        "generate_company",
+        autospec=True,
+        return_value=llm_company_response,
+    ) as mock_llm, mock.patch.object(
+        type(hybrid_generator.random_gen),
+        "generate_company",
+        autospec=True,
+        return_value={
+            "base": 210000,
+            "rsu": 100000,
+            "bonus": 20000,
+            "eng_size": 250,
+            "total_size": 2000,
+            "valuation": 5000000,
+            "total_comp": 330000,
+        },
+    ) as mock_random:
+        company = hybrid_generator.generate_company()
+    # Check required fields
+    required_fields = set(llm_company_response.keys())
+    assert set(company.keys()) >= required_fields
+    # Check numeric fields
+    assert 90000 <= company["base"] <= 300000
+    assert 0 <= company["rsu"] <= 300000
+    assert 0 <= company["bonus"] <= 450000
+    assert company["eng_size"] is None or 30 <= company["eng_size"] <= 3000
+    assert company["total_size"] is None or 100 <= company["total_size"] <= 30000
+    # Check text fields
+    assert isinstance(company["name"], str)
+    assert isinstance(company["remote_policy"], str)
+    assert isinstance(company["ai_notes"], (str, type(None)))
+    # Check business rules
+    assert company["type"] in ["public", "private", "private unicorn", "private finance"]
+    assert 0 <= company["fit_confidence"] <= 1
+    assert company["fit_category"] in ["good", "bad", "needs_more_info"]
+    assert company["total_comp"] == company["base"] + company["rsu"] + company["bonus"]
+    assert company["company_id"].startswith("synthetic-") or company[
+        "company_id"
+    ].startswith("synthetic-llm-")
+
+
+def test_hybrid_company_generator_multiple(hybrid_generator, llm_company_response):
+    with mock.patch.object(
+        type(hybrid_generator.llm_gen),
+        "generate_company",
+        autospec=True,
+        return_value=llm_company_response,
+    ) as mock_llm, mock.patch.object(
+        type(hybrid_generator.random_gen),
+        "generate_company",
+        autospec=True,
+        return_value={
+            "base": 210000,
+            "rsu": 100000,
+            "bonus": 20000,
+            "eng_size": 250,
+            "total_size": 2000,
+            "valuation": 5000000,
+            "total_comp": 330000,
+        },
+    ) as mock_random:
+        companies = hybrid_generator.generate_companies(5)
+    assert len(companies) == 5
+    for company in companies:
+        assert isinstance(company, dict)
+        assert "name" in company and "base" in company

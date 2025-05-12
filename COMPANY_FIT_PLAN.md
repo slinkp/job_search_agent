@@ -111,10 +111,10 @@ Random Forest gives us the best balance for our goals:
         - [x] Create prompt for LLM to generate diverse company profiles
         - [x] Add error handling and validation
         - [x] Add synthetic data markers in company_id
-    - [ ] Implement HybridCompanyGenerator:
-        - [ ] Use random generation for numeric fields
-        - [ ] Use LLM for text fields and correlations
-        - [ ] Implement business rules for realism
+    - [x] Implement HybridCompanyGenerator:
+        - [x] Use random generation for numeric fields
+        - [x] Use LLM for text fields and correlations
+        - [x] Implement business rules for realism
     - [ ] Generate initial test batch:
         - [ ] Generate ~20 companies using each generator type
         - [ ] Use rate_companies.py to validate quality

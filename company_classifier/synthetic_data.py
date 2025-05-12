@@ -423,8 +423,50 @@ class HybridCompanyGenerator:
         2. Use LLM for text fields and correlations
         3. Apply business rules to ensure realism
         """
-        # TODO: Implement hybrid generation strategy
-        raise NotImplementedError("Hybrid generation not yet implemented")
+        # Get base company from random generator for numeric fields
+        random_company = self.random_gen.generate_company()
+
+        # Get LLM company for text fields and correlations
+        llm_company = self.llm_gen.generate_company()
+
+        # Combine the two approaches:
+        # 1. Use random generator's numeric fields
+        # 2. Use LLM's text fields and correlations
+        # 3. Ensure business rules are followed
+        company = {
+            # Use LLM's text fields
+            "company_id": llm_company["company_id"],
+            "name": llm_company["name"],
+            "type": llm_company["type"],
+            "remote_policy": llm_company["remote_policy"],
+            "headquarters": llm_company["headquarters"],
+            "ny_address": llm_company["ny_address"],
+            "ai_notes": llm_company["ai_notes"],
+            "fit_category": llm_company["fit_category"],
+            "fit_confidence": llm_company["fit_confidence"],
+            # Use random generator's numeric fields
+            "valuation": random_company["valuation"],
+            "total_comp": random_company["total_comp"],
+            "base": random_company["base"],
+            "rsu": random_company["rsu"],
+            "bonus": random_company["bonus"],
+            "eng_size": random_company["eng_size"],
+            "total_size": random_company["total_size"],
+        }
+
+        # Apply business rules
+        if company["type"] in ["private", "private finance"]:
+            # Private companies shouldn't have RSUs
+            company["rsu"] = 0
+
+        if company["type"] == "private finance":
+            # Finance companies should have higher random bonuses
+            company["bonus"] = max(company["bonus"], random.randint(50000, 200000))
+
+        # Recalculate total comp to ensure it matches components
+        company["total_comp"] = company["base"] + company["rsu"] + company["bonus"]
+
+        return company
 
     def generate_companies(self, n: int) -> List[Dict[str, Any]]:
         """Generate multiple synthetic companies using hybrid approach."""
