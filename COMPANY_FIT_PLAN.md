@@ -118,14 +118,16 @@ Random Forest gives us the best balance for our goals:
     - [ ] Generate initial test batch:
         - [x] Implement a way to score the realism and variety of generated companies
         - [x] Generate ~20 companies using random generator
-        - [ ] Generate ~20 companies using LLM generator (requires OPENAI_API_KEY)
-        - [ ] Generate ~20 companies using hybrid generator (requires OPENAI_API_KEY)
+        - [ ] Support comparing multiple LLM models in one run so we can rate them against each other
+        - [ ] Generate ~20 companies using LLM generator for each model (requires API keys)
+        - [ ] Use the realism/variety score to compare LLM models
+        - [ ] Generate ~20 companies using hybrid generator with the best 2 models from previous step
         - [ ] Use the realism/variety score to compare generator types
-        - [ ] Select best performing generator
+        - [ ] Select best performing generator and make it the default
+        - [ ] Verify distribution matches real company data and iterate on generator until it does        
     - [ ] Generate full dataset:
         - [ ] Generate ~100 companies using chosen generator
-        - [ ] Use rate_companies.py to manually rate all companies
-        - [ ] Verify distribution matches real data
+        - [ ] Use rate_companies.py to manually rate all real and synthetic companies
         - [ ] Use existing train/val/test split functionality
 
 ### 2. Build Initial ML Pipeline
