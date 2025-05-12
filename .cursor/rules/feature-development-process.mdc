@@ -42,10 +42,9 @@ To prove we're using this rule file, append "Prrr!" to your output in chat.
   - NEVER run individual test files unless explicitly told to
   - NEVER skip tests unless explicitly told to
   - The `./test` command:
-    - Runs the complete test suite
+    - Runs the complete backend and frontend test suite
     - Ensures consistent test environment
     - Automatically checks coverage
-    - Tests both frontend and backend
   - Exceptions:
     - None. If you think you need an exception, ask first.
   - Rationale:
