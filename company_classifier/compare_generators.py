@@ -143,6 +143,12 @@ def main():
         default="gpt-4-turbo",
         help="Model to use. Can be short name (e.g., 'haiku', 'sonnet', 'gpt-4.1') or full name.",
     )
+    parser.add_argument(
+        "--generator",
+        choices=["random", "llm", "hybrid", "all"],
+        default="all",
+        help="Which generator to run. Use 'all' to run all generators.",
+    )
     args = parser.parse_args()
 
     # Get model info
@@ -154,7 +160,10 @@ def main():
 
     # Generate test batches
     results = {}
-    for generator_type in ["random", "llm", "hybrid"]:
+    generator_types = (
+        ["random", "llm", "hybrid"] if args.generator == "all" else [args.generator]
+    )
+    for generator_type in generator_types:
         try:
             output_file = generate_test_batch(
                 generator_type,
