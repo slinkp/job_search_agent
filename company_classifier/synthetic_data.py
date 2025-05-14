@@ -244,8 +244,7 @@ class LLMCompanyGenerator:
        3b. Some may have a headquarters elsewhere in the world, AND a satellite office in NYC.
        3c. Some may have no NYC office.
 
-    4. Include relevant AI/ML notes if applicable: whether and how AI is part of the company's
-       product offerings, technical strategy, and/or tech stack.
+    4. {ai_notes_instruction}
 
     5. Ensure all numeric fields are realistic and correlated.
        - RSUs only for public/unicorn companies
@@ -300,6 +299,7 @@ class LLMCompanyGenerator:
         config: Optional[CompanyGenerationConfig] = None,
         model: str = "gpt-4-turbo-preview",
         provider: Literal["openai", "anthropic"] = "openai",
+        ai_notes_probability: float = 0.6,
     ):
         """Initialize the LLM generator with configuration.
 
@@ -308,10 +308,12 @@ class LLMCompanyGenerator:
             model: Model to use. For OpenAI: gpt-4-turbo-preview, gpt-4-0125-preview, gpt-3.5-turbo
                   For Anthropic: claude-3-opus-20240229, claude-3-sonnet-20240229
             provider: Which LLM provider to use ("openai" or "anthropic")
+            ai_notes_probability: Probability of requesting an AI story (default 0.6)
         """
         self.config = config or CompanyGenerationConfig()
         self.model = model
         self.provider = provider
+        self.ai_notes_probability = ai_notes_probability
 
         # Initialize appropriate client
         if provider == "openai":
@@ -327,6 +329,13 @@ class LLMCompanyGenerator:
 
     def generate_company(self) -> Dict[str, Any]:
         """Generate a single synthetic company using LLM."""
+        # Randomly decide whether to ask for AI notes
+        ask_for_ai_notes = random.random() < self.ai_notes_probability
+        if ask_for_ai_notes:
+            ai_notes_instruction = "Include relevant AI/ML notes if applicable: whether and how AI is part of the company's product offerings, technical strategy, and/or tech stack."
+        else:
+            ai_notes_instruction = "Do not include any AI/ML notes. Set ai_notes to null."
+
         # Format prompt with config values
         prompt = self.COMPANY_PROMPT.format(
             base_salary_range=self.config.base_salary_range,
@@ -334,6 +343,7 @@ class LLMCompanyGenerator:
             bonus_range=self.config.bonus_range,
             eng_size_range=self.config.eng_size_range,
             total_size_range=self.config.total_size_range,
+            ai_notes_instruction=ai_notes_instruction,
         )
 
         start_time = time.time()
@@ -410,6 +420,9 @@ class LLMCompanyGenerator:
         # Do not populate fit_category or fit_confidence
         company_data["fit_category"] = None
         company_data["fit_confidence"] = None
+        # If we did not ask for ai_notes, set it to None regardless of LLM output
+        if not ask_for_ai_notes:
+            company_data["ai_notes"] = None
         # Validate required fields
         required_fields = {
             "company_id",
