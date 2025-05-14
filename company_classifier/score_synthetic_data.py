@@ -9,7 +9,9 @@ their output against real-world patterns and diversity metrics.
 import argparse
 import csv
 import json
+import re
 from collections import Counter
+from itertools import combinations
 from typing import Dict, List
 
 from company_classifier.synthetic_data import CompanyType, FitCategory
@@ -96,7 +98,87 @@ def calculate_diversity_score(companies: List[Dict]) -> Dict[str, float]:
     # Calculate overall score as average of individual scores
     scores["overall_diversity"] = sum(scores.values()) / len(scores)
 
+    # Add ai_notes scores
+    scores.update(calculate_ai_notes_scores(companies))
+
     return scores
+
+
+def score_ai_notes_realism(companies: List[Dict]) -> float:
+    """Score realism of ai_notes: plausible text or appropriate null/empty."""
+    ai_keywords = [
+        "AI",
+        "machine learning",
+        "ML",
+        "NLP",
+        "data science",
+        "LLM",
+        "automation",
+        "predictive",
+        "model",
+        "deep learning",
+        "artificial intelligence",
+        "neural network",
+        "chatbot",
+        "recommendation",
+        "vision",
+        "analytics",
+    ]
+    plausible = 0
+    for c in companies:
+        notes = c.get("ai_notes")
+        if not notes or not str(notes).strip():
+            plausible += 1  # Acceptable if empty/null
+        else:
+            text = str(notes).strip()
+            if (
+                len(text) > 20
+                and not text.lower().startswith("as an ai language model")
+                and any(kw.lower() in text.lower() for kw in ai_keywords)
+            ):
+                plausible += 1
+    return plausible / len(companies) if companies else 0.0
+
+
+def score_ai_notes_diversity(companies: List[Dict]) -> float:
+    """Score diversity of non-empty ai_notes using Jaccard similarity."""
+    notes = [
+        str(c.get("ai_notes")).strip()
+        for c in companies
+        if c.get("ai_notes") and str(c.get("ai_notes")).strip()
+    ]
+    if len(notes) < 2:
+        return 1.0  # Trivially diverse
+
+    def jaccard(a, b):
+        set_a = set(re.findall(r"\w+", a.lower()))
+        set_b = set(re.findall(r"\w+", b.lower()))
+        if not set_a or not set_b:
+            return 0.0
+        return len(set_a & set_b) / len(set_a | set_b)
+
+    similarities = [jaccard(a, b) for a, b in combinations(notes, 2)]
+    avg_sim = sum(similarities) / len(similarities) if similarities else 0.0
+    return 1.0 - avg_sim  # Higher is more diverse
+
+
+def score_ai_notes_representativeness(companies: List[Dict], target_empty=0.4) -> float:
+    """Score how close the proportion of empty/null ai_notes is to the target (default 40%)."""
+    empty_count = sum(
+        1
+        for c in companies
+        if not c.get("ai_notes") or not str(c.get("ai_notes")).strip()
+    )
+    prop_empty = empty_count / len(companies) if companies else 0.0
+    return max(0.0, 1.0 - abs(prop_empty - target_empty) / target_empty)
+
+
+def calculate_ai_notes_scores(companies: List[Dict]) -> Dict[str, float]:
+    return {
+        "ai_notes_realism": score_ai_notes_realism(companies),
+        "ai_notes_diversity": score_ai_notes_diversity(companies),
+        "ai_notes_representativeness": score_ai_notes_representativeness(companies),
+    }
 
 
 def main():

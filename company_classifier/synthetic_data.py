@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, cast
 
+import ulid
 from anthropic import Anthropic
 from anthropic.types import MessageParam
 from openai import OpenAI
@@ -34,6 +35,15 @@ class FitCategory(Enum):
     GOOD = "good"
     BAD = "bad"
     NEEDS_MORE_INFO = "needs_more_info"
+
+
+def random_id():
+    # Overkill but I like ULIDs.
+    random_id = str(ulid.new())
+    # Let's take the date portion and first random char.
+    # But skip the first char just because it'll be "0" for a thousand years.
+    # Oh no, a Y3084 bug! :-D
+    return random_id[1:11]
 
 
 @dataclass
@@ -165,9 +175,10 @@ class RandomCompanyGenerator:
             if random.random() < self.config.prob_has_valuation:
                 valuation = total_comp * random.randint(1000, 5000)
 
+        _random_id = random_id()
         return {
-            "company_id": f"synthetic-{random.randint(1000, 9999)}",
-            "name": f"Synthetic Company {random.randint(1000, 9999)}",
+            "company_id": f"synthetic-{_random_id}",
+            "name": f"Synthetic Company {_random_id}",
             "type": company_type.value,
             "valuation": valuation,
             "total_comp": total_comp,
@@ -244,7 +255,7 @@ class LLMCompanyGenerator:
     Return the data as a JSON object with these exact fields (no additional fields):
     {{
         "company_id": "synthetic-llm-XXXX",
-        "name": "Company name",
+        "name": "<a weird, creative, short combination of nouns and verbs>",
         "type": "public|private|private unicorn|private finance",
         "valuation": number or null,
         "total_comp": number,
@@ -392,6 +403,10 @@ class LLMCompanyGenerator:
             print(f"Error: Invalid JSON response from LLM: {content}", file=sys.stderr)
             raise ValueError(f"Invalid JSON response from LLM: {e}")
 
+        _random_id = random_id()
+        # Ensure company name and id is unique.
+        company_data["name"] = f"{company_data['name']} {_random_id}"
+        company_data["company_id"] = f"synthetic-llm-{_random_id}"
         # Validate required fields
         required_fields = {
             "company_id",
@@ -456,7 +471,7 @@ class HybridCompanyGenerator:
     def __init__(
         self,
         config: Optional[CompanyGenerationConfig] = None,
-        model: str = "gpt-4-turbo-preview",
+        model: str = "gpt-3.5-turbo",
         provider: Literal["openai", "anthropic"] = "openai",
     ):
         """Initialize the hybrid generator.
@@ -472,8 +487,8 @@ class HybridCompanyGenerator:
     def generate_company(self) -> Dict[str, Any]:
         """
         Generate a single synthetic company using hybrid approach:
-        1. Use random generation for numeric fields
-        2. Use LLM for text fields and correlations
+        1. Use random generation for numeric fields and basic structure
+        2. Use LLM for text fields, correlations, and business rules
         3. Apply business rules to ensure realism
         """
         # Get base company from random generator for numeric fields
@@ -482,45 +497,84 @@ class HybridCompanyGenerator:
         # Get LLM company for text fields and correlations
         llm_company = self.llm_gen.generate_company()
 
-        # Combine the two approaches:
-        # 1. Use random generator's numeric fields
-        # 2. Use LLM's text fields and correlations
-        # 3. Ensure business rules are followed
+        _random_id = random_id()
+        # Combine the two approaches with improved logic:
         company = {
-            # Use LLM's text fields
-            "company_id": llm_company["company_id"],
+            # Use LLM's text fields and correlations
+            "company_id": f"synthetic-hybrid-{_random_id}",
             "name": llm_company["name"],
-            "type": llm_company["type"],
             "remote_policy": llm_company["remote_policy"],
             "headquarters": llm_company["headquarters"],
             "ny_address": llm_company["ny_address"],
             "ai_notes": llm_company["ai_notes"],
             "fit_category": llm_company["fit_category"],
             "fit_confidence": llm_company["fit_confidence"],
-            # Use random generator's numeric fields
+            # Use random generator's numeric and categorical fields as base
             "valuation": random_company["valuation"],
             "total_comp": random_company["total_comp"],
             "base": random_company["base"],
+            "type": random_company["type"],
             "rsu": random_company["rsu"],
             "bonus": random_company["bonus"],
             "eng_size": random_company["eng_size"],
             "total_size": random_company["total_size"],
         }
-
-        # Apply business rules
+        # Apply enhanced business rules
         if company["type"] in ["private", "private finance"]:
             # Private companies shouldn't have RSUs
             company["rsu"] = 0
+            # Adjust total comp to account for removed RSUs
+            company["total_comp"] = company["base"] + company["bonus"]
 
         if company["type"] == "private finance":
-            # Finance companies should have higher random bonuses
-            company["bonus"] = max(company["bonus"], random.randint(50000, 200000))
+            # Finance companies should have higher bonuses
+            min_bonus = 100_000
+            max_bonus = 450_000
+            company["bonus"] = max(company["bonus"], random.randint(min_bonus, max_bonus))
+            # Adjust base to maintain reasonable total comp
+            company["base"] = max(company["base"], 200_000)
+            company["total_comp"] = company["base"] + company["bonus"]
 
-        # Recalculate total comp to ensure it matches components
-        company["total_comp"] = company["base"] + company["rsu"] + company["bonus"]
+        elif company["type"] in ["public", "private unicorn"]:
+            # Public and unicorn companies should have significant RSUs
+            min_rsu = 30_000
+            max_rsu = 300_000
+            company["rsu"] = max(company["rsu"], random.randint(min_rsu, max_rsu))
+            # Adjust base to maintain reasonable total comp
+            company["base"] = max(company["base"], 120_000)
+            company["total_comp"] = company["base"] + company["rsu"] + company["bonus"]
+
+        # Ensure total comp is within reasonable range
+        min_total = 160_000
+        max_total = 600_000
+        if company["total_comp"] < min_total:
+            # Increase base to meet minimum
+            company["base"] += min_total - company["total_comp"]
+            company["total_comp"] = min_total
+        elif company["total_comp"] > max_total:
+            # Scale down components proportionally
+            scale = max_total / company["total_comp"]
+            company["base"] = int(company["base"] * scale)
+            company["rsu"] = int(company["rsu"] * scale)
+            company["bonus"] = int(company["bonus"] * scale)
+            company["total_comp"] = max_total
+
+        # Ensure engineering size is reasonable relative to total size
+        if company["eng_size"] and company["total_size"]:
+            min_eng_ratio = 0.1  # Engineering should be at least 10% of total
+            max_eng_ratio = 0.5  # Engineering shouldn't be more than 50% of total
+            eng_ratio = company["eng_size"] / company["total_size"]
+            if eng_ratio < min_eng_ratio:
+                company["eng_size"] = int(company["total_size"] * min_eng_ratio)
+            elif eng_ratio > max_eng_ratio:
+                company["eng_size"] = int(company["total_size"] * max_eng_ratio)
 
         return company
 
     def generate_companies(self, n: int) -> List[Dict[str, Any]]:
         """Generate multiple synthetic companies using hybrid approach."""
-        return [self.generate_company() for _ in range(n)]
+        companies = []
+        for i in range(n):
+            print(f"\nGenerating company {i+1}/{n}:", file=sys.stderr)
+            companies.append(self.generate_company())
+        return companies
