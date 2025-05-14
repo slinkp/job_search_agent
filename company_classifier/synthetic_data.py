@@ -191,8 +191,8 @@ class RandomCompanyGenerator:
             "headquarters": "New York" if random.random() < 0.7 else None,
             "ny_address": random.choice(self.NYC_LOCATIONS),
             "ai_notes": None,  # Will be better handled by LLM approach
-            "fit_category": random.choice(list(FitCategory)).value,
-            "fit_confidence": 0.8,  # Fixed for synthetic data
+            "fit_category": None,
+            "fit_confidence": None,
         }
 
     def generate_companies(self, n: int) -> List[Dict[str, Any]]:
@@ -268,8 +268,8 @@ class LLMCompanyGenerator:
         "headquarters": "string" or null,
         "ny_address": "string" or null,
         "ai_notes": "string" or null,
-        "fit_category": "good|bad|needs_more_info",
-        "fit_confidence": 0.8
+        "fit_category": null,
+        "fit_confidence": null
     }}
 
     The numeric fields should follow these constraints from the config:
@@ -407,6 +407,9 @@ class LLMCompanyGenerator:
         # Ensure company name and id is unique.
         company_data["name"] = f"{company_data['name']} {_random_id}"
         company_data["company_id"] = f"synthetic-llm-{_random_id}"
+        # Do not populate fit_category or fit_confidence
+        company_data["fit_category"] = None
+        company_data["fit_confidence"] = None
         # Validate required fields
         required_fields = {
             "company_id",
@@ -417,8 +420,6 @@ class LLMCompanyGenerator:
             "rsu",
             "bonus",
             "remote_policy",
-            "fit_category",
-            "fit_confidence",
         }
         if not all(field in company_data for field in required_fields):
             raise ValueError(
@@ -449,10 +450,6 @@ class LLMCompanyGenerator:
         # Validate company type
         if company_data["type"] not in [t.value for t in CompanyType]:
             raise ValueError(f"Invalid company type: {company_data['type']}")
-
-        # Validate fit category
-        if company_data["fit_category"] not in [t.value for t in FitCategory]:
-            raise ValueError(f"Invalid fit category: {company_data['fit_category']}")
 
         return company_data
 
@@ -507,8 +504,9 @@ class HybridCompanyGenerator:
             "headquarters": llm_company["headquarters"],
             "ny_address": llm_company["ny_address"],
             "ai_notes": llm_company["ai_notes"],
-            "fit_category": llm_company["fit_category"],
-            "fit_confidence": llm_company["fit_confidence"],
+            # Do not populate fit_category or fit_confidence
+            "fit_category": None,
+            "fit_confidence": None,
             # Use random generator's numeric and categorical fields as base
             "valuation": random_company["valuation"],
             "total_comp": random_company["total_comp"],

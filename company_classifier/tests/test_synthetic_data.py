@@ -100,8 +100,8 @@ def test_synthetic_company_schema(sample_synthetic_company):
         "headquarters": (str, type(None)),
         "ny_address": (str, type(None)),
         "ai_notes": (str, type(None)),
-        "fit_category": str,
-        "fit_confidence": float,
+        "fit_category": (str, type(None)),
+        "fit_confidence": (float, type(None)),
     }
 
     for field, expected_types in required_fields.items():
@@ -134,10 +134,16 @@ def test_synthetic_company_constraints(sample_synthetic_company):
             assert value >= 0, f"{field} should be non-negative"
 
     # Fit category should be one of our known categories
-    assert sample_synthetic_company["fit_category"] in ["good", "bad", "needs_more_info"]
+    assert sample_synthetic_company["fit_category"] in [
+        "good",
+        "bad",
+        "needs_more_info",
+        None,
+    ]
 
     # Fit confidence should be between 0 and 1
-    assert 0 <= sample_synthetic_company["fit_confidence"] <= 1
+    if sample_synthetic_company["fit_confidence"] is not None:
+        assert 0 <= sample_synthetic_company["fit_confidence"] <= 1
 
     # If total_comp is present, it should approximately equal base + rsu + bonus
     total = sample_synthetic_company["total_comp"]
@@ -187,12 +193,8 @@ def test_synthetic_data_diversity(generator):
     # 4. Check fit category distribution
     fit_categories = [c["fit_category"] for c in companies]
     assert all(
-        fc in [fc.value for fc in FitCategory] for fc in fit_categories
+        fc in [fc.value for fc in FitCategory] + [None] for fc in fit_categories
     ), "Invalid fit category found"
-    # Should have all categories represented
-    assert set(fit_categories) == {
-        fc.value for fc in FitCategory
-    }, "Missing some fit categories"
 
     # 5. Check location diversity
     locations = [c["ny_address"] for c in companies]
@@ -251,8 +253,9 @@ def test_llm_company_generator_output_structure(llm_company_response):
 
     # Check types and constraints
     assert company["type"] in ["public", "private", "private unicorn", "private finance"]
-    assert 0 <= company["fit_confidence"] <= 1
-    assert company["fit_category"] in ["good", "bad", "needs_more_info"]
+    if company["fit_confidence"] is not None:
+        assert 0 <= company["fit_confidence"] <= 1
+    assert company["fit_category"] in ["good", "bad", "needs_more_info", None]
     assert company["total_comp"] == company["base"] + company["rsu"] + company["bonus"]
     assert company["company_id"].startswith("synthetic-llm-")
 
@@ -277,6 +280,7 @@ def test_hybrid_company_generator_output_structure(
             "total_size": 2000,
             "valuation": 5000000,
             "total_comp": 330000,
+            "type": "public",
         },
     ) as mock_random:
         company = hybrid_generator.generate_company()
@@ -295,8 +299,9 @@ def test_hybrid_company_generator_output_structure(
     assert isinstance(company["ai_notes"], (str, type(None)))
     # Check business rules
     assert company["type"] in ["public", "private", "private unicorn", "private finance"]
-    assert 0 <= company["fit_confidence"] <= 1
-    assert company["fit_category"] in ["good", "bad", "needs_more_info"]
+    if company["fit_confidence"] is not None:
+        assert 0 <= company["fit_confidence"] <= 1
+    assert company["fit_category"] in ["good", "bad", "needs_more_info", None]
     assert company["total_comp"] == company["base"] + company["rsu"] + company["bonus"]
     assert company["company_id"].startswith("synthetic-") or company[
         "company_id"
@@ -321,6 +326,7 @@ def test_hybrid_company_generator_multiple(hybrid_generator, llm_company_respons
             "total_size": 2000,
             "valuation": 5000000,
             "total_comp": 330000,
+            "type": "public",
         },
     ) as mock_random:
         companies = hybrid_generator.generate_companies(5)
