@@ -10,7 +10,7 @@ import csv
 import json
 import os
 import sys
-from typing import Dict, Literal, Tuple
+from typing import Dict, List, Literal, Tuple
 
 from company_classifier.generate_synthetic_data import (
     CompanyGenerationConfig,
@@ -122,6 +122,37 @@ def generate_test_batch(
     return output_file
 
 
+def process_companies_file(file_path: str) -> List[Dict]:
+    """Process a CSV file of companies and return the data with proper types.
+
+    Args:
+        file_path: Path to the CSV file
+
+    Returns:
+        List of company dictionaries with proper numeric types
+    """
+    with open(file_path, "r") as f:
+        reader = csv.DictReader(f)
+        companies = []
+        for row in reader:
+            # Convert numeric fields
+            for field in [
+                "valuation",
+                "total_comp",
+                "base",
+                "rsu",
+                "bonus",
+                "eng_size",
+                "total_size",
+            ]:
+                if row[field] is not None and row[field].isnumeric():
+                    row[field] = float(row[field])
+                else:
+                    row[field] = None
+            companies.append(row)
+    return companies
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Compare different synthetic data generators"
@@ -139,9 +170,10 @@ def main():
         help="Directory to save generated data and comparison results",
     )
     parser.add_argument(
-        "--model",
-        default="gpt-4-turbo",
-        help="Model to use. Can be short name (e.g., 'haiku', 'sonnet', 'gpt-4.1') or full name.",
+        "--models",
+        nargs="+",
+        default=["gpt-4-turbo"],
+        help="Models to use. Can be short names (e.g., 'haiku', 'sonnet', 'gpt-4.1') or full names.",
     )
     parser.add_argument(
         "--generator",
@@ -151,83 +183,79 @@ def main():
     )
     args = parser.parse_args()
 
-    # Get model info
-    try:
-        full_model_name, provider = get_model_info(args.model)
-    except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    # Validate all models first
+    model_infos = {}
+    for model in args.models:
+        try:
+            full_model_name, provider = get_model_info(model)
+            model_infos[model] = (full_model_name, provider)
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    # Generate test batches
-    results = {}
+    # Generate test batches for each model
+    all_results = {}
     generator_types = (
         ["random", "llm", "hybrid"] if args.generator == "all" else [args.generator]
     )
-    for generator_type in generator_types:
-        try:
-            output_file = generate_test_batch(
-                generator_type,
-                args.num_companies,
-                model=args.model,
-                output_dir=args.output_dir,
-            )
 
-            # Calculate scores
-            with open(output_file, "r") as f:
-                reader = csv.DictReader(f)
-                companies = []
-                for row in reader:
-                    # Convert numeric fields
-                    for field in [
-                        "valuation",
-                        "total_comp",
-                        "base",
-                        "rsu",
-                        "bonus",
-                        "eng_size",
-                        "total_size",
-                    ]:
-                        if row[field]:
-                            row[field] = float(row[field])
-                        else:
-                            row[field] = None
-                    companies.append(row)
+    for model in args.models:
+        full_model_name, provider = model_infos[model]
+        print(f"\nProcessing model: {full_model_name} ({provider})")
+        print("=" * 50)
 
-            scores = calculate_diversity_score(companies)
-            results[generator_type] = {
-                "scores": scores,
-                "output_file": output_file,
-            }
+        model_results = {}
+        for generator_type in generator_types:
+            try:
+                output_file = generate_test_batch(
+                    generator_type,
+                    args.num_companies,
+                    model=model,
+                    output_dir=args.output_dir,
+                )
 
-        except Exception as e:
-            print(f"Error generating {generator_type} test batch: {e}", file=sys.stderr)
-            results[generator_type] = {
-                "error": str(e),
-            }
+                # Calculate scores
+                companies = process_companies_file(output_file)
+                scores = calculate_diversity_score(companies)
+                model_results[generator_type] = {
+                    "scores": scores,
+                    "output_file": output_file,
+                }
+
+            except Exception as e:
+                print(
+                    f"Error generating {generator_type} test batch: {e}", file=sys.stderr
+                )
+                model_results[generator_type] = {
+                    "error": str(e),
+                }
+
+        all_results[model] = model_results
 
     # Save comparison results
     results_file = os.path.join(
         args.output_dir,
-        f"generator_comparison_{provider}_{full_model_name.replace('.', '_')}.json",
+        "generator_comparison_results.json",
     )
     with open(results_file, "w") as f:
-        json.dump(results, f, indent=2)
+        json.dump(all_results, f, indent=2)
 
     # Print summary
     print("\nGenerator Comparison Results:")
     print("=" * 50)
-    print(f"Provider: {provider}")
-    print(f"Model: {full_model_name}")
-    print("=" * 50)
-    for generator_type, result in results.items():
-        print(f"\n{generator_type.upper()} Generator:")
-        if "error" in result:
-            print(f"  Error: {result['error']}")
-        else:
-            print(f"  Output file: {result['output_file']}")
-            print("  Scores:")
-            for metric, score in result["scores"].items():
-                print(f"    {metric}: {score:.2f}")
+    for model, model_results in all_results.items():
+        full_model_name, provider = model_infos[model]
+        print(f"\nModel: {full_model_name} ({provider})")
+        print("-" * 50)
+        for generator_type, result in model_results.items():
+            print(f"\n{generator_type.upper()} Generator:")
+            if "error" in result:
+                print(f"  Error: {result['error']}")
+            else:
+                print(f"  Output file: {result['output_file']}")
+                print("  Scores:")
+                for metric, score in result["scores"].items():
+                    print(f"    {metric}: {score:.2f}")
 
     print(f"\nDetailed results saved to: {results_file}")
 

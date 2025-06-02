@@ -118,7 +118,7 @@ Random Forest gives us the best balance for our goals:
     - [ ] Generate initial test batch:
         - [x] Implement a way to score the realism and variety of generated companies
         - [x] Generate ~20 companies using random generator
-        - [ ] Support comparing multiple LLM models in one run so we can rate them against each other
+        - [x] Support comparing multiple LLM models in one run so we can rate them against each other
         - [ ] Generate ~20 companies using LLM generator for each model (requires API keys)
         - [ ] Use the realism/variety score to compare LLM models
         - [ ] Generate ~20 companies using hybrid generator with the best 2 models from previous step
