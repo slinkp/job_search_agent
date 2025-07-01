@@ -1,20 +1,19 @@
 ---
-description: 
+description: Standard feature development process
 globs: 
 alwaysApply: true
 ---
-
 # Feature Development Process
 
 This rule defines the standard process for developing new features in our codebase.
 
-To prove we're using this rule file, append "Prrr!" to your output in chat.
+To prove we're using this rule file, append "Prrt!" to your chat output.
 
 
 ## Core Principles
 
 ### 0. Follow a documented plan
-- The current Feature Plan Document is: COMPANY_FIT_PLAN.md
+- The current Feature Plan Document is: [COMPANY_FIT_PLAN.md](mdc:COMPANY_FIT_PLAN.md)
 - The plan can be found in that document.
 - The plan is structured with markdown checklists.
 - The plan fits into a the context of the larger project described in README.md
@@ -25,6 +24,26 @@ To prove we're using this rule file, append "Prrr!" to your output in chat.
 - Never implement multiple tasks in parallel
 - Get explicit approval before starting each task
 - Mark a single task complete in the Feature Plan Document according to the Definition of Done rules below.
+- A task should be the smallest possible unit of work that adds value
+  - If a task can be broken down further, it should be
+  - Prefer completing one checkbox at a time rather than multiple checkboxes
+  - When in doubt, choose the smaller scope
+
+### 1a. Task Granularity
+- Each task should be small enough to be completed in a single focused session
+- Aim for tasks that result in fewer than 100 lines of code changes
+- Tasks should have a clear, narrow focus with well-defined boundaries
+- If a task involves changes to multiple files or components, consider splitting it
+- Never mark multiple checkboxes complete in a single commit unless they are inseparable
+- When implementing a feature with multiple parts:
+  - Start with the minimal viable implementation
+  - Get approval before adding additional functionality
+  - Prioritize completing one part fully before starting another
+- Examples of appropriate task sizes:
+  - Adding a single field to a model
+  - Writing tests for a specific feature
+  - Implementing a single method or function
+  - Adding a specific UI component
 
 ### 2. Test-Driven Development
 - Write tests BEFORE implementing functionality
@@ -58,6 +77,9 @@ To prove we're using this rule file, append "Prrr!" to your output in chat.
   - Get approval for sub-task breakdown before implementation
 - Don't make assumptions about requirements
 - When discussing next steps, describe without implementing
+- When presented with a complex task, propose a breakdown into smaller tasks
+  - Suggest a specific sequence for implementing these smaller tasks
+  - Get explicit approval for this breakdown before proceeding
 
 ### 4. Failure Management
 - If stuck after 5 iterations, stop and seek advice
@@ -73,18 +95,24 @@ A task is only complete when:
 - Code review feedback addressed
 - Documentation updated if needed
 - Complete item checked off in the current Feature Plan Document
+- Only the minimum necessary code has been modified to complete the task
 
 ### 6. Plan vs Implementation Separation
 - Feature Planning Documents track WHAT needs to be done
 - Implementation details belong in code/comments/commit messages
 - Keep plans focused on high-level requirements
-- Avoid implementation specifics in planning docs
+- Avoid adding implementation specifics in planning docs
+  - BUT, if implementation specifics ARE given in the plan,
+    they are there for a reason. For example, if the plan specifies where to add a new class,
+    always follow that instruction unless explicitly told otherwise. If the plan mentions a specific file, that takes precedence over any default patterns or conventions.
 
 ### 7. Task Workflow
 1. Review current state and identify next task
 2. Wait for explicit approval to proceed
 3. Follow test-driven development process
-4. Document any process improvements discovered
+4. Check off a relevant feature checklist in the plan document
+5. Report any process improvements discovered and ask if this rule file should be updated
+6. Before marking a task complete, verify it addresses only what was requested and nothing more
 
 ## Application
 

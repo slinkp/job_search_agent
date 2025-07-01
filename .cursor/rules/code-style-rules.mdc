@@ -3,8 +3,6 @@ description:
 globs: 
 alwaysApply: true
 ---
-When formatting Python code, be consistent with the Black formatter.
-
 Never, never change the order of function definitions, method definitions, or class declarations in any code file without being specifically told to do so. It creates huge diff noise, hides actually significant changes, and there is no benefit.
 
 When writing new comments: Leave out comments that just re-state what the code is obviously doing,

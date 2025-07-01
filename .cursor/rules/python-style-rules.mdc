@@ -1,0 +1,9 @@
+---
+description: Python code formatting 
+globs: *py
+alwaysApply: false
+---
+
+When formatting Python code, be consistent with the Black formatter. 
+Black settings might be configured in pyproject.toml if it exists.
+

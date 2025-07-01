@@ -1,3 +1,8 @@
+---
+description: Standards for code simplification and refactoring approaches
+globs: 
+alwaysApply: false
+---
 # Code Simplification Best Practices
 
 Standards for code simplification and refactoring approaches.
