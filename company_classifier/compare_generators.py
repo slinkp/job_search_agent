@@ -193,19 +193,44 @@ def main():
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # Generate test batches for each model
-    all_results = {}
+    # Initialize results structure
+    all_results = {
+        "generators": {},  # For random generator results
+        "models": {},  # For model-specific results (llm and hybrid)
+    }
     generator_types = (
         ["random", "llm", "hybrid"] if args.generator == "all" else [args.generator]
     )
 
+    # Run random generator once if needed
+    if "random" in generator_types:
+        try:
+            output_file = generate_test_batch(
+                "random",
+                args.num_companies,
+                output_dir=args.output_dir,
+            )
+            companies = process_companies_file(output_file)
+            scores = calculate_diversity_score(companies)
+            all_results["generators"]["random"] = {
+                "scores": scores,
+                "output_file": output_file,
+            }
+        except Exception as e:
+            print(f"Error generating random test batch: {e}", file=sys.stderr)
+            all_results["generators"]["random"] = {
+                "error": str(e),
+            }
+
+    # Run LLM-dependent generators for each model
     for model in args.models:
         full_model_name, provider = model_infos[model]
         print(f"\nProcessing model: {full_model_name} ({provider})")
         print("=" * 50)
 
         model_results = {}
-        for generator_type in generator_types:
+        # Run LLM-dependent generators
+        for generator_type in [g for g in generator_types if g != "random"]:
             try:
                 output_file = generate_test_batch(
                     generator_type,
@@ -230,7 +255,11 @@ def main():
                     "error": str(e),
                 }
 
-        all_results[model] = model_results
+        all_results["models"][model] = {
+            "full_name": full_model_name,
+            "provider": provider,
+            "results": model_results,
+        }
 
     # Save comparison results
     results_file = os.path.join(
@@ -243,11 +272,25 @@ def main():
     # Print summary
     print("\nGenerator Comparison Results:")
     print("=" * 50)
-    for model, model_results in all_results.items():
-        full_model_name, provider = model_infos[model]
-        print(f"\nModel: {full_model_name} ({provider})")
+
+    # Print random generator results if any
+    if "random" in all_results["generators"]:
+        print("\nRANDOM Generator:")
         print("-" * 50)
-        for generator_type, result in model_results.items():
+        result = all_results["generators"]["random"]
+        if "error" in result:
+            print(f"  Error: {result['error']}")
+        else:
+            print(f"  Output file: {result['output_file']}")
+            print("  Scores:")
+            for metric, score in result["scores"].items():
+                print(f"    {metric}: {score:.2f}")
+
+    # Print model-specific results
+    for model, model_data in all_results["models"].items():
+        print(f"\nModel: {model_data['full_name']} ({model_data['provider']})")
+        print("-" * 50)
+        for generator_type, result in model_data["results"].items():
             print(f"\n{generator_type.upper()} Generator:")
             if "error" in result:
                 print(f"  Error: {result['error']}")
