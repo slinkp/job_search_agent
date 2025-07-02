@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import types
+from io import StringIO
 from unittest.mock import patch
 
 import pytest
@@ -198,3 +199,230 @@ def test_process_companies_file(tmp_path):
     assert companies[1]["bonus"] == 70000.0
     assert companies[1]["eng_size"] == 150.0
     assert companies[1]["total_size"] == 500.0
+
+
+@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"})
+def test_batch_size_parameter_passed_to_llm_generator(tmp_path):
+    """Test that batch_size parameter is correctly passed to LLM generator."""
+    # Mock the LLM response
+    mock_response = {
+        "company_id": "synthetic-llm-0001",
+        "name": "Test Corp",
+        "type": "public",
+        "valuation": 1000000000,
+        "total_comp": 350000,
+        "base": 200000,
+        "rsu": 120000,
+        "bonus": 30000,
+        "remote_policy": "remote first",
+        "eng_size": 200,
+        "total_size": 2000,
+        "headquarters": "New York",
+        "ny_address": "123 Test Ave",
+        "ai_notes": "AI-driven product",
+        "fit_category": "good",
+        "fit_confidence": 0.8,
+    }
+
+    # Use mock.patch to check if LLMCompanyGenerator is initialized with correct batch_size
+    with patch(
+        "company_classifier.compare_generators.LLMCompanyGenerator", autospec=True
+    ) as mock_llm_gen:
+        # Set up the mock to return a generator that produces mock companies
+        mock_instance = mock_llm_gen.return_value
+        mock_instance.generate_companies.return_value = [mock_response, mock_response]
+
+        # Call generate_test_batch with a specific batch_size
+        test_batch_size = 10
+        output_file = generate_test_batch(
+            generator_type="llm",
+            num_companies=2,
+            model="gpt-4-turbo",
+            output_dir=str(tmp_path),
+            batch_size=test_batch_size,
+        )
+
+        # Verify LLMCompanyGenerator was initialized with the correct batch_size
+        mock_llm_gen.assert_called_once()
+        call_kwargs = mock_llm_gen.call_args.kwargs
+        assert "batch_size" in call_kwargs
+        assert call_kwargs["batch_size"] == test_batch_size
+
+
+@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"})
+def test_batch_size_parameter_passed_to_hybrid_generator(tmp_path):
+    """Test that batch_size parameter is correctly passed to Hybrid generator."""
+    # Mock the LLM response
+    mock_response = {
+        "company_id": "synthetic-hybrid-0001",
+        "name": "Test Corp",
+        "type": "public",
+        "valuation": 1000000000,
+        "total_comp": 350000,
+        "base": 200000,
+        "rsu": 120000,
+        "bonus": 30000,
+        "remote_policy": "remote first",
+        "eng_size": 200,
+        "total_size": 2000,
+        "headquarters": "New York",
+        "ny_address": "123 Test Ave",
+        "ai_notes": "AI-driven product",
+        "fit_category": "good",
+        "fit_confidence": 0.8,
+    }
+
+    # Use mock.patch to check if HybridCompanyGenerator is initialized with correct batch_size
+    with patch(
+        "company_classifier.compare_generators.HybridCompanyGenerator", autospec=True
+    ) as mock_hybrid_gen:
+        # Set up the mock to return a generator that produces mock companies
+        mock_instance = mock_hybrid_gen.return_value
+        mock_instance.generate_companies.return_value = [mock_response, mock_response]
+
+        # Call generate_test_batch with a specific batch_size
+        test_batch_size = 7
+        output_file = generate_test_batch(
+            generator_type="hybrid",
+            num_companies=2,
+            model="gpt-4-turbo",
+            output_dir=str(tmp_path),
+            batch_size=test_batch_size,
+        )
+
+        # Verify HybridCompanyGenerator was initialized with the correct batch_size
+        mock_hybrid_gen.assert_called_once()
+        call_kwargs = mock_hybrid_gen.call_args.kwargs
+        assert "batch_size" in call_kwargs
+        assert call_kwargs["batch_size"] == test_batch_size
+
+
+def test_batch_size_included_in_output_filename(tmp_path):
+    """Test that batch_size is included in the output filename."""
+    # Mock the generate_companies method to avoid actual generation
+    with patch(
+        "company_classifier.compare_generators.LLMCompanyGenerator", autospec=True
+    ) as mock_llm_gen:
+        mock_instance = mock_llm_gen.return_value
+        # Include all required fields for the company data
+        mock_instance.generate_companies.return_value = [
+            {
+                "name": "Test Corp",
+                "company_id": "test-001",
+                "type": "public",
+                "valuation": 1000000000,
+                "total_comp": 350000,
+                "base": 200000,
+                "rsu": 120000,
+                "bonus": 30000,
+                "remote_policy": "remote first",
+                "eng_size": 200,
+                "total_size": 2000,
+                "headquarters": "New York",
+                "ny_address": "123 Test Ave",
+                "ai_notes": "AI-driven product",
+                "fit_category": "good",
+                "fit_confidence": 0.8,
+            }
+        ]
+
+        # Test with different batch sizes
+        batch_size_5 = generate_test_batch(
+            generator_type="llm",
+            num_companies=1,
+            model="gpt-4-turbo",
+            output_dir=str(tmp_path),
+            batch_size=5,
+        )
+
+        batch_size_10 = generate_test_batch(
+            generator_type="llm",
+            num_companies=1,
+            model="gpt-4-turbo",
+            output_dir=str(tmp_path),
+            batch_size=10,
+        )
+
+        # Check that batch size is in the filenames
+        assert "batch5" in batch_size_5
+        assert "batch10" in batch_size_10
+        assert batch_size_5 != batch_size_10
+
+
+def test_batch_size_validation():
+    """Test that batch_size is properly validated."""
+    # Import here to avoid circular imports
+    from company_classifier.compare_generators import main
+
+    # Mock parser.parse_args to return args with specific batch_size
+    with patch("argparse.ArgumentParser.parse_args") as mock_parse_args, patch(
+        "sys.exit"
+    ) as mock_exit:
+
+        # Valid batch size
+        args = types.SimpleNamespace(
+            batch_size=15,
+            models=["gpt-4.1-mini"],
+            generator="all",
+            num_companies=1,
+            output_dir="test_dir",
+        )
+        mock_parse_args.return_value = args
+
+        # Reset mock_exit
+        mock_exit.reset_mock()
+
+        # Should not exit for valid batch size
+        with patch(
+            "company_classifier.compare_generators.generate_test_batch"
+        ) as mock_generate:
+            mock_generate.return_value = "test.csv"
+            with patch(
+                "company_classifier.compare_generators.process_companies_file"
+            ) as mock_process:
+                mock_process.return_value = []
+                with patch(
+                    "company_classifier.compare_generators.calculate_diversity_score"
+                ) as mock_score:
+                    mock_score.return_value = {}
+                    with patch("os.path.join", return_value="test_results.json"):
+                        with patch("builtins.open", create=True):
+                            with patch("json.dump"):
+                                main()
+                                mock_exit.assert_not_called()
+
+        # Invalid small batch size
+        args = types.SimpleNamespace(
+            batch_size=0,  # Too small
+            models=["gpt-4.1-mini"],
+            generator="all",
+            num_companies=1,
+            output_dir="test_dir",
+        )
+        mock_parse_args.return_value = args
+
+        # Reset mock_exit
+        mock_exit.reset_mock()
+
+        # Should exit for invalid batch size
+        with patch("sys.stderr", new=StringIO()):
+            main()
+            mock_exit.assert_called_once()
+
+        # Invalid large batch size
+        args = types.SimpleNamespace(
+            batch_size=25,  # Too large
+            models=["gpt-4.1-mini"],
+            generator="all",
+            num_companies=1,
+            output_dir="test_dir",
+        )
+        mock_parse_args.return_value = args
+
+        # Reset mock_exit
+        mock_exit.reset_mock()
+
+        # Should exit for invalid batch size
+        with patch("sys.stderr", new=StringIO()):
+            main()
+            mock_exit.assert_called_once()

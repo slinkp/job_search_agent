@@ -1,6 +1,5 @@
 import json
 import os
-import types
 import unittest.mock as mock
 from typing import Any, Dict, List
 from unittest.mock import patch
@@ -220,30 +219,24 @@ def test_synthetic_data_diversity(generator):
 
 def test_llm_company_generator_output_structure(llm_company_response):
     config = CompanyGenerationConfig()
+
+    # Create properly spec'd mocks for the response chain
+    mock_choice = mock.MagicMock(spec=["message"])
+    mock_message = mock.MagicMock(spec=["content"])
+    mock_message.content = json.dumps(llm_company_response)
+    mock_choice.message = mock_message
+
+    mock_response = mock.MagicMock(spec=["choices"])
+    mock_response.choices = [mock_choice]
+
     with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}):
         generator = LLMCompanyGenerator(config=config, model="gpt-4-turbo-preview")
 
-        def mock_openai_chat_completion_create(
-            self, model, messages, temperature, response_format
-        ):
-            class MockResponse:
-                class Choice:
-                    def __init__(self, content):
-                        self.message = types.SimpleNamespace(content=content)
-
-                def __init__(self, content):
-                    self.choices = [self.Choice(content)]
-
-            # Return the JSON string as the LLM would
-            return MockResponse(json.dumps(llm_company_response))
-
-        with patch.object(
-            generator.client.chat.completions,
-            "create",
+        # Mock the create method directly with autospec
+        with patch(
+            "openai.resources.chat.completions.Completions.create",
             autospec=True,
-            side_effect=lambda *args, **kwargs: mock_openai_chat_completion_create(
-                generator.client.chat.completions, *args, **kwargs
-            ),
+            return_value=mock_response,
         ):
             company = generator.generate_company()
 

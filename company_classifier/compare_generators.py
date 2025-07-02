@@ -78,6 +78,7 @@ def generate_test_batch(
     num_companies: int,
     model: str = "gpt-4-turbo",
     output_dir: str = "data/synthetic/test_batches",
+    batch_size: int = 5,
 ) -> str:
     """Generate a test batch using the specified generator.
 
@@ -86,6 +87,7 @@ def generate_test_batch(
         num_companies: Number of companies to generate
         model: Model name (short or full)
         output_dir: Directory to save the generated data
+        batch_size: Batch size for LLM generators (ignored for random generator)
 
     Returns:
         Path to the generated CSV file
@@ -102,21 +104,25 @@ def generate_test_batch(
         generator = RandomCompanyGenerator(config=config)
     elif generator_type == "llm":
         generator = LLMCompanyGenerator(
-            config=config, model=full_model_name, provider=provider
+            config=config, model=full_model_name, provider=provider, batch_size=batch_size
         )
     else:  # hybrid
         generator = HybridCompanyGenerator(
-            config=config, model=full_model_name, provider=provider
+            config=config, model=full_model_name, provider=provider, batch_size=batch_size
         )
 
     # Generate companies
     print(f"\nGenerating {num_companies} companies using {generator_type} generator...")
+    if generator_type != "random":
+        expected_api_calls = (num_companies + batch_size - 1) // batch_size
+        print(f"Expected API calls with batch_size={batch_size}: {expected_api_calls}")
+
     companies = generator.generate_companies(num_companies)
 
     # Save to CSV
     output_file = os.path.join(
         output_dir,
-        f"{generator_type}_{provider}_{full_model_name.replace('.', '_')}_test_batch.csv",
+        f"{generator_type}_{provider}_{full_model_name.replace('.', '_')}_batch{batch_size}_test_batch.csv",
     )
     save_companies_to_csv(companies, output_file)
 
@@ -183,7 +189,18 @@ def main():
         default="all",
         help="Which generator to run. Use 'all' to run all generators.",
     )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=5,
+        help="Batch size for LLM generators (1-20). Higher values make fewer API calls but may be less robust.",
+    )
     args = parser.parse_args()
+
+    # Validate batch size
+    if not (1 <= args.batch_size <= 20):
+        print("Error: --batch-size must be between 1 and 20", file=sys.stderr)
+        sys.exit(1)
 
     # Validate all models first
     if "all" in args.models:
@@ -216,6 +233,7 @@ def main():
                 "random",
                 args.num_companies,
                 output_dir=args.output_dir,
+                batch_size=args.batch_size,
             )
             companies = process_companies_file(output_file)
             scores = calculate_diversity_score(companies)
@@ -244,6 +262,7 @@ def main():
                     args.num_companies,
                     model=model,
                     output_dir=args.output_dir,
+                    batch_size=args.batch_size,
                 )
 
                 # Calculate scores
@@ -290,8 +309,12 @@ def main():
         else:
             print(f"  Output file: {result['output_file']}")
             print("  Scores:")
-            for metric, score in result["scores"].items():
-                print(f"    {metric}: {score:.2f}")
+            scores = result["scores"]
+            if isinstance(scores, dict):
+                for metric, score in scores.items():
+                    print(f"    {metric}: {score:.2f}")
+            else:
+                print(f"    Error: Invalid scores format: {scores}")
 
     # Print model-specific results
     for model, model_data in all_results["models"].items():
@@ -304,8 +327,12 @@ def main():
             else:
                 print(f"  Output file: {result['output_file']}")
                 print("  Scores:")
-                for metric, score in result["scores"].items():
-                    print(f"    {metric}: {score:.2f}")
+                scores = result["scores"]
+                if isinstance(scores, dict):
+                    for metric, score in scores.items():
+                        print(f"    {metric}: {score:.2f}")
+                else:
+                    print(f"    Error: Invalid scores format: {scores}")
 
     print(f"\nDetailed results saved to: {results_file}")
 

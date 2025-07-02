@@ -294,12 +294,94 @@ class LLMCompanyGenerator:
        - other types: $0 to $50,000
     """
 
+    BATCH_COMPANY_PROMPT = """
+    Generate {batch_size} realistic tech company profiles for NYC. Ensure diversity across all companies in the batch - vary company types, compensation structures, remote policies, and office locations.
+
+    Follow the same rules as single company generation:
+    
+    1. Use realistic compensation ranges for staff software engineers, based on company type:
+       - public: high base + RSUs, moderate bonus
+       - private: good base, no RSUs, low bonus
+       - private unicorn: good base + RSUs, low bonus
+       - private finance: highest base, no RSUs, very high bonus
+
+    2. Make remote work policies specific and detailed.
+       In-office from 0 days per week (for fully remote companies) to 5
+       (for fully onsite companies).
+
+    3. Use real office locations and neighborhoods.
+       3a. Most generated companies should have an office in New York City metro area.
+       3b. Some may have a headquarters elsewhere in the world, AND a satellite office in NYC.
+       3c. Some may have no NYC office.
+
+    4. {ai_notes_instruction}
+
+    5. Ensure all numeric fields are realistic and correlated.
+       - RSUs only for public/unicorn companies
+       - High bonuses only for finance companies
+       - Base salary should be market competitive
+
+    6. CRITICAL: Ensure diversity across the batch. Don't repeat similar patterns.
+       - Vary company types according to the probabilities
+       - Vary compensation levels within realistic ranges  
+       - Use different remote policies and office locations
+       - Create unique company names
+
+    Return the data as a JSON object with a "companies" array containing {batch_size} company objects, each with these exact fields:
+    {{
+        "companies": [
+            {{
+                "company_id": "synthetic-llm-XXXX",
+                "name": "<a weird, creative, short combination of nouns and verbs>",
+                "type": "public|private|private unicorn|private finance",
+                "valuation": number or null,
+                "total_comp": number,
+                "base": number,
+                "rsu": number,
+                "bonus": number,
+                "remote_policy": "string",
+                "eng_size": number or null,
+                "total_size": number or null,
+                "headquarters": "string" or null,
+                "ny_address": "string" or null,
+                "ai_notes": "string" or null,
+                "fit_category": null,
+                "fit_confidence": null
+            }}
+            // ... {batch_size} total companies
+        ]
+    }}
+
+    The numeric fields should follow these constraints:
+    - base_salary_range: {base_salary_range}
+    - rsu_range: {rsu_range}
+    - bonus_range: {bonus_range}
+    - eng_size_range: {eng_size_range}
+    - total_size_range: {total_size_range}
+
+    Company type distribution across the batch (FOLLOW THESE EXACTLY):
+    - public: 20%
+    - private: 50%
+    - private unicorn: 20%
+    - private finance: 10%
+
+    Compensation rules (FOLLOW THESE EXACTLY):
+    1. Total comp must be between $160,000 and $600,000
+    2. RSUs:
+       - Must be 0 for private and private finance companies
+       - Can be >0 only for public and private unicorn
+    3. Bonuses:
+       - private finance: $100,000 to $450,000
+       - other types: $0 to $50,000
+    """
+
     def __init__(
         self,
         config: Optional[CompanyGenerationConfig] = None,
         model: str = "gpt-4.1-nano",  # Cheapest model by default
         provider: Literal["openai", "anthropic"] = "openai",
         ai_notes_probability: float = 0.6,
+        batch_size: int = 5,
     ):
         """Initialize the LLM generator with configuration.
 
@@ -309,23 +391,27 @@ class LLMCompanyGenerator:
                   For Anthropic: claude-3-opus-20240229, claude-3-sonnet-20240229
             provider: Which LLM provider to use ("openai" or "anthropic")
             ai_notes_probability: Probability of requesting an AI story (default 0.6)
+            batch_size: Number of companies to generate per LLM request (default 5)
         """
         self.config = config or CompanyGenerationConfig()
         self.model = model
         self.provider = provider
         self.ai_notes_probability = ai_notes_probability
+        self.batch_size = max(1, min(batch_size, 20))  # Clamp between 1-20
 
         # Initialize appropriate client
         if provider == "openai":
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
                 raise ValueError("OPENAI_API_KEY environment variable must be set")
-            self.client = OpenAI()
+            self.openai_client = OpenAI()
+            self.anthropic_client = None
         else:  # anthropic
             api_key = os.getenv("ANTHROPIC_API_KEY")
             if not api_key:
                 raise ValueError("ANTHROPIC_API_KEY environment variable must be set")
-            self.client = Anthropic()
+            self.anthropic_client = Anthropic()
+            self.openai_client = None
 
     def generate_company(self) -> Dict[str, Any]:
         """Generate a single synthetic company using LLM."""
@@ -352,8 +438,8 @@ class LLMCompanyGenerator:
         temperature = (
             0.7  # Balance between creativity and consistency. Lower = more deterministic.
         )
-        if self.model.startswith("o4-mini"):
-            temperature = 1.0  # Doesn't support altering temperature.
+        if self.model.startswith("o1"):
+            temperature = 1.0  # O1 models don't support altering temperature.
 
         if self.provider == "openai":
             # Call OpenAI API with proper message types
@@ -365,9 +451,11 @@ class LLMCompanyGenerator:
             ]
 
             # Call OpenAI API
+            if not self.openai_client:
+                raise ValueError("OpenAI client not initialized")
             response = cast(
                 ChatCompletion,
-                self.client.chat.completions.create(
+                self.openai_client.chat.completions.create(
                     model=self.model,
                     messages=messages,
                     temperature=temperature,
@@ -381,7 +469,9 @@ class LLMCompanyGenerator:
                 "role": "user",
                 "content": f"{prompt}\n\nPlease respond with a valid JSON object only, no other text.",
             }
-            response = self.client.messages.create(
+            if not self.anthropic_client:
+                raise ValueError("Anthropic client not initialized")
+            response = self.anthropic_client.messages.create(
                 model=self.model,
                 max_tokens=4096,
                 system=f"{self.SYSTEM_PROMPT}\n\nYou must respond with a valid JSON object only, no other text.",
@@ -472,12 +562,263 @@ class LLMCompanyGenerator:
 
         return company_data
 
+    def generate_batch(self, batch_size: int) -> List[Dict[str, Any]]:
+        """Generate multiple synthetic companies in a single LLM request."""
+        # Randomly decide whether to ask for AI notes
+        ask_for_ai_notes = random.random() < self.ai_notes_probability
+        if ask_for_ai_notes:
+            ai_notes_instruction = "Include relevant AI/ML notes if applicable for some companies: whether and how AI is part of the company's product offerings, technical strategy, and/or tech stack."
+        else:
+            ai_notes_instruction = (
+                "Do not include any AI/ML notes. Set ai_notes to null for all companies."
+            )
+
+        # Format batch prompt with config values
+        prompt = self.BATCH_COMPANY_PROMPT.format(
+            batch_size=batch_size,
+            base_salary_range=self.config.base_salary_range,
+            rsu_range=self.config.rsu_range,
+            bonus_range=self.config.bonus_range,
+            eng_size_range=self.config.eng_size_range,
+            total_size_range=self.config.total_size_range,
+            ai_notes_instruction=ai_notes_instruction,
+        )
+
+        start_time = time.time()
+        print(
+            f"Calling {self.provider} LLM for batch of {batch_size}...",
+            end="",
+            flush=True,
+            file=sys.stderr,
+        )
+
+        temperature = 0.7
+        if self.model.startswith("o1"):
+            temperature = 1.0
+
+        if self.provider == "openai":
+            # Call OpenAI API with proper message types
+            messages: List[ChatCompletionMessageParam] = [
+                ChatCompletionSystemMessageParam(
+                    role="system", content=self.SYSTEM_PROMPT
+                ),
+                ChatCompletionUserMessageParam(role="user", content=prompt),
+            ]
+
+            # Call OpenAI API
+            if not self.openai_client:
+                raise ValueError("OpenAI client not initialized")
+            response = cast(
+                ChatCompletion,
+                self.openai_client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    response_format={"type": "json_object"},  # Ensure JSON output
+                ),
+            )
+            content = response.choices[0].message.content
+        else:  # anthropic
+            # Call Anthropic API with explicit JSON request
+            message: MessageParam = {
+                "role": "user",
+                "content": f"{prompt}\n\nPlease respond with a valid JSON object only, no other text.",
+            }
+            if not self.anthropic_client:
+                raise ValueError("Anthropic client not initialized")
+            response = self.anthropic_client.messages.create(
+                model=self.model,
+                max_tokens=4096,
+                system=f"{self.SYSTEM_PROMPT}\n\nYou must respond with a valid JSON object only, no other text.",
+                messages=[message],
+                temperature=temperature,
+            )
+            # Extract content from the first content block
+            content = None
+            if response.content and len(response.content) > 0:
+                block = response.content[0]
+                if hasattr(block, "text"):
+                    content = block.text.strip()
+                    # Try to find JSON in the response
+                    try:
+                        # Find the first { and last }
+                        start = content.find("{")
+                        end = content.rfind("}") + 1
+                        if start >= 0 and end > start:
+                            content = content[start:end]
+                    except Exception as e:
+                        print(
+                            f"Warning: Failed to extract JSON from response: {e}",
+                            file=sys.stderr,
+                        )
+                        content = None
+
+        duration = time.time() - start_time
+        print(f" done ({duration:.1f}s)", file=sys.stderr)
+
+        if not content:
+            raise ValueError("Empty response from LLM")
+
+        try:
+            batch_data = json.loads(content)
+        except json.JSONDecodeError as e:
+            print(f"Error: Invalid JSON response from LLM: {content}", file=sys.stderr)
+            raise ValueError(f"Invalid JSON response from LLM: {e}")
+
+        # Extract companies array from response
+        if "companies" not in batch_data:
+            raise ValueError("Batch response missing 'companies' array")
+
+        companies = batch_data["companies"]
+        if not isinstance(companies, list):
+            raise ValueError("'companies' field must be an array")
+
+        if len(companies) != batch_size:
+            print(
+                f"Warning: Expected {batch_size} companies, got {len(companies)}",
+                file=sys.stderr,
+            )
+
+        # Process each company in the batch
+        processed_companies = []
+        for i, company_data in enumerate(companies):
+            try:
+                _random_id = random_id()
+                # Ensure company name and id is unique
+                company_data["name"] = f"{company_data['name']} {_random_id}"
+                company_data["company_id"] = f"synthetic-llm-{_random_id}"
+
+                # Do not populate fit_category or fit_confidence
+                company_data["fit_category"] = None
+                company_data["fit_confidence"] = None
+
+                # If we did not ask for ai_notes, set it to None regardless of LLM output
+                if not ask_for_ai_notes:
+                    company_data["ai_notes"] = None
+
+                # Validate required fields
+                required_fields = {
+                    "company_id",
+                    "name",
+                    "type",
+                    "total_comp",
+                    "base",
+                    "rsu",
+                    "bonus",
+                    "remote_policy",
+                }
+                if not all(field in company_data for field in required_fields):
+                    raise ValueError(
+                        f"Company {i}: Missing required fields: {required_fields - set(company_data.keys())}"
+                    )
+
+                # Validate and clamp numeric ranges
+                company_data["base"] = max(
+                    self.config.base_salary_range[0],
+                    min(company_data["base"], self.config.base_salary_range[1]),
+                )
+                if company_data["rsu"] > 0:
+                    company_data["rsu"] = max(
+                        self.config.rsu_range[0],
+                        min(company_data["rsu"], self.config.rsu_range[1]),
+                    )
+                if company_data["bonus"] > 0:
+                    company_data["bonus"] = max(
+                        self.config.bonus_range[0],
+                        min(company_data["bonus"], self.config.bonus_range[1]),
+                    )
+
+                # Recalculate total comp to ensure it matches components
+                company_data["total_comp"] = (
+                    company_data["base"] + company_data["rsu"] + company_data["bonus"]
+                )
+
+                # Validate company type
+                if company_data["type"] not in [t.value for t in CompanyType]:
+                    raise ValueError(
+                        f"Company {i}: Invalid company type: {company_data['type']}"
+                    )
+
+                processed_companies.append(company_data)
+
+            except Exception as e:
+                print(f"Warning: Skipping company {i} due to error: {e}", file=sys.stderr)
+                continue
+
+        return processed_companies
+
     def generate_companies(self, n: int) -> List[Dict[str, Any]]:
-        """Generate multiple synthetic companies."""
+        """Generate multiple synthetic companies using batch processing with fallback."""
+        if n <= 0:
+            return []
+
         companies = []
-        for i in range(n):
-            print(f"\nGenerating company {i+1}/{n}:", file=sys.stderr)
-            companies.append(self.generate_company())
+        remaining = n
+        batch_num = 1
+
+        while remaining > 0:
+            current_batch_size = min(remaining, self.batch_size)
+
+            try:
+                print(
+                    f"\nGenerating batch {batch_num} ({current_batch_size} companies):",
+                    file=sys.stderr,
+                )
+                batch_companies = self.generate_batch(current_batch_size)
+                companies.extend(batch_companies)
+                remaining -= len(batch_companies)
+
+                # Check if we got fewer companies than expected
+                if len(batch_companies) < current_batch_size:
+                    missing = current_batch_size - len(batch_companies)
+                    print(
+                        f"Batch incomplete, generating {missing} companies individually",
+                        file=sys.stderr,
+                    )
+                    # Generate missing companies individually
+                    for i in range(missing):
+                        try:
+                            company = self.generate_company()
+                            companies.append(company)
+                            remaining -= 1
+                        except Exception as e:
+                            print(
+                                f"Failed to generate individual company: {e}",
+                                file=sys.stderr,
+                            )
+
+            except Exception as e:
+                print(f"Batch generation failed: {e}", file=sys.stderr)
+                print(
+                    f"Falling back to individual generation for {current_batch_size} companies",
+                    file=sys.stderr,
+                )
+
+                # Fallback to individual generation
+                for i in range(current_batch_size):
+                    try:
+                        company = self.generate_company()
+                        companies.append(company)
+                        remaining -= 1
+                    except Exception as individual_e:
+                        print(
+                            f"Failed to generate individual company: {individual_e}",
+                            file=sys.stderr,
+                        )
+                        # Skip this company and continue
+                        remaining -= 1
+
+            batch_num += 1
+
+            # Safety check to prevent infinite loops
+            if batch_num > 100:  # Max 100 batches
+                print(
+                    f"Warning: Reached maximum batch limit, stopping with {len(companies)} companies",
+                    file=sys.stderr,
+                )
+                break
+
+        print(f"\nGenerated {len(companies)} companies total", file=sys.stderr)
         return companies
 
 
@@ -489,6 +830,7 @@ class HybridCompanyGenerator:
         config: Optional[CompanyGenerationConfig] = None,
         model: str = "gpt-3.5-turbo",
         provider: Literal["openai", "anthropic"] = "openai",
+        batch_size: int = 5,
     ):
         """Initialize the hybrid generator.
 
@@ -496,9 +838,12 @@ class HybridCompanyGenerator:
             config: Optional configuration for data generation
             model: Model to use for LLM generation
             provider: LLM provider to use ("openai" or "anthropic")
+            batch_size: Number of companies to generate per LLM request (default 5)
         """
         self.random_gen = RandomCompanyGenerator(config)
-        self.llm_gen = LLMCompanyGenerator(config, model=model, provider=provider)
+        self.llm_gen = LLMCompanyGenerator(
+            config, model=model, provider=provider, batch_size=batch_size
+        )
 
     def generate_company(self) -> Dict[str, Any]:
         """
