@@ -10,7 +10,7 @@ import csv
 import json
 import os
 import sys
-from typing import Dict, List, Literal, Tuple
+from typing import Dict, Literal, Tuple
 
 from company_classifier.generate_synthetic_data import (
     CompanyGenerationConfig,
@@ -23,33 +23,34 @@ from company_classifier.score_synthetic_data import calculate_diversity_score
 
 # Model name mappings and provider inference
 MODEL_MAPPINGS: Dict[str, Tuple[str, Literal["openai", "anthropic"]]] = {
-    # Anthropic models
-    "haiku": ("claude-3-5-haiku-latest", "anthropic"),
-    "sonnet": ("claude-3-7-sonnet-latest", "anthropic"),
-    "opus": ("claude-3-opus-20240229", "anthropic"),
-    # OpenAI models
-    "gpt-4-1-mini": ("gpt-4.1-mini", "openai"),
-    "gpt-4o-mini": ("gpt-4o-mini", "openai"),
-    "gpt-4.1": ("gpt-4.1-2025-04-14", "openai"),
-    "gpt-4-turbo": ("gpt-4-turbo-preview", "openai"),
-    "gpt-3.5": ("gpt-3.5-turbo", "openai"),
+    # Anthropic models, cheapest to most expensive.
+    # None of these are deprecated as of 2025-07-01.
+    "haiku-3": ("claude-3-haiku-20240307", "anthropic"),  # $0.25
+    "haiku-3.5": ("claude-3-5-haiku-20241022", "anthropic"),  # $0.80
+    # Sonnet 3.5, 3.7 and 4.0 are same cost.
+    "sonnet-3.5": ("claude-3-5-sonnet-20241022", "anthropic"),  # $3.00
+    "sonnet-3.7": ("claude-3-7-sonnet-20250219", "anthropic"),  # $3.00
+    "sonnet-4": ("claude-sonnet-4-20250514", "anthropic"),  # $3.00
+    # Opus is WAY more expensive than Sonnet.
+    "opus-4": ("claude-opus-4-20250514", "anthropic"),  # $15.00 !!!
+    ############################################################
+    # OpenAI models, cheapest to most expensive.
+    "gpt-4.1-nano": ("gpt-4.1-nano-2025-04-14", "openai"),  # $0.10
+    "gpt-4o-mini": ("gpt-4o-mini-2024-07-18", "openai"),  # $0.15
+    "gpt-4.1-mini": ("gpt-4.1-mini-2025-04-14", "openai"),  # $0.40
+    "o4-mini": ("o4-mini-2025-04-16", "openai"),  # $1.10
+    "gpt-4.1": ("gpt-4.1-2025-04-14", "openai"),  # $2.00
+    # "o3": ("o3-2025-04-16", "openai"),  # $2.00 - requires biometric auth, no thanks
+    "gpt-4-turbo": ("gpt-4-turbo-2024-04-09", "openai"),  # $10.00 !!!
 }
 
-# Also support full model names
-MODEL_MAPPINGS.update(
-    {
-        # Anthropic full names
-        "claude-3-5-haiku-latest": ("claude-3-5-haiku-latest", "anthropic"),
-        "claude-3-7-sonnet-latest": ("claude-3-7-sonnet-latest", "anthropic"),
-        "claude-3-opus-20240229": ("claude-3-opus-20240229", "anthropic"),
-        # OpenAI full names
-        "gpt-4.1-mini": ("gpt-4.1-mini", "openai"),
-        "gpt-4o-mini": ("gpt-4o-mini", "openai"),
-        "gpt-4.1-2025-04-14": ("gpt-4.1-2025-04-14", "openai"),
-        "gpt-4-turbo-preview": ("gpt-4-turbo-preview", "openai"),
-        "gpt-3.5-turbo": ("gpt-3.5-turbo", "openai"),
-    }
-)
+# Also support full model names, and dashes
+ALL_MODEL_MAPPINGS = {}
+for shortname, (fullname, provider) in MODEL_MAPPINGS.items():
+    ALL_MODEL_MAPPINGS[shortname] = (fullname, provider)
+    ALL_MODEL_MAPPINGS[fullname] = (fullname, provider)
+    ALL_MODEL_MAPPINGS[shortname.replace("-", ".")] = (fullname, provider)
+    ALL_MODEL_MAPPINGS[shortname.replace(".", "-")] = (fullname, provider)
 
 
 def get_model_info(model_name: str) -> Tuple[str, Literal["openai", "anthropic"]]:
@@ -64,12 +65,12 @@ def get_model_info(model_name: str) -> Tuple[str, Literal["openai", "anthropic"]
     Raises:
         ValueError: If the model name is not recognized
     """
-    if model_name not in MODEL_MAPPINGS:
-        valid_models = sorted(MODEL_MAPPINGS.keys())
+    if model_name not in ALL_MODEL_MAPPINGS:
+        valid_models = sorted(ALL_MODEL_MAPPINGS.keys())
         raise ValueError(
             f"Invalid model name: {model_name}. Must be one of: {', '.join(valid_models)}"
         )
-    return MODEL_MAPPINGS[model_name]
+    return ALL_MODEL_MAPPINGS[model_name]
 
 
 def generate_test_batch(
@@ -122,7 +123,7 @@ def generate_test_batch(
     return output_file
 
 
-def process_companies_file(file_path: str) -> List[Dict]:
+def process_companies_file(file_path: str) -> list[Dict]:
     """Process a CSV file of companies and return the data with proper types.
 
     Args:
@@ -172,8 +173,9 @@ def main():
     parser.add_argument(
         "--models",
         nargs="+",
-        default=["gpt-4-turbo"],
-        help="Models to use. Can be short names (e.g., 'haiku', 'sonnet', 'gpt-4.1') or full names.",
+        default=["gpt-4.1-mini"],
+        help="Models to use. Can be short names (e.g., 'haiku', 'sonnet', 'gpt-4.1') or full names."
+        " Use 'all' to run all models.",
     )
     parser.add_argument(
         "--generator",
@@ -184,14 +186,19 @@ def main():
     args = parser.parse_args()
 
     # Validate all models first
-    model_infos = {}
+    if "all" in args.models:
+        # Get all full names, no duplicates
+        args.models = list(set(v[0] for v in ALL_MODEL_MAPPINGS.values()))
+
+    have_invalid_models = False
     for model in args.models:
         try:
             full_model_name, provider = get_model_info(model)
-            model_infos[model] = (full_model_name, provider)
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
+            have_invalid_models = True
+    if have_invalid_models:
+        sys.exit(1)
 
     # Initialize results structure
     all_results = {
@@ -224,7 +231,7 @@ def main():
 
     # Run LLM-dependent generators for each model
     for model in args.models:
-        full_model_name, provider = model_infos[model]
+        full_model_name, provider = get_model_info(model)
         print(f"\nProcessing model: {full_model_name} ({provider})")
         print("=" * 50)
 

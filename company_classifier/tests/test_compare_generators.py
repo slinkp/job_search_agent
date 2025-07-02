@@ -16,15 +16,22 @@ from company_classifier.compare_generators import (
 def test_get_model_info():
     """Test model info lookup for both short and full names."""
     # Test short names
-    assert get_model_info("haiku") == ("claude-3-5-haiku-latest", "anthropic")
-    assert get_model_info("gpt-4-turbo") == ("gpt-4-turbo-preview", "openai")
+    assert get_model_info("haiku-3.5") == ("claude-3-5-haiku-20241022", "anthropic")
+    assert get_model_info("gpt-4-turbo") == ("gpt-4-turbo-2024-04-09", "openai")
 
     # Test full names
-    assert get_model_info("claude-3-5-haiku-latest") == (
-        "claude-3-5-haiku-latest",
+    assert get_model_info("claude-3-5-haiku-20241022") == (
+        "claude-3-5-haiku-20241022",
         "anthropic",
     )
-    assert get_model_info("gpt-4-turbo-preview") == ("gpt-4-turbo-preview", "openai")
+    assert get_model_info("gpt-4-turbo-2024-04-09") == (
+        "gpt-4-turbo-2024-04-09",
+        "openai",
+    )
+
+    # Test dash/dot variations
+    assert get_model_info("haiku-3-5") == ("claude-3-5-haiku-20241022", "anthropic")
+    assert get_model_info("gpt.4.turbo") == ("gpt-4-turbo-2024-04-09", "openai")
 
     # Test invalid model
     with pytest.raises(ValueError):

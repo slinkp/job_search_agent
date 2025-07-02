@@ -297,7 +297,7 @@ class LLMCompanyGenerator:
     def __init__(
         self,
         config: Optional[CompanyGenerationConfig] = None,
-        model: str = "gpt-4-turbo-preview",
+        model: str = "gpt-4.1-nano",  # Cheapest model by default
         provider: Literal["openai", "anthropic"] = "openai",
         ai_notes_probability: float = 0.6,
     ):
@@ -349,6 +349,12 @@ class LLMCompanyGenerator:
         start_time = time.time()
         print(f"Calling {self.provider} LLM...", end="", flush=True, file=sys.stderr)
 
+        temperature = (
+            0.7  # Balance between creativity and consistency. Lower = more deterministic.
+        )
+        if self.model.startswith("o4-mini"):
+            temperature = 1.0  # Doesn't support altering temperature.
+
         if self.provider == "openai":
             # Call OpenAI API with proper message types
             messages: List[ChatCompletionMessageParam] = [
@@ -364,7 +370,7 @@ class LLMCompanyGenerator:
                 self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
-                    temperature=0.7,  # Balance between creativity and consistency
+                    temperature=temperature,
                     response_format={"type": "json_object"},  # Ensure JSON output
                 ),
             )
@@ -380,7 +386,7 @@ class LLMCompanyGenerator:
                 max_tokens=4096,
                 system=f"{self.SYSTEM_PROMPT}\n\nYou must respond with a valid JSON object only, no other text.",
                 messages=[message],
-                temperature=0.7,
+                temperature=temperature,
             )
             # Extract content from the first content block
             content = None
