@@ -17,7 +17,7 @@ coverage run -m pytest $*
 PYTHON_EXIT=$?
 
 # Always show coverage report
-coverage report && coverage html
+coverage report -m && coverage html
 
 # Run JavaScript tests
 npm test -- --run
