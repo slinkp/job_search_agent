@@ -110,7 +110,12 @@ def split_data(
     return train, val, test
 
 
-def main():
+def parse_args():
+    """Parse command line arguments for synthetic data generation.
+
+    Returns:
+        argparse.Namespace: Parsed command-line arguments
+    """
     parser = argparse.ArgumentParser(
         description="Generate synthetic company data for training"
     )
@@ -164,7 +169,17 @@ def main():
         "--random-seed", type=int, default=42, help="Random seed for reproducibility"
     )
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main(args=None):
+    """Run synthetic data generation with the given args.
+
+    Args:
+        args: Command-line arguments (if None, will parse from command line)
+    """
+    if args is None:
+        args = parse_args()
 
     # Create output directory if needed
     if not args.stdout:
