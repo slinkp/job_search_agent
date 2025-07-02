@@ -44,6 +44,9 @@ MODEL_MAPPINGS: Dict[str, Tuple[str, Literal["openai", "anthropic"]]] = {
     "gpt-4-turbo": ("gpt-4-turbo-2024-04-09", "openai"),  # $10.00 !!!
 }
 
+# Default batch size for LLM generators
+DEFAULT_BATCH_SIZE = 5
+
 # Also support full model names, and dashes
 ALL_MODEL_MAPPINGS = {}
 for shortname, (fullname, provider) in MODEL_MAPPINGS.items():
@@ -78,7 +81,7 @@ def generate_test_batch(
     num_companies: int,
     model: str = "gpt-4-turbo",
     output_dir: str = "data/synthetic/test_batches",
-    batch_size: int = 5,
+    batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> str:
     """Generate a test batch using the specified generator.
 
@@ -192,7 +195,7 @@ def main():
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=5,
+        default=DEFAULT_BATCH_SIZE,
         help="Batch size for LLM generators (1-20). Higher values make fewer API calls but may be less robust.",
     )
     args = parser.parse_args()

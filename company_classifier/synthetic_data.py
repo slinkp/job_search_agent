@@ -23,6 +23,8 @@ from openai.types.chat import (
     ChatCompletionUserMessageParam,
 )
 
+# Default batch size for LLM generators
+DEFAULT_BATCH_SIZE = 5
 
 class CompanyType(Enum):
     PUBLIC = "public"
@@ -381,7 +383,7 @@ class LLMCompanyGenerator:
         model: str = "gpt-4.1-nano",  # Cheapest model by default
         provider: Literal["openai", "anthropic"] = "openai",
         ai_notes_probability: float = 0.6,
-        batch_size: int = 5,
+        batch_size: int = DEFAULT_BATCH_SIZE,
     ):
         """Initialize the LLM generator with configuration.
 
@@ -830,7 +832,7 @@ class HybridCompanyGenerator:
         config: Optional[CompanyGenerationConfig] = None,
         model: str = "gpt-3.5-turbo",
         provider: Literal["openai", "anthropic"] = "openai",
-        batch_size: int = 5,
+        batch_size: int = DEFAULT_BATCH_SIZE,
     ):
         """Initialize the hybrid generator.
 
