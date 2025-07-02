@@ -3,7 +3,6 @@ Unit tests for generate_synthetic_data.py argument parsing functionality.
 """
 
 import argparse
-import unittest
 from unittest.mock import patch
 
 import pytest
