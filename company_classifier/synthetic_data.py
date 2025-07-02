@@ -438,8 +438,8 @@ class LLMCompanyGenerator:
         temperature = (
             0.7  # Balance between creativity and consistency. Lower = more deterministic.
         )
-        if self.model.startswith("o1"):
-            temperature = 1.0  # O1 models don't support altering temperature.
+        if self.model.startswith("o1") or self.model.startswith("o4"):
+            temperature = 1.0  # O1 and O4 models don't support altering temperature.
 
         if self.provider == "openai":
             # Call OpenAI API with proper message types
@@ -593,7 +593,7 @@ class LLMCompanyGenerator:
         )
 
         temperature = 0.7
-        if self.model.startswith("o1"):
+        if self.model.startswith("o1") or self.model.startswith("o4"):
             temperature = 1.0
 
         if self.provider == "openai":
