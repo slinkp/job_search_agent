@@ -763,66 +763,29 @@ class LLMCompanyGenerator:
 
         companies = []
         remaining = n
-        batch_num = 1
+        batch_num = 0
 
+        MAX_BATCHES = 100 # Safety net
         while remaining > 0:
+            batch_num += 1
             current_batch_size = min(remaining, self.batch_size)
 
+            print(
+                f"\nGenerating batch {batch_num} ({current_batch_size} companies):",
+                file=sys.stderr,
+            )
             try:
-                print(
-                    f"\nGenerating batch {batch_num} ({current_batch_size} companies):",
-                    file=sys.stderr,
-                )
                 batch_companies = self.generate_batch(current_batch_size)
-                companies.extend(batch_companies)
-                remaining -= len(batch_companies)
-
-                # Check if we got fewer companies than expected
-                if len(batch_companies) < current_batch_size:
-                    missing = current_batch_size - len(batch_companies)
-                    print(
-                        f"Batch incomplete, generating {missing} companies individually",
-                        file=sys.stderr,
-                    )
-                    # Generate missing companies individually
-                    for i in range(missing):
-                        try:
-                            company = self.generate_company()
-                            companies.append(company)
-                            remaining -= 1
-                        except Exception as e:
-                            print(
-                                f"Failed to generate individual company: {e}",
-                                file=sys.stderr,
-                            )
-
             except Exception as e:
-                print(f"Batch generation failed: {e}", file=sys.stderr)
+                print(f"Batch {batch_num} generation failed: {e}", file=sys.stderr)
+                continue
+
+            companies.extend(batch_companies)
+            remaining -= len(batch_companies)
+
+            if batch_num > MAX_BATCHES and remaining > 0:
                 print(
-                    f"Falling back to individual generation for {current_batch_size} companies",
-                    file=sys.stderr,
-                )
-
-                # Fallback to individual generation
-                for i in range(current_batch_size):
-                    try:
-                        company = self.generate_company()
-                        companies.append(company)
-                        remaining -= 1
-                    except Exception as individual_e:
-                        print(
-                            f"Failed to generate individual company: {individual_e}",
-                            file=sys.stderr,
-                        )
-                        # Skip this company and continue
-                        remaining -= 1
-
-            batch_num += 1
-
-            # Safety check to prevent infinite loops
-            if batch_num > 100:  # Max 100 batches
-                print(
-                    f"Warning: Reached maximum batch limit, stopping with {len(companies)} companies",
+                    f"Warning: Reached maximum batch limit {MAX_BATCHES}, stopping with {len(companies)} companies",
                     file=sys.stderr,
                 )
                 break
