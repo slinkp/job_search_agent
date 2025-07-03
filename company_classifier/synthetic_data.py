@@ -26,6 +26,7 @@ from openai.types.chat import (
 # Default batch size for LLM generators
 DEFAULT_BATCH_SIZE = 5
 
+
 class CompanyType(Enum):
     PUBLIC = "public"
     PRIVATE = "private"
@@ -515,12 +516,15 @@ class LLMCompanyGenerator:
         # Ensure company name and id is unique.
         company_data["name"] = f"{company_data['name']} {_random_id}"
         company_data["company_id"] = f"synthetic-llm-{_random_id}"
+
         # Do not populate fit_category or fit_confidence
         company_data["fit_category"] = None
         company_data["fit_confidence"] = None
+
         # If we did not ask for ai_notes, set it to None regardless of LLM output
         if not ask_for_ai_notes:
             company_data["ai_notes"] = None
+
         # Validate required fields
         required_fields = {
             "company_id",
@@ -537,7 +541,7 @@ class LLMCompanyGenerator:
                 f"Missing required fields in LLM response: {required_fields - set(company_data.keys())}"
             )
 
-        # Validate numeric ranges
+        # Validate and clamp numeric ranges
         company_data["base"] = max(
             self.config.base_salary_range[0],
             min(company_data["base"], self.config.base_salary_range[1]),
@@ -568,6 +572,7 @@ class LLMCompanyGenerator:
         """Generate multiple synthetic companies in a single LLM request."""
         # Randomly decide whether to ask for AI notes
         ask_for_ai_notes = random.random() < self.ai_notes_probability
+        # TODO: fix this to instruct it to give notes to N * ai_notes_probability companies
         if ask_for_ai_notes:
             ai_notes_instruction = "Include relevant AI/ML notes if applicable for some companies: whether and how AI is part of the company's product offerings, technical strategy, and/or tech stack."
         else:
@@ -594,9 +599,11 @@ class LLMCompanyGenerator:
             file=sys.stderr,
         )
 
-        temperature = 0.7
+        temperature = (
+            0.7  # Balance between creativity and consistency. Lower = more deterministic.
+        )
         if self.model.startswith("o1") or self.model.startswith("o4"):
-            temperature = 1.0
+            temperature = 1.0  # O1 and O4 models don't support altering temperature.
 
         if self.provider == "openai":
             # Call OpenAI API with proper message types
@@ -686,7 +693,7 @@ class LLMCompanyGenerator:
         for i, company_data in enumerate(companies):
             try:
                 _random_id = random_id()
-                # Ensure company name and id is unique
+                # Ensure company name and id is unique.
                 company_data["name"] = f"{company_data['name']} {_random_id}"
                 company_data["company_id"] = f"synthetic-llm-{_random_id}"
 
