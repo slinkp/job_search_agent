@@ -349,15 +349,72 @@ def test_batch_size_included_in_output_filename(tmp_path):
         assert batch_size_5 != batch_size_10
 
 
+@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"})
 def test_batch_size_validation():
     """Test that batch_size is properly validated."""
     # Import here to avoid circular imports
     from company_classifier.compare_generators import main
 
+    mock_response = {
+        "company_id": "synthetic-llm-0001",
+        "name": "Test Corp",
+        "type": "public",
+        "valuation": 1000000000,
+        "total_comp": 350000,
+        "base": 200000,
+        "rsu": 120000,
+        "bonus": 30000,
+        "remote_policy": "remote first",
+        "eng_size": 200,
+        "total_size": 2000,
+        "headquarters": "New York",
+        "ny_address": "123 Test Ave",
+        "ai_notes": "AI-driven product",
+        "fit_category": "good",
+        "fit_confidence": 0.8,
+    }
+
+    # Mock the OpenAI API call
+    def mock_openai_chat_completion_create(*args, **kwargs):
+        class MockResponse:
+            class Choice:
+                def __init__(self, content):
+                    self.message = types.SimpleNamespace(
+                        content=json.dumps(mock_response)
+                    )
+
+            def __init__(self, content):
+                self.choices = [self.Choice(content)]
+
+        return MockResponse(json.dumps(mock_response))
+
+    # Mock the LLMCompanyGenerator and HybridCompanyGenerator classes
+    llm_gen_patch = patch(
+        "company_classifier.compare_generators.LLMCompanyGenerator", autospec=True
+    )
+    hybrid_gen_patch = patch(
+        "company_classifier.compare_generators.HybridCompanyGenerator", autospec=True
+    )
+    openai_patch = patch(
+        "openai.resources.chat.completions.Completions.create",
+        side_effect=mock_openai_chat_completion_create,
+    )
+
     # Mock parser.parse_args to return args with specific batch_size
     with patch("argparse.ArgumentParser.parse_args") as mock_parse_args, patch(
         "sys.exit"
-    ) as mock_exit:
+    ) as mock_exit, llm_gen_patch as mock_llm_gen, hybrid_gen_patch as mock_hybrid_gen, (
+        openai_patch
+    ):
+
+        # Set up mocks to return test companies
+        mock_llm_instance = mock_llm_gen.return_value
+        mock_llm_instance.generate_companies.return_value = [mock_response, mock_response]
+        mock_hybrid_instance = mock_hybrid_gen.return_value
+        mock_hybrid_instance.generate_companies.return_value = [
+            mock_response,
+            mock_response,
+        ]
 
         # Valid batch size
         args = types.SimpleNamespace(
