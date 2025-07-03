@@ -73,13 +73,64 @@ def llm_company_response():
 
 @pytest.fixture
 def hybrid_generator():
-    with mock.patch(
-        "company_classifier.synthetic_data.LLMCompanyGenerator.__init__",
-        return_value=None,
-    ):
-        return HybridCompanyGenerator(
+    # Create mock for LLMCompanyGenerator with needed attributes and methods
+    mock_llm_gen = mock.MagicMock()
+    mock_llm_gen.batch_size = 5  # Default batch size
+    mock_llm_gen.ai_notes_probability = 0.6  # Default probability
+    mock_llm_gen.generate_company.return_value = {
+        "name": "Test Company",
+        "remote_policy": "hybrid",
+        "headquarters": "New York",
+        "ny_address": "123 Test Ave",
+        "ai_notes": "AI-driven testing",
+    }
+    mock_llm_gen.generate_companies.return_value = [
+        {
+            "name": f"Test Co {i}",
+            "remote_policy": "hybrid",
+            "headquarters": "New York",
+            "ny_address": "123 Test Ave",
+            "ai_notes": "AI-driven testing",
+        }
+        for i in range(5)
+    ]
+
+    # Create mock for RandomCompanyGenerator
+    mock_random_gen = mock.MagicMock()
+    mock_random_gen.generate_company.return_value = {
+        "base": 210000,
+        "rsu": 100000,
+        "bonus": 20000,
+        "eng_size": 250,
+        "total_size": 2000,
+        "valuation": 5000000,
+        "total_comp": 330000,
+        "type": "public",
+    }
+    mock_random_gen.generate_companies.return_value = [
+        {
+            "base": 210000,
+            "rsu": 100000,
+            "bonus": 20000,
+            "eng_size": 250,
+            "total_size": 2000,
+            "valuation": 5000000,
+            "total_comp": 330000,
+            "type": "public",
+        }
+        for _ in range(5)
+    ]
+
+    # Create a hybrid generator with environment mock
+    with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}):
+        generator = HybridCompanyGenerator(
             config=CompanyGenerationConfig(), model="gpt-4-turbo-preview"
         )
+        # Replace the actual generators with our mocks
+        generator.llm_gen = mock_llm_gen
+        generator.random_gen = mock_random_gen
+
+    return generator
 
 
 def test_synthetic_company_schema(sample_synthetic_company):
@@ -253,65 +304,75 @@ def test_llm_company_generator_output_structure(llm_company_response):
     assert company["company_id"].startswith("synthetic-llm-")
 
 
-def test_hybrid_company_generator_output_structure(
-    hybrid_generator, llm_company_response
-):
-    with mock.patch.object(
-        type(hybrid_generator.llm_gen),
-        "generate_company",
-        autospec=True,
-        return_value=llm_company_response,
-    ) as mock_llm, mock.patch.object(
-        type(hybrid_generator.random_gen),
-        "generate_company",
-        autospec=True,
-        return_value={
-            "base": 210000,
-            "rsu": 100000,
-            "bonus": 20000,
-            "eng_size": 250,
-            "total_size": 2000,
-            "valuation": 5000000,
-            "total_comp": 330000,
-            "type": "public",
-        },
-    ) as mock_random:
-        company = hybrid_generator.generate_company()
-    # Check required fields
-    required_fields = set(llm_company_response.keys())
-    assert set(company.keys()) >= required_fields
+def test_hybrid_company_generator_output_structure(hybrid_generator):
+    # Reset mocks for clean test
+    hybrid_generator.llm_gen.generate_company.reset_mock()
+    hybrid_generator.random_gen.generate_company.reset_mock()
+
+    # Call the method under test
+    company = hybrid_generator.generate_company()
+
+    # Verify both underlying generators were called
+    hybrid_generator.llm_gen.generate_company.assert_called_once()
+    hybrid_generator.random_gen.generate_company.assert_called_once()
+
+    # Check structure
+    assert isinstance(company, dict)
+
     # Check numeric fields
     assert 90000 <= company["base"] <= 300000
     assert 0 <= company["rsu"] <= 300000
     assert 0 <= company["bonus"] <= 450000
     assert company["eng_size"] is None or 30 <= company["eng_size"] <= 3000
     assert company["total_size"] is None or 100 <= company["total_size"] <= 30000
+
     # Check text fields
     assert isinstance(company["name"], str)
     assert isinstance(company["remote_policy"], str)
     assert isinstance(company["ai_notes"], (str, type(None)))
+
     # Check business rules
     assert company["type"] in ["public", "private", "private unicorn", "private finance"]
-    if company["fit_confidence"] is not None:
-        assert 0 <= company["fit_confidence"] <= 1
     assert company["fit_category"] in ["good", "bad", "needs_more_info", None]
     assert company["total_comp"] == company["base"] + company["rsu"] + company["bonus"]
-    assert company["company_id"].startswith("synthetic-") or company[
-        "company_id"
-    ].startswith("synthetic-llm-")
+    assert company["company_id"].startswith("synthetic-hybrid-")
 
 
-def test_hybrid_company_generator_multiple(hybrid_generator, llm_company_response):
-    with mock.patch.object(
-        type(hybrid_generator.llm_gen),
-        "generate_company",
-        autospec=True,
-        return_value=llm_company_response,
-    ) as mock_llm, mock.patch.object(
-        type(hybrid_generator.random_gen),
-        "generate_company",
-        autospec=True,
-        return_value={
+def test_hybrid_company_generator_multiple(hybrid_generator):
+    # Reset mocks for clean test
+    hybrid_generator.llm_gen.generate_companies.reset_mock()
+    hybrid_generator.random_gen.generate_companies.reset_mock()
+
+    # Call the method under test
+    companies = hybrid_generator.generate_companies(5)
+
+    # Verify both generators' batch methods were called exactly once
+    hybrid_generator.random_gen.generate_companies.assert_called_once_with(5)
+    hybrid_generator.llm_gen.generate_companies.assert_called_once_with(5)
+
+    # Verify we got the expected results
+    assert len(companies) == 5
+    for company in companies:
+        assert isinstance(company, dict)
+        assert "name" in company and "base" in company
+        assert company["company_id"].startswith("synthetic-hybrid-")
+
+
+def test_hybrid_company_generator_batch_efficiency(hybrid_generator):
+    """Test that the hybrid generator uses LLM batching for efficiency."""
+    # Setup custom return values for this test
+    mock_llm_companies = [
+        {
+            "name": f"Test Co {i}",
+            "remote_policy": "hybrid",
+            "headquarters": "New York",
+            "ny_address": "123 Test Ave",
+            "ai_notes": "AI-driven testing",
+        }
+        for i in range(3)
+    ]
+    mock_random_companies = [
+        {
             "base": 210000,
             "rsu": 100000,
             "bonus": 20000,
@@ -320,10 +381,38 @@ def test_hybrid_company_generator_multiple(hybrid_generator, llm_company_respons
             "valuation": 5000000,
             "total_comp": 330000,
             "type": "public",
-        },
-    ) as mock_random:
-        companies = hybrid_generator.generate_companies(5)
-    assert len(companies) == 5
-    for company in companies:
-        assert isinstance(company, dict)
-        assert "name" in company and "base" in company
+        }
+        for _ in range(3)
+    ]
+
+    # Update the mocks with our custom return values
+    hybrid_generator.llm_gen.generate_companies.return_value = mock_llm_companies
+    hybrid_generator.random_gen.generate_companies.return_value = mock_random_companies
+
+    # Reset call counts
+    hybrid_generator.llm_gen.generate_companies.reset_mock()
+    hybrid_generator.random_gen.generate_companies.reset_mock()
+
+    # Call the method under test
+    result = hybrid_generator.generate_companies(3)
+
+    # Verify both generators' batch methods were called exactly once
+    hybrid_generator.random_gen.generate_companies.assert_called_once_with(3)
+    hybrid_generator.llm_gen.generate_companies.assert_called_once_with(3)
+
+    # Verify we got the expected number of results
+    assert len(result) == 3
+
+    # Verify each result has the expected structure
+    for company in result:
+        assert company["type"] in [
+            "public",
+            "private",
+            "private unicorn",
+            "private finance",
+        ]
+        assert "name" in company
+        assert "remote_policy" in company
+        assert (
+            company["total_comp"] == company["base"] + company["rsu"] + company["bonus"]
+        )

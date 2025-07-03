@@ -884,11 +884,7 @@ class HybridCompanyGenerator:
             "total_size": random_company["total_size"],
         }
         # Apply enhanced business rules
-        if company["type"] in ["private", "private finance"]:
-            # Private companies shouldn't have RSUs
-            company["rsu"] = 0
-            # Adjust total comp to account for removed RSUs
-            company["total_comp"] = company["base"] + company["bonus"]
+        # The random generator already handles RSUs for private companies
 
         if company["type"] == "private finance":
             # Finance companies should have higher bonuses
@@ -937,8 +933,97 @@ class HybridCompanyGenerator:
 
     def generate_companies(self, n: int) -> List[Dict[str, Any]]:
         """Generate multiple synthetic companies using hybrid approach."""
-        companies = []
-        for i in range(n):
-            print(f"\nGenerating company {i+1}/{n}:", file=sys.stderr)
-            companies.append(self.generate_company())
-        return companies
+        if n <= 0:
+            return []
+
+        # Generate all random companies in bulk (fast)
+        print(f"\nGenerating {n} companies using hybrid generator:", file=sys.stderr)
+        random_companies = self.random_gen.generate_companies(n)
+
+        # Generate all LLM companies using batching (efficient)
+        print(f"Generating LLM data with batching...", file=sys.stderr)
+        llm_companies = self.llm_gen.generate_companies(n)
+
+        # Combine each pair of companies
+        print(f"Combining results...", file=sys.stderr)
+        combined_companies = []
+        for i, (random_comp, llm_comp) in enumerate(zip(random_companies, llm_companies)):
+            print(f"Processing company {i+1}/{n}", file=sys.stderr)
+
+            # Create a hybrid company the same way generate_company does
+            _random_id = random_id()
+            company = {
+                # Use LLM's text fields and correlations
+                "company_id": f"synthetic-hybrid-{_random_id}",
+                "name": llm_comp["name"],
+                "remote_policy": llm_comp["remote_policy"],
+                "headquarters": llm_comp["headquarters"],
+                "ny_address": llm_comp["ny_address"],
+                "ai_notes": llm_comp["ai_notes"],
+                # Do not populate fit_category or fit_confidence
+                "fit_category": None,
+                "fit_confidence": None,
+                # Use random generator's numeric and categorical fields as base
+                "valuation": random_comp["valuation"],
+                "total_comp": random_comp["total_comp"],
+                "base": random_comp["base"],
+                "type": random_comp["type"],
+                "rsu": random_comp["rsu"],
+                "bonus": random_comp["bonus"],
+                "eng_size": random_comp["eng_size"],
+                "total_size": random_comp["total_size"],
+            }
+
+            # Apply enhanced business rules
+            # The random generator already handles RSUs for private companies
+
+            if company["type"] == "private finance":
+                # Finance companies should have higher bonuses
+                min_bonus = 100_000
+                max_bonus = 450_000
+                company["bonus"] = max(
+                    company["bonus"], random.randint(min_bonus, max_bonus)
+                )
+                # Adjust base to maintain reasonable total comp
+                company["base"] = max(company["base"], 200_000)
+                company["total_comp"] = company["base"] + company["bonus"]
+
+            elif company["type"] in ["public", "private unicorn"]:
+                # Public and unicorn companies should have significant RSUs
+                min_rsu = 30_000
+                max_rsu = 300_000
+                company["rsu"] = max(company["rsu"], random.randint(min_rsu, max_rsu))
+                # Adjust base to maintain reasonable total comp
+                company["base"] = max(company["base"], 120_000)
+                company["total_comp"] = (
+                    company["base"] + company["rsu"] + company["bonus"]
+                )
+
+            # Ensure total comp is within reasonable range
+            min_total = 160_000
+            max_total = 600_000
+            if company["total_comp"] < min_total:
+                # Increase base to meet minimum
+                company["base"] += min_total - company["total_comp"]
+                company["total_comp"] = min_total
+            elif company["total_comp"] > max_total:
+                # Scale down components proportionally
+                scale = max_total / company["total_comp"]
+                company["base"] = int(company["base"] * scale)
+                company["rsu"] = int(company["rsu"] * scale)
+                company["bonus"] = int(company["bonus"] * scale)
+                company["total_comp"] = max_total
+
+            # Ensure engineering size is reasonable relative to total size
+            if company["eng_size"] and company["total_size"]:
+                min_eng_ratio = 0.1  # Engineering should be at least 10% of total
+                max_eng_ratio = 0.5  # Engineering shouldn't be more than 50% of total
+                eng_ratio = company["eng_size"] / company["total_size"]
+                if eng_ratio < min_eng_ratio:
+                    company["eng_size"] = int(company["total_size"] * min_eng_ratio)
+                elif eng_ratio > max_eng_ratio:
+                    company["eng_size"] = int(company["total_size"] * max_eng_ratio)
+
+            combined_companies.append(company)
+
+        return combined_companies
