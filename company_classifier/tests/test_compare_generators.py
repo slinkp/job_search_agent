@@ -56,7 +56,7 @@ def test_generate_test_batch_random(tmp_path):
         assert len(lines) == 3  # Header + 2 companies
 
 
-@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"})
+@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test", "ANTHROPIC_API_KEY": "sk-ant-test"})
 def test_generate_test_batch_llm(tmp_path):
     """Test generating a test batch with LLM generator."""
     # Mock the LLM response
@@ -79,23 +79,34 @@ def test_generate_test_batch_llm(tmp_path):
         "fit_confidence": 0.8,
     }
 
-    def mock_openai_chat_completion_create(*args, **kwargs):
-        class MockResponse:
-            class Choice:
-                def __init__(self, content):
-                    self.message = types.SimpleNamespace(
-                        content=json.dumps(mock_response)
-                    )
+    # Create mock response JSON once to avoid circular references
+    response_json = json.dumps({"companies": [mock_response, mock_response]})
 
-            def __init__(self, content):
-                self.choices = [self.Choice(content)]
+    # Patch both OpenAI and Anthropic
+    with patch("company_classifier.synthetic_data.OpenAI") as MockOpenAI, patch(
+        "company_classifier.synthetic_data.Anthropic"
+    ) as MockAnthropic:
 
-        return MockResponse(json.dumps(mock_response))
+        # Set up OpenAI mock
+        mock_openai_client = MockOpenAI.return_value
+        mock_openai_chat = mock_openai_client.chat
+        mock_openai_completions = mock_openai_chat.completions
 
-    with patch(
-        "openai.resources.chat.completions.Completions.create",
-        side_effect=mock_openai_chat_completion_create,
-    ):
+        # Set up simple mock response for OpenAI
+        mock_openai_message = types.SimpleNamespace(content=response_json)
+        mock_openai_choice = types.SimpleNamespace(message=mock_openai_message)
+        mock_openai_response = types.SimpleNamespace(choices=[mock_openai_choice])
+        mock_openai_completions.create.return_value = mock_openai_response
+
+        # Set up Anthropic mock
+        mock_anthropic_client = MockAnthropic.return_value
+        mock_anthropic_messages = mock_anthropic_client.messages
+
+        # Set up simple mock response for Anthropic
+        mock_content_block = types.SimpleNamespace(text=response_json)
+        mock_anthropic_response = types.SimpleNamespace(content=[mock_content_block])
+        mock_anthropic_messages.create.return_value = mock_anthropic_response
+
         output_file = generate_test_batch(
             generator_type="llm",
             num_companies=2,
@@ -201,55 +212,7 @@ def test_process_companies_file(tmp_path):
     assert companies[1]["total_size"] == 500.0
 
 
-@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"})
-def test_batch_size_parameter_passed_to_llm_generator(tmp_path):
-    """Test that batch_size parameter is correctly passed to LLM generator."""
-    # Mock the LLM response
-    mock_response = {
-        "company_id": "synthetic-llm-0001",
-        "name": "Test Corp",
-        "type": "public",
-        "valuation": 1000000000,
-        "total_comp": 350000,
-        "base": 200000,
-        "rsu": 120000,
-        "bonus": 30000,
-        "remote_policy": "remote first",
-        "eng_size": 200,
-        "total_size": 2000,
-        "headquarters": "New York",
-        "ny_address": "123 Test Ave",
-        "ai_notes": "AI-driven product",
-        "fit_category": "good",
-        "fit_confidence": 0.8,
-    }
-
-    # Use mock.patch to check if LLMCompanyGenerator is initialized with correct batch_size
-    with patch(
-        "company_classifier.compare_generators.LLMCompanyGenerator", autospec=True
-    ) as mock_llm_gen:
-        # Set up the mock to return a generator that produces mock companies
-        mock_instance = mock_llm_gen.return_value
-        mock_instance.generate_companies.return_value = [mock_response, mock_response]
-
-        # Call generate_test_batch with a specific batch_size
-        test_batch_size = 10
-        output_file = generate_test_batch(
-            generator_type="llm",
-            num_companies=2,
-            model="gpt-4-turbo",
-            output_dir=str(tmp_path),
-            batch_size=test_batch_size,
-        )
-
-        # Verify LLMCompanyGenerator was initialized with the correct batch_size
-        mock_llm_gen.assert_called_once()
-        call_kwargs = mock_llm_gen.call_args.kwargs
-        assert "batch_size" in call_kwargs
-        assert call_kwargs["batch_size"] == test_batch_size
-
-
-@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"})
+@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test", "ANTHROPIC_API_KEY": "sk-ant-test"})
 def test_batch_size_parameter_passed_to_hybrid_generator(tmp_path):
     """Test that batch_size parameter is correctly passed to Hybrid generator."""
     # Mock the LLM response
@@ -272,13 +235,41 @@ def test_batch_size_parameter_passed_to_hybrid_generator(tmp_path):
         "fit_confidence": 0.8,
     }
 
+    # Create mock response JSON once to avoid circular references
+    response_json = json.dumps({"companies": [mock_response, mock_response]})
+
     # Use mock.patch to check if HybridCompanyGenerator is initialized with correct batch_size
     with patch(
         "company_classifier.compare_generators.HybridCompanyGenerator", autospec=True
-    ) as mock_hybrid_gen:
+    ) as mock_hybrid_gen, patch(
+        "company_classifier.synthetic_data.OpenAI"
+    ) as MockOpenAI, patch(
+        "company_classifier.synthetic_data.Anthropic"
+    ) as MockAnthropic:
+
         # Set up the mock to return a generator that produces mock companies
         mock_instance = mock_hybrid_gen.return_value
         mock_instance.generate_companies.return_value = [mock_response, mock_response]
+
+        # Set up OpenAI mock
+        mock_openai_client = MockOpenAI.return_value
+        mock_openai_chat = mock_openai_client.chat
+        mock_openai_completions = mock_openai_chat.completions
+
+        # Set up simple mock response for OpenAI
+        mock_openai_message = types.SimpleNamespace(content=response_json)
+        mock_openai_choice = types.SimpleNamespace(message=mock_openai_message)
+        mock_openai_response = types.SimpleNamespace(choices=[mock_openai_choice])
+        mock_openai_completions.create.return_value = mock_openai_response
+
+        # Set up Anthropic mock
+        mock_anthropic_client = MockAnthropic.return_value
+        mock_anthropic_messages = mock_anthropic_client.messages
+
+        # Set up simple mock response for Anthropic
+        mock_content_block = types.SimpleNamespace(text=response_json)
+        mock_anthropic_response = types.SimpleNamespace(content=[mock_content_block])
+        mock_anthropic_messages.create.return_value = mock_anthropic_response
 
         # Call generate_test_batch with a specific batch_size
         test_batch_size = 7
@@ -302,7 +293,12 @@ def test_batch_size_included_in_output_filename(tmp_path):
     # Mock the generate_companies method to avoid actual generation
     with patch(
         "company_classifier.compare_generators.LLMCompanyGenerator", autospec=True
-    ) as mock_llm_gen:
+    ) as mock_llm_gen, patch(
+        "company_classifier.synthetic_data.OpenAI"
+    ) as MockOpenAI, patch(
+        "company_classifier.synthetic_data.Anthropic"
+    ) as MockAnthropic:
+
         mock_instance = mock_llm_gen.return_value
         # Include all required fields for the company data
         mock_instance.generate_companies.return_value = [
@@ -325,6 +321,29 @@ def test_batch_size_included_in_output_filename(tmp_path):
                 "fit_confidence": 0.8,
             }
         ]
+
+        # Create mock response JSON once to avoid circular references
+        response_json = json.dumps({"companies": [{"dummy": "response"}]})
+
+        # Set up OpenAI mock
+        mock_openai_client = MockOpenAI.return_value
+        mock_openai_chat = mock_openai_client.chat
+        mock_openai_completions = mock_openai_chat.completions
+
+        # Set up simple mock response for OpenAI
+        mock_openai_message = types.SimpleNamespace(content=response_json)
+        mock_openai_choice = types.SimpleNamespace(message=mock_openai_message)
+        mock_openai_response = types.SimpleNamespace(choices=[mock_openai_choice])
+        mock_openai_completions.create.return_value = mock_openai_response
+
+        # Set up Anthropic mock
+        mock_anthropic_client = MockAnthropic.return_value
+        mock_anthropic_messages = mock_anthropic_client.messages
+
+        # Set up simple mock response for Anthropic
+        mock_content_block = types.SimpleNamespace(text=response_json)
+        mock_anthropic_response = types.SimpleNamespace(content=[mock_content_block])
+        mock_anthropic_messages.create.return_value = mock_anthropic_response
 
         # Test with different batch sizes
         batch_size_5 = generate_test_batch(
@@ -349,7 +368,7 @@ def test_batch_size_included_in_output_filename(tmp_path):
         assert batch_size_5 != batch_size_10
 
 
-@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"})
+@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test", "ANTHROPIC_API_KEY": "sk-ant-test"})
 def test_batch_size_validation():
     """Test that batch_size is properly validated."""
     # Import here to avoid circular imports
@@ -374,19 +393,8 @@ def test_batch_size_validation():
         "fit_confidence": 0.8,
     }
 
-    # Mock the OpenAI API call
-    def mock_openai_chat_completion_create(*args, **kwargs):
-        class MockResponse:
-            class Choice:
-                def __init__(self, content):
-                    self.message = types.SimpleNamespace(
-                        content=json.dumps(mock_response)
-                    )
-
-            def __init__(self, content):
-                self.choices = [self.Choice(content)]
-
-        return MockResponse(json.dumps(mock_response))
+    # Create mock response JSON once to avoid circular references
+    response_json = json.dumps({"companies": [mock_response, mock_response]})
 
     # Mock the LLMCompanyGenerator and HybridCompanyGenerator classes
     llm_gen_patch = patch(
@@ -395,17 +403,13 @@ def test_batch_size_validation():
     hybrid_gen_patch = patch(
         "company_classifier.compare_generators.HybridCompanyGenerator", autospec=True
     )
-    openai_patch = patch(
-        "openai.resources.chat.completions.Completions.create",
-        side_effect=mock_openai_chat_completion_create,
-    )
+    openai_patch = patch("company_classifier.synthetic_data.OpenAI")
+    anthropic_patch = patch("company_classifier.synthetic_data.Anthropic")
 
     # Mock parser.parse_args to return args with specific batch_size
     with patch("argparse.ArgumentParser.parse_args") as mock_parse_args, patch(
         "sys.exit"
-    ) as mock_exit, llm_gen_patch as mock_llm_gen, hybrid_gen_patch as mock_hybrid_gen, (
-        openai_patch
-    ):
+    ) as mock_exit, llm_gen_patch as mock_llm_gen, hybrid_gen_patch as mock_hybrid_gen, openai_patch as MockOpenAI, anthropic_patch as MockAnthropic:
 
         # Set up mocks to return test companies
         mock_llm_instance = mock_llm_gen.return_value
@@ -415,6 +419,26 @@ def test_batch_size_validation():
             mock_response,
             mock_response,
         ]
+
+        # Set up OpenAI mock
+        mock_openai_client = MockOpenAI.return_value
+        mock_openai_chat = mock_openai_client.chat
+        mock_openai_completions = mock_openai_chat.completions
+
+        # Set up simple mock response for OpenAI
+        mock_openai_message = types.SimpleNamespace(content=response_json)
+        mock_openai_choice = types.SimpleNamespace(message=mock_openai_message)
+        mock_openai_response = types.SimpleNamespace(choices=[mock_openai_choice])
+        mock_openai_completions.create.return_value = mock_openai_response
+
+        # Set up Anthropic mock
+        mock_anthropic_client = MockAnthropic.return_value
+        mock_anthropic_messages = mock_anthropic_client.messages
+
+        # Set up simple mock response for Anthropic
+        mock_content_block = types.SimpleNamespace(text=response_json)
+        mock_anthropic_response = types.SimpleNamespace(content=[mock_content_block])
+        mock_anthropic_messages.create.return_value = mock_anthropic_response
 
         # Valid batch size
         args = types.SimpleNamespace(
@@ -483,3 +507,79 @@ def test_batch_size_validation():
         with patch("sys.stderr", new=StringIO()):
             main()
             mock_exit.assert_called_once()
+
+
+@patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test", "ANTHROPIC_API_KEY": "sk-ant-test"})
+def test_batch_size_parameter_passed_to_llm_generator(tmp_path):
+    """Test that batch_size parameter is correctly passed to LLM generator."""
+    # Mock the LLM response
+    mock_response = {
+        "company_id": "synthetic-llm-0001",
+        "name": "Test Corp",
+        "type": "public",
+        "valuation": 1000000000,
+        "total_comp": 350000,
+        "base": 200000,
+        "rsu": 120000,
+        "bonus": 30000,
+        "remote_policy": "remote first",
+        "eng_size": 200,
+        "total_size": 2000,
+        "headquarters": "New York",
+        "ny_address": "123 Test Ave",
+        "ai_notes": "AI-driven product",
+        "fit_category": "good",
+        "fit_confidence": 0.8,
+    }
+
+    # Create mock response JSON once to avoid circular references
+    response_json = json.dumps({"companies": [mock_response, mock_response]})
+
+    # Use mock.patch to check if LLMCompanyGenerator is initialized with correct batch_size
+    with patch(
+        "company_classifier.compare_generators.LLMCompanyGenerator", autospec=True
+    ) as mock_llm_gen, patch(
+        "company_classifier.synthetic_data.OpenAI"
+    ) as MockOpenAI, patch(
+        "company_classifier.synthetic_data.Anthropic"
+    ) as MockAnthropic:
+
+        # Set up the mock to return a generator that produces mock companies
+        mock_instance = mock_llm_gen.return_value
+        mock_instance.generate_companies.return_value = [mock_response, mock_response]
+
+        # Set up OpenAI mock
+        mock_openai_client = MockOpenAI.return_value
+        mock_openai_chat = mock_openai_client.chat
+        mock_openai_completions = mock_openai_chat.completions
+
+        # Set up simple mock response for OpenAI
+        mock_openai_message = types.SimpleNamespace(content=response_json)
+        mock_openai_choice = types.SimpleNamespace(message=mock_openai_message)
+        mock_openai_response = types.SimpleNamespace(choices=[mock_openai_choice])
+        mock_openai_completions.create.return_value = mock_openai_response
+
+        # Set up Anthropic mock
+        mock_anthropic_client = MockAnthropic.return_value
+        mock_anthropic_messages = mock_anthropic_client.messages
+
+        # Set up simple mock response for Anthropic
+        mock_content_block = types.SimpleNamespace(text=response_json)
+        mock_anthropic_response = types.SimpleNamespace(content=[mock_content_block])
+        mock_anthropic_messages.create.return_value = mock_anthropic_response
+
+        # Call generate_test_batch with a specific batch_size
+        test_batch_size = 10
+        output_file = generate_test_batch(
+            generator_type="llm",
+            num_companies=2,
+            model="gpt-4-turbo",
+            output_dir=str(tmp_path),
+            batch_size=test_batch_size,
+        )
+
+        # Verify LLMCompanyGenerator was initialized with the correct batch_size
+        mock_llm_gen.assert_called_once()
+        call_kwargs = mock_llm_gen.call_args.kwargs
+        assert "batch_size" in call_kwargs
+        assert call_kwargs["batch_size"] == test_batch_size
