@@ -14,6 +14,7 @@ playwright-*-chrome
 .coverage
 htmlcov
 screenshots/*
+test_dir
 
 # Troubleshooting images from screen scraping
 *not_visible.png
