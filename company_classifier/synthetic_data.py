@@ -861,6 +861,7 @@ class HybridCompanyGenerator:
         2. Use LLM for text fields, correlations, and business rules
         3. Apply business rules to ensure realism
         """
+
         # Get base company from random generator for numeric fields
         random_company = self.random_gen.generate_company()
 
@@ -890,6 +891,7 @@ class HybridCompanyGenerator:
             "eng_size": random_company["eng_size"],
             "total_size": random_company["total_size"],
         }
+
         # Apply enhanced business rules
         # The random generator already handles RSUs for private companies
 
@@ -897,7 +899,9 @@ class HybridCompanyGenerator:
             # Finance companies should have higher bonuses
             min_bonus = 100_000
             max_bonus = 450_000
-            company["bonus"] = max(company["bonus"], random.randint(min_bonus, max_bonus))
+            company["bonus"] = max(
+                company["bonus"], random.randint(min_bonus, max_bonus)
+            )
             # Adjust base to maintain reasonable total comp
             company["base"] = max(company["base"], 200_000)
             company["total_comp"] = company["base"] + company["bonus"]
@@ -909,7 +913,9 @@ class HybridCompanyGenerator:
             company["rsu"] = max(company["rsu"], random.randint(min_rsu, max_rsu))
             # Adjust base to maintain reasonable total comp
             company["base"] = max(company["base"], 120_000)
-            company["total_comp"] = company["base"] + company["rsu"] + company["bonus"]
+            company["total_comp"] = (
+                company["base"] + company["rsu"] + company["bonus"]
+            )
 
         # Ensure total comp is within reasonable range
         min_total = 160_000
@@ -954,31 +960,32 @@ class HybridCompanyGenerator:
         # Combine each pair of companies
         print(f"Combining results...", file=sys.stderr)
         combined_companies = []
-        for i, (random_comp, llm_comp) in enumerate(zip(random_companies, llm_companies)):
+        for i, (random_company, llm_company) in enumerate(zip(random_companies, llm_companies)):
             print(f"Processing company {i+1}/{n}", file=sys.stderr)
 
             # Create a hybrid company the same way generate_company does
             _random_id = random_id()
+            # Combine the two approaches with improved logic:
             company = {
                 # Use LLM's text fields and correlations
                 "company_id": f"synthetic-hybrid-{_random_id}",
-                "name": llm_comp["name"],
-                "remote_policy": llm_comp["remote_policy"],
-                "headquarters": llm_comp["headquarters"],
-                "ny_address": llm_comp["ny_address"],
-                "ai_notes": llm_comp["ai_notes"],
+                "name": llm_company["name"],
+                "remote_policy": llm_company["remote_policy"],
+                "headquarters": llm_company["headquarters"],
+                "ny_address": llm_company["ny_address"],
+                "ai_notes": llm_company["ai_notes"],
                 # Do not populate fit_category or fit_confidence
                 "fit_category": None,
                 "fit_confidence": None,
                 # Use random generator's numeric and categorical fields as base
-                "valuation": random_comp["valuation"],
-                "total_comp": random_comp["total_comp"],
-                "base": random_comp["base"],
-                "type": random_comp["type"],
-                "rsu": random_comp["rsu"],
-                "bonus": random_comp["bonus"],
-                "eng_size": random_comp["eng_size"],
-                "total_size": random_comp["total_size"],
+                "valuation": random_company["valuation"],
+                "total_comp": random_company["total_comp"],
+                "base": random_company["base"],
+                "type": random_company["type"],
+                "rsu": random_company["rsu"],
+                "bonus": random_company["bonus"],
+                "eng_size": random_company["eng_size"],
+                "total_size": random_company["total_size"],
             }
 
             # Apply enhanced business rules
