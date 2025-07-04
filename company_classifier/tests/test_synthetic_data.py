@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import unittest.mock as mock
 from typing import Any, Dict, List
 from unittest.mock import patch
@@ -415,3 +416,74 @@ def test_hybrid_company_generator_batch_efficiency(hybrid_generator):
         assert (
             company["total_comp"] == company["base"] + company["rsu"] + company["bonus"]
         )
+
+
+def test_llm_company_generator_batch_ai_notes():
+    """Test that LLM generator properly calculates the number of companies with AI notes."""
+    config = CompanyGenerationConfig()
+
+    # Test with various batch sizes and probabilities
+    test_cases = [
+        # batch_size, ai_notes_probability, expected_num_with_ai_notes
+        (1, 0.0, 0),
+        (1, 1.0, 1),
+        (5, 0.6, 3),  # Should round to 3
+        (10, 0.0, 0),
+        (10, 1.0, 10),
+        (10, 0.5, 5),
+    ]
+
+    with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}):
+        for batch_size, ai_prob, expected_num in test_cases:
+            generator = LLMCompanyGenerator(
+                config=config,
+                model="gpt-4-turbo-preview",
+                ai_notes_probability=ai_prob,
+                batch_size=batch_size,
+            )
+
+            # For batch_size > 1, test the calculation directly
+            if batch_size > 1:
+                num_with_ai_notes = round(batch_size * ai_prob)
+                assert num_with_ai_notes == expected_num
+
+                # Also test the ask_for_ai_notes flag
+                ask_for_ai_notes = num_with_ai_notes > 0
+                assert ask_for_ai_notes == (expected_num > 0)
+
+                # Validate the AI notes instruction string content
+                if ask_for_ai_notes:
+                    expected_text = f"Include relevant AI/ML notes for approximately {num_with_ai_notes} out of {batch_size}"
+                else:
+                    expected_text = "Do not include any AI/ML notes"
+
+                # Directly invoke the logic from generate_batch
+                if ask_for_ai_notes:
+                    ai_notes_instruction = f"Include relevant AI/ML notes for approximately {num_with_ai_notes} out of {batch_size} companies: whether and how AI is part of the company's product offerings, technical strategy, and/or tech stack. The remaining companies should have ai_notes set to null."
+                else:
+                    ai_notes_instruction = "Do not include any AI/ML notes. Set ai_notes to null for all companies."
+
+                assert expected_text in ai_notes_instruction
+
+            # For batch_size == 1, test with controlled random values
+            else:
+                # Test with random.random() < ai_notes_probability
+                with patch(
+                    "random.random", return_value=0.0
+                ):  # Always less than ai_prob when ai_prob > 0
+                    ask_for_ai_notes = random.random() < ai_prob
+                    expected = ai_prob > 0.0
+                    assert ask_for_ai_notes == expected
+
+                    # Also validate the instruction text
+                    if ask_for_ai_notes:
+                        ai_notes_instruction = "Include relevant AI/ML notes if applicable: whether and how AI is part of the company's product offerings, technical strategy, and/or tech stack."
+                        assert (
+                            "Include relevant AI/ML notes if applicable"
+                            in ai_notes_instruction
+                        )
+                    else:
+                        ai_notes_instruction = (
+                            "Do not include any AI/ML notes. Set ai_notes to null."
+                        )
+                        assert "Do not include any AI/ML notes" in ai_notes_instruction

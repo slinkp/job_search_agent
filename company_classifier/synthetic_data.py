@@ -144,7 +144,7 @@ class RandomCompanyGenerator:
             if company_type in (CompanyType.PUBLIC, CompanyType.PRIVATE_UNICORN)
             and random.random() < self.config.prob_has_rsu
             else 0
-            )
+        )
 
         # Bonuses more likely in finance
         bonus = (
@@ -350,15 +350,23 @@ class LLMCompanyGenerator:
 
     def generate_batch(self, batch_size: int) -> List[Dict[str, Any]]:
         """Generate multiple synthetic companies in a single LLM request."""
-        # Randomly decide whether to ask for AI notes
-        ask_for_ai_notes = random.random() < self.ai_notes_probability
-        # TODO: fix this to instruct it to give notes to N * ai_notes_probability companies
-        if ask_for_ai_notes:
-            ai_notes_instruction = "Include relevant AI/ML notes if applicable for some companies: whether and how AI is part of the company's product offerings, technical strategy, and/or tech stack."
+        # Calculate how many companies should have AI notes based on probability
+        if batch_size > 1:
+            num_with_ai_notes = round(batch_size * self.ai_notes_probability)
+            ask_for_ai_notes = num_with_ai_notes > 0
+            if ask_for_ai_notes:
+                ai_notes_instruction = f"Include relevant AI/ML notes for approximately {num_with_ai_notes} out of {batch_size} companies: whether and how AI is part of the company's product offerings, technical strategy, and/or tech stack. The remaining companies should have ai_notes set to null."
+            else:
+                ai_notes_instruction = "Do not include any AI/ML notes. Set ai_notes to null for all companies."
         else:
-            ai_notes_instruction = (
-                "Do not include any AI/ML notes. Set ai_notes to null for all companies."
-            )
+            # For single company, use original approach
+            ask_for_ai_notes = random.random() < self.ai_notes_probability
+            if ask_for_ai_notes:
+                ai_notes_instruction = "Include relevant AI/ML notes if applicable: whether and how AI is part of the company's product offerings, technical strategy, and/or tech stack."
+            else:
+                ai_notes_instruction = (
+                    "Do not include any AI/ML notes. Set ai_notes to null."
+                )
 
         # Format batch prompt with config values
         prompt = self.BATCH_COMPANY_PROMPT.format(
@@ -481,9 +489,11 @@ class LLMCompanyGenerator:
                 company_data["fit_category"] = None
                 company_data["fit_confidence"] = None
 
-                # If we did not ask for ai_notes, set it to None regardless of LLM output
-                if not ask_for_ai_notes:
+                # For single company case where ask_for_ai_notes is False
+                if batch_size == 1 and not ask_for_ai_notes:
                     company_data["ai_notes"] = None
+                # For batch case, AI notes are already handled by the LLM
+                # according to the ai_notes_instruction
 
                 # Validate required fields
                 required_fields = {
@@ -545,7 +555,7 @@ class LLMCompanyGenerator:
         remaining = n
         batch_num = 0
 
-        MAX_BATCHES = 100 # Safety net
+        MAX_BATCHES = 100  # Safety net
         while remaining > 0:
             batch_num += 1
             current_batch_size = min(remaining, self.batch_size)
@@ -613,7 +623,9 @@ class HybridCompanyGenerator:
         # Combine each pair of companies
         print(f"Combining results...", file=sys.stderr)
         combined_companies = []
-        for i, (random_company, llm_company) in enumerate(zip(random_companies, llm_companies)):
+        for i, (random_company, llm_company) in enumerate(
+            zip(random_companies, llm_companies)
+        ):
             print(f"Processing company {i+1}/{n}", file=sys.stderr)
 
             # Create a hybrid company the same way generate_company does
