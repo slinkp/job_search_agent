@@ -283,13 +283,11 @@ def test_llm_company_generator_output_structure(llm_company_response):
     with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}):
         generator = LLMCompanyGenerator(config=config, model="gpt-4-turbo-preview")
 
-        # Mock the create method directly with autospec
-        with patch(
-            "openai.resources.chat.completions.Completions.create",
-            autospec=True,
-            return_value=mock_response,
+        # Mock generate_companies to return a list with our test data
+        with patch.object(
+            generator, "generate_companies", return_value=[llm_company_response]
         ):
-            company = generator.generate_company()
+            company = generator.generate_companies(1)[0]
 
     # Check required fields
     required_fields = set(llm_company_response.keys())
