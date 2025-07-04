@@ -306,15 +306,16 @@ def test_llm_company_generator_output_structure(llm_company_response):
 
 def test_hybrid_company_generator_output_structure(hybrid_generator):
     # Reset mocks for clean test
-    hybrid_generator.llm_gen.generate_company.reset_mock()
-    hybrid_generator.random_gen.generate_company.reset_mock()
+    hybrid_generator.llm_gen.generate_companies.reset_mock()
+    hybrid_generator.random_gen.generate_companies.reset_mock()
 
     # Call the method under test
-    company = hybrid_generator.generate_company()
+    companies = hybrid_generator.generate_companies(1)
+    company = companies[0]
 
-    # Verify both underlying generators were called
-    hybrid_generator.llm_gen.generate_company.assert_called_once()
-    hybrid_generator.random_gen.generate_company.assert_called_once()
+    # Verify both underlying generators were called with batch size of 1
+    hybrid_generator.llm_gen.generate_companies.assert_called_once_with(1)
+    hybrid_generator.random_gen.generate_companies.assert_called_once_with(1)
 
     # Check structure
     assert isinstance(company, dict)
