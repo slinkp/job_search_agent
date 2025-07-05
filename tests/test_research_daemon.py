@@ -980,3 +980,67 @@ def test_format_import_summary(daemon):
     summary_auto_end = daemon.format_import_summary(stats_no_end)
     assert "End time:" in summary_auto_end
     assert "Duration:" in summary_auto_end
+
+
+def test_do_find_companies_in_recruiter_messages_persistence_bug(
+    daemon, test_recruiter_messages, test_companies
+):
+    """Test that reproduces the RecruiterMessage persistence bug.
+
+    This test verifies that when processing recruiter messages, the RecruiterMessage
+    objects are properly attached to the Company objects that are created.
+    """
+    args = {"max_messages": 1, "do_research": True}
+
+    # Use a single test message and company
+    test_message = test_recruiter_messages[0]
+    test_company = test_companies[0]
+
+    # Mock the research flow but verify the RecruiterMessage is properly handled
+    daemon.jobsearch.get_new_recruiter_messages.return_value = [test_message]
+    daemon.company_repo.get.return_value = None  # Company doesn't exist yet
+    daemon.company_repo.get_by_normalized_name.return_value = None
+
+    # Mock the research to return a company with the recruiter message attached
+    def mock_research_company(content_or_message, model):
+        # This should be called with the full RecruiterMessage object, not just content
+        if isinstance(content_or_message, models.RecruiterMessage):
+            # The RecruiterMessage should be properly attached
+            company = models.Company(
+                company_id=test_company.company_id,
+                name=test_company.name,
+                details=test_company.details,
+                recruiter_message=content_or_message,
+            )
+            return company
+        else:
+            # This is the bug case - only content string is passed
+            company = models.Company(
+                company_id=test_company.company_id,
+                name=test_company.name,
+                details=test_company.details,
+            )
+            return company
+
+    daemon.jobsearch.research_company.side_effect = mock_research_company
+    daemon.running = True
+
+    daemon.do_find_companies_in_recruiter_messages(args)
+
+    # Verify the research was called
+    assert daemon.jobsearch.research_company.call_count == 1
+    call_args = daemon.jobsearch.research_company.call_args
+
+    # Check what was passed to research_company
+    content_or_message = call_args[0][0]
+
+    assert isinstance(
+        content_or_message, models.RecruiterMessage
+    ), f"Expected RecruiterMessage object, got {type(content_or_message)}: {content_or_message}"
+
+    # Verify the company was created with the recruiter message attached
+    assert daemon.company_repo.create.call_count == 1
+    created_company = daemon.company_repo.create.call_args[0][0]
+
+    assert created_company.recruiter_message is not None
+    assert created_company.recruiter_message.message_id == test_message.message_id
