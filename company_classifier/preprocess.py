@@ -41,7 +41,8 @@ class RemotePolicyNormalizer(BaseEstimator, TransformerMixin):
             return policy
 
         if isinstance(X, np.ndarray):
-            X = pd.Series(X)
+            X = pd.Series(X.ravel())
+
         return X.apply(standardize_policy)
 
 
@@ -78,7 +79,6 @@ class CompanyPreprocessor(BaseEstimator, TransformerMixin):
             strategy="constant", fill_value=0, add_indicator=True
         )
 
-        # For categorical features, use mode imputation and one-hot encoding
         # handle_unknown='ignore' will encode unknown categories as all zeros
         categorical_transformer = OneHotEncoder(
             drop="first",
