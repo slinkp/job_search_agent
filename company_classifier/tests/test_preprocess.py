@@ -86,6 +86,7 @@ def test_preprocessor_with_missing_values():
     assert not np.any(np.isnan(X_transformed))
 
 
+@pytest.mark.filterwarnings("ignore:Found unknown categories")
 def test_preprocessor_with_unknown_categories():
     """Tests that the preprocessor handles unknown categories by encoding them as zeros."""
     train_data = pd.DataFrame(
