@@ -172,7 +172,7 @@ class BaseSheetRow(BaseModel):
 
     def iter_to_strs(self) -> Iterator[str]:
         """Iterate through fields as strings"""
-        for field_name in self.model_fields.keys():
+        for field_name in self.__class__.model_fields.keys():
             value = getattr(self, field_name)
             yield str(value) if value is not None else ""
 
@@ -182,13 +182,13 @@ class BaseSheetRow(BaseModel):
 
     def __len__(self) -> int:
         """Return the number of fields in the row"""
-        return len(self.model_fields)
+        return len(self.__class__.model_fields)
 
     def __str__(self) -> str:
         """Custom string representation showing only non-default values"""
         cls_name = self.__class__.__name__
         fields = []
-        for name, field in self.model_fields.items():
+        for name, field in self.__class__.model_fields.items():
             value = getattr(self, name)
             default = field.default
             if value != default:
@@ -202,7 +202,7 @@ class BaseSheetRow(BaseModel):
         """Get indices of columns that should be filled down"""
         return [
             idx
-            for idx, field_name in enumerate(cls.model_fields)
+            for idx, field_name in enumerate(cls.__class__.model_fields)
             if field_name in cls.fill_columns
         ]
 
@@ -1045,7 +1045,7 @@ def merge_company_data(
     """
     company = existing_company
 
-    for field_name in sheet_row.model_fields.keys():
+    for field_name in sheet_row.__class__.model_fields.keys():
         sheet_value = getattr(sheet_row, field_name)
 
         if sheet_value in (None, "", []):
