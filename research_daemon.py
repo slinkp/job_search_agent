@@ -176,6 +176,7 @@ class ResearchDaemon:
         company_name = args.get("company_name", "").strip()
         company_url = args.get("company_url", "").strip()
         content = args.get("content", "").strip()
+        recruiter_message = args.get("recruiter_message")
 
         # If we have a company_id, try to get the existing company
         existing = None
@@ -185,25 +186,35 @@ class ResearchDaemon:
             # If we have a company name, try to find an existing company with that name
             existing = self.company_repo.get_by_normalized_name(company_name)
 
-        # Determine what content to use for research
-        content_for_research = self.get_content_for_research(
-            company=existing,
-            company_name=company_name,
-            company_url=company_url,
-            content=content,
-        )
-        content = content_for_research["content"]
-        if content is None:
-            raise ValueError("No content for research")
+        if existing and existing.recruiter_message and not recruiter_message:
+            recruiter_message = existing.recruiter_message
 
-        company_name = content_for_research["company_name"]
-        company_url = content_for_research["company_url"]
+        # If we have a RecruiterMessage object, use it directly for research
+        if recruiter_message:
+            content_or_message = recruiter_message
+            # For RecruiterMessage, we'll let the research method extract the company name
+            # but we can use any provided company_name as a fallback
+        else:
+            # Determine what content to use for research
+            content_for_research = self.get_content_for_research(
+                company=existing,
+                company_name=company_name,
+                company_url=company_url,
+                content=content,
+            )
+            content_or_message = content_for_research["content"]
+            if content_or_message is None:
+                raise ValueError("No content for research")
+
+            company_name = content_for_research["company_name"]
+            company_url = content_for_research["company_url"]
+
         result_company = None
         company = None
         try:
-            # TODO: Pass more context from email, etc.
-            # And anything we know about the company already?
-            company = self.jobsearch.research_company(content, model=self.ai_model)
+            company = self.jobsearch.research_company(
+                content_or_message, model=self.ai_model
+            )
 
             # Log any research errors that occurred
             research_errors = company.status.research_errors
@@ -324,7 +335,8 @@ class ResearchDaemon:
                 f"Processing message {i+1} of {len(messages)} [max {max_messages}]..."
             )
             try:
-                company = self.do_research({"content": message.message or ""})
+                # Pass the full RecruiterMessage object instead of just the content
+                company = self.do_research({"recruiter_message": message})
                 if company is None:
                     logger.warning(f"No company extracted from message {i + 1}, skipping")
                     continue
