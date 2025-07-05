@@ -83,22 +83,26 @@ The tool has most infrastructure in place but **cannot be used daily due to a cr
 - (First non-recruiter source - others only if this proves valuable)
 
 ## WEEK 3: Quality & Efficiency
-**Task 3**: Reply quality tracking
+**Task 3**: Handle Ambiguous Leads
+- Create an "Awaiting Info" queue for leads that can't be parsed automatically (e.g., no company name).
+- Add UI to manually enter missing info or trigger a pre-written "request for info" email.
+
+**Task 4**: Reply quality tracking
 - Track edit level for each reply
 - Add thumbs up/down after sending each email
   - maybe not necessary if we can infer based on how much I edited?
 - Simple trends dashboard
 
-**Task 4**: Basic deduplication  
+**Task 5**: Basic deduplication  
 - Fuzzy company name matching for new leads
 - Manual merge UI for detected duplicates
 
 ## WEEK 4+: Measurement & Iteration
-**Task 5**: Weekly metrics dashboard
+**Task 6**: Weekly metrics dashboard
 - Track all success metrics defined above
 - Guide future improvements based on data
 
-**Task 6**: Fit classification baseline
+**Task 7**: Fit classification baseline
 - Simple heuristic scoring (keywords, salary mentions, remote policy)
 - Track override rate when manually changing good/bad decisions
 - Only add ML if heuristic override rate >30%
