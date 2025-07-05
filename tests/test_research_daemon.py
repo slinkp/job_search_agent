@@ -1044,3 +1044,129 @@ def test_do_find_companies_in_recruiter_messages_persistence_bug(
 
     assert created_company.recruiter_message is not None
     assert created_company.recruiter_message.message_id == test_message.message_id
+
+
+def test_do_research_uses_existing_recruiter_message(
+    daemon, test_company_with_message, mock_spreadsheet_upsert
+):
+    """Test that when researching an existing company with a recruiter_message,
+    we use the existing recruiter_message object for research.
+
+    This verifies the logic that preserves recruiter_message context when
+    re-researching companies that were previously created from recruiter emails.
+    """
+    # The company already exists and has a recruiter_message
+    existing_company = test_company_with_message
+    args = {"company_id": existing_company.company_id}
+    existing_recruiter_message = existing_company.recruiter_message
+
+    # Mock that the company exists by company_id
+    daemon.company_repo.get.return_value = existing_company
+
+    # Mock the research to verify what gets passed
+    def mock_research_company(content_or_message, model):
+        # We should get the RecruiterMessage object, not just content string
+        if isinstance(content_or_message, models.RecruiterMessage):
+            # Return updated company with the recruiter_message preserved
+            updated_company = models.Company(
+                company_id=existing_company.company_id,
+                name=existing_company.name,
+                details=existing_company.details,
+                recruiter_message=content_or_message,
+            )
+            return updated_company
+        else:
+            # This should not happen - we should get RecruiterMessage
+            pytest.fail(f"Expected RecruiterMessage, got {type(content_or_message)}")
+
+    daemon.jobsearch.research_company.side_effect = mock_research_company
+
+    # Call do_research with just content (no recruiter_message in args)
+    result = daemon.do_research(args)
+
+    # Verify research was called
+    assert daemon.jobsearch.research_company.call_count == 1
+    call_args = daemon.jobsearch.research_company.call_args
+
+    # Verify that the existing recruiter_message was passed to research, not just content
+    content_or_message = call_args[0][0]
+    assert isinstance(content_or_message, models.RecruiterMessage)
+    assert content_or_message.message_id == existing_recruiter_message.message_id
+    assert content_or_message.message == existing_recruiter_message.message
+
+    # Verify the company was updated (not created)
+    daemon.company_repo.update.assert_called_once()
+    daemon.company_repo.create.assert_not_called()
+
+    # Verify the result has the recruiter_message preserved
+    assert result is not None
+    assert result.recruiter_message is not None
+    assert result.recruiter_message.message_id == existing_recruiter_message.message_id
+
+    # Verify spreadsheet was updated
+    mock_spreadsheet_upsert.assert_called_once()
+
+
+def test_do_research_provided_recruiter_message_takes_precedence(
+    daemon, test_company_with_message, mock_spreadsheet_upsert
+):
+    """Test that when both a recruiter_message is provided in args AND the existing
+    company has a recruiter_message, the provided one takes precedence.
+
+    This verifies that explicit recruiter_message args override existing ones.
+    """
+    # Create a new recruiter message to provide in args
+    new_recruiter_message = models.RecruiterMessage(
+        message_id="new123",
+        company_id=test_company_with_message.company_id,
+        message="New recruiter message content",
+        thread_id="new_thread",
+        sender="new_recruiter@example.com",
+    )
+
+    args = {"recruiter_message": new_recruiter_message}
+
+    # The company already exists and has a different recruiter_message
+    existing_company = test_company_with_message
+    existing_recruiter_message = existing_company.recruiter_message
+
+    # Mock that the company exists by company_id
+    daemon.company_repo.get.return_value = existing_company
+
+    # Mock the research to verify what gets passed
+    def mock_research_company(content_or_message, model):
+        # We should get the new RecruiterMessage object, not the existing one
+        if isinstance(content_or_message, models.RecruiterMessage):
+            # Return updated company with the new recruiter_message
+            updated_company = models.Company(
+                company_id=existing_company.company_id,
+                name=existing_company.name,
+                details=existing_company.details,
+                recruiter_message=content_or_message,
+            )
+            return updated_company
+        else:
+            # This should not happen - we should get RecruiterMessage
+            pytest.fail(f"Expected RecruiterMessage, got {type(content_or_message)}")
+
+    daemon.jobsearch.research_company.side_effect = mock_research_company
+
+    # Call do_research with explicit recruiter_message
+    result = daemon.do_research(args)
+
+    # Verify research was called
+    assert daemon.jobsearch.research_company.call_count == 1
+    call_args = daemon.jobsearch.research_company.call_args
+
+    # Verify that the provided recruiter_message was used, not the existing one
+    content_or_message = call_args[0][0]
+    assert isinstance(content_or_message, models.RecruiterMessage)
+    assert content_or_message.message_id == new_recruiter_message.message_id
+    assert content_or_message.message == new_recruiter_message.message
+    # Ensure it's NOT the existing recruiter message
+    assert content_or_message.message_id != existing_recruiter_message.message_id
+    assert content_or_message.message != existing_recruiter_message.message
+
+    # Verify the company was updated
+    daemon.company_repo.update.assert_called_once()
+    daemon.company_repo.create.assert_not_called()
