@@ -1,4 +1,5 @@
 import os
+import os.path
 import random
 import time
 from datetime import datetime
@@ -58,6 +59,8 @@ class LinkedInSearcher:
         self.delay = 1  # seconds between actions
 
     def screenshot(self, name: str):
+        if not os.path.exists("screenshots"):
+            os.mkdir("screenshots")
         if self.debug:
             path = f"screenshots/debug_{name}_{datetime.now():%Y%m%d_%H%M%S}.png"
             print(f"Saving screenshot to {path}")
