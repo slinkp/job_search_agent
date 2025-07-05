@@ -61,6 +61,8 @@ class ResearchDaemon:
         self.company_repo = models.company_repository()
         self.ai_model = args.model
         self.dry_run = args.dry_run
+        # TODO: headless isn't actually passed down to libjobsearch
+        # and to linkedin ... and would it work??
         self.headless = not getattr(args, "no_headless", False)
         if self.dry_run:
             logger.info("Running in DRY RUN mode - no emails will be sent")
