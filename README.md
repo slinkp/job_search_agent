@@ -38,7 +38,7 @@ Both of them have command line interfaces; explore via `-h` or `--help`.
 
 This repository was created for 3 purposes:
 
-1. **Help me organize my job search** - The primary blocker preventing daily use
+1. **Help me organize my job search** - Ready for daily use
 2. **Learn how to code with AI assistance tools** such as Cursor - Going well
 3. **Learn how to leverage AI in my software** - RAG email replies, company fit classification - Going slowly but steadily
 
@@ -53,7 +53,7 @@ also time-consuming and tedious.
 
 # Current Status
 
-The tool has most infrastructure in place but **cannot be used daily due to a critical bug**: recruiter messages aren't being persisted to the database properly. This prevents the core workflow from functioning.
+The tool has most infrastructure in place and **is ready for daily use**. The core workflow of processing recruiter emails, researching companies, and generating replies is fully functional.
 
 # Success Metrics (tracked weekly)
 
@@ -64,14 +64,7 @@ The tool has most infrastructure in place but **cannot be used daily due to a cr
 
 # Current Plan - Critical Path to Daily Use
 
-## WEEK 1: Fix Critical Blocker ⚠️
-**Single Task**: Fix message persistence bug
-- **Problem**: RecruiterMessage objects aren't being saved to database consistently
-- **Impact**: Cannot process recruiter emails daily - core workflow broken
-- **Solution**: Debug the Company→RecruiterMessage relationship in models.py and ensure all email processing paths save messages
-- **Success**: Can scan emails, see messages in UI, generate replies, and send them
-
-## WEEK 2: Basic Daily Workflow
+## WEEK 1: Basic Daily Workflow
 **Task 1**: Daily dashboard with batch processing
 - Show unprocessed recruiter messages (sender, subject, date)
 - Batch actions: "Research selected", "Archive selected", "Reply to selected"  
@@ -82,7 +75,7 @@ The tool has most infrastructure in place but **cannot be used daily due to a cr
 - Surface in same dashboard with source tag
 - (First non-recruiter source - others only if this proves valuable)
 
-## WEEK 3: Quality & Efficiency
+## WEEK 2: Quality & Efficiency
 **Task 3**: Handle Ambiguous Leads
 - Create an "Awaiting Info" queue for leads that can't be parsed automatically (e.g., no company name).
 - Add UI to manually enter missing info or trigger a pre-written "request for info" email.
@@ -97,7 +90,7 @@ The tool has most infrastructure in place but **cannot be used daily due to a cr
 - Fuzzy company name matching for new leads
 - Manual merge UI for detected duplicates
 
-## WEEK 4+: Measurement & Iteration
+## WEEK 3+: Measurement & Iteration
 **Task 6**: Weekly metrics dashboard
 - Track all success metrics defined above
 - Guide future improvements based on data
@@ -136,11 +129,6 @@ for me to do away with it, and that doesn't seem worthwhile...yet)
 - `research_daemon.py` - Background task processor
 
 # Issues to Fix
-
-## CRITICAL BUG: Message persistence broken
-**Status**: Blocking daily use  
-**Details**: RecruiterMessage objects not consistently saved to database
-**Next**: Debug Company→RecruiterMessage relationship in create/update flows
 
 ## Company name normalization issues
 - Notion-hosted job pages get renamed to "notion"  (Example to repro: "Cassidy AI")
