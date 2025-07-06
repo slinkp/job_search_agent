@@ -18,6 +18,7 @@ from typing import Any, Callable, Optional
 from diskcache import Cache  # type: ignore
 from pydantic import BaseModel, ValidationError
 
+import company_fit_heuristic
 import company_researcher
 import email_client
 import levels_searcher
@@ -617,9 +618,12 @@ class JobSearch:
         return company_info
 
     def is_good_fit(self, company_info: CompaniesSheetRow) -> bool:
-        # TODO: basic heuristic for now
-        logger.info(f"Checking if {company_info.name} is a good fit...")
-        return True
+        """
+        Evaluate if a company is a good fit based on the Ideal Work Vision criteria.
+
+        This is a wrapper around the company_fit_heuristic.is_good_fit function.
+        """
+        return company_fit_heuristic.is_good_fit(company_info)
 
     def get_new_recruiter_messages(
         self, max_results: int = 100
