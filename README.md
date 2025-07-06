@@ -70,32 +70,38 @@ The tool has most infrastructure in place and **is ready for daily use**. The co
 - Batch actions: "Research selected", "Archive selected", "Reply to selected"  
 - Status summary: "X unprocessed, Y researched, Z replied"
 
-**Task 2**: Welcome to the Jungle email integration
-- Parse WttJ digest emails for company + role info
-- Surface in same dashboard with source tag
-- (First non-recruiter source - others only if this proves valuable)
+**Task 2**: Simplest Possible Company Fit Score
+- Hardcode heuristic based on salary, remote policy, location, etc
 
-## WEEK 2: Quality & Efficiency
+## WEEK 2: Efficiency, More Leads, Quality Tracking
+
 **Task 3**: Handle Ambiguous Leads
 - Create an "Awaiting Info" queue for leads that can't be parsed automatically (e.g., no company name).
 - Add UI to manually enter missing info or trigger a pre-written "request for info" email.
 
-**Task 4**: Reply quality tracking
+**Task 4**: Basic deduplication  
+- Fuzzy company name matching for new leads. Possibly store mapping of known aliases
+- Manual merge UI for detected duplicates
+
+**Task 5**: Welcome to the Jungle email integration
+- Parse WttJ digest emails for company + role info
+- Surface in same dashboard with source tag
+- (First non-recruiter source - others later only if this proves valuable)
+- Reply workflow not relevant to these so don't show that in UX
+
+**Task 6**: Reply quality tracking
 - Track edit level for each reply
 - Add thumbs up/down after sending each email
   - maybe not necessary if we can infer based on how much I edited?
 - Simple trends dashboard
 
-**Task 5**: Basic deduplication  
-- Fuzzy company name matching for new leads
-- Manual merge UI for detected duplicates
 
 ## WEEK 3+: Measurement & Iteration
-**Task 6**: Weekly metrics dashboard
+**Task 7**: Weekly metrics dashboard
 - Track all success metrics defined above
 - Guide future improvements based on data
 
-**Task 7**: Fit classification baseline
+**Task 8**: Fit classification baseline
 - Simple heuristic scoring (keywords, salary mentions, remote policy)
 - Track override rate when manually changing good/bad decisions
 - Only add ML if heuristic override rate >30%
