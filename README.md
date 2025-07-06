@@ -65,13 +65,15 @@ The tool has most infrastructure in place and **is ready for daily use**. The co
 # Current Plan - Critical Path to Daily Use
 
 ## WEEK 1: Basic Daily Workflow
-**Task 1**: Daily dashboard with batch processing
+
+**Task 1**: Simplest Possible Company Fit Score
+- Hardcode heuristic based on salary, remote policy, location, etc
+
+**Task 2**: Daily dashboard with batch processing
 - Show unprocessed recruiter messages (sender, subject, date)
 - Batch actions: "Research selected", "Archive selected", "Reply to selected"  
 - Status summary: "X unprocessed, Y researched, Z replied"
 
-**Task 2**: Simplest Possible Company Fit Score
-- Hardcode heuristic based on salary, remote policy, location, etc
 
 ## WEEK 2: Efficiency, More Leads, Quality Tracking
 
