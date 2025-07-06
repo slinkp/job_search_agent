@@ -141,9 +141,6 @@ for me to do away with it, and that doesn't seem worthwhile...yet)
 - AWS becomes "amazon web services (AWS)" but levels.fyi expects "Amazon"
 - **Solution**: Add manual name override with persistence flag
 
-## Duplicate status codes
-- Both "10. consider applying" and "25. consider applying" exist
-- Need to consolidate or clarify usage
 
 # Deferred Features
 
