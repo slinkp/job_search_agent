@@ -84,12 +84,14 @@ def complete_company_info():
         name="Acme Corp",
         type="Private",
         url="https://acme.com",
-        total_comp=decimal.Decimal("150000"),
-        base=decimal.Decimal("120000"),
-        rsu=decimal.Decimal("30000"),
+        total_comp=decimal.Decimal("450000"),  # High enough to pass fit check
+        base=decimal.Decimal("320000"),
+        rsu=decimal.Decimal("130000"),
         bonus=decimal.Decimal("0"),
         level_equiv="Staff",
         maybe_referrals="John Doe - Senior Engineer",
+        remote_policy="Remote-first",  # Good remote policy
+        ai_notes="Leading AI company focused on machine learning and artificial intelligence",  # AI keywords
     )
 
 
@@ -100,6 +102,8 @@ def basic_company_info():
         name="Acme Corp",
         type="Private",
         url="https://acme.com",
+        remote_policy="Remote-first",  # Good remote policy
+        ai_notes="Leading AI company focused on machine learning and artificial intelligence",  # AI keywords
     )
 
 
@@ -113,10 +117,10 @@ def levels_data():
                 "level": "Staff Engineer",
                 "role": "Staff Engineer",
                 "experience": "10+ years",
-                "total_comp": "150000",
-                "rsu": "30000",
-                "bonus": "0",
-                "salary": "120000",
+                "total_comp": 450000,  # High enough to pass fit check
+                "equity": 130000,
+                "bonus": 0,
+                "salary": 320000,
             }
         ],
     }
@@ -439,11 +443,14 @@ def test_research_company_with_unknown_company(
     assert company.recruiter_message is None
     assert company.message_id is None
 
-    # Verify all research methods were called
+    # Verify basic research methods were called
     mock_research_methods["company_researcher"].assert_called_once()
     mock_research_methods["levels_main"].assert_called_once()
     mock_research_methods["levels_extract"].assert_called_once()
-    mock_research_methods["linkedin_main"].assert_called_once()
+
+    # LinkedIn research should NOT be called for unknown companies that don't pass fit check
+    # (no compensation data, no remote policy, no AI focus = 0 points, below 70% threshold)
+    mock_research_methods["linkedin_main"].assert_not_called()
 
 
 def test_research_company_with_advanced_research(
