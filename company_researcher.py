@@ -425,6 +425,7 @@ def main(
 
 if __name__ == "__main__":
     import argparse
+    from libjobsearch import SONNET_LATEST
 
     parser = argparse.ArgumentParser()
     parser.add_argument("input", help="URL of company or recruiter message to research")
@@ -437,12 +438,13 @@ if __name__ == "__main__":
         "--model",
         help="AI model to use",
         action="store",
-        default="claude-3-5-sonnet-latest",
+        default=SONNET_LATEST,
         choices=[
             "gpt-4o",
             "gpt-4-turbo",
             "gpt-3.5-turbo",
             "claude-3-5-sonnet-latest",
+            SONNET_LATEST,
         ],
     )
     parser.add_argument("--verbose", action="store_true")

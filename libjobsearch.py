@@ -33,6 +33,10 @@ logger = logging.getLogger(__name__)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+
+SONNET_LATEST = "claude-4-sonnet-latest"
+
+
 cache = Cache(os.path.join(HERE, ".cache"))
 
 
@@ -633,12 +637,14 @@ def arg_parser():
         "--model",
         help="AI model to use",
         action="store",
-        default="claude-3-5-sonnet-latest",
+        default=SONNET_LATEST,
         choices=[
             "gpt-4o",
             "gpt-4-turbo",
             "gpt-3.5-turbo",
             "claude-3-5-sonnet-latest",  # noqa: B950
+            "claude-3-7-sonnet-latest",
+            SONNET_LATEST,
         ],
     )
     DEFAULT_RAG_LIMIT = 20
