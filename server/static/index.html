@@ -35,23 +35,7 @@
       <!-- Company Management View -->
       <div x-show="isCompanyManagementView()" id="company-management-view">
         <div class="top-controls">
-        <div class="scan-recruiter-emails">
-          <div class="input-group">
-            <input type="number" value="10" id="maxMessages">
-            <button @click="scanRecruiterEmails($el.previousElementSibling.value)" :disabled="scanningEmails">
-              <span class="loading-spinner" x-show="scanningEmails"></span>
-              Scan Emails
-            </button>
-          </div>
-          <div class="scan-options">
-            <label>
-              <input type="checkbox" id="doResearch">
-              Do research on new recruiter mail
-            </label>
-          </div>
-          <div x-show="emailScanStatus" x-text="getEmailScanStatusText()" :class="getEmailScanStatusClass()"></div>
-        </div>
-
+        <!-- Removed scan-recruiter-emails controls -->
         <div class="research-company">
           <button @click="showResearchCompanyModal()" class="outline">
             Research a Company
@@ -259,11 +243,22 @@
       <div x-show="isDailyDashboardView()" id="daily-dashboard-view" x-data="dailyDashboard" x-init="init()">
         <div class="dashboard-header">
           <h2>Daily Dashboard</h2>
-          <button @click="refresh()" :disabled="loading" class="outline">
-            <span x-show="loading" class="loading-spinner"></span>
-            Refresh
-          </button>
+          <div class="dashboard-actions">
+            <button @click="scanRecruiterEmails(10)" :disabled="scanningEmails" class="outline">
+              <span x-show="scanningEmails" class="loading-spinner"></span>
+              Scan Emails
+            </button>
+            <button @click="refresh()" :disabled="loading" class="outline">
+              <span x-show="loading" class="loading-spinner"></span>
+              Refresh
+            </button>
+            <button @click="toggleSortOrder()" class="outline">
+              <span x-text="getSortButtonText()"></span>
+            </button>
+          </div>
         </div>
+        
+        <div x-show="emailScanStatus" x-text="getEmailScanStatusText()" :class="getEmailScanStatusClass()" class="email-scan-status"></div>
         
         <div x-show="loading" class="loading-message">Loading unprocessed messages...</div>
         
@@ -275,7 +270,7 @@
         <div x-show="!loading && unprocessedMessages.length > 0" class="message-list">
           <h3>Unprocessed Messages (<span x-text="unprocessedMessages.length"></span>)</h3>
           
-          <template x-for="company in unprocessedMessages" :key="company.company_id">
+          <template x-for="company in sortedMessages" :key="company.company_id">
             <article class="message-item">
               <header>
                 <div class="message-info">

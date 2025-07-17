@@ -97,6 +97,7 @@ function createMockDailyDashboard() {
   return {
     unprocessedMessages: [],
     loading: false,
+    sortNewestFirst: true,
     init() {
       console.log("Mock dailyDashboard initialized");
     },
@@ -120,6 +121,15 @@ function createMockDailyDashboard() {
     },
     refresh() {
       // Stub method
+    },
+    toggleSortOrder() {
+      // Stub method
+    },
+    getSortButtonText() {
+      return "Newest First";
+    },
+    get sortedMessages() {
+      return [];
     },
   };
 }

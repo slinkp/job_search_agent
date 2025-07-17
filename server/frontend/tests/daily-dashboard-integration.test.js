@@ -30,10 +30,25 @@ describe("Daily Dashboard Integration", () => {
     expect(dashboardTitle).toBeTruthy();
     expect(dashboardTitle.textContent).toBe("Daily Dashboard");
 
-    // Verify refresh button exists
-    const refreshButton = dashboardHeader.querySelector("button");
-    expect(refreshButton).toBeTruthy();
-    expect(refreshButton.textContent).toContain("Refresh");
+    // Verify dashboard actions container exists
+    const dashboardActions =
+      dashboardHeader.querySelector(".dashboard-actions");
+    expect(dashboardActions).toBeTruthy();
+
+    // Verify all three buttons exist
+    const buttons = dashboardActions.querySelectorAll("button");
+    expect(buttons.length).toBe(3);
+    expect(buttons[0].textContent.trim()).toBe("Scan Emails");
+    expect(buttons[1].textContent.trim()).toBe("Refresh");
+
+    // Verify sort button exists and has Alpine directive
+    const sortButton = buttons[2];
+    expect(sortButton).toBeTruthy();
+    expect(sortButton.querySelector("span")).toBeTruthy();
+    expect(sortButton.querySelector("span").hasAttribute("x-text")).toBe(true);
+    expect(sortButton.querySelector("span").getAttribute("x-text")).toBe(
+      "getSortButtonText()"
+    );
   });
 
   it("should have proper Alpine data binding structure", () => {
@@ -90,6 +105,26 @@ describe("Daily Dashboard Integration", () => {
       expect(template.innerHTML).toContain("message-item");
       expect(template.innerHTML).toContain("message-info");
       expect(template.innerHTML).toContain("message-actions");
+    }
+  });
+
+  it("should have sorting functionality implemented", () => {
+    const dashboardView = document.getElementById("daily-dashboard-view");
+
+    // Verify sort button exists and has click handler
+    const sortButton = dashboardView.querySelector(
+      ".dashboard-actions button:last-child"
+    );
+    expect(sortButton).toBeTruthy();
+    expect(sortButton.hasAttribute("@click")).toBe(true);
+    expect(sortButton.getAttribute("@click")).toBe("toggleSortOrder()");
+
+    // Verify the template uses sortedMessages instead of unprocessedMessages
+    const messageList = dashboardView.querySelector(".message-list");
+    if (messageList) {
+      const template = messageList.querySelector("template");
+      expect(template.hasAttribute("x-for")).toBe(true);
+      expect(template.getAttribute("x-for")).toBe("company in sortedMessages");
     }
   });
 });
