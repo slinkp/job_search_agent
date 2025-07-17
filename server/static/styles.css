@@ -441,3 +441,133 @@ button.secondary:focus {
   color: var(--muted-color);
   font-size: 0.8em;
 } 
+
+/* Header section with view mode toggle */
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.header-section h1 {
+  margin: 0;
+}
+
+.view-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.view-mode-toggle button {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.9em;
+}
+
+.view-mode-toggle button.active {
+  background-color: var(--primary);
+  color: var(--primary-inverse);
+  border-color: var(--primary);
+}
+
+.view-mode-toggle button.outline {
+  background-color: transparent;
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Daily Dashboard Styles */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dashboard-header h2 {
+  margin: 0;
+}
+
+.loading-message {
+  text-align: center;
+  padding: 2rem;
+  color: var(--muted-color);
+}
+
+.no-messages {
+  text-align: center;
+  padding: 2rem;
+  color: var(--muted-color);
+}
+
+.message-list h3 {
+  margin-bottom: 1rem;
+  color: var(--primary);
+}
+
+.message-item {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--card-border-color);
+  border-radius: var(--border-radius);
+  background-color: var(--card-background-color);
+}
+
+.message-item header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.message-info {
+  flex: 1;
+}
+
+.message-sender {
+  font-weight: bold;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+}
+
+.message-subject {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.message-date {
+  font-size: 0.85em;
+  color: var(--muted-color);
+}
+
+.company-name {
+  font-size: 0.9em;
+  color: var(--muted-color);
+  text-align: right;
+  margin-left: 1rem;
+}
+
+.message-preview {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background-color: var(--background-color);
+  border-radius: var(--border-radius);
+  font-size: 0.9em;
+  color: var(--muted-color);
+}
+
+.message-preview p {
+  margin: 0;
+}
+
+.message-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.message-actions button {
+  font-size: 0.85em;
+  padding: 0.3rem 0.6rem;
+}

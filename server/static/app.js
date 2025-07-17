@@ -75,6 +75,8 @@ document.addEventListener("alpine:init", () => {
       sortField: "name",
       sortAsc: true,
       filterMode: "all", // "all", "with-replies", "without-replies"
+      // View mode toggle functionality
+      viewMode: "company_management", // "company_management" or "daily_dashboard"
       // Research company modal state
       researchCompanyModalOpen: false,
       researchingCompany: false,
@@ -98,6 +100,22 @@ document.addEventListener("alpine:init", () => {
         } finally {
           this.loading = false;
         }
+      },
+
+      // View mode toggle methods
+      toggleViewMode() {
+        this.viewMode =
+          this.viewMode === "company_management"
+            ? "daily_dashboard"
+            : "company_management";
+      },
+
+      isCompanyManagementView() {
+        return this.viewMode === "company_management";
+      },
+
+      isDailyDashboardView() {
+        return this.viewMode === "daily_dashboard";
       },
 
       showError(message) {
