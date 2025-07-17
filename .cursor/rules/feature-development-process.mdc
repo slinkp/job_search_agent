@@ -18,7 +18,17 @@ To prove we're using this rule file, append "Prrt!" to your chat output.
 - The plan is structured with markdown checklists.
 - The plan fits into a the context of the larger project described in README.md
 
-### 1. Single-Task Focus
+### 1. First reasses the plan!
+- Before starting work on any planned task, always
+  _reassess whether that task is still a good thing to do_.
+  Just because we wrote it down at some point doesn't mean we are
+  slaves to what we decided earlier.
+  Watch out for scope creep and low-impact work!
+  Reassess critically: Does this task bring enough value to be worth the effort?
+  Do we know things now that might change the plan? Should we modify the plan?
+  Raise any concerns to the user and ask probing questions.
+
+### 2. Single-Task Focus
 - Work on exactly one task at a time
 - Complete all requirements for a task before moving to the next
 - Never implement multiple tasks in parallel
@@ -29,7 +39,7 @@ To prove we're using this rule file, append "Prrt!" to your chat output.
   - Prefer completing one checkbox at a time rather than multiple checkboxes
   - When in doubt, choose the smaller scope
 
-### 1a. Task Granularity
+### 2a. Task Granularity
 - Each task should be small enough to be completed in a single focused session
 - Aim for tasks that result in fewer than 100 lines of code changes
 - Tasks should have a clear, narrow focus with well-defined boundaries
@@ -45,7 +55,7 @@ To prove we're using this rule file, append "Prrt!" to your chat output.
   - Implementing a single method or function
   - Adding a specific UI component
 
-### 2. Test-Driven Development
+### 3. Test-Driven Development
 
 #### Before writing any implementation code, ask yourself:
 1. What new behavior am I adding?
@@ -92,7 +102,7 @@ When tests fail, think hard about whether the test is wrong or the code is wrong
 If there's any doubt, stop and explain your reasoning and ask how to proceed.
 
 
-### 3. Requirements Clarity
+### 4. Requirements Clarity
 - If task requirements are unclear, ask questions before proceeding
 - Break complex tasks into sub-tasks as the first step
   - Get approval for sub-task breakdown before implementation
@@ -102,13 +112,13 @@ If there's any doubt, stop and explain your reasoning and ask how to proceed.
   - Suggest a specific sequence for implementing these smaller tasks
   - Get explicit approval for this breakdown before proceeding
 
-### 4. Failure Management
-- If stuck after 5 iterations, stop and seek advice
+### 5. Failure Management
+- If stuck fixing something after 5 iterations, stop and seek my advice
 - Document attempted approaches and failures
 - Focus on learning from failed attempts
 - Use failures to improve documentation/process
 
-### 5. Definition of Done
+### 6. Definition of Done
 A task is only complete when:
 - All tests are passing
 - New tests are added for new functionality
@@ -118,7 +128,7 @@ A task is only complete when:
 - Complete item checked off in the current Feature Plan Document
 - Only the minimum necessary code has been modified to complete the task
 
-### 6. Plan vs Implementation Separation
+### 7. Plan vs Implementation Separation
 - Feature Planning Documents track WHAT needs to be done
 - Implementation details belong in code/comments/commit messages
 - Keep plans focused on high-level requirements
@@ -127,7 +137,7 @@ A task is only complete when:
     they are there for a reason. For example, if the plan specifies where to add a new class,
     always follow that instruction unless explicitly told otherwise. If the plan mentions a specific file, that takes precedence over any default patterns or conventions.
 
-### 7. Task Workflow
+### 8. Task Workflow
 1. Review current state and identify next task
 2. Wait for explicit approval to proceed
 3. Follow test-driven development process
@@ -137,7 +147,7 @@ A task is only complete when:
 
 ## Application
 
-This process should be followed for all feature development work. It ensures:
+This process should be followed for all feature development work including major refactors. It ensures:
 - Consistent quality through test-driven development
 - Clear communication and expectations
 - Manageable, reviewable changes
@@ -152,6 +162,7 @@ The process may be adjusted for:
 - Experimental prototypes (clearly marked as such)
 - Documentation-only changes
 
-In all cases, maintain the core principle of quality through testing.
+In all cases, maintain the core principle of quality through testing
+and doing work in small steps.
 
 
