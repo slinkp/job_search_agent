@@ -24,6 +24,8 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 - **Batch actions** - No "Research selected", "Archive selected", "Reply to selected" functionality
 - **Status summary** - No "X unprocessed, Y researched, Z replied" summary display
 - **Unprocessed focus** - Current view shows all companies, but Task 1 wants focus on unprocessed messages
+- **Complete research decoupling** - Currently `research=false` only skips 2nd stage research, still does 1st stage
+- **Full message fetching** - Currently fetches only 10 messages, should fetch all new messages by default
 
 ## Implementation Steps
 
@@ -40,7 +42,25 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 - [ ] Add filter for "unprocessed messages" (messages that haven't been replied to or archived)
 - [x] Add tests for new UI components
 
-### 2. Implement Batch Selection
+### 2. Decouple Research from Message Fetching (IMMEDIATE PRIORITY)
+- [ ] **Fully decouple research from message fetching**: Currently `research=false` only skips the 2nd stage of research, but still does the 1st stage. Need to make research completely optional.
+- [ ] **Fetch all Gmail messages by default**: Change from fetching only 10 messages to fetching all messages we don't already have.
+- [ ] **Implement/verify message deduplication**: Ensure "we already have this message" logic works correctly:
+  - [ ] Check how message deduplication is currently determined
+  - [ ] Verify it works reliably (by message ID, thread ID, or other unique identifier)
+  - [ ] Implement proper deduplication if not already working
+  - [ ] Add tests for deduplication logic
+- [ ] **Update email scanning API**: Modify `/api/scan_recruiter_emails` to:
+  - [ ] Accept `fetch_all` parameter (default: true) instead of `max_messages`
+  - [ ] Accept `do_research` parameter (default: false) for complete research decoupling
+  - [ ] Handle large message fetches efficiently
+- [ ] **Update frontend**: Modify daily dashboard to:
+  - [ ] Remove `max_messages` parameter from scan button
+  - [ ] Add option to enable/disable research during scan
+  - [ ] Show progress for large message fetches
+- [ ] **Add tests** for new email scanning behavior
+
+### 3. Implement Batch Selection
 - [ ] Add checkbox column to message list
 - [ ] Add "Select All" / "Select None" functionality
 - [ ] Add selection counter ("X selected")
@@ -48,7 +68,7 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 - [ ] Add visual feedback for selected items
 - [ ] Add tests for selection functionality
 
-### 3. Implement Batch Actions
+### 4. Implement Batch Actions
 - [ ] Add "Research Selected" batch action:
   - [ ] Backend endpoint to start research for multiple companies
   - [ ] Progress tracking for batch research operations
@@ -62,7 +82,7 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
   - [ ] Send and archive multiple messages
 - [ ] Add tests for all batch operations
 
-### 4. Add Status Summary
+### 5. Add Status Summary
 - [ ] Create status summary component showing:
   - [ ] "X unprocessed" (messages not replied to or archived)
   - [ ] "Y researched" (companies that have been researched)
@@ -71,7 +91,7 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 - [ ] Add visual indicators (colors, icons) for different statuses
 - [ ] Add tests for status summary calculations
 
-### 5. Backend Enhancements
+### 6. Backend Enhancements
 - [ ] Add endpoint for getting unprocessed messages list
 - [ ] Add batch research endpoint
 - [ ] Add batch archive endpoint  
@@ -80,7 +100,7 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 - [ ] Add proper error handling for batch operations
 - [ ] Add tests for all new endpoints
 
-### 6. Polish and Integration
+### 7. Polish and Integration
 - [ ] Add keyboard shortcuts for common actions
 - [ ] Add confirmation dialogs for batch operations
 - [ ] Ensure proper error handling and user feedback
@@ -89,7 +109,7 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 - [ ] Update navigation to highlight daily dashboard as primary view
 - [ ] Add tests for error scenarios and edge cases
 
-### 7. Documentation and Testing
+### 8. Documentation and Testing
 - [ ] Update README with daily dashboard usage instructions
 - [ ] Add comprehensive tests for batch operations
 - [ ] Test with real recruiter message data
@@ -123,6 +143,9 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 - [ ] Status summary shows "X unprocessed, Y researched, Z replied"
 - [ ] All actions update the display in real-time
 - [ ] Can toggle between daily dashboard and full company view
+- [ ] **Email scanning fetches all new messages by default** (not just 10)
+- [ ] **Research is completely decoupled from message fetching** (optional, not automatic)
+- [ ] **Message deduplication works reliably** (no duplicate messages in database)
 - [ ] All tests pass
 - [ ] User can efficiently process multiple messages in a single session
 
