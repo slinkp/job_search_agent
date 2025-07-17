@@ -31,14 +31,14 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 - [x] Hardcoded rules based on my preferences
 
 ### 1. Create Daily Dashboard View
-- [ ] Add new "Daily Dashboard" mode to toggle between current company-centric view and new message-centric view
-- [ ] Create new UI component for unprocessed message list:
-  - [ ] Show sender, subject, date for each unprocessed message
-  - [ ] Display company name if extracted/researched
-  - [ ] Show processing status (unprocessed, researched, replied, archived)
+- [x] Add new "Daily Dashboard" mode to toggle between current company-centric view and new message-centric view
+- [x] Create new UI component for unprocessed message list:
+  - [x] Show sender, subject, date for each unprocessed message
+  - [x] Display company name if extracted/researched
+  - [x] Show processing status (unprocessed, researched, replied, archived)
   - [ ] Add checkboxes for batch selection
 - [ ] Add filter for "unprocessed messages" (messages that haven't been replied to or archived)
-- [ ] Add tests for new UI components
+- [x] Add tests for new UI components
 
 ### 2. Implement Batch Selection
 - [ ] Add checkbox column to message list

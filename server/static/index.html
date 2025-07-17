@@ -11,15 +11,30 @@
     <link rel="stylesheet" href="/static/styles.css" />
     <script type="module" src="/static/company-research.js"></script>
     <script type="module" src="/static/app.js"></script>
+    <script type="module" src="/static/daily-dashboard.js"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   </head>
   <body>
     <main class="container" x-data="companyList" x-init="init()">
-      <h1>Companies Dashboard</h1>
+      <div class="header-section">
+        <h1>Companies Dashboard</h1>
+        
+        <!-- View Mode Toggle -->
+        <div class="view-mode-toggle">
+          <button @click="toggleViewMode()" :class="isCompanyManagementView() ? 'active' : 'outline'">
+            Company Management
+          </button>
+          <button @click="toggleViewMode()" :class="isDailyDashboardView() ? 'active' : 'outline'">
+            Daily Dashboard
+          </button>
+        </div>
+      </div>
 
       <div x-show="loading">Loading...</div>
 
-      <div class="top-controls">
+      <!-- Company Management View -->
+      <div x-show="isCompanyManagementView()" id="company-management-view">
+        <div class="top-controls">
         <div class="scan-recruiter-emails">
           <div class="input-group">
             <input type="number" value="10" id="maxMessages">
@@ -238,6 +253,58 @@
           </article>
         </template>
       </template>
+      </div>
+
+      <!-- Daily Dashboard View -->
+      <div x-show="isDailyDashboardView()" id="daily-dashboard-view" x-data="dailyDashboard" x-init="init()">
+        <div class="dashboard-header">
+          <h2>Daily Dashboard</h2>
+          <button @click="refresh()" :disabled="loading" class="outline">
+            <span x-show="loading" class="loading-spinner"></span>
+            Refresh
+          </button>
+        </div>
+        
+        <div x-show="loading" class="loading-message">Loading unprocessed messages...</div>
+        
+        <div x-show="!loading && unprocessedMessages.length === 0" class="no-messages">
+          <p>No unprocessed recruiter messages found.</p>
+          <p><em>All messages have been replied to or archived.</em></p>
+        </div>
+        
+        <div x-show="!loading && unprocessedMessages.length > 0" class="message-list">
+          <h3>Unprocessed Messages (<span x-text="unprocessedMessages.length"></span>)</h3>
+          
+          <template x-for="company in unprocessedMessages" :key="company.company_id">
+            <article class="message-item">
+              <header>
+                <div class="message-info">
+                  <div class="message-sender" x-text="getMessageSender(company)"></div>
+                  <div class="message-subject" x-text="getMessageSubject(company)"></div>
+                  <div class="message-date" x-text="formatMessageDate(getMessageDate(company))"></div>
+                </div>
+                <div class="company-name" x-text="getCompanyName(company)"></div>
+              </header>
+              
+              <div class="message-preview">
+                <p x-text="company.recruiter_message?.message?.substring(0, 200) + (company.recruiter_message?.message?.length > 200 ? '...' : '')"></p>
+              </div>
+              
+              <div class="message-actions">
+                <button @click="console.log('Research action for:', company.name)" class="outline">
+                  Research
+                </button>
+                <button @click="console.log('Generate reply for:', company.name)" class="outline">
+                  Generate Reply
+                </button>
+                <button @click="console.log('Archive for:', company.name)" class="outline">
+                  Archive
+                </button>
+              </div>
+            </article>
+          </template>
+        </div>
+      </div>
 
       <!-- Modal for editing replies -->
       <dialog id="editModal" x-show="editingCompany" x-cloak>

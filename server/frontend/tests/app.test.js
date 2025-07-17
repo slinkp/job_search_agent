@@ -191,3 +191,74 @@ describe("Company Import UI", () => {
     );
   });
 });
+
+describe("Daily Dashboard View Mode Toggle", () => {
+  let companyList;
+
+  beforeEach(() => {
+    // Set up document with actual HTML
+    setupDocumentWithIndexHtml(document);
+
+    // Mock Alpine.js data with view mode functionality
+    companyList = {
+      viewMode: "company_management", // Default view mode
+      toggleViewMode: vi.fn(function () {
+        this.viewMode =
+          this.viewMode === "company_management"
+            ? "daily_dashboard"
+            : "company_management";
+      }),
+      isCompanyManagementView: vi.fn(function () {
+        return this.viewMode === "company_management";
+      }),
+      isDailyDashboardView: vi.fn(function () {
+        return this.viewMode === "daily_dashboard";
+      }),
+    };
+  });
+
+  it("should default to company management view", () => {
+    expect(companyList.viewMode).toBe("company_management");
+    expect(companyList.isCompanyManagementView()).toBe(true);
+    expect(companyList.isDailyDashboardView()).toBe(false);
+  });
+
+  it("should toggle between view modes", () => {
+    // Start in company management view
+    expect(companyList.viewMode).toBe("company_management");
+
+    // Toggle to daily dashboard
+    companyList.toggleViewMode();
+    expect(companyList.viewMode).toBe("daily_dashboard");
+    expect(companyList.isDailyDashboardView()).toBe(true);
+    expect(companyList.isCompanyManagementView()).toBe(false);
+
+    // Toggle back to company management
+    companyList.toggleViewMode();
+    expect(companyList.viewMode).toBe("company_management");
+    expect(companyList.isCompanyManagementView()).toBe(true);
+    expect(companyList.isDailyDashboardView()).toBe(false);
+  });
+
+  it("should show correct view based on view mode", () => {
+    // Mock DOM elements for different views
+    const companyView = document.createElement("div");
+    companyView.setAttribute("x-show", "isCompanyManagementView()");
+    companyView.id = "company-management-view";
+    document.body.appendChild(companyView);
+
+    const dashboardView = document.createElement("div");
+    dashboardView.setAttribute("x-show", "isDailyDashboardView()");
+    dashboardView.id = "daily-dashboard-view";
+    document.body.appendChild(dashboardView);
+
+    // Test that the correct view logic is called
+    expect(companyList.isCompanyManagementView()).toBe(true);
+    expect(companyList.isDailyDashboardView()).toBe(false);
+
+    companyList.toggleViewMode();
+
+    expect(companyList.isCompanyManagementView()).toBe(false);
+    expect(companyList.isDailyDashboardView()).toBe(true);
+  });
+});

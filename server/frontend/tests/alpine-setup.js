@@ -37,6 +37,7 @@ export async function setupAlpine() {
 
     // Register core components that exist in the real application
     Alpine.data("companyList", () => createMockCompanyList());
+    Alpine.data("dailyDashboard", () => createMockDailyDashboard());
   }
 
   // Disable Alpine's warning system to prevent unhandled errors
@@ -90,6 +91,40 @@ function createMockMutationObserver() {
 }
 
 /**
+ * Create a basic mock of the dailyDashboard component
+ */
+function createMockDailyDashboard() {
+  return {
+    unprocessedMessages: [],
+    loading: false,
+    init() {
+      console.log("Mock dailyDashboard initialized");
+    },
+    loadUnprocessedMessages() {
+      // Stub method
+    },
+    formatMessageDate() {
+      return "";
+    },
+    getCompanyName() {
+      return "";
+    },
+    getMessageSender() {
+      return "";
+    },
+    getMessageSubject() {
+      return "";
+    },
+    getMessageDate() {
+      return null;
+    },
+    refresh() {
+      // Stub method
+    },
+  };
+}
+
+/**
  * Create a basic mock of the companyList component
  */
 function createMockCompanyList() {
@@ -118,11 +153,26 @@ function createMockCompanyList() {
       name: "",
     },
     researchCompanyTaskId: null,
+    // View mode toggle functionality
+    viewMode: "company_management",
     init() {
       console.log("Mock companyList initialized");
     },
     showError() {},
     showSuccess() {},
+    // View mode methods
+    toggleViewMode() {
+      this.viewMode =
+        this.viewMode === "company_management"
+          ? "daily_dashboard"
+          : "company_management";
+    },
+    isCompanyManagementView() {
+      return this.viewMode === "company_management";
+    },
+    isDailyDashboardView() {
+      return this.viewMode === "daily_dashboard";
+    },
     isResearching() {
       return false;
     },
