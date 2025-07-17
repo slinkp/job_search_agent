@@ -27,8 +27,11 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 
 ## Implementation Steps
 
+### 0. Implement simple heuristic for company fit
+- [x] Hardcoded rules based on my preferences
+
 ### 1. Create Daily Dashboard View
-- [ ] Add new "Daily Dashboard" mode to toggle between current view and new message-centric view
+- [ ] Add new "Daily Dashboard" mode to toggle between current company-centric view and new message-centric view
 - [ ] Create new UI component for unprocessed message list:
   - [ ] Show sender, subject, date for each unprocessed message
   - [ ] Display company name if extracted/researched
