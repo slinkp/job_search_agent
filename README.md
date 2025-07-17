@@ -149,7 +149,7 @@ for me to do away with it, and that doesn't seem worthwhile...yet)
 These are valuable but not on the critical path to daily use:
 
 - **Additional job sources** (LinkedIn alerts, Slack channels, HN Hiring)
-- **Advanced ML for company fit classification** (Random Forest, synthetic data generation)
+- **Advanced ML for company fit classification** (Random Forest, synthetic data generation; this was left off as WIP in `company_classifier/`)
 - **Additional contact sources beyond LinkIn** (Recurse connections)
 - **Attachment processing** (PDF/DOC parsing)
 - **Advanced monitoring** (model performance tracking)
