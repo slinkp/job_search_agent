@@ -118,7 +118,7 @@ def get_companies(request) -> list[dict]:
 def home(request):
     # Read and return the index.html file
     here = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(here, 'static', 'index.html')) as f:
+    with open(os.path.join(here, "static", "index.html")) as f:
         return Response(f.read(), content_type="text/html")
 
 
@@ -190,7 +190,7 @@ def research_company(request):
     # When research is completed, we'll set this timestamp
     # For now, just return the task info
     return {
-        "task_id": task_id, 
+        "task_id": task_id,
         "status": tasks.TaskStatus.PENDING.value,
         # We'll set research_completed_at when the task completes
     }
@@ -229,7 +229,9 @@ def scan_recruiter_emails(request):
         tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
         {"max_messages": max_messages, "do_research": do_research},
     )
-    logger.info(f"Email scan requested with do_research={do_research}, task_id: {task_id}")
+    logger.info(
+        f"Email scan requested with do_research={do_research}, task_id: {task_id}"
+    )
     return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
 
 
@@ -390,14 +392,14 @@ def main(global_config, **settings):
 
         # Static files configuration
         here = os.path.dirname(os.path.abspath(__file__))
-        static_path = os.path.join(here, 'static')
+        static_path = os.path.join(here, "static")
 
         # Create static directory if it doesn't exist
         if not os.path.exists(static_path):
             os.makedirs(static_path)
 
         # Routes
-        config.add_route('home', '/')
+        config.add_route("home", "/")
         config.add_route("companies", "/api/companies")
         config.add_route("research", "/api/companies/{company_id}/research")
         config.add_route("generate_message", "/api/companies/{company_id}/reply_message")
@@ -412,7 +414,7 @@ def main(global_config, **settings):
         config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
         config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_route("import_companies", "/api/import_companies")
-        config.add_static_view(name='static', path='static')
+        config.add_static_view(name="static", path="static")
         config.scan()
 
         setup_colored_logging()
@@ -423,9 +425,7 @@ def main(global_config, **settings):
         # Configure JSON renderer to use our custom encoder
         config.add_renderer(
             "json",
-            JSON(
-                serializer=lambda v, **kw: json.dumps(v, cls=models.CustomJSONEncoder)
-            ),
+            JSON(serializer=lambda v, **kw: json.dumps(v, cls=models.CustomJSONEncoder)),
         )
 
         return config.make_wsgi_app()

@@ -201,7 +201,8 @@ class TestGmailRepliesSearcher:
 
         # Mock the labels.create response
         gmail_searcher.service.users().labels().create.return_value.execute.return_value = {
-            "id": label_id, "name": label_name
+            "id": label_id,
+            "name": label_name,
         }
 
         # Call the method
@@ -241,13 +242,17 @@ class TestGmailRepliesSearcher:
                 assert result[0].thread_id == "thread123"
                 assert result[0].subject == "Job Opportunity"
                 assert result[0].sender == "recruiter@example.com"
+
                 def normalize_whitespace(text):
                     return " ".join(text.split())
 
                 assert normalize_whitespace(result[0].message) == normalize_whitespace(
                     "Job Opportunity\n\nMessage content"
                 )
-                assert result[0].email_thread_link == "https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread123"
+                assert (
+                    result[0].email_thread_link
+                    == "https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread123"
+                )
 
                 # Verify search_and_get_details was called with the correct parameters
                 mock_search.assert_called_once()
