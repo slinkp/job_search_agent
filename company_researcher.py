@@ -15,7 +15,7 @@ from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
-from tavily import TavilyClient
+from tavily import TavilyClient  # type: ignore[import-untyped]
 
 from models import CompaniesSheetRow
 
@@ -35,7 +35,7 @@ For the company {company_info.company_identifier}, find:
  - The correct company name, which may be different than the name we were provided via email, if any.
  - City and country of the company's headquarters.
  - Address of the company's NYC office, if there is one.
- - Total number of employees worldwide. 
+ - Total number of employees worldwide.
  - Number of employees who are engineers.
 """
 
@@ -47,7 +47,7 @@ Return these results as a valid JSON object, with the following keys and data ty
  - total_employees: integer or null
  - total_engineers: integer or null
 
-The value of nyc_office_address, if known, must be returned as a valid US mailing address with a street address, 
+The value of nyc_office_address, if known, must be returned as a valid US mailing address with a street address,
 city, state, and zip code.
 The value of headquarters_city must be the city, state/province, and country of the company's headquarters, if known.
 """
@@ -101,7 +101,7 @@ Return these results as a valid JSON object, with the following keys and data ty
 
 AI_MISSION_PROMPT = """
 Is the company {company_info.company_identifier} a company that uses AI?
-Look for blog posts, press releases, news articles, etc. about whether and how AI 
+Look for blog posts, press releases, news articles, etc. about whether and how AI
 is used for the company's products or services, whether as public-facing features or
 internal implementation. Another good clue is whether the company is hiring AI engineers.
 """
@@ -148,7 +148,7 @@ From this recruiter message, extract:
 EXTRACT_COMPANY_FORMAT_PROMPT = """
 Return these results as a valid JSON object, with the following keys and data types:
  - company_name: string or null
- - company_url: string or null  
+ - company_url: string or null
  - role: string or null
  - recruiter_name: string or null
  - recruiter_contact: string or null

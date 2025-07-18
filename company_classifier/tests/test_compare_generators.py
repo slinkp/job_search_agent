@@ -273,7 +273,7 @@ def test_batch_size_parameter_passed_to_hybrid_generator(tmp_path):
 
         # Call generate_test_batch with a specific batch_size
         test_batch_size = 7
-        output_file = generate_test_batch(
+        generate_test_batch(
             generator_type="hybrid",
             num_companies=2,
             model="gpt-4-turbo",
@@ -570,7 +570,7 @@ def test_batch_size_parameter_passed_to_llm_generator(tmp_path):
 
         # Call generate_test_batch with a specific batch_size
         test_batch_size = 10
-        output_file = generate_test_batch(
+        generate_test_batch(
             generator_type="llm",
             num_companies=2,
             model="gpt-4-turbo",

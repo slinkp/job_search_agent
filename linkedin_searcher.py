@@ -42,7 +42,7 @@ class LinkedInSearcher:
             ignore_default_args=["--enable-automation", "--no-sandbox"],
             # Use new headless mode instead of the deprecated old headless mode
             chromium_sandbox=True,
-            viewport=viewport,
+            viewport=viewport,  # type: ignore[arg-type]
         )
         print(f"Browser context launched in {'headless' if headless else 'headed'} mode")
         self.page = self.context.new_page()
@@ -160,6 +160,7 @@ class LinkedInSearcher:
             self.screenshot("after_entering_company")
 
             print("Waiting for company option to be visible...")
+            company_option = None
             for text in ["Company • Software Development", "Company • "]:
                 company_option = (
                     self.page.locator("div[role='option']")

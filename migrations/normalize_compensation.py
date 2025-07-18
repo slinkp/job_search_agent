@@ -101,7 +101,7 @@ def normalize_compensation(update_sheet: bool = False, sheet_type: str = "prod")
             sheet_update_count += 1
             print(f"Updated Google Sheet compensation for {company.name}")
 
-    print(f"\nNormalization complete:")
+    print("\nNormalization complete:")
     print(f"- Normalized {normalized_count} companies in database")
     if update_sheet:
         print(f"- Updated {sheet_update_count} companies in Google Sheet")

@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.exceptions import NotFittedError
+from sklearn.exceptions import NotFittedError  # type: ignore[import-untyped]
 
 from company_classifier.classifier import CompanyClassifier
 from company_classifier.preprocess import CompanyPreprocessor

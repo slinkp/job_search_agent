@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 import pytest
-from pyramid.testing import DummyRequest
+from pyramid.testing import DummyRequest  # type: ignore[import-untyped]
 
 import server.app
 import tasks

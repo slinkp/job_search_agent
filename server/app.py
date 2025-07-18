@@ -5,11 +5,11 @@ import os
 
 import colorama
 from colorama import Fore, Style
-from pyramid.config import Configurator
-from pyramid.renderers import JSON
-from pyramid.response import Response
-from pyramid.scripts.pserve import PServeCommand
-from pyramid.view import view_config
+from pyramid.config import Configurator  # type: ignore[import-untyped]
+from pyramid.renderers import JSON  # type: ignore[import-untyped]
+from pyramid.response import Response  # type: ignore[import-untyped]
+from pyramid.scripts.pserve import PServeCommand  # type: ignore[import-untyped]
+from pyramid.view import view_config  # type: ignore[import-untyped]
 
 import models
 import tasks

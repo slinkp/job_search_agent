@@ -104,7 +104,9 @@ def generate_test_batch(
     # Initialize generator
     config = CompanyGenerationConfig()
     if generator_type == "random":
-        generator = RandomCompanyGenerator(config=config)
+        generator: (
+            RandomCompanyGenerator | LLMCompanyGenerator | HybridCompanyGenerator
+        ) = RandomCompanyGenerator(config=config)
     elif generator_type == "llm":
         generator = LLMCompanyGenerator(
             config=config, model=full_model_name, provider=provider, batch_size=batch_size

@@ -16,8 +16,8 @@ from typing import Any, Iterable, Optional, cast
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow  # type: ignore[import-untyped]
+from googleapiclient.discovery import build  # type: ignore[import-untyped]
 
 import models
 
@@ -97,9 +97,9 @@ class CompaniesImporter(BaseImporter):
     reverse_cron = True  # Default value, can be overridden in subclasses
 
     def __init__(self, prev_lines: list[models.CompaniesSheetRow] | None = None):
-        self.prev_lines = prev_lines or []
-        self.seen_checksums = set()
-        self.out_buffer = []
+        self.prev_lines: list[models.CompaniesSheetRow] = prev_lines or []
+        self.seen_checksums: set[str] = set()
+        self.out_buffer: list[models.CompaniesSheetRow] = []
         self.update_seen_checksums()
 
     def generate_data_lines(self) -> Iterable[list[str]]:
@@ -111,7 +111,8 @@ class CompaniesImporter(BaseImporter):
             checksum = self.checksum_finder(line)
             if checksum and checksum in self.seen_checksums:
                 continue
-            self.seen_checksums.add(checksum)
+            if checksum:  # Only add if checksum is not None
+                self.seen_checksums.add(checksum)
             yield [str(item) for item in line]
 
     def checksum_finder(self, row: models.CompaniesSheetRow) -> str | None:
@@ -153,7 +154,7 @@ class BaseGoogleSheetClient:
     """
 
     row_class: type[Any] = StubRow
-    importer_class: type[BaseImporter] = BaseImporter
+    importer_class: type[BaseImporter] = BaseImporter  # type: ignore[type-abstract]
 
     def __init__(
         self,

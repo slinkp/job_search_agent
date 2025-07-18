@@ -241,7 +241,7 @@ def test_do_research_error_new_company(mock_spreadsheet_upsert, daemon, test_com
     daemon.jobsearch.research_company.side_effect = ValueError("Research failed")
 
     # Call the function - it should handle the error internally
-    result = daemon.do_research(args)
+    daemon.do_research(args)
 
     # Verify minimal company was created with error
     assert daemon.company_repo.create.call_count == 1
@@ -502,7 +502,7 @@ def test_do_research_with_unknown_company_name(mock_spreadsheet_upsert, daemon):
     daemon.jobsearch.research_company.side_effect = error
 
     # Call the function - it should handle the error internally
-    result = daemon.do_research(args)
+    daemon.do_research(args)
 
     # Verify minimal company was created with error
     assert daemon.company_repo.create.call_count == 1
@@ -1152,7 +1152,7 @@ def test_do_research_provided_recruiter_message_takes_precedence(
     daemon.jobsearch.research_company.side_effect = mock_research_company
 
     # Call do_research with explicit recruiter_message
-    result = daemon.do_research(args)
+    daemon.do_research(args)
 
     # Verify research was called
     assert daemon.jobsearch.research_company.call_count == 1
