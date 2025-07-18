@@ -265,7 +265,7 @@ class TavilyRAGResearchAgent:
             current_state="10. consider applying",  # Default initial state
         )
 
-        content = message if message else self._plaintext_from_url(url)
+        content: str = message if message else self._plaintext_from_url(url)
 
         data = self.extract_initial_company_info(content)
         company_info.name = data.get("company_name", "")
@@ -301,8 +301,8 @@ class TavilyRAGResearchAgent:
                         raise ValueError(
                             f"Expected string content, got {type(result.content)}"
                         )
-                    content = json.loads(result.content)
-                    logger.debug(f"  Content returned from llm:\n\n {content}\n\n")
+                    json_content: dict = json.loads(result.content)
+                    logger.debug(f"  Content returned from llm:\n\n {json_content}\n\n")
                 except Exception as e:
                     logger.error(
                         f"Error {e} parsing JSON raw string:\n'{result.content}'\n"
@@ -310,7 +310,7 @@ class TavilyRAGResearchAgent:
                     raise
 
                 # Map the API response fields to CompaniesSheetRow fields
-                self.update_company_info_from_dict(company_info, content)
+                self.update_company_info_from_dict(company_info, json_content)
                 if not got_jobs_url and company_info.url:
                     got_jobs_url = True
                     # Redo basic company info extraction with the new jobs URL,
@@ -339,7 +339,7 @@ class TavilyRAGResearchAgent:
                 "unknown",
             ):
                 return
-            if fieldname in company_info.model_fields:
+            if fieldname in company_info.__class__.model_fields:
                 setattr(company_info, fieldname, val)
             else:
                 logger.warning(f"Skipping unknown field: {fieldname}")
@@ -402,7 +402,7 @@ def main(
             model=model, temperature=TEMPERATURE, timeout=TIMEOUT
         )
     elif model.startswith("claude"):
-        llm: BaseChatModel = ChatAnthropic(
+        llm = ChatAnthropic(
             # This is 100% correct but pylance expects model_name instead
             model=model,  # type: ignore[call-arg]
             temperature=TEMPERATURE,
@@ -425,6 +425,7 @@ def main(
 
 if __name__ == "__main__":
     import argparse
+
     from libjobsearch import SONNET_LATEST
 
     parser = argparse.ArgumentParser()
