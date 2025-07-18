@@ -1229,3 +1229,80 @@ class TestCompanyMessages:
         assert len(messages) == 1
         assert messages[0].message_id == "msg1"
         assert messages[0].date is None
+
+    def test_legacy_single_message_gets_most_recent(self, clean_test_db):
+        """Test that the legacy single message functionality gets the most recent message by date."""
+        repo = clean_test_db
+
+        # Create a company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create multiple recruiter messages with different dates
+        messages = [
+            RecruiterMessage(
+                message_id="msg1",
+                company_id="test-company",
+                message="First message",
+                subject="First",
+                sender="recruiter1@example.com",
+                email_thread_link="https://mail.example.com/thread1",
+                thread_id="thread1",
+                date=datetime.datetime(
+                    2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+            RecruiterMessage(
+                message_id="msg2",
+                company_id="test-company",
+                message="Second message",
+                subject="Second",
+                sender="recruiter2@example.com",
+                email_thread_link="https://mail.example.com/thread2",
+                thread_id="thread2",
+                date=datetime.datetime(
+                    2023, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+            RecruiterMessage(
+                message_id="msg3",
+                company_id="test-company",
+                message="Third message",
+                subject="Third",
+                sender="recruiter3@example.com",
+                email_thread_link="https://mail.example.com/thread3",
+                thread_id="thread3",
+                date=datetime.datetime(
+                    2023, 1, 3, 12, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+        ]
+
+        # Save all messages
+        for message in messages:
+            repo.create_recruiter_message(message)
+
+        # Test the legacy single message method directly
+        single_message = repo.get_recruiter_message("test-company")
+        assert single_message is not None
+        assert single_message.message_id == "msg3"  # Should be the most recent
+        assert single_message.subject == "Third"
+
+        # Test that the legacy recruiter_message property on Company also gets the most recent
+        retrieved_company = repo.get("test-company")
+        assert retrieved_company is not None
+        assert retrieved_company.recruiter_message is not None
+        assert retrieved_company.recruiter_message.message_id == "msg3"
+        assert retrieved_company.recruiter_message.subject == "Third"
+
+        # Verify that the first message in the messages list matches the legacy single message
+        all_messages = retrieved_company.messages
+        assert len(all_messages) == 3
+        assert (
+            all_messages[0].message_id == retrieved_company.recruiter_message.message_id
+        )
+        assert all_messages[0].subject == retrieved_company.recruiter_message.subject

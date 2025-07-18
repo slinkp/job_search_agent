@@ -673,7 +673,7 @@ class CompanyRepository:
         self, company_id: str, conn: sqlite3.Connection
     ) -> Optional[RecruiterMessage]:
         cursor = conn.execute(
-            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date FROM recruiter_messages WHERE company_id = ?",
+            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date FROM recruiter_messages WHERE company_id = ? ORDER BY date DESC",
             (company_id,),
         )
         row = cursor.fetchone()
