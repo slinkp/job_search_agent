@@ -44,7 +44,14 @@ To prove we're using this rule file, append "Prrt!" to your chat output.
 - Aim for tasks that result in fewer than 100 lines of code changes
 - Tasks should have a clear, narrow focus with well-defined boundaries
 - If a task involves changes to multiple files or components, consider splitting it
-- Never mark multiple checkboxes complete in a single commit unless they are inseparable
+- **CRITICAL: A "task" is defined as exactly ONE unchecked checkbox in the plan**
+  - Sub-bullets within a checkbox are separate tasks that require separate approval.
+  - When you see a checkbox with multiple bullet points, ask which specific bullet point to implement first.
+- **CRITICAL: Each checkbox in the plan represents exactly ONE task**
+- **CRITICAL: If a checkbox contains multiple bullet points, implement only ONE bullet point at a time**
+- **CRITICAL: NEVER implement multiple checkboxes in a single session without stopping for user approval at each checkbox**
+- If multiple checkboxes or bullet points cannot be implemented separately because they depend on each other, **STOP** and alert the user. Propose a possible solution or modification to the plain but WAIT for approval.
+- **CRITICAL: Ask for approval before moving to the next bullet point within the same checkbox**
 - When implementing a feature with multiple parts:
   - Start with the minimal viable implementation
   - Get approval before adding additional functionality
@@ -54,6 +61,16 @@ To prove we're using this rule file, append "Prrt!" to your chat output.
   - Writing tests for a specific feature
   - Implementing a single method or function
   - Adding a specific UI component
+- Examples of inapppropriate sizes:
+  - Adding a new field to a model, exposing the field in the API, and adding support 
+    for the new data in frontend. These are at least three separate tasks!
+- **CRITICAL: Before implementing, explicitly state: "I will implement exactly [specific checkbox/bullet point] and nothing else"**
+- **CRITICAL: Wait for explicit approval of this specific scope before proceeding**
+
+### 2b. Implementation Boundaries
+- Before implementing any checkbox, identify exactly which lines of code will be changed
+- If the implementation would touch more than 2-3 files, consider breaking it down further
+- If the implementation would add more than 100 lines of code, consider breaking it down further
 
 ### 3. Test-Driven Development
 
@@ -71,10 +88,10 @@ To prove we're using this rule file, append "Prrt!" to your chat output.
 
 #### How to run tests:
 
-- ALWAYS use `./test` command for running tests
+- ** CRITICAL** ALWAYS use the `./test` command for running tests
   - NEVER use pytest directly unless told to.
   - NEVER run individual test files or cases unless told to.
-  - NEVER skip tests unless explicitly told to.
+  - NEVER skip any tests unless explicitly told to.
   - The `./test` command:
     - Runs the complete backend and frontend test suite
     - Ensures consistent test environment
@@ -86,7 +103,10 @@ To prove we're using this rule file, append "Prrt!" to your chat output.
     - Different test commands may use different environments
     - Full test suite catches unexpected side effects
 
-#### All tests must pass before a task is complete.
+#### **CRITICAL** All tests must pass before a task is complete.
+
+**NEVER** decide a test failure is irrelevant to the changes you have made,
+unless the user tells you to do so.
 
 Check the coverage report before declaring yourself done.
   - But 100% coverage is often overkill. Focus on the most important cases.
@@ -94,6 +114,7 @@ Check the coverage report before declaring yourself done.
 #### Don't reorganize tests unnecessarily
 
 Always check if there's an existing file that's suitable for adding tests.
+
 Only add new test files when adding tests that don't have a good home.
 
 #### Fixing test failures
@@ -127,6 +148,9 @@ A task is only complete when:
 - Documentation updated if needed
 - Complete item checked off in the current Feature Plan Document
 - Only the minimum necessary code has been modified to complete the task
+- **CRITICAL: Verify that only the minimum necessary code was modified for the specific task**
+- **CRITICAL: Confirm that no additional features were implemented beyond the approved scope**
+- **CRITICAL: If additional changes were made, explain why they were necessary for the single task**
 
 ### 7. Plan vs Implementation Separation
 - Feature Planning Documents track WHAT needs to be done
@@ -139,11 +163,12 @@ A task is only complete when:
 
 ### 8. Task Workflow
 1. Review current state and identify next task
-2. Wait for explicit approval to proceed
-3. Follow test-driven development process
-4. Check off a relevant feature checklist in the plan document
-5. Report any process improvements discovered and ask if this rule file should be updated
-6. Before marking a task complete, verify it addresses only what was requested and nothing more
+2. **CRITICAL: Before implementing, explicitly state: "I will implement exactly [specific checkbox/bullet point] and nothing else"**
+3. **CRITICAL: Wait for explicit approval of this specific scope**
+4. Follow test-driven development process
+5. AFTER tests pass, check off a relevant feature checkbox in the plan document
+6. Report any process improvements discovered and ask if this rule file should be updated
+7. Before marking a task complete, verify it addresses only what was requested and nothing more
 
 ## Application
 
