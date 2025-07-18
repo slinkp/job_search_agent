@@ -530,7 +530,7 @@ class TestEvents:
         row_data.extend([""] * (field_count - len(row_data)))
 
         # Create a CompaniesSheetRow from the list
-        row: CompaniesSheetRow = CompaniesSheetRow.from_list(row_data)
+        row = CompaniesSheetRow.from_list(row_data)
 
         # Verify the values were set correctly
         assert row.name == "TestCompany"
@@ -996,3 +996,236 @@ def test_merge_company_data_preserves_fit_decision():
     assert merged_company.details.type == "AI"
     assert merged_company.details.valuation == "1B"
     assert merged_company.details.headquarters == "San Francisco"
+
+
+class TestCompanyMessages:
+    """Test the new messages property and related functionality."""
+
+    def test_company_messages_property_empty(self, clean_test_db):
+        """Test that messages property returns empty list when no messages exist."""
+        repo = clean_test_db
+
+        # Create a company without any messages
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Retrieve the company
+        retrieved_company = repo.get("test-company")
+        assert retrieved_company is not None
+
+        # Test that messages property returns empty list
+        messages = retrieved_company.messages
+        assert isinstance(messages, list)
+        assert len(messages) == 0
+
+    def test_company_messages_property_single_message(self, clean_test_db):
+        """Test that messages property returns single message when one exists."""
+        repo = clean_test_db
+
+        # Create a company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create a recruiter message
+        message = RecruiterMessage(
+            message_id="msg1",
+            company_id="test-company",
+            message="Hello, we have a job opportunity for you.",
+            subject="Job Opportunity",
+            sender="recruiter@example.com",
+            email_thread_link="https://mail.example.com/thread1",
+            thread_id="thread1",
+            date=datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        )
+        repo.create_recruiter_message(message)
+
+        # Retrieve the company
+        retrieved_company = repo.get("test-company")
+        assert retrieved_company is not None
+
+        # Test that messages property returns the message
+        messages = retrieved_company.messages
+        assert isinstance(messages, list)
+        assert len(messages) == 1
+        assert messages[0].message_id == "msg1"
+        assert messages[0].subject == "Job Opportunity"
+        assert messages[0].sender == "recruiter@example.com"
+
+    def test_company_messages_property_multiple_messages(self, clean_test_db):
+        """Test that messages property returns multiple messages in date order."""
+        repo = clean_test_db
+
+        # Create a company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create multiple recruiter messages with different dates
+        messages = [
+            RecruiterMessage(
+                message_id="msg1",
+                company_id="test-company",
+                message="First message",
+                subject="First",
+                sender="recruiter1@example.com",
+                email_thread_link="https://mail.example.com/thread1",
+                thread_id="thread1",
+                date=datetime.datetime(
+                    2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+            RecruiterMessage(
+                message_id="msg2",
+                company_id="test-company",
+                message="Second message",
+                subject="Second",
+                sender="recruiter2@example.com",
+                email_thread_link="https://mail.example.com/thread2",
+                thread_id="thread2",
+                date=datetime.datetime(
+                    2023, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+            RecruiterMessage(
+                message_id="msg3",
+                company_id="test-company",
+                message="Third message",
+                subject="Third",
+                sender="recruiter3@example.com",
+                email_thread_link="https://mail.example.com/thread3",
+                thread_id="thread3",
+                date=datetime.datetime(
+                    2023, 1, 3, 12, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+        ]
+
+        # Save all messages
+        for message in messages:
+            repo.create_recruiter_message(message)
+
+        # Retrieve the company
+        retrieved_company = repo.get("test-company")
+        assert retrieved_company is not None
+
+        # Test that messages property returns all messages in date order (newest first)
+        company_messages = retrieved_company.messages
+        assert isinstance(company_messages, list)
+        assert len(company_messages) == 3
+
+        # Verify order (newest first due to ORDER BY date DESC)
+        assert company_messages[0].message_id == "msg3"
+        assert company_messages[0].subject == "Third"
+        assert company_messages[1].message_id == "msg2"
+        assert company_messages[1].subject == "Second"
+        assert company_messages[2].message_id == "msg1"
+        assert company_messages[2].subject == "First"
+
+    def test_get_recruiter_messages_method(self, clean_test_db):
+        """Test the get_recruiter_messages repository method directly."""
+        repo = clean_test_db
+
+        # Create a company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create multiple messages
+        messages = [
+            RecruiterMessage(
+                message_id="msg1",
+                company_id="test-company",
+                message="Message 1",
+                subject="Subject 1",
+                sender="sender1@example.com",
+                email_thread_link="https://mail.example.com/thread1",
+                thread_id="thread1",
+                date=datetime.datetime(
+                    2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+            RecruiterMessage(
+                message_id="msg2",
+                company_id="test-company",
+                message="Message 2",
+                subject="Subject 2",
+                sender="sender2@example.com",
+                email_thread_link="https://mail.example.com/thread2",
+                thread_id="thread2",
+                date=datetime.datetime(
+                    2023, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+        ]
+
+        # Save messages
+        for message in messages:
+            repo.create_recruiter_message(message)
+
+        # Test the repository method directly
+        retrieved_messages = repo.get_recruiter_messages("test-company")
+        assert isinstance(retrieved_messages, list)
+        assert len(retrieved_messages) == 2
+
+        # Verify messages are returned in date order (newest first)
+        assert retrieved_messages[0].message_id == "msg2"
+        assert retrieved_messages[1].message_id == "msg1"
+
+    def test_get_recruiter_messages_nonexistent_company(self, clean_test_db):
+        """Test that get_recruiter_messages returns empty list for nonexistent company."""
+        repo = clean_test_db
+
+        # Test with nonexistent company
+        messages = repo.get_recruiter_messages("nonexistent-company")
+        assert isinstance(messages, list)
+        assert len(messages) == 0
+
+    def test_messages_property_with_messages_without_dates(self, clean_test_db):
+        """Test that messages property handles messages without dates correctly."""
+        repo = clean_test_db
+
+        # Create a company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create a message without a date
+        message = RecruiterMessage(
+            message_id="msg1",
+            company_id="test-company",
+            message="Message without date",
+            subject="No Date",
+            sender="recruiter@example.com",
+            email_thread_link="https://mail.example.com/thread1",
+            thread_id="thread1",
+            date=None,
+        )
+        repo.create_recruiter_message(message)
+
+        # Retrieve the company
+        retrieved_company = repo.get("test-company")
+        assert retrieved_company is not None
+
+        # Test that messages property returns the message
+        messages = retrieved_company.messages
+        assert isinstance(messages, list)
+        assert len(messages) == 1
+        assert messages[0].message_id == "msg1"
+        assert messages[0].date is None

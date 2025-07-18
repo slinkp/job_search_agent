@@ -473,6 +473,11 @@ class Company(BaseModel):
         else:
             self.recruiter_message.message = message
 
+    @property
+    def messages(self) -> List[RecruiterMessage]:
+        """Get all recruiter messages for this company."""
+        return company_repository().get_recruiter_messages(self.company_id)
+
 
 class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -593,6 +598,47 @@ class CompanyRepository:
         """
         with self._get_connection() as conn:
             return self._get_recruiter_message(company_id, conn)
+
+    def get_recruiter_messages(self, company_id: str) -> List[RecruiterMessage]:
+        """
+        Get all recruiter messages for a company.
+        """
+        with self._get_connection() as conn:
+            return self._get_recruiter_messages(company_id, conn)
+
+    def _get_recruiter_messages(
+        self, company_id: str, conn: sqlite3.Connection
+    ) -> List[RecruiterMessage]:
+        """Get all recruiter messages for a company from the database."""
+        cursor = conn.execute(
+            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date FROM recruiter_messages WHERE company_id = ? ORDER BY date DESC",
+            (company_id,),
+        )
+        messages = []
+        for row in cursor.fetchall():
+            # Parse the date string to datetime if it exists
+            date_str = row[7]
+            date = None
+            if date_str:
+                try:
+                    date = dateutil.parser.parse(date_str).replace(
+                        tzinfo=datetime.timezone.utc
+                    )
+                except (ValueError, TypeError):
+                    logger.warning(f"Failed to parse date string: {date_str}")
+
+            recruiter_message = RecruiterMessage(
+                message_id=row[0],
+                company_id=row[1],
+                subject=row[2],
+                sender=row[3],
+                message=row[4],
+                thread_id=row[5],
+                email_thread_link=row[6],
+                date=date,
+            )
+            messages.append(recruiter_message)
+        return messages
 
     def get_by_normalized_name(self, name: str) -> Optional[Company]:
         """
