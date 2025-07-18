@@ -227,7 +227,9 @@ class GmailRepliesSearcher:
             content = self.clean_quoted_text(content)
             # Convert internalDate (milliseconds since epoch) to datetime
             date_ms = int(msg_dict["internalDate"])
-            date = datetime.datetime.fromtimestamp(date_ms / 1000, tz=datetime.timezone.utc)
+            date = datetime.datetime.fromtimestamp(
+                date_ms / 1000, tz=datetime.timezone.utc
+            )
             content_by_thread[thread_id].append((date, content, msg_dict))
 
         combined_messages = []
@@ -262,7 +264,7 @@ class GmailRepliesSearcher:
 
             # Extract thread_id from the email link
             extracted_thread_id = ""
-            link_parts = email_thread_link.split('/')
+            link_parts = email_thread_link.split("/")
             if len(link_parts) > 0:
                 extracted_thread_id = link_parts[-1]
 
@@ -276,20 +278,31 @@ class GmailRepliesSearcher:
             # TODO: Add text extracted from attached PDFs, docx, etc.
             # Convert internalDate (milliseconds since epoch) to datetime
             date_ms = int(combined_msg["internalDate"])
-            date = datetime.datetime.fromtimestamp(date_ms / 1000, tz=datetime.timezone.utc)
+            date = datetime.datetime.fromtimestamp(
+                date_ms / 1000, tz=datetime.timezone.utc
+            )
 
             recruiter_message = RecruiterMessage(
                 message_id=combined_msg["id"],
                 email_thread_link=email_thread_link,
                 thread_id=extracted_thread_id,
-                subject=subject.strip() if subject else "",  # Remove the newlines we added for combined content
+                subject=(
+                    subject.strip() if subject else ""
+                ),  # Remove the newlines we added for combined content
                 sender=sender,
                 date=date,
                 message="\n\n".join(combined_content),
             )
             combined_messages.append(recruiter_message)
 
-        combined_messages.sort(key=lambda x: x.date if x.date else datetime.datetime.min.replace(tzinfo=datetime.timezone.utc), reverse=True)
+        combined_messages.sort(
+            key=lambda x: (
+                x.date
+                if x.date
+                else datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+            ),
+            reverse=True,
+        )
         logger.info(
             f"Got {len(message_dicts)} new recruiter messages in {len(combined_messages)} threads"
         )
@@ -372,7 +385,8 @@ class GmailRepliesSearcher:
         job_inbox_label = self._get_or_create_label_id(RECRUITER_MESSAGES_LABEL)
         try:
             self.service.users().messages().modify(
-                userId="me", id=message_id,
+                userId="me",
+                id=message_id,
                 body={"removeLabelIds": ["INBOX", job_inbox_label]},
             ).execute()
             logger.info(f"Message {message_id} labels removed")
@@ -422,7 +436,7 @@ class GmailRepliesSearcher:
         # Check if label exists
         for label in labels.get("labels", []):
             logger.debug(f"Checking label {label['name']}...")
-            if label["name"].lower() == label_name.lower().replace('-', ' ').strip():
+            if label["name"].lower() == label_name.lower().replace("-", " ").strip():
                 label_id = label["id"]
                 logger.info(f"Found close label {label['name']} with id {label_id}")
                 return label_id
@@ -467,16 +481,14 @@ def main_demo(
         processed_messages = processed_messages[:my_message_limit]
 
     if recruiter_message_limit > 0:
-        recruiter_messages = searcher.get_new_recruiter_messages(max_results=recruiter_message_limit)
+        recruiter_messages = searcher.get_new_recruiter_messages(
+            max_results=recruiter_message_limit
+        )
 
     for i, msg in enumerate(recruiter_messages):
         print(f"Recruiter Message {i}:")
         print()
-        print(
-            textwrap.fill(
-                msg.message, width=term_width, max_lines=max_lines
-            )
-        )
+        print(textwrap.fill(msg.message, width=term_width, max_lines=max_lines))
         print()
         print("-" * term_width)
         print()

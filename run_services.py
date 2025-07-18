@@ -209,6 +209,7 @@ class ServiceManager:
 
         sys.exit(0)
 
+
 def main():
     # Get the base argument parser from libjobsearch
     parser = libjobsearch.arg_parser()
@@ -228,6 +229,7 @@ def main():
 
     manager = ServiceManager()
     manager.start_services(args)
+
 
 if __name__ == "__main__":
     main()

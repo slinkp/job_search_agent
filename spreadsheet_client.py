@@ -362,7 +362,9 @@ class BaseGoogleSheetClient:
         request.execute()
 
     def update_row_partial(
-        self, row_index: int, cell_updates: dict[int, Any] | models.BaseSheetRow,
+        self,
+        row_index: int,
+        cell_updates: dict[int, Any] | models.BaseSheetRow,
         skip_empty_update_values: bool = False,
     ):
         """Update specific cells in a row, leaving others untouched.
