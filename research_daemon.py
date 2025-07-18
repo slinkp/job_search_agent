@@ -162,7 +162,7 @@ class ResearchDaemon:
         content = content.strip()
         if not content:
             raise ValueError(
-                f"No searchable found via any of content, name, url, or existing company"
+                "No searchable found via any of content, name, url, or existing company"
             )
         return {
             "content": content,
@@ -443,7 +443,7 @@ class ResearchDaemon:
         logger.info("Starting import of companies from spreadsheet")
 
         # Initialize statistics for tracking progress
-        stats = {
+        stats: dict[str, Any] = {
             "total_found": 0,
             "processed": 0,
             "created": 0,

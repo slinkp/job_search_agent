@@ -368,7 +368,7 @@ class SalarySearcher:
             logger.warning(
                 f"Could not find salary table on page {self.page.url}, returning empty"
             )
-            return []
+            return
         logger.info(f"Looking for salary table on {self.page.url}...")
         max_salary_results = 10
         try:
@@ -851,8 +851,8 @@ class LevelsExtractor:
             rows = table.locator("tr.position-row").all()
 
             levels = []
-            table_height_pixels = 0
-            cumulative_height = 0
+            table_height_pixels = 0.0
+            cumulative_height = 0.0
             for row in rows:
                 # Get all span elements in the row
                 spans = row.locator("span.span-f").all()

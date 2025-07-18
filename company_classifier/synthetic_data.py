@@ -10,14 +10,13 @@ import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, cast
+from typing import Any, Dict, List, Literal, Optional
 
 import ulid
 from anthropic import Anthropic
 from anthropic.types import MessageParam
 from openai import OpenAI
 from openai.types.chat import (
-    ChatCompletion,
     ChatCompletionMessageParam,
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
@@ -233,7 +232,7 @@ class LLMCompanyGenerator:
     Generate {batch_size} realistic tech company profiles for NYC. Ensure diversity across all companies in the batch - vary company types, compensation structures, remote policies, and office locations.
 
     Follow the same rules as single company generation:
-    
+
     1. Use realistic compensation ranges for staff software engineers, based on company type:
        - public: high base + RSUs, moderate bonus
        - private: good base, no RSUs, low bonus
@@ -258,7 +257,7 @@ class LLMCompanyGenerator:
 
     6. CRITICAL: Ensure diversity across the batch. Don't repeat similar patterns.
        - Vary company types according to the probabilities
-       - Vary compensation levels within realistic ranges  
+       - Vary compensation levels within realistic ranges
        - Use different remote policies and office locations
        - Create unique company names
 
@@ -339,7 +338,7 @@ class LLMCompanyGenerator:
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
                 raise ValueError("OPENAI_API_KEY environment variable must be set")
-            self.openai_client = OpenAI()
+            self.openai_client: Optional[OpenAI] = OpenAI()
             self.anthropic_client = None
         else:  # anthropic
             api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -405,16 +404,13 @@ class LLMCompanyGenerator:
             # Call OpenAI API
             if not self.openai_client:
                 raise ValueError("OpenAI client not initialized")
-            response = cast(
-                ChatCompletion,
-                self.openai_client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=temperature,
-                    response_format={"type": "json_object"},  # Ensure JSON output
-                ),
+            openai_response = self.openai_client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                response_format={"type": "json_object"},  # Ensure JSON output
             )
-            content = response.choices[0].message.content
+            content = openai_response.choices[0].message.content
         else:  # anthropic
             # Call Anthropic API with explicit JSON request
             message: MessageParam = {
@@ -423,7 +419,7 @@ class LLMCompanyGenerator:
             }
             if not self.anthropic_client:
                 raise ValueError("Anthropic client not initialized")
-            response = self.anthropic_client.messages.create(
+            anthropic_response = self.anthropic_client.messages.create(
                 model=self.model,
                 max_tokens=4096,
                 system=f"{self.SYSTEM_PROMPT}\n\nYou must respond with a valid JSON object only, no other text.",
@@ -432,10 +428,10 @@ class LLMCompanyGenerator:
             )
             # Extract content from the first content block
             content = None
-            if response.content and len(response.content) > 0:
-                block = response.content[0]
+            if anthropic_response.content and len(anthropic_response.content) > 0:
+                block = anthropic_response.content[0]
                 if hasattr(block, "text"):
-                    content = block.text.strip()
+                    content = block.text.strip()  # type: ignore[attr-defined]
                     # Try to find JSON in the response
                     try:
                         # Find the first { and last }
@@ -617,11 +613,11 @@ class HybridCompanyGenerator:
         random_companies = self.random_gen.generate_companies(n)
 
         # Generate all LLM companies using batching (efficient)
-        print(f"Generating LLM data with batching...", file=sys.stderr)
+        print("Generating LLM data with batching...", file=sys.stderr)
         llm_companies = self.llm_gen.generate_companies(n)
 
         # Combine each pair of companies
-        print(f"Combining results...", file=sys.stderr)
+        print("Combining results...", file=sys.stderr)
         combined_companies = []
         for i, (random_company, llm_company) in enumerate(
             zip(random_companies, llm_companies)

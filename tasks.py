@@ -158,7 +158,7 @@ class TaskManager:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     """
-                    UPDATE tasks 
+                    UPDATE tasks
                     SET status = ?, result = ?, error = ?, updated_at = ?
                     WHERE id = ?
                     """,
@@ -176,9 +176,9 @@ class TaskManager:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.execute(
                     """
-                    SELECT id, type, args FROM tasks 
-                    WHERE status = ? 
-                    ORDER BY created_at ASC 
+                    SELECT id, type, args FROM tasks
+                    WHERE status = ?
+                    ORDER BY created_at ASC
                      LIMIT 1
                     """,
                     (TaskStatus.PENDING.value,),

@@ -333,7 +333,7 @@ class TestCompanyRepository:
         created_company.details.type = "Public"
 
         # Update the company
-        updated_company = repo.update(created_company)
+        repo.update(created_company)
 
         # Retrieve the company again
         retrieved_company = repo.get("test-company")
@@ -880,7 +880,6 @@ def test_company_status_import_tracking():
 
 def test_company_status_fit_decision():
     """Test company fit decision fields validation and serialization."""
-    now = datetime.datetime.now(datetime.timezone.utc)
 
     # Test valid fit decision
     status = CompanyStatus(

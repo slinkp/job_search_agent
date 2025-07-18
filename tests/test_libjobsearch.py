@@ -315,9 +315,7 @@ def test_research_company_creates_event():
             with patch.object(
                 job_search, "research_compensation", autospec=True
             ) as mock_comp:
-                with patch.object(
-                    job_search, "research_levels", autospec=True
-                ) as mock_levels:
+                with patch.object(job_search, "research_levels", autospec=True):
                     with patch.object(
                         job_search, "followup_research_company", autospec=True
                     ) as mock_followup:

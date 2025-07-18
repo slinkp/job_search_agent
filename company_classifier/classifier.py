@@ -1,10 +1,10 @@
 """Company classifier module using Random Forest."""
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.exceptions import NotFittedError
-from sklearn.model_selection import cross_validate
-from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier  # type: ignore[import-untyped]
+from sklearn.exceptions import NotFittedError  # type: ignore[import-untyped]
+from sklearn.model_selection import cross_validate  # type: ignore[import-untyped]
+from sklearn.pipeline import Pipeline  # type: ignore[import-untyped]
 
 from .preprocess import CompanyPreprocessor
 

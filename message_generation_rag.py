@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 TEMPLATE = """You are an AI assistant helping to generate replies to recruiter messages
 based on previous interactions.
 Use the following pieces of context to generate a reply to the recruiter message.
-The reply should be professional, courteous, and in a similar style and length 
-to the previous context. 
+The reply should be professional, courteous, and in a similar style and length
+to the previous context.
 Also observe these additional constraints on style:
-- Be concise. 
-- Do not use bullet points. 
+- Be concise.
+- Do not use bullet points.
 - Avoid redundancy.
 - Do not be apologetic.
 - Do not exceed 100 words.
@@ -95,6 +95,8 @@ class RecruitmentRAG:
 
     def prepare_data(self, clear_existing: bool = False):
         self.vectorstore = self.make_replies_vector_db(clear_existing=clear_existing)
+        if self.vectorstore is None:
+            raise ValueError("Failed to create vectorstore")
         self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": 3})
 
     def setup_chain(self, llm_type: str):
@@ -103,24 +105,25 @@ class RecruitmentRAG:
 
         TEMPERATURE = 0.2  # Lowish because we're writing email to real people.
         TIMEOUT = 120
+
         if llm_type.lower() == "openai":
             llm: BaseChatModel = ChatOpenAI(temperature=TEMPERATURE, timeout=TIMEOUT)
         elif llm_type.lower() == "claude":
-            llm: BaseChatModel = ChatAnthropic(
+            llm = ChatAnthropic(
                 model="claude-3-5-sonnet-20240620",  # type: ignore[call-arg]
                 temperature=TEMPERATURE,
                 timeout=TIMEOUT,
             )
         elif llm_type.startswith("gpt"):
-            llm: BaseChatModel = ChatOpenAI(model=llm_type, temperature=TEMPERATURE)
+            llm = ChatOpenAI(model=llm_type, temperature=TEMPERATURE)
         elif llm_type.startswith("claude"):
-            llm: BaseChatModel = ChatAnthropic(
+            llm = ChatAnthropic(
                 model=llm_type,  # type: ignore[call-arg]
                 temperature=TEMPERATURE,
                 timeout=TIMEOUT,
             )
         else:
-            raise ValueError(f"Invalid llm_type. Choose 'openai' or 'claude' or 'gpt'.")
+            raise ValueError("Invalid llm_type. Choose 'openai' or 'claude' or 'gpt'.")
 
         prompt = ChatPromptTemplate.from_template(TEMPLATE)
 

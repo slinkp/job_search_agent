@@ -248,7 +248,6 @@ def test_synthetic_data_diversity(generator):
     ), "Invalid fit category found"
 
     # 5. Check location diversity
-    locations = [c["ny_address"] for c in companies]
     assert count_unique(companies, "ny_address") >= 5, "Not enough location diversity"
 
     # 6. Check realistic relationships
@@ -435,7 +434,8 @@ def test_llm_company_generator_batch_ai_notes():
 
     with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}):
         for batch_size, ai_prob, expected_num in test_cases:
-            generator = LLMCompanyGenerator(
+            # Create generator to test configuration
+            LLMCompanyGenerator(
                 config=config,
                 model="gpt-4-turbo-preview",
                 ai_notes_probability=ai_prob,

@@ -12,7 +12,7 @@ from models import RecruiterMessage
 class TestGmailRepliesSearcher:
     @pytest.fixture
     def gmail_searcher(self):
-        with patch("email_client.build", autospec=True) as mock_build:
+        with patch("email_client.build", autospec=True):
             searcher = GmailRepliesSearcher()
             searcher._service = MagicMock()
             yield searcher

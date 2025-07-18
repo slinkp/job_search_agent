@@ -202,7 +202,7 @@ class BaseSheetRow(BaseModel):
         """Get indices of columns that should be filled down"""
         return [
             idx
-            for idx, field_name in enumerate(cls.__class__.model_fields)
+            for idx, field_name in enumerate(cls.model_fields)
             if field_name in cls.fill_columns
         ]
 
@@ -814,8 +814,8 @@ class CompanyRepository:
             with self._get_connection() as conn:
                 cursor = conn.execute(
                     """
-                    UPDATE companies 
-                    SET details = ?, 
+                    UPDATE companies
+                    SET details = ?,
                         status = ?,
                         reply_message = ?,
                         updated_at = datetime('now')
