@@ -38,8 +38,6 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
   - [x] Show sender, subject, date for each unprocessed message
   - [x] Display company name if extracted/researched
   - [x] Show processing status (unprocessed, researched, replied, archived)
-  - [ ] Add checkboxes for batch selection
-- [ ] Add filter for "unprocessed messages" (messages that haven't been replied to or archived)
 - [x] Add tests for new UI components
 
 ### 2. Decouple Research from Message Fetching (IMMEDIATE PRIORITY)
@@ -115,6 +113,14 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 - [ ] Test with real recruiter message data
 - [ ] Ensure all tests pass before marking complete
 - [ ] Document any discovered issues or limitations
+
+### 9. Enhanced UI Features (Future Iteration)
+- [ ] Add filter for "unprocessed messages" (messages that haven't been replied to or archived)
+- [ ] Add advanced filtering and search within daily dashboard
+- [ ] Add keyboard shortcuts?
+- [ ] Add undo functionality for batch operations?
+- [ ] Add batch editing of replies before sending?
+- [ ] Add export functionality for daily reports?
 
 ## Technical Implementation Notes
 
