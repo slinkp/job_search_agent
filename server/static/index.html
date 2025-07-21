@@ -288,7 +288,13 @@
               </header>
               
               <div class="message-preview">
-                <p x-text="company.recruiter_message?.message?.substring(0, 200) + (company.recruiter_message?.message?.length > 200 ? '...' : '')"></p>
+                <p x-text="getMessagePreview(company)"></p>
+                <button 
+                  x-show="company.recruiter_message?.message?.length > 200"
+                  @click="toggleMessageExpansion(company.company_id)" 
+                  class="expand-button outline"
+                  x-text="getExpandButtonText(company.company_id)"
+                ></button>
               </div>
               
               <div class="message-actions">

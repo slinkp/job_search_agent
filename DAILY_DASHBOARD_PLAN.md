@@ -64,7 +64,7 @@ and all other applicable rules at all times.
 - [x] **Add tests** for new email scanning behavior
 
 ### 2.5 Manual workarounds and enhancements
-- [ ] Allow expanding the entire message body in the dashboard view
+- [x] Allow expanding the entire message body in the dashboard view
 - [ ] Allow manually overriding the company name
   - [ ] This should search for existing companies with some fuzziness
 

@@ -127,4 +127,46 @@ describe("Daily Dashboard Integration", () => {
       expect(template.getAttribute("x-for")).toBe("company in sortedMessages");
     }
   });
+
+  it("should have expandable message functionality", () => {
+    const dashboardView = document.getElementById("daily-dashboard-view");
+    const messageList = dashboardView.querySelector(".message-list");
+
+    if (messageList) {
+      const template = messageList.querySelector("template");
+
+      // Verify message preview uses the new getMessagePreview function
+      expect(template.innerHTML).toContain("getMessagePreview(company)");
+
+      // Verify expand button exists with proper attributes
+      expect(template.innerHTML).toContain("expand-button");
+      expect(template.innerHTML).toContain("toggleMessageExpansion");
+      expect(template.innerHTML).toContain("getExpandButtonText");
+
+      // Verify expand button only shows for long messages
+      expect(template.innerHTML).toContain(
+        'x-show="company.recruiter_message?.message?.length > 200"'
+      );
+    }
+  });
+
+  it("should have proper message preview structure", () => {
+    const dashboardView = document.getElementById("daily-dashboard-view");
+    const messageList = dashboardView.querySelector(".message-list");
+
+    if (messageList) {
+      const template = messageList.querySelector("template");
+
+      // Verify message preview container exists
+      expect(template.innerHTML).toContain("message-preview");
+
+      // Verify message preview has paragraph for text
+      expect(template.innerHTML).toContain(
+        '<p x-text="getMessagePreview(company)"></p>'
+      );
+
+      // Verify expand button is properly structured
+      expect(template.innerHTML).toContain('class="expand-button outline"');
+    }
+  });
 });

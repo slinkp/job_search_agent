@@ -18,6 +18,9 @@ document.addEventListener("alpine:init", () => {
       emailScanError: null,
       doResearch: false, // User option to enable/disable research during scan
 
+      // Message expansion state
+      expandedMessages: new Set(), // Track which messages are expanded by company_id
+
       // Initialize the component
       async init() {
         console.log("Initializing daily dashboard component");
@@ -224,6 +227,36 @@ document.addEventListener("alpine:init", () => {
           "status-completed": this.emailScanStatus === "completed",
           "status-failed": this.emailScanStatus === "failed",
         };
+      },
+
+      // Toggle message expansion
+      toggleMessageExpansion(companyId) {
+        if (this.expandedMessages.has(companyId)) {
+          this.expandedMessages.delete(companyId);
+        } else {
+          this.expandedMessages.add(companyId);
+        }
+      },
+
+      // Check if message is expanded
+      isMessageExpanded(companyId) {
+        return this.expandedMessages.has(companyId);
+      },
+
+      // Get message preview text (truncated or full)
+      getMessagePreview(company) {
+        const message = company.recruiter_message?.message || "";
+        if (this.isMessageExpanded(company.company_id)) {
+          return message;
+        }
+        return message.length > 200
+          ? message.substring(0, 200) + "..."
+          : message;
+      },
+
+      // Get expand/collapse button text
+      getExpandButtonText(companyId) {
+        return this.isMessageExpanded(companyId) ? "Show Less" : "Show More";
       },
     };
   });

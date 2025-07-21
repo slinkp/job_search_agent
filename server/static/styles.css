@@ -618,6 +618,12 @@ button.secondary:focus {
   margin: 0;
 }
 
+.expand-button {
+  margin-top: 0.5rem;
+  font-size: 0.85em;
+  padding: 0.25rem 0.5rem;
+}
+
 .message-actions {
   display: flex;
   gap: 0.5rem;
