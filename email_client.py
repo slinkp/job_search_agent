@@ -5,13 +5,16 @@ import logging
 import os
 import re
 import textwrap
+import time
 from collections import defaultdict
+from typing import Any, Dict, List
 
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow  # type: ignore[import-untyped]
 from googleapiclient.discovery import Resource, build  # type: ignore[import-untyped]
+from googleapiclient.errors import HttpError  # type: ignore[import-untyped]
 
 from models import RecruiterMessage
 
@@ -210,15 +213,118 @@ class GmailRepliesSearcher:
         processed_messages.sort(reverse=True)
         return [msg for _, msg in processed_messages]
 
+    def _batch_get_message_details(
+        self, message_ids: List[str], batch_size: int = 50
+    ) -> List[Dict[str, Any]]:
+        """
+        Efficiently fetch message details in batches with rate limiting and error handling.
+
+        Args:
+            message_ids: List of message IDs to fetch
+            batch_size: Number of messages to fetch per batch (max 50 for Gmail API)
+
+        Returns:
+            List of message detail dictionaries
+        """
+        if not message_ids:
+            return []
+
+        # Limit batch size to Gmail API maximum
+        batch_size = min(batch_size, 50)
+        all_messages = []
+
+        logger.info(f"Fetching {len(message_ids)} messages in batches of {batch_size}")
+
+        for i in range(0, len(message_ids), batch_size):
+            batch_ids = message_ids[i : i + batch_size]
+            batch_num = (i // batch_size) + 1
+            total_batches = (len(message_ids) + batch_size - 1) // batch_size
+
+            logger.debug(
+                f"Processing batch {batch_num}/{total_batches} ({len(batch_ids)} messages)"
+            )
+
+            # Implement exponential backoff for rate limiting
+            max_retries = 3
+            base_delay = 1.0
+
+            for attempt in range(max_retries + 1):
+                try:
+                    batch_messages = []
+                    for msg_id in batch_ids:
+                        # Use fields parameter to minimize data transfer
+                        # Only fetch the fields we actually need
+                        message = (
+                            self.service.users()
+                            .messages()
+                            .get(
+                                userId="me",
+                                id=msg_id,
+                                fields="id,threadId,internalDate,payload/headers,payload/body,payload/parts",
+                            )
+                            .execute()
+                        )
+                        batch_messages.append(message)
+
+                    all_messages.extend(batch_messages)
+                    break  # Success, exit retry loop
+
+                except HttpError as error:
+                    if error.resp.status in [403, 429]:  # Rate limit or quota exceeded
+                        if attempt < max_retries:
+                            delay = base_delay * (2**attempt)  # Exponential backoff
+                            logger.warning(
+                                f"Rate limit hit, retrying batch {batch_num} in {delay}s (attempt {attempt + 1})"
+                            )
+                            time.sleep(delay)
+                            continue
+                        else:
+                            logger.error(
+                                f"Failed to fetch batch {batch_num} after {max_retries} retries"
+                            )
+                            raise
+                    else:
+                        logger.error(f"HTTP error fetching batch {batch_num}: {error}")
+                        raise
+                except Exception as error:
+                    logger.error(f"Unexpected error fetching batch {batch_num}: {error}")
+                    raise
+
+            # Small delay between batches to be respectful to the API
+            if i + batch_size < len(message_ids):
+                time.sleep(0.1)
+
+        logger.info(f"Successfully fetched {len(all_messages)} message details")
+        return all_messages
+
     def get_new_recruiter_messages(self, max_results: int = 10) -> list[RecruiterMessage]:
         """
         Get new messages from recruiters that we haven't replied to yet.
         Combines messages in each thread and returns a list of RecruiterMessage objects.
 
         Includes latest subject and all metadata needed for processing.
+
+        Optimized for large message fetches with batching and rate limiting.
         """
         logger.info(f"Getting {max_results} new recruiter messages...")
-        message_dicts = self.search_and_get_details(RECRUITER_MESSAGES_QUERY, max_results)
+
+        # First, get the list of message IDs
+        messages_resource = self.service.users().messages()  # type: ignore
+        results: dict = messages_resource.list(
+            userId="me", q=RECRUITER_MESSAGES_QUERY, maxResults=max_results
+        ).execute()
+        messages = results.get("messages", [])
+
+        if not messages:
+            logger.info("No new recruiter messages found")
+            return []
+
+        logger.info(f"Found {len(messages)} message IDs, fetching details...")
+
+        # Extract message IDs and fetch details in batches
+        message_ids = [msg["id"] for msg in messages]
+        message_dicts = self._batch_get_message_details(message_ids)
+
         logger.info(f"...Got {len(message_dicts)} raw recruiter messages")
         content_by_thread = defaultdict(list)
         for msg_dict in message_dicts:

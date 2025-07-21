@@ -1,9 +1,10 @@
 import base64
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 from google.auth.exceptions import RefreshError
+from googleapiclient.errors import HttpError
 
 from email_client import ARCHIVED_LABEL, GmailRepliesSearcher
 from models import RecruiterMessage
@@ -218,13 +219,22 @@ class TestGmailRepliesSearcher:
 
     def test_get_new_recruiter_messages(self, gmail_searcher, mock_message):
         """Test getting new recruiter messages."""
-        # Mock the search_and_get_details method
+        # Mock the new optimized flow - first the message list, then batch details
+        mock_messages = Mock()
+        mock_list = Mock()
+
+        gmail_searcher._service = Mock()
+        gmail_searcher._service.users.return_value.messages.return_value = mock_messages
+        mock_messages.list.return_value = mock_list
+        mock_list.execute.return_value = {"messages": [{"id": "msg123"}]}
+
+        # Mock the batch get details method
         with patch.object(
             gmail_searcher,
-            "search_and_get_details",
+            "_batch_get_message_details",
             return_value=[mock_message],
             autospec=True,
-        ) as mock_search:
+        ):
             # Mock the _get_email_thread_link method
             with patch.object(
                 gmail_searcher,
@@ -254,8 +264,10 @@ class TestGmailRepliesSearcher:
                     == "https://mail.google.com/mail/u/0/#label/jobs+2024%2Frecruiter+pings/thread123"
                 )
 
-                # Verify search_and_get_details was called with the correct parameters
-                mock_search.assert_called_once()
+                # Verify the message list was called correctly
+                mock_messages.list.assert_called_once_with(
+                    userId="me", q="label:jobs-2024/recruiter-pings", maxResults=1
+                )
 
     def test_authenticate_with_expired_token(self, gmail_searcher, mock_credentials):
         """Test authentication with expired token."""
@@ -498,3 +510,201 @@ class TestGmailRepliesSearcher:
 
         result = gmail_searcher._get_or_create_label_id(label_name)
         assert result == label_id
+
+
+class TestBatchMessageFetching:
+    """Test the optimized batch message fetching functionality."""
+
+    def setup_method(self):
+        self.searcher = GmailRepliesSearcher()
+        # Set up a proper mock service with the Gmail API structure
+        self.mock_service = Mock()
+        self.searcher._service = self.mock_service
+
+    def test_batch_get_message_details_empty_list(self):
+        """Test batch fetching with empty message list."""
+        result = self.searcher._batch_get_message_details([])
+        assert result == []
+
+    def test_batch_get_message_details_single_batch(self):
+        """Test batch fetching with messages that fit in one batch."""
+        # Mock the service calls
+        mock_messages = Mock()
+        mock_get = Mock()
+        mock_execute = Mock()
+
+        self.searcher._service.users.return_value.messages.return_value = mock_messages
+        mock_messages.get.return_value = mock_get
+        mock_execute.return_value = {"id": "msg1", "threadId": "thread1"}
+        mock_get.execute = mock_execute
+
+        message_ids = ["msg1", "msg2"]
+        result = self.searcher._batch_get_message_details(message_ids)
+
+        assert len(result) == 2
+        # Verify the fields parameter is used for efficiency
+        # The implementation calls get() followed by execute() for each message
+        expected_get_calls = [
+            call(
+                userId="me",
+                id="msg1",
+                fields="id,threadId,internalDate,payload/headers,payload/body,payload/parts",
+            ),
+            call(
+                userId="me",
+                id="msg2",
+                fields="id,threadId,internalDate,payload/headers,payload/body,payload/parts",
+            ),
+        ]
+        # Check that get() was called with the right parameters (ignoring execute() calls)
+        actual_get_calls = [call for call in mock_messages.get.call_args_list]
+        assert actual_get_calls == expected_get_calls
+
+    def test_batch_get_message_details_multiple_batches(self):
+        """Test batch fetching with messages that require multiple batches."""
+        # Create 75 message IDs to test batching (should create 2 batches of 50 and 25)
+        message_ids = [f"msg{i}" for i in range(75)]
+
+        mock_messages = Mock()
+        mock_get = Mock()
+        mock_execute = Mock()
+
+        self.searcher._service.users.return_value.messages.return_value = mock_messages
+        mock_messages.get.return_value = mock_get
+        mock_execute.side_effect = [
+            {"id": f"msg{i}", "threadId": f"thread{i}"} for i in range(75)
+        ]
+        mock_get.execute = mock_execute
+
+        with patch("time.sleep") as mock_sleep:
+            result = self.searcher._batch_get_message_details(message_ids, batch_size=50)
+
+        assert len(result) == 75
+        # Should have made 75 API calls
+        assert mock_get.execute.call_count == 75
+        # Should have slept between batches (1 time for 2 batches)
+        mock_sleep.assert_called_once_with(0.1)
+
+    def test_batch_get_message_details_rate_limit_retry(self):
+        """Test rate limit handling with exponential backoff."""
+        # Mock rate limit error followed by success
+        mock_messages = Mock()
+        mock_get = Mock()
+
+        self.searcher._service.users.return_value.messages.return_value = mock_messages
+        mock_messages.get.return_value = mock_get
+
+        # First call fails with rate limit, second succeeds
+        rate_limit_error = HttpError(Mock(status=429), b"Rate limit exceeded")
+        mock_get.execute.side_effect = [
+            rate_limit_error,
+            {"id": "msg1", "threadId": "thread1"},
+        ]
+
+        message_ids = ["msg1"]
+
+        with patch("time.sleep") as mock_sleep:
+            result = self.searcher._batch_get_message_details(message_ids)
+
+        assert len(result) == 1
+        assert result[0]["id"] == "msg1"
+        # Should have slept for exponential backoff
+        mock_sleep.assert_called_with(1.0)  # base_delay * (2 ** 0)
+
+    def test_batch_get_message_details_max_retries_exceeded(self):
+        """Test that max retries are respected."""
+        mock_messages = Mock()
+        mock_get = Mock()
+
+        self.searcher._service.users.return_value.messages.return_value = mock_messages
+        mock_messages.get.return_value = mock_get
+
+        # Always fail with rate limit
+        rate_limit_error = HttpError(Mock(status=429), b"Rate limit exceeded")
+        mock_get.execute.side_effect = rate_limit_error
+
+        message_ids = ["msg1"]
+
+        with patch("time.sleep"):
+            with pytest.raises(HttpError):
+                self.searcher._batch_get_message_details(message_ids)
+
+        # Should have tried 4 times total (initial + 3 retries)
+        assert mock_get.execute.call_count == 4
+
+    def test_batch_get_message_details_non_rate_limit_error(self):
+        """Test that non-rate-limit errors are not retried."""
+        mock_messages = Mock()
+        mock_get = Mock()
+
+        self.searcher._service.users.return_value.messages.return_value = mock_messages
+        mock_messages.get.return_value = mock_get
+
+        # Fail with non-rate-limit error
+        auth_error = HttpError(Mock(status=401), b"Unauthorized")
+        mock_get.execute.side_effect = auth_error
+
+        message_ids = ["msg1"]
+
+        with pytest.raises(HttpError):
+            self.searcher._batch_get_message_details(message_ids)
+
+        # Should have tried only once (no retries for non-rate-limit errors)
+        assert mock_get.execute.call_count == 1
+
+    def test_get_new_recruiter_messages_optimized_flow(self):
+        """Test that the optimized message fetching flow works correctly."""
+        # Mock the message list call
+        mock_messages = Mock()
+        mock_list = Mock()
+        mock_list_execute = Mock()
+
+        self.searcher._service.users.return_value.messages.return_value = mock_messages
+        mock_messages.list.return_value = mock_list
+        mock_list_execute.return_value = {"messages": [{"id": "msg1"}, {"id": "msg2"}]}
+        mock_list.execute = mock_list_execute
+
+        # Mock the batch get details method
+        mock_message_details = [
+            {
+                "id": "msg1",
+                "threadId": "thread1",
+                "internalDate": "1640995200000",  # 2022-01-01
+                "payload": {
+                    "headers": [
+                        {"name": "Subject", "value": "Test Subject"},
+                        {"name": "From", "value": "recruiter@company.com"},
+                    ],
+                    "body": {"data": "VGVzdCBtZXNzYWdl"},  # "Test message" in base64
+                },
+            },
+            {
+                "id": "msg2",
+                "threadId": "thread2",
+                "internalDate": "1640995300000",  # 2022-01-01 + 100s
+                "payload": {
+                    "headers": [
+                        {"name": "Subject", "value": "Another Subject"},
+                        {"name": "From", "value": "another@company.com"},
+                    ],
+                    "body": {
+                        "data": "QW5vdGhlciBtZXNzYWdl"
+                    },  # "Another message" in base64
+                },
+            },
+        ]
+
+        with patch.object(
+            self.searcher, "_batch_get_message_details", return_value=mock_message_details
+        ):
+            result = self.searcher.get_new_recruiter_messages(max_results=10)
+
+        # Verify the list call was made correctly
+        mock_messages.list.assert_called_once_with(
+            userId="me", q="label:jobs-2024/recruiter-pings", maxResults=10
+        )
+
+        # Should return RecruiterMessage objects
+        assert len(result) == 2
+        assert all(hasattr(msg, "message_id") for msg in result)
+        assert all(hasattr(msg, "thread_id") for msg in result)
