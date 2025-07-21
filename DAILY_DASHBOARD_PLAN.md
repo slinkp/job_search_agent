@@ -2,6 +2,11 @@
 
 This plan outlines the steps needed to implement a daily dashboard focused on processing unprocessed recruiter messages with batch operations, as specified in Week 1 Task 1 of the README.
 
+## CRITICAL PROCESS NOTE
+
+Follow all rules in @feature-development-process.mdc strictly,
+and all other applicable rules at all times.
+
 ## Primary Goals
 1. Create a message-centric daily workflow for processing unprocessed recruiter messages
 2. Enable batch operations to efficiently handle multiple messages at once
