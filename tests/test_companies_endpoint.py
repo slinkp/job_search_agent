@@ -180,3 +180,18 @@ def test_scan_recruiter_emails_with_both_parameters(mock_task_manager):
         tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
         {"max_messages": 25, "do_research": True},
     )
+
+
+def test_scan_recruiter_emails_with_null_max_messages(mock_task_manager):
+    """Test scan_recruiter_emails with explicit null max_messages (should mean unlimited)."""
+    request = DummyRequest(json_body={"max_messages": None, "do_research": False})
+    mock_task_manager.create_task.return_value = "task-123"
+
+    response = server.app.scan_recruiter_emails(request)
+
+    assert response["task_id"] == "task-123"
+    assert response["status"] == tasks.TaskStatus.PENDING.value
+    mock_task_manager.create_task.assert_called_once_with(
+        tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
+        {"max_messages": None, "do_research": False},
+    )

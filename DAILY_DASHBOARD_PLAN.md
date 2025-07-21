@@ -49,9 +49,9 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
   - [x] Implement proper deduplication if not already working
   - [x] Add tests for deduplication logic
 - [ ] **Update email scanning API**: Modify `/api/scan_recruiter_emails` to:
-  - [ ] Accept `fetch_all` parameter (default: true) instead of `max_messages`
-  - [ ] Accept `do_research` parameter (default: false) for complete research decoupling
-  - [ ] Handle large message fetches efficiently
+  - [x] Accept null for `max_messages` to mean unlimited messages
+  - [x] Accept `do_research` parameter (default: false) for complete research decoupling
+  - [ ] Handle large message fetches efficiently. Check gmail docs and consider batching?
 - [ ] **Update frontend**: Modify daily dashboard to:
   - [ ] Remove `max_messages` parameter from scan button
   - [ ] Add option to enable/disable research during scan
