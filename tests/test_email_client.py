@@ -3,8 +3,8 @@ import os
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
-from google.auth.exceptions import RefreshError
-from googleapiclient.errors import HttpError
+from google.auth.exceptions import RefreshError  # type: ignore[import-untyped]
+from googleapiclient.errors import HttpError  # type: ignore[import-untyped]
 
 from email_client import ARCHIVED_LABEL, GmailRepliesSearcher
 from models import RecruiterMessage
