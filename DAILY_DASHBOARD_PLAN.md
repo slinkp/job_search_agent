@@ -41,8 +41,8 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
 - [x] Add tests for new UI components
 
 ### 2. Decouple Research from Message Fetching (IMMEDIATE PRIORITY)
-- [ ] **Fully decouple research from message fetching**: Currently `research=false` only skips the 2nd stage of research, but still does the 1st stage. Need to make research completely optional.
-- [ ] **Fetch all Gmail messages by default**: Change from fetching only 10 messages to fetching all messages we don't already have.
+- [x] **Fully decouple research from message fetching**: Currently `research=false` only skips the 2nd stage of research, but still does the 1st stage. Need to make research completely optional.
+- [x] **Fetch all Gmail messages by default**: Change from fetching only 10 messages to fetching all messages we don't already have.
 - [ ] **Implement/verify message deduplication**: Ensure "we already have this message" logic works correctly:
   - [ ] Check how message deduplication is currently determined
   - [ ] Verify it works reliably (by message ID, thread ID, or other unique identifier)

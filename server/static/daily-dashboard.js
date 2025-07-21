@@ -126,7 +126,7 @@ document.addEventListener("alpine:init", () => {
       },
 
       // Scan for new recruiter emails from Gmail
-      async scanRecruiterEmails(maxMessages = 10) {
+      async scanRecruiterEmails() {
         if (this.scanningEmails) return;
 
         try {
@@ -139,7 +139,6 @@ document.addEventListener("alpine:init", () => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              max_messages: maxMessages,
               do_research: false, // Don't auto-research, let user decide
             }),
           });

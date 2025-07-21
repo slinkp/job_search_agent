@@ -244,7 +244,7 @@
         <div class="dashboard-header">
           <h2>Daily Dashboard</h2>
           <div class="dashboard-actions">
-            <button @click="scanRecruiterEmails(10)" :disabled="scanningEmails" class="outline">
+            <button @click="scanRecruiterEmails()" :disabled="scanningEmails" class="outline">
               <span x-show="scanningEmails" class="loading-spinner"></span>
               Scan Emails
             </button>
