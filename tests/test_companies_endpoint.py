@@ -120,3 +120,63 @@ def test_import_companies_from_spreadsheet(mock_task_manager):
         tasks.TaskType.IMPORT_COMPANIES_FROM_SPREADSHEET,
         {},
     )
+
+
+def test_scan_recruiter_emails_default_behavior(mock_task_manager):
+    """Test scan_recruiter_emails with default parameters (should fetch all messages)."""
+    request = DummyRequest(json_body={})
+    mock_task_manager.create_task.return_value = "task-123"
+
+    response = server.app.scan_recruiter_emails(request)
+
+    assert response["task_id"] == "task-123"
+    assert response["status"] == tasks.TaskStatus.PENDING.value
+    mock_task_manager.create_task.assert_called_once_with(
+        tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
+        {"max_messages": None, "do_research": False},
+    )
+
+
+def test_scan_recruiter_emails_with_custom_max_messages(mock_task_manager):
+    """Test scan_recruiter_emails with custom max_messages parameter."""
+    request = DummyRequest(json_body={"max_messages": 50})
+    mock_task_manager.create_task.return_value = "task-123"
+
+    response = server.app.scan_recruiter_emails(request)
+
+    assert response["task_id"] == "task-123"
+    assert response["status"] == tasks.TaskStatus.PENDING.value
+    mock_task_manager.create_task.assert_called_once_with(
+        tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
+        {"max_messages": 50, "do_research": False},
+    )
+
+
+def test_scan_recruiter_emails_with_research_enabled(mock_task_manager):
+    """Test scan_recruiter_emails with research enabled."""
+    request = DummyRequest(json_body={"do_research": True})
+    mock_task_manager.create_task.return_value = "task-123"
+
+    response = server.app.scan_recruiter_emails(request)
+
+    assert response["task_id"] == "task-123"
+    assert response["status"] == tasks.TaskStatus.PENDING.value
+    mock_task_manager.create_task.assert_called_once_with(
+        tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
+        {"max_messages": None, "do_research": True},
+    )
+
+
+def test_scan_recruiter_emails_with_both_parameters(mock_task_manager):
+    """Test scan_recruiter_emails with both max_messages and do_research parameters."""
+    request = DummyRequest(json_body={"max_messages": 25, "do_research": True})
+    mock_task_manager.create_task.return_value = "task-123"
+
+    response = server.app.scan_recruiter_emails(request)
+
+    assert response["task_id"] == "task-123"
+    assert response["status"] == tasks.TaskStatus.PENDING.value
+    mock_task_manager.create_task.assert_called_once_with(
+        tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
+        {"max_messages": 25, "do_research": True},
+    )

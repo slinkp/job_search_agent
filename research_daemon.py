@@ -324,7 +324,18 @@ class ResearchDaemon:
 
     def do_find_companies_in_recruiter_messages(self, args: dict):
         max_messages = args.get("max_messages", 100)
-        logger.info(f"Finding companies in up to {max_messages} recruiter messages")
+        do_research = args.get("do_research", False)
+
+        # If max_messages is None, fetch all messages (use a very large number)
+        if max_messages is None:
+            max_messages = 10000  # Large enough to fetch all messages
+            logger.info(
+                f"Finding companies in all recruiter messages (do_research={do_research})"
+            )
+        else:
+            logger.info(
+                f"Finding companies in up to {max_messages} recruiter messages (do_research={do_research})"
+            )
 
         messages = self.jobsearch.get_new_recruiter_messages(max_results=max_messages)
         for i, message in enumerate(messages):
@@ -335,11 +346,22 @@ class ResearchDaemon:
                 f"Processing message {i+1} of {len(messages)} [max {max_messages}]..."
             )
             try:
-                # Pass the full RecruiterMessage object instead of just the content
-                company = self.do_research({"recruiter_message": message})
-                if company is None:
-                    logger.warning(f"No company extracted from message {i + 1}, skipping")
-                    continue
+                if do_research:
+                    # Pass the full RecruiterMessage object instead of just the content
+                    company = self.do_research({"recruiter_message": message})
+                    if company is None:
+                        logger.warning(
+                            f"No company extracted from message {i + 1}, skipping"
+                        )
+                        continue
+                else:
+                    # Just create a basic company object without research
+                    company = self.create_basic_company_from_message(message)
+                    if company is None:
+                        logger.warning(
+                            f"No company extracted from message {i + 1}, skipping"
+                        )
+                        continue
             except Exception:
                 logger.exception(f"Unexpected error processing recruiter message {i + 1}")
                 continue
@@ -424,6 +446,63 @@ class ResearchDaemon:
         self.company_repo.update(company)
 
         return {"status": "success"}
+
+    def create_basic_company_from_message(
+        self, message: models.RecruiterMessage
+    ) -> Optional[models.Company]:
+        """
+        Create a basic Company object from a RecruiterMessage without doing any research.
+
+        This creates a minimal Company object with the RecruiterMessage attached,
+        but does NO research at all - not even initial research.
+        """
+        try:
+            # Create a basic company with minimal info from the message
+            # We'll use a placeholder name that can be updated later when research is done
+            placeholder_name = f"Company from {message.sender}"
+            company_id = models.normalize_company_name(placeholder_name)
+
+            # Create basic company details
+            company_details = models.CompaniesSheetRow(
+                name=placeholder_name,
+                updated=datetime.date.today(),
+                current_state="10. consider applying",  # Default initial state
+                email_thread_link=message.email_thread_link,
+            )
+
+            # Create the company object
+            company = models.Company(
+                company_id=company_id,
+                name=placeholder_name,
+                details=company_details,
+                status=models.CompanyStatus(),
+                recruiter_message=message,
+            )
+
+            # Set the company_id on the recruiter message
+            if company.recruiter_message:
+                company.recruiter_message.company_id = company_id
+
+            # Check if company already exists by normalized name
+            existing = self.company_repo.get_by_normalized_name(company.name)
+            if existing:
+                logger.info(
+                    f"Found existing company with normalized name match: {existing.name}"
+                )
+                # Update the existing company with the new recruiter message
+                existing.recruiter_message = message
+                existing.recruiter_message.company_id = existing.company_id
+                self.company_repo.update(existing)
+                return existing
+            else:
+                # Create a new company
+                logger.info(f"Creating basic company {company.name} without any research")
+                self.company_repo.create(company)
+                return company
+
+        except Exception as e:
+            logger.exception(f"Error creating basic company from message: {e}")
+            return None
 
     def do_import_companies_from_spreadsheet(self, args: dict):
         """Import companies from the spreadsheet into the database.

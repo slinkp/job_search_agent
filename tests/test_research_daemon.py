@@ -410,6 +410,152 @@ def test_do_find_companies_in_recruiter_messages_error(daemon, test_recruiter_me
     daemon.company_repo.create.assert_not_called()
 
 
+def test_do_find_companies_in_recruiter_messages_no_research(
+    daemon, test_recruiter_messages, test_companies
+):
+    """Test finding companies when do_research=False - should create basic companies without any research."""
+    args = {"max_messages": 2, "do_research": False}
+
+    daemon.jobsearch.get_new_recruiter_messages.return_value = test_recruiter_messages
+    daemon.company_repo.get_by_normalized_name.return_value = (
+        None  # No existing companies
+    )
+    daemon.running = True  # Ensure daemon stays running
+
+    daemon.do_find_companies_in_recruiter_messages(args)
+
+    # Verify messages were fetched
+    daemon.jobsearch.get_new_recruiter_messages.assert_called_once_with(max_results=2)
+
+    # Verify NO research was done (research_company should not be called)
+    assert daemon.jobsearch.research_company.call_count == 0
+
+    # Verify companies were created using create_basic_company_from_message
+    assert daemon.company_repo.create.call_count == 2
+
+
+def test_do_find_companies_in_recruiter_messages_no_research_existing_company(
+    daemon, test_recruiter_messages, test_companies
+):
+    """Test finding companies when do_research=False and company already exists."""
+    args = {"max_messages": 1, "do_research": False}
+
+    daemon.jobsearch.get_new_recruiter_messages.return_value = [
+        test_recruiter_messages[0]
+    ]
+    daemon.running = True  # Ensure daemon stays running
+
+    # Mock that company exists by normalized name
+    daemon.company_repo.get_by_normalized_name.return_value = test_companies[0]
+
+    daemon.do_find_companies_in_recruiter_messages(args)
+
+    # Verify NO research was done (research_company should not be called)
+    assert daemon.jobsearch.research_company.call_count == 0
+
+    # Verify existing company was updated (not created)
+    daemon.company_repo.update.assert_called_once_with(test_companies[0])
+    daemon.company_repo.create.assert_not_called()
+
+
+def test_create_basic_company_from_message_success(
+    daemon, test_recruiter_messages, test_companies
+):
+    """Test creating a basic company from a message without research."""
+    message = test_recruiter_messages[0]
+
+    daemon.company_repo.get_by_normalized_name.return_value = None  # No existing company
+
+    result = daemon.create_basic_company_from_message(message)
+
+    # Verify NO research was done (research_company should not be called)
+    assert daemon.jobsearch.research_company.call_count == 0
+
+    # Verify company was created
+    daemon.company_repo.create.assert_called_once()
+    assert result is not None
+    assert result.name == f"Company from {message.sender}"
+
+
+def test_create_basic_company_from_message_existing_company(
+    daemon, test_recruiter_messages, test_companies
+):
+    """Test creating a basic company when company already exists."""
+    message = test_recruiter_messages[0]
+    existing_company = test_companies[0]
+
+    daemon.company_repo.get_by_normalized_name.return_value = existing_company
+
+    result = daemon.create_basic_company_from_message(message)
+
+    # Verify NO research was done (research_company should not be called)
+    assert daemon.jobsearch.research_company.call_count == 0
+
+    # Verify existing company was updated (not created)
+    daemon.company_repo.update.assert_called_once_with(existing_company)
+    daemon.company_repo.create.assert_not_called()
+    assert result == existing_company
+
+
+def test_create_basic_company_from_message_no_company_name(
+    daemon, test_recruiter_messages
+):
+    """Test creating a basic company when no company name is extracted."""
+    message = test_recruiter_messages[0]
+
+    # Ensure no existing company is found
+    daemon.company_repo.get_by_normalized_name.return_value = None
+
+    result = daemon.create_basic_company_from_message(message)
+
+    # Verify NO research was done (research_company should not be called)
+    assert daemon.jobsearch.research_company.call_count == 0
+
+    # Verify company was created with placeholder name
+    daemon.company_repo.create.assert_called_once()
+    assert result is not None
+    assert result.name == f"Company from {message.sender}"
+
+
+def test_create_basic_company_from_message_unknown_company_name(
+    daemon, test_recruiter_messages
+):
+    """Test creating a basic company when company name starts with '<UNKNOWN'."""
+    message = test_recruiter_messages[0]
+
+    # Ensure no existing company is found
+    daemon.company_repo.get_by_normalized_name.return_value = None
+
+    result = daemon.create_basic_company_from_message(message)
+
+    # Verify NO research was done (research_company should not be called)
+    assert daemon.jobsearch.research_company.call_count == 0
+
+    # Verify company was created with placeholder name
+    daemon.company_repo.create.assert_called_once()
+    assert result is not None
+    assert result.name == f"Company from {message.sender}"
+
+
+def test_create_basic_company_from_message_error(daemon, test_recruiter_messages):
+    """Test creating a basic company when an error occurs."""
+    message = test_recruiter_messages[0]
+
+    # Ensure no existing company is found
+    daemon.company_repo.get_by_normalized_name.return_value = None
+
+    # Mock an error in the company creation process
+    daemon.company_repo.create.side_effect = ValueError("Database error")
+
+    result = daemon.create_basic_company_from_message(message)
+
+    # Verify NO research was done (research_company should not be called)
+    assert daemon.jobsearch.research_company.call_count == 0
+
+    # Verify error was handled gracefully
+    assert result is None
+
+
 def test_do_ignore_and_archive(daemon, test_company):
     """Test ignoring and archiving a company's message."""
     args = {"company_id": "test-corp"}
