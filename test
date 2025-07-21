@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Fix environment for cursor
+
+HERE=$( cd "${0%/*}" 2> /dev/null; echo "$PWD"/ )
+source $HERE/.direnv/python-3.13/bin/activate
+
 # TODO - fix why these are needed at import time?
 # it messes up tests run by the cursor agent which
 # doesn't load my direnv settings.
