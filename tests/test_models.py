@@ -1305,3 +1305,96 @@ class TestCompanyMessages:
             all_messages[0].message_id == retrieved_company.recruiter_message.message_id
         )
         assert all_messages[0].subject == retrieved_company.recruiter_message.subject
+
+    def test_recruiter_message_deduplication(self, clean_test_db):
+        """Test that duplicate recruiter messages are properly deduplicated by message_id."""
+        repo = clean_test_db
+
+        # Create a company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create an initial recruiter message
+        original_message = RecruiterMessage(
+            message_id="duplicate-test-123",
+            company_id="test-company",
+            message="Original message content",
+            subject="Original Subject",
+            sender="recruiter@example.com",
+            email_thread_link="https://mail.example.com/thread123",
+            thread_id="thread123",
+            date=datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        )
+        repo.create_recruiter_message(original_message)
+
+        # Verify the message was created
+        messages = repo.get_recruiter_messages("test-company")
+        assert len(messages) == 1
+        assert messages[0].message_id == "duplicate-test-123"
+        assert messages[0].subject == "Original Subject"
+        assert messages[0].message == "Original message content"
+
+        # Now create a "duplicate" message with the same message_id but different content
+        # This simulates what would happen if the same Gmail message was processed twice
+        duplicate_message = RecruiterMessage(
+            message_id="duplicate-test-123",  # Same message_id
+            company_id="test-company",
+            message="Updated message content",  # Different content
+            subject="Updated Subject",  # Different subject
+            sender="recruiter@example.com",
+            email_thread_link="https://mail.example.com/thread123",
+            thread_id="thread123",
+            date=datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        )
+        repo.create_recruiter_message(duplicate_message)
+
+        # Verify that we still have only one message (no duplicate was created)
+        messages = repo.get_recruiter_messages("test-company")
+        assert len(messages) == 1, f"Expected 1 message, got {len(messages)}"
+
+        # Verify that the message was updated with the new content (upsert behavior)
+        updated_message = messages[0]
+        assert updated_message.message_id == "duplicate-test-123"
+        assert updated_message.subject == "Updated Subject"  # Should be updated
+        assert updated_message.message == "Updated message content"  # Should be updated
+
+        # Test the same behavior when creating a company with a duplicate recruiter message
+        duplicate_company = Company(
+            company_id="another-company",
+            name="AnotherCompany",
+            details=CompaniesSheetRow(name="AnotherCompany"),
+            recruiter_message=RecruiterMessage(
+                message_id="duplicate-test-123",  # Same message_id as before
+                company_id="another-company",
+                message="Yet another message content",
+                subject="Yet Another Subject",
+                sender="recruiter@example.com",
+                email_thread_link="https://mail.example.com/thread123",
+                thread_id="thread123",
+                date=datetime.datetime(
+                    2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+        )
+        repo.create(duplicate_company)
+
+        # Verify that we still have only one message across all companies
+        all_messages_company1 = repo.get_recruiter_messages("test-company")
+        all_messages_company2 = repo.get_recruiter_messages("another-company")
+
+        # The message should now be associated with the company that was created last
+        # due to the upsert behavior updating the company_id
+        assert (
+            len(all_messages_company1) == 0
+        )  # Original company no longer has the message
+        assert len(all_messages_company2) == 1  # New company has the message
+
+        final_message = all_messages_company2[0]
+        assert final_message.message_id == "duplicate-test-123"
+        assert final_message.company_id == "another-company"  # Should be updated
+        assert final_message.subject == "Yet Another Subject"  # Should be updated
+        assert final_message.message == "Yet another message content"  # Should be updated
