@@ -16,6 +16,7 @@ document.addEventListener("alpine:init", () => {
       emailScanTaskId: null,
       emailScanStatus: null,
       emailScanError: null,
+      doResearch: false, // User option to enable/disable research during scan
 
       // Initialize the component
       async init() {
@@ -139,7 +140,7 @@ document.addEventListener("alpine:init", () => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              do_research: false, // Don't auto-research, let user decide
+              do_research: this.doResearch, // Use user preference instead of hardcoded false
             }),
           });
 
@@ -205,7 +206,7 @@ document.addEventListener("alpine:init", () => {
           case "pending":
             return "Starting email scan...";
           case "running":
-            return "Scanning recruiter emails...";
+            return "Scanning recruiter emails... (this may take a while for large fetches)";
           case "completed":
             return "Email scan complete";
           case "failed":

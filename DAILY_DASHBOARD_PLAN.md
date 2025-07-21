@@ -48,17 +48,22 @@ This plan outlines the steps needed to implement a daily dashboard focused on pr
   - [x] Verify it works reliably (by message ID, thread ID, or other unique identifier)
   - [x] Implement proper deduplication if not already working
   - [x] Add tests for deduplication logic
-- [ ] **Update email scanning API**: Modify `/api/scan_recruiter_emails` to:
+- [x] **Update email scanning API**: Modify `/api/scan_recruiter_emails` to:
   - [x] Accept null for `max_messages` to mean unlimited messages
   - [x] Accept `do_research` parameter (default: false) for complete research decoupling
-  - [ ] Handle large message fetches efficiently. Check gmail docs and consider batching?
-- [ ] **Update frontend**: Modify daily dashboard to:
-  - [ ] Remove `max_messages` parameter from scan button
-  - [ ] Add option to enable/disable research during scan
-  - [ ] Show progress for large message fetches
-- [ ] **Add tests** for new email scanning behavior
+  - [x] Handle large message fetches efficiently. Check gmail docs and consider batching?
+- [x] **Update frontend**: Modify daily dashboard to:
+  - [x] Remove `max_messages` parameter from scan button
+  - [x] Add option to enable/disable research during scan
+  - [x] Show progress for large message fetches
+- [x] **Add tests** for new email scanning behavior
 
-### 3. Implement Batch Selection
+### 2.5 Manual workarounds and enhancements
+- [ ] Allow expanding the entire message body in the dashboard view
+- [ ] Allow manually overriding the company name
+  - [ ] This should search for existing companies with some fuzziness
+
+### 3. Implement Batch Selection for efficiency
 - [ ] Add checkbox column to message list
 - [ ] Add "Select All" / "Select None" functionality
 - [ ] Add selection counter ("X selected")

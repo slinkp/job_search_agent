@@ -492,6 +492,27 @@ button.secondary:focus {
 .dashboard-actions {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.scan-options {
+  display: flex;
+  align-items: center;
+  margin-right: 0.5rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.9em;
+  color: var(--muted-color);
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin: 0;
 }
 
 .email-scan-status {

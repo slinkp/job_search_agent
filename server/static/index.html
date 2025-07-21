@@ -244,6 +244,12 @@
         <div class="dashboard-header">
           <h2>Daily Dashboard</h2>
           <div class="dashboard-actions">
+            <div class="scan-options">
+              <label class="checkbox-label">
+                <input type="checkbox" x-model="doResearch">
+                <span>Include research during scan</span>
+              </label>
+            </div>
             <button @click="scanRecruiterEmails()" :disabled="scanningEmails" class="outline">
               <span x-show="scanningEmails" class="loading-spinner"></span>
               Scan Emails

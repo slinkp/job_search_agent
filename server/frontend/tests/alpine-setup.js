@@ -98,6 +98,7 @@ function createMockDailyDashboard() {
     unprocessedMessages: [],
     loading: false,
     sortNewestFirst: true,
+    doResearch: false, // Add the missing doResearch property
     init() {
       console.log("Mock dailyDashboard initialized");
     },
