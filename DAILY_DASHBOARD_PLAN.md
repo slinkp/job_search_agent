@@ -83,14 +83,27 @@ Make sure not to duplicate code that already does the same job for the companies
 
 ### 2.5 Manual workarounds and enhancements
 - [x] Allow expanding the entire message body in the dashboard view
-- [ ] Allow manually overriding the company name
-  - [ ] This should search for existing companies with some fuzziness
-  - [ ] adds the message to company.messages in the backend
+- [ ] Allow manually overriding the company name on a message:
+  - [ ] Add a concept of "alternate names" to the backend data model
+  - [ ] Add a concept of "verified name" to the backend data model
+  - [ ] Anytime research finds a new name, add the new one as an alternate name
+  - [ ] Manually setting name should check for existing company with any of the known alternates
+  - [ ] Manually setting the name adds the message to company.messages in the backend
+  - [ ] Manually setting the name sets the new one as "verified name"
+
+### 2.7 Add Status Summary
+- [ ] Create status summary component showing:
+  - [ ] "X unprocessed" (messages not replied to or archived)
+  - [ ] "Y researched" (companies that have been researched)
+  - [ ] "Z replied" (messages that have been replied to)
+- [ ] Update summary in real-time as actions are performed
+- [ ] Add visual indicators (colors, icons) for different statuses
+- [ ] Add tests for status summary calculations
+
 
 ### 3. Implement Batch Selection for efficiency
 - [ ] Add checkbox column to message list
 - [ ] Add "Select All" / "Select None" functionality
-- [ ] Add selection counter ("X selected")
 - [ ] Track selected messages in frontend state
 - [ ] Add visual feedback for selected items
 - [ ] Add tests for selection functionality
@@ -109,38 +122,25 @@ Make sure not to duplicate code that already does the same job for the companies
   - [ ] Send and archive multiple messages
 - [ ] Add tests for all batch operations
 
-### 5. Add Status Summary
-- [ ] Create status summary component showing:
-  - [ ] "X unprocessed" (messages not replied to or archived)
-  - [ ] "Y researched" (companies that have been researched)
-  - [ ] "Z replied" (messages that have been replied to)
-- [ ] Update summary in real-time as actions are performed
-- [ ] Add visual indicators (colors, icons) for different statuses
-- [ ] Add tests for status summary calculations
 
 ### 6. Backend Enhancements
-- [ ] Add endpoint for getting unprocessed messages list
-- [ ] Add batch research endpoint
-- [ ] Add batch archive endpoint  
-- [ ] Add batch reply generation endpoint
+- [ ] Add or update existing messages endpoint to get unprocessed messages
 - [ ] Add status summary endpoint
 - [ ] Add proper error handling for batch operations
-- [ ] Add tests for all new endpoints
 
 ### 7. Polish and Integration
 - [ ] Add link(s) from a company on the companies page to all associated emails on the email dashboard, and vice versa
-  - [ ] I don't think we have real permalinks to companies or messages. We should
+  - [ ] I don't think we have real permalinks to companies or messages. We should!
 - [ ] Add confirmation dialogs for batch operations
 - [ ] Ensure proper error handling and user feedback
 - [ ] Add loading states for batch operations
-- [ ] Add ability to toggle between daily dashboard and full company view
-- [ ] Update navigation to highlight daily dashboard as primary view
-- [ ] Add tests for error scenarios and edge cases
+- [ ] Start with daily dashboard as default view
+- [ ] Add tests for untested error scenarios and edge cases
 
 ### 8. Documentation and Testing
-- [ ] Update README with daily dashboard usage instructions
+- [ ] Coverage reports of frontend tests?
 - [ ] Add comprehensive tests for batch operations
-- [ ] Test with real recruiter message data
+- [ ] Manual test with real recruiter message data
 - [ ] Ensure all tests pass before marking complete
 - [ ] Document any discovered issues or limitations
 
@@ -151,12 +151,9 @@ Make sure not to duplicate code that already does the same job for the companies
 - [ ] Add filter for "unprocessed messages" (messages that haven't been replied to or 
 archived)
 - [ ] Add advanced filtering and search within daily dashboard
-- [ ] Add undo functionality for batch operations?
 - [ ] Add batch editing of replies before sending?
-- [ ] Add export functionality for daily reports?
-- [ ] Add keyboard shortcuts for common actions
 
-### MISC BUGS
+### MISC BUGS AND ENHANCEMENTS
 
 - [ ] If research fails to find a name, but the company is already assigned a name, do NOT replace the existing name with generated placeholder
 
@@ -166,13 +163,6 @@ archived)
 - RecruiterMessage model already exists with all required fields (sender, subject, date)
 - Company model has status tracking for research/reply/archive states
 - Need to define "unprocessed" clearly: messages where company is not replied to or archived
-
-### API Design
-- GET /api/unprocessed-messages - Returns list of unprocessed recruiter messages
-- POST /api/batch-research - Start research for multiple companies
-- POST /api/batch-archive - Archive multiple messages  
-- POST /api/batch-reply - Generate replies for multiple messages
-- GET /api/status-summary - Get counts for dashboard summary
 
 ### Frontend Architecture
 - Use existing Alpine.js setup with new daily dashboard component
@@ -201,3 +191,5 @@ These features would be valuable but are not required for the initial implementa
 - Integration with calendar for daily goals
 - Batch editing of replies before sending
 - Export functionality for daily reports 
+
+
