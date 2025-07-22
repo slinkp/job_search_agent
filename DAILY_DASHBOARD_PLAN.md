@@ -63,10 +63,26 @@ and all other applicable rules at all times.
   - [x] Show progress for large message fetches
 - [x] **Add tests** for new email scanning behavior
 
+
+### 2.1 Refactor for DRY
+- [ ] Check if there is duplicate functionality between app.js and daily-driver.js
+- [ ] Factor those out
+
+### 2.3 Implement buttons on daily dashboard page
+
+These are not wired up.
+Make sure not to duplicate code that already does the same job for the companies dashboard. Refactor as needed so both pages can use the same code where applicable.
+
+- [ ] Research
+- [ ] Generate Reply
+- [ ] Archive
+
+
 ### 2.5 Manual workarounds and enhancements
 - [x] Allow expanding the entire message body in the dashboard view
 - [ ] Allow manually overriding the company name
   - [ ] This should search for existing companies with some fuzziness
+  - [ ] adds the message to company.messages in the backend
 
 ### 3. Implement Batch Selection for efficiency
 - [ ] Add checkbox column to message list
@@ -109,7 +125,8 @@ and all other applicable rules at all times.
 - [ ] Add tests for all new endpoints
 
 ### 7. Polish and Integration
-- [ ] Add keyboard shortcuts for common actions
+- [ ] Add link(s) from a company on the companies page to all associated emails on the email dashboard, and vice versa
+  - [ ] I don't think we have real permalinks to companies or messages. We should
 - [ ] Add confirmation dialogs for batch operations
 - [ ] Ensure proper error handling and user feedback
 - [ ] Add loading states for batch operations
@@ -125,12 +142,20 @@ and all other applicable rules at all times.
 - [ ] Document any discovered issues or limitations
 
 ### 9. Enhanced UI Features (Future Iteration)
-- [ ] Add filter for "unprocessed messages" (messages that haven't been replied to or archived)
+- [ ] On email view, add link to original message in gmail
+- [ ] On the companies view, list all messages for the company.
+  - [ ] Group them by normalized sender name and/or thread
+- [ ] Add filter for "unprocessed messages" (messages that haven't been replied to or 
+archived)
 - [ ] Add advanced filtering and search within daily dashboard
-- [ ] Add keyboard shortcuts?
 - [ ] Add undo functionality for batch operations?
 - [ ] Add batch editing of replies before sending?
 - [ ] Add export functionality for daily reports?
+- [ ] Add keyboard shortcuts for common actions
+
+### MISC BUGS
+
+- [ ] If research fails to find a name, but the company is already assigned a name, do NOT replace the existing name with generated placeholder
 
 ## Technical Implementation Notes
 
