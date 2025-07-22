@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-SONNET_LATEST = "claude-4-sonnet-latest"
+SONNET_LATEST = "claude-sonnet-4-0"
 
 
 cache = Cache(os.path.join(HERE, ".cache"))
@@ -646,8 +646,9 @@ def arg_parser():
             "gpt-4o",
             "gpt-4-turbo",
             "gpt-3.5-turbo",
-            "claude-3-5-sonnet-latest",  # noqa: B950
-            "claude-3-7-sonnet-latest",
+            "claude-3-5-sonnet-20241022",
+            "claude-3-7-sonnet-20250219",
+            "claude-sonnet-4-20250514",
             SONNET_LATEST,
         ],
     )
