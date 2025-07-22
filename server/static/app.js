@@ -56,6 +56,7 @@ document.head.appendChild(style);
 document.addEventListener("alpine:init", () => {
   Alpine.data("companyList", () => {
     const researchService = new CompanyResearchService();
+    const emailScanningService = new EmailScanningService();
     return {
       companies: [],
       loading: false,
@@ -341,12 +342,9 @@ document.addEventListener("alpine:init", () => {
 
       async pollTaskStatus(company, taskType) {
         const isMessage = taskType === "message";
-        const isScanningEmails = taskType === "scan_emails";
         const isImportingCompanies = taskType === "import_companies";
         const trackingSet = isMessage
           ? this.generatingMessages
-          : isScanningEmails
-          ? new Set(["scan_emails"]) // Single-item set for email scanning task
           : isImportingCompanies
           ? new Set(["import_companies"]) // Single-item set for import task
           : this.researchingCompanies;
@@ -356,15 +354,11 @@ document.addEventListener("alpine:init", () => {
 
         const taskId = company
           ? company[taskIdField]
-          : isScanningEmails
-          ? this.emailScanTaskId
           : isImportingCompanies
           ? this.importTaskId
           : null;
         const trackingKey = company
           ? company.name
-          : isScanningEmails
-          ? "scan_emails"
           : isImportingCompanies
           ? "import_companies"
           : "";
@@ -402,8 +396,6 @@ document.addEventListener("alpine:init", () => {
             // Update the status based on task type
             if (company) {
               company[statusField] = task.status;
-            } else if (isScanningEmails) {
-              this.emailScanStatus = task.status;
             } else if (isImportingCompanies) {
               console.log("Poll response for import task:", task);
               console.log(
@@ -493,9 +485,6 @@ document.addEventListener("alpine:init", () => {
                 console.log(`Task failed for ${trackingKey}:`, task.error);
                 if (company) {
                   company[errorField] = task.error;
-                } else if (isScanningEmails) {
-                  this.emailScanError = task.error;
-                  this.scanningEmails = false;
                 } else if (isImportingCompanies) {
                   this.importError = task.error;
                   this.importingCompanies = false;
@@ -506,11 +495,9 @@ document.addEventListener("alpine:init", () => {
                 // Get fresh data for this company
                 await this.fetchAndUpdateCompany(company.company_id);
               } else {
-                // For email scanning or import tasks, update entire companies list
+                // For import tasks, update entire companies list
                 await this.refreshAllCompanies();
-                if (isScanningEmails) {
-                  this.scanningEmails = false;
-                } else if (isImportingCompanies) {
+                if (isImportingCompanies) {
                   this.importingCompanies = false;
 
                   // Show result message for import
@@ -573,9 +560,6 @@ document.addEventListener("alpine:init", () => {
             console.error(`Failed to poll ${taskType} status:`, err);
             if (company) {
               // Do nothing, keep polling
-            } else if (isScanningEmails) {
-              this.emailScanError = "Failed to check task status";
-              this.scanningEmails = false;
             } else if (isImportingCompanies) {
               this.importError = "Failed to check task status";
               this.importingCompanies = false;
@@ -587,11 +571,36 @@ document.addEventListener("alpine:init", () => {
       },
 
       async scanEmails(maxMessages = 10) {
-        if (this.scanningEmails) {
-          return; // Already scanning
+        try {
+          // Use the shared email scanning service
+          await emailScanningService.scanRecruiterEmails(false); // Default to no research
+          await this.pollEmailScanStatus();
+        } catch (err) {
+          console.error("Failed to scan recruiter emails:", err);
+          this.showError(
+            err.message || "Failed to scan emails. Please try again."
+          );
         }
+      },
 
-        // Rest of scanning code here...
+      // Poll for email scan task status
+      async pollEmailScanStatus() {
+        const result = await emailScanningService.pollEmailScanStatus();
+
+        if (result?.status === "completed") {
+          // Refresh companies after successful scan
+          await this.refreshAllCompanies();
+        }
+      },
+
+      // Get email scan status text for display
+      getEmailScanStatusText() {
+        return emailScanningService.getEmailScanStatusText();
+      },
+
+      // Get email scan status CSS classes
+      getEmailScanStatusClass() {
+        return emailScanningService.getEmailScanStatusClass();
       },
 
       // Stub function for importing companies from spreadsheet
