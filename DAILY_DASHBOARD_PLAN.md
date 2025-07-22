@@ -76,7 +76,7 @@ and all other applicable rules at all times.
 These are not wired up.
 Make sure not to duplicate code that already does the same job for the companies dashboard. Refactor as needed so both pages can use the same code where applicable.
 
-- [ ] Research
+- [x] Research
 - [ ] Generate Reply
 - [ ] Archive
 

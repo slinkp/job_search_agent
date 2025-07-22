@@ -169,4 +169,42 @@ describe("Daily Dashboard Integration", () => {
       expect(template.innerHTML).toContain('class="expand-button outline"');
     }
   });
+
+  it("should have research button properly wired up", () => {
+    const dashboardView = document.getElementById("daily-dashboard-view");
+    const messageList = dashboardView.querySelector(".message-list");
+
+    if (messageList) {
+      const template = messageList.querySelector("template");
+
+      // Verify research section exists
+      expect(template.innerHTML).toContain("research-section");
+
+      // Verify research button has proper click handler
+      expect(template.innerHTML).toContain('@click="research(company)"');
+
+      // Verify research button has proper disabled state
+      expect(template.innerHTML).toContain(
+        ':disabled="isResearching(company)"'
+      );
+
+      // Verify research button shows proper text based on state
+      expect(template.innerHTML).toContain(
+        "x-text=\"isResearching(company) ? 'Researching...' : (company.research_completed_at ? 'Redo research' : 'Research!')\""
+      );
+
+      // Verify loading spinner shows during research
+      expect(template.innerHTML).toContain(
+        'x-show="isResearching(company)" class="loading-spinner"'
+      );
+
+      // Verify research status display
+      expect(template.innerHTML).toContain(
+        'x-text="getResearchStatusText(company)"'
+      );
+      expect(template.innerHTML).toContain(
+        ':class="getResearchStatusClass(company)"'
+      );
+    }
+  });
 });

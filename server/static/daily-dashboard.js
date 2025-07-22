@@ -2,11 +2,13 @@
 // Handles the display and interaction with unprocessed recruiter messages
 
 import { EmailScanningService } from "./email-scanning.js";
+import { TaskPollingService } from "./task-polling.js";
 import { formatMessageDate } from "./ui-utils.js";
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("dailyDashboard", () => {
     const emailScanningService = new EmailScanningService();
+    const taskPollingService = new TaskPollingService();
 
     return {
       // Message list data
@@ -90,6 +92,52 @@ document.addEventListener("alpine:init", () => {
         }
       },
 
+      // Research a company - follows same pattern as companies dashboard
+      async research(company) {
+        try {
+          taskPollingService.addResearching(company);
+          const response = await fetch(
+            `/api/companies/${company.company_id}/research`,
+            {
+              method: "POST",
+            }
+          );
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(
+              error.error || `Failed to start research: ${response.status}`
+            );
+          }
+
+          const data = await response.json();
+          company.research_task_id = data.task_id;
+          company.research_status = data.status;
+
+          await this.pollResearchStatus(company);
+        } catch (err) {
+          console.error("Failed to research company:", err);
+          // Could add user notification here
+        } finally {
+          taskPollingService.removeResearching(company);
+        }
+      },
+
+      // Poll research status using the shared service
+      pollResearchStatus: (company) =>
+        taskPollingService.pollResearchStatus(company),
+
+      // Get research status text using the shared service
+      getResearchStatusText: (company) =>
+        taskPollingService.getResearchStatusText(company),
+
+      // Get research status CSS classes using the shared service
+      getResearchStatusClass: (company) =>
+        taskPollingService.getResearchStatusClass(company),
+
+      // Check if company is being researched using the shared service
+      isResearching: (company) => taskPollingService.isResearching(company),
+
       formatMessageDate,
 
       // Get company name or fallback
@@ -146,6 +194,16 @@ document.addEventListener("alpine:init", () => {
       // Get email scan status CSS classes
       getEmailScanStatusClass() {
         return emailScanningService.getEmailScanStatusClass();
+      },
+
+      // Get scanning emails state from service
+      get scanningEmails() {
+        return emailScanningService.scanningEmails;
+      },
+
+      // Get email scan status from service
+      get emailScanStatus() {
+        return emailScanningService.emailScanStatus;
       },
 
       // Toggle message expansion

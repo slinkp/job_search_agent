@@ -298,9 +298,21 @@
               </div>
               
               <div class="message-actions">
-                <button @click="console.log('Research action for:', company.name)" class="outline">
-                  Research
-                </button>
+                <div class="research-section">
+                  <button 
+                    @click="research(company)" 
+                    :disabled="isResearching(company)"
+                    class="outline"
+                  >
+                    <span x-text="isResearching(company) ? 'Researching...' : (company.research_completed_at ? 'Redo research' : 'Research!')"></span>
+                    <span x-show="isResearching(company)" class="loading-spinner"></span>
+                  </button>
+                  <span
+                    x-show="company.research_status"
+                    x-text="getResearchStatusText(company)"
+                    :class="getResearchStatusClass(company)"
+                  ></span>
+                </div>
                 <button @click="console.log('Generate reply for:', company.name)" class="outline">
                   Generate Reply
                 </button>

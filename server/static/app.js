@@ -584,6 +584,21 @@ document.addEventListener("alpine:init", () => {
         return emailScanningService.getEmailScanStatusClass();
       },
 
+      // Get scanning emails state from service
+      get scanningEmails() {
+        return emailScanningService.scanningEmails;
+      },
+
+      // Get email scan status from service
+      get emailScanStatus() {
+        return emailScanningService.emailScanStatus;
+      },
+
+      // Alias for scanEmails to match HTML expectations
+      async scanRecruiterEmails() {
+        return this.scanEmails();
+      },
+
       // Stub function for importing companies from spreadsheet
       importCompaniesFromSpreadsheet() {
         // This is just a stub to fix the error
