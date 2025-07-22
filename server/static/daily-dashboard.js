@@ -1,8 +1,12 @@
 // Daily Dashboard Component
 // Handles the display and interaction with unprocessed recruiter messages
 
+import { EmailScanningService } from "./email-scanning.js";
+
 document.addEventListener("alpine:init", () => {
   Alpine.data("dailyDashboard", () => {
+    const emailScanningService = new EmailScanningService();
+
     return {
       // Message list data
       unprocessedMessages: [],
@@ -11,11 +15,7 @@ document.addEventListener("alpine:init", () => {
       // Sorting state
       sortNewestFirst: true,
 
-      // Email scanning state
-      scanningEmails: false,
-      emailScanTaskId: null,
-      emailScanStatus: null,
-      emailScanError: null,
+      // Email scanning state - now managed by service
       doResearch: false, // User option to enable/disable research during scan
 
       // Message expansion state
@@ -131,102 +131,33 @@ document.addEventListener("alpine:init", () => {
 
       // Scan for new recruiter emails from Gmail
       async scanRecruiterEmails() {
-        if (this.scanningEmails) return;
-
         try {
-          this.scanningEmails = true;
-          this.emailScanError = null;
-
-          const response = await fetch("/api/scan_recruiter_emails", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              do_research: this.doResearch, // Use user preference instead of hardcoded false
-            }),
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to scan emails: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
-          this.emailScanTaskId = data.task_id;
-          this.emailScanStatus = data.status;
-
+          await emailScanningService.scanRecruiterEmails(this.doResearch);
           await this.pollEmailScanStatus();
         } catch (err) {
           console.error("Failed to scan recruiter emails:", err);
-          this.emailScanError = err.message;
-        } finally {
-          this.scanningEmails = false;
+          // Error is already handled by the service
         }
       },
 
       // Poll for email scan task status
       async pollEmailScanStatus() {
-        if (!this.emailScanTaskId) return;
+        const result = await emailScanningService.pollEmailScanStatus();
 
-        try {
-          const response = await fetch(`/api/tasks/${this.emailScanTaskId}`);
-          if (!response.ok) {
-            throw new Error(`Failed to get task status: ${response.status}`);
-          }
-
-          const task = await response.json();
-          this.emailScanStatus = task.status;
-
-          if (task.status === "completed") {
-            console.log("Email scan completed successfully");
-            // Reload messages after successful scan
-            await this.loadUnprocessedMessages();
-            this.emailScanTaskId = null;
-          } else if (task.status === "failed") {
-            console.error("Email scan failed:", task.result);
-            this.emailScanError = task.result?.error || "Email scan failed";
-            this.emailScanTaskId = null;
-          } else if (task.status === "pending" || task.status === "running") {
-            // Continue polling
-            setTimeout(() => this.pollEmailScanStatus(), 2000);
-          }
-        } catch (err) {
-          console.error("Failed to poll email scan status:", err);
-          this.emailScanError = err.message;
-          this.emailScanTaskId = null;
+        if (result?.status === "completed") {
+          // Reload messages after successful scan
+          await this.loadUnprocessedMessages();
         }
       },
 
       // Get email scan status text for display
       getEmailScanStatusText() {
-        if (this.emailScanError) {
-          return `Failed: ${this.emailScanError}`;
-        }
-        switch (this.emailScanStatus) {
-          case "pending":
-            return "Starting email scan...";
-          case "running":
-            return "Scanning recruiter emails... (this may take a while for large fetches)";
-          case "completed":
-            return "Email scan complete";
-          case "failed":
-            return "Failed to scan emails";
-          default:
-            return "";
-        }
+        return emailScanningService.getEmailScanStatusText();
       },
 
       // Get email scan status CSS classes
       getEmailScanStatusClass() {
-        return {
-          "status-pending": this.emailScanStatus === "pending",
-          "status-running": this.emailScanStatus === "running",
-          "status-completed": this.emailScanStatus === "completed",
-          "status-failed": this.emailScanStatus === "failed",
-        };
+        return emailScanningService.getEmailScanStatusClass();
       },
 
       // Toggle message expansion
