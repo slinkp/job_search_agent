@@ -65,8 +65,11 @@ and all other applicable rules at all times.
 
 
 ### 2.1 Refactor for DRY
-- [ ] Check if there is duplicate functionality between app.js and daily-driver.js
-- [ ] Factor those out
+- [x] Check if there is duplicate functionality between app.js and daily-driver.js
+- [x] Factor those out
+  - [x] Extract EmailScanningService for shared email scanning functionality
+  - [x] Extract ui-utils.js for shared UI utility functions
+  - [x] Extract TaskPollingService for shared task polling functionality
 
 ### 2.3 Implement buttons on daily dashboard page
 

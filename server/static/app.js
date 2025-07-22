@@ -1,5 +1,6 @@
 import { CompanyResearchService } from "./company-research.js";
 import { EmailScanningService } from "./email-scanning.js";
+import { TaskPollingService } from "./task-polling.js";
 import {
   formatRecruiterMessageDate,
   isUrl,
@@ -64,13 +65,12 @@ document.addEventListener("alpine:init", () => {
   Alpine.data("companyList", () => {
     const researchService = new CompanyResearchService();
     const emailScanningService = new EmailScanningService();
+    const taskPollingService = new TaskPollingService();
     return {
       companies: [],
       loading: false,
       editingCompany: null,
       editingReply: "",
-      researchingCompanies: new Set(),
-      generatingMessages: new Set(),
       // Stubs for import functionality
       importingCompanies: false,
       importTaskId: null,
@@ -134,7 +134,7 @@ document.addEventListener("alpine:init", () => {
             return;
           }
 
-          this.generatingMessages.add(company.name);
+          taskPollingService.addGeneratingMessage(company);
           const response = await fetch(
             `/api/companies/${company.company_id}/reply_message`,
             {
@@ -170,7 +170,7 @@ document.addEventListener("alpine:init", () => {
             err.message || "Failed to generate reply. Please try again."
           );
         } finally {
-          this.generatingMessages.delete(company.name);
+          taskPollingService.removeGeneratingMessage(company);
         }
       },
 
@@ -274,7 +274,7 @@ document.addEventListener("alpine:init", () => {
 
       async research(company) {
         try {
-          this.researchingCompanies.add(company.name);
+          taskPollingService.addResearching(company);
           const response = await fetch(
             `/api/companies/${company.company_id}/research`,
             {
@@ -300,44 +300,25 @@ document.addEventListener("alpine:init", () => {
             err.message || "Failed to start research. Please try again."
           );
         } finally {
-          this.researchingCompanies.delete(company.name);
+          taskPollingService.removeResearching(company);
         }
       },
 
-      async pollResearchStatus(company) {
-        return this.pollTaskStatus(company, "research");
-      },
-
-      getResearchStatusText(company) {
-        return this.getTaskStatusText(company, "research");
-      },
-
-      getResearchStatusClass(company) {
-        return {
-          "status-pending": company.research_status === "pending",
-          "status-running": company.research_status === "running",
-          "status-completed": company.research_status === "completed",
-          "status-failed":
-            company.research_status === "failed" || company.research_error,
-        };
-      },
-
-      isResearching(company) {
-        return this.researchingCompanies.has(company.name);
-      },
-
-      async pollMessageStatus(company) {
-        return this.pollTaskStatus(company, "message");
-      },
-
-      getMessageStatusText(company) {
-        return this.getTaskStatusText(company, "message");
-      },
-
+      pollResearchStatus: (company) =>
+        taskPollingService.pollResearchStatus(company),
+      getResearchStatusText: (company) =>
+        taskPollingService.getResearchStatusText(company),
+      getResearchStatusClass: (company) =>
+        taskPollingService.getResearchStatusClass(company),
+      isResearching: (company) => taskPollingService.isResearching(company),
+      pollMessageStatus: (company) =>
+        taskPollingService.pollMessageStatus(company),
+      getMessageStatusText: (company) =>
+        taskPollingService.getMessageStatusText(company),
       isGeneratingMessage(company) {
         if (this.loading) return false;
         if (!company) return false;
-        return this.generatingMessages.has(company.name);
+        return taskPollingService.isGeneratingMessage(company);
       },
 
       async pollTaskStatus(company, taskType) {
