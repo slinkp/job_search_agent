@@ -198,11 +198,20 @@ document.addEventListener("alpine:init", () => {
         }
 
         try {
-          // Call the ignore and archive endpoint
+          // Get the message ID from the company's recruiter message
+          const messageId = company.recruiter_message?.message_id;
+
+          // Call the ignore and archive endpoint with message ID
           const response = await fetch(
             `/api/companies/${company.company_id}/ignore_and_archive`,
             {
               method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                message_id: messageId,
+              }),
             }
           );
 
