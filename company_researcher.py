@@ -172,6 +172,26 @@ class TavilyRAGResearchAgent:
         self.verbose = verbose
         self.tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
 
+    def extract_json_from_response(self, content: str) -> dict:
+        """Extract JSON from LLM response, handling markdown code blocks."""
+        content = content.strip()
+
+        # Try to extract JSON from markdown code blocks
+        if content.startswith("```json") and content.endswith("```"):
+            # Extract content between ```json and ```
+            json_content = content[7:-3].strip()
+        elif content.startswith("```") and content.endswith("```"):
+            # Handle generic code blocks
+            lines = content.split("\n")
+            if len(lines) >= 3:
+                json_content = "\n".join(lines[1:-1])
+            else:
+                json_content = content[3:-3].strip()
+        else:
+            json_content = content
+
+        return json.loads(json_content)
+
     def make_prompt(
         self, search_prompt: str, format_prompt: str, extra_context: str = "", **kwargs
     ):
@@ -192,7 +212,10 @@ class TavilyRAGResearchAgent:
                 "citation_urls should always be a list of strings of URLs that contain the information above.",
                 "If any string json value other than a citation url is longer than 80 characters, write a shorter summary of the value",
                 "unless otherwise clearly specified in the prompt.",
-                "Return ONLY the valid JSON object, nothing else."
+                "CRITICAL: Return ONLY raw JSON - do not wrap it in markdown code blocks or any other formatting.",
+                "Do not use ```json or ``` markers. Output the JSON object directly.",
+                "Your response must start with { and end with }.",
+                'Example correct format: {"key1": "value1", "key2": null}',
                 "Never include any explanation or elaboration before or after the JSON object.",
                 format_prompt,
             ]
@@ -212,7 +235,7 @@ class TavilyRAGResearchAgent:
             result = self.llm.invoke(full_prompt)
             if not isinstance(result.content, str):
                 raise ValueError(f"Expected string content, got {type(result.content)}")
-            return json.loads(result.content)
+            return self.extract_json_from_response(result.content)
         except Exception as e:
             logger.error(f"Error extracting company info: {e}")
             return {}
@@ -309,7 +332,7 @@ class TavilyRAGResearchAgent:
                         raise ValueError(
                             f"Expected string content, got {type(result.content)}"
                         )
-                    json_content: dict = json.loads(result.content)
+                    json_content: dict = self.extract_json_from_response(result.content)
                     logger.debug(f"  Content returned from llm:\n\n {json_content}\n\n")
                 except Exception as e:
                     logger.error(
