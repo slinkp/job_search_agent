@@ -207,4 +207,22 @@ describe("Daily Dashboard Integration", () => {
       );
     }
   });
+
+  it("should have Generate Reply button properly wired", () => {
+    const dashboardView = document.getElementById("daily-dashboard-view");
+    const messageList = dashboardView.querySelector(".message-list");
+
+    if (messageList) {
+      const template = messageList.querySelector("template");
+      expect(template).toBeTruthy();
+
+      // Verify Generate Reply button exists and is properly wired
+      // Should call generateReply(company) instead of console.log
+      expect(template.innerHTML).toContain("Generate Reply");
+      expect(template.innerHTML).toContain('@click="generateReply(company)"');
+
+      // Should not have console.log placeholder
+      expect(template.innerHTML).not.toContain("console.log('Generate reply");
+    }
+  });
 });

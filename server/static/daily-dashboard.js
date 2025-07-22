@@ -138,6 +138,57 @@ document.addEventListener("alpine:init", () => {
       // Check if company is being researched using the shared service
       isResearching: (company) => taskPollingService.isResearching(company),
 
+      // Generate reply functionality (similar to app.js)
+      async generateReply(company) {
+        try {
+          // Check if company has a recruiter message
+          if (
+            !company.recruiter_message ||
+            !company.recruiter_message.message
+          ) {
+            showError("No recruiter message to reply to");
+            return;
+          }
+
+          taskPollingService.addGeneratingMessage(company);
+          const response = await fetch(
+            `/api/companies/${company.company_id}/reply_message`,
+            {
+              method: "POST",
+            }
+          );
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(
+              error.error || `Failed to generate reply: ${response.status}`
+            );
+          }
+
+          const data = await response.json();
+          company.message_task_id = data.task_id;
+          company.message_status = data.status;
+
+          // Start polling for updates
+          await this.pollMessageStatus(company);
+        } catch (err) {
+          console.error("Failed to generate reply:", err);
+          showError(
+            err.message || "Failed to generate reply. Please try again."
+          );
+        } finally {
+          taskPollingService.removeGeneratingMessage(company);
+        }
+      },
+
+      // Poll message status using the shared service
+      pollMessageStatus: (company) =>
+        taskPollingService.pollMessageStatus(company),
+
+      // Check if company is generating message using the shared service
+      isGeneratingMessage: (company) =>
+        taskPollingService.isGeneratingMessage(company),
+
       formatMessageDate,
 
       // Get company name or fallback

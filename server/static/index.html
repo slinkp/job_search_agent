@@ -313,8 +313,13 @@
                     :class="getResearchStatusClass(company)"
                   ></span>
                 </div>
-                <button @click="console.log('Generate reply for:', company.name)" class="outline">
-                  Generate Reply
+                <button 
+                  @click="generateReply(company)" 
+                  :disabled="isGeneratingMessage(company)"
+                  class="outline"
+                >
+                  <span x-text="isGeneratingMessage(company) ? 'Generating...' : 'Generate Reply'"></span>
+                  <span x-show="isGeneratingMessage(company)" class="loading-spinner"></span>
                 </button>
                 <button @click="console.log('Archive for:', company.name)" class="outline">
                   Archive

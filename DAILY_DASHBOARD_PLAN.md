@@ -77,7 +77,7 @@ These are not wired up.
 Make sure not to duplicate code that already does the same job for the companies dashboard. Refactor as needed so both pages can use the same code where applicable.
 
 - [x] Research
-- [ ] Generate Reply
+- [x] Generate Reply
 - [ ] Archive
 
 
