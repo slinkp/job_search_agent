@@ -3,7 +3,7 @@
 
 import { EmailScanningService } from "./email-scanning.js";
 import { TaskPollingService } from "./task-polling.js";
-import { formatMessageDate } from "./ui-utils.js";
+import { formatMessageDate, showError, showSuccess } from "./ui-utils.js";
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("dailyDashboard", () => {
@@ -178,6 +178,50 @@ document.addEventListener("alpine:init", () => {
           );
         } finally {
           taskPollingService.removeGeneratingMessage(company);
+        }
+      },
+
+      // Archive a message without replying - follows same pattern as other actions
+      async archive(company) {
+        if (!company) {
+          showError("No company selected");
+          return;
+        }
+
+        // Confirm with the user before proceeding
+        if (
+          !confirm(
+            "Are you sure you want to archive this message without replying?"
+          )
+        ) {
+          return;
+        }
+
+        try {
+          // Call the ignore and archive endpoint
+          const response = await fetch(
+            `/api/companies/${company.company_id}/ignore_and_archive`,
+            {
+              method: "POST",
+            }
+          );
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(
+              error.error || `Failed to archive message: ${response.status}`
+            );
+          }
+
+          // Refresh the message list to remove the archived message
+          await this.loadUnprocessedMessages();
+
+          showSuccess("Message archived successfully");
+        } catch (err) {
+          console.error("Failed to archive message:", err);
+          showError(
+            err.message || "Failed to archive message. Please try again."
+          );
         }
       },
 

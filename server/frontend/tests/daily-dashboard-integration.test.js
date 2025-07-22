@@ -225,4 +225,22 @@ describe("Daily Dashboard Integration", () => {
       expect(template.innerHTML).not.toContain("console.log('Generate reply");
     }
   });
+
+  it("should have Archive button properly wired", () => {
+    const dashboardView = document.getElementById("daily-dashboard-view");
+    const messageList = dashboardView.querySelector(".message-list");
+
+    if (messageList) {
+      const template = messageList.querySelector("template");
+      expect(template).toBeTruthy();
+
+      // Verify Archive button exists and is properly wired
+      // Should call archive(company) instead of console.log
+      expect(template.innerHTML).toContain("Archive");
+      expect(template.innerHTML).toContain('@click="archive(company)"');
+
+      // Should not have console.log placeholder
+      expect(template.innerHTML).not.toContain("console.log('Archive for:");
+    }
+  });
 });

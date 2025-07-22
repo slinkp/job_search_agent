@@ -321,7 +321,7 @@
                   <span x-text="isGeneratingMessage(company) ? 'Generating...' : 'Generate Reply'"></span>
                   <span x-show="isGeneratingMessage(company)" class="loading-spinner"></span>
                 </button>
-                <button @click="console.log('Archive for:', company.name)" class="outline">
+                <button @click="archive(company)" class="outline">
                   Archive
                 </button>
               </div>
