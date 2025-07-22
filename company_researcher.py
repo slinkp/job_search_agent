@@ -294,7 +294,15 @@ class TavilyRAGResearchAgent:
                     company_info=company_info,
                 )
                 logger.debug(f"  Full prompt:\n\n {full_prompt}\n\n")
-                result = self.llm.invoke(full_prompt)
+                logger.info(f"Invoking LLM with model type: {type(self.llm).__name__}")
+                try:
+                    result = self.llm.invoke(full_prompt)
+                    logger.info("LLM invocation completed successfully")
+                except Exception as e:
+                    logger.error(f"LLM invocation failed with error: {e}")
+                    logger.error(f"Error type: {type(e).__name__}")
+                    logger.error(f"Error details: {str(e)}")
+                    raise
                 # TODO: Handle malformed JSON
                 try:
                     if not isinstance(result.content, str):
@@ -402,12 +410,22 @@ def main(
             model=model, temperature=TEMPERATURE, timeout=TIMEOUT
         )
     elif model.startswith("claude"):
-        llm = ChatAnthropic(
-            # This is 100% correct but pylance expects model_name instead
-            model=model,  # type: ignore[call-arg]
-            temperature=TEMPERATURE,
-            timeout=TIMEOUT,
-        )
+        logger.info(f"Creating ChatAnthropic with model: {model}")
+        try:
+            llm = ChatAnthropic(
+                # This is 100% correct but pylance expects model_name instead
+                model=model,  # type: ignore[call-arg]
+                temperature=TEMPERATURE,
+                timeout=TIMEOUT,
+            )
+            logger.info(
+                f"Successfully created ChatAnthropic instance with model: {model}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to create ChatAnthropic instance with model '{model}': {e}"
+            )
+            raise
     else:
         raise ValueError(f"Unknown model: {model}")
 
