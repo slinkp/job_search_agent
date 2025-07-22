@@ -338,6 +338,7 @@ class RecruiterMessage(BaseModel):
         email_thread_link: URL to the email thread in Gmail
         thread_id: Gmail thread ID
         date: Timestamp of the message as UTC datetime
+        archived_at: When this specific message was archived (optional)
     """
 
     message_id: str = ""
@@ -348,6 +349,7 @@ class RecruiterMessage(BaseModel):
     email_thread_link: str = ""
     thread_id: str = ""
     date: Optional[datetime.datetime] = None
+    archived_at: Optional[datetime.datetime] = None
 
 
 class FitCategory(str, enum.Enum):
@@ -549,6 +551,7 @@ class CompanyRepository:
                         thread_id TEXT NOT NULL,
                         email_thread_link TEXT DEFAULT '',
                         date TEXT DEFAULT '',
+                        archived_at TEXT DEFAULT '',
                         FOREIGN KEY (company_id) REFERENCES companies (company_id)
                     )
                 """
@@ -611,14 +614,16 @@ class CompanyRepository:
     ) -> List[RecruiterMessage]:
         """Get all recruiter messages for a company from the database."""
         cursor = conn.execute(
-            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date FROM recruiter_messages WHERE company_id = ? ORDER BY date DESC",
+            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date, archived_at FROM recruiter_messages WHERE company_id = ? ORDER BY date DESC",
             (company_id,),
         )
         messages = []
         for row in cursor.fetchall():
             # Parse the date string to datetime if it exists
             date_str = row[7]
+            archived_at_str = row[8]
             date = None
+            archived_at = None
             if date_str:
                 try:
                     date = dateutil.parser.parse(date_str).replace(
@@ -626,6 +631,15 @@ class CompanyRepository:
                     )
                 except (ValueError, TypeError):
                     logger.warning(f"Failed to parse date string: {date_str}")
+            if archived_at_str:
+                try:
+                    archived_at = dateutil.parser.parse(archived_at_str).replace(
+                        tzinfo=datetime.timezone.utc
+                    )
+                except (ValueError, TypeError):
+                    logger.warning(
+                        f"Failed to parse archived_at string: {archived_at_str}"
+                    )
 
             recruiter_message = RecruiterMessage(
                 message_id=row[0],
@@ -636,6 +650,7 @@ class CompanyRepository:
                 thread_id=row[5],
                 email_thread_link=row[6],
                 date=date,
+                archived_at=archived_at,
             )
             messages.append(recruiter_message)
         return messages
@@ -673,14 +688,16 @@ class CompanyRepository:
         self, company_id: str, conn: sqlite3.Connection
     ) -> Optional[RecruiterMessage]:
         cursor = conn.execute(
-            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date FROM recruiter_messages WHERE company_id = ? ORDER BY date DESC",
+            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date, archived_at FROM recruiter_messages WHERE company_id = ? ORDER BY date DESC",
             (company_id,),
         )
         row = cursor.fetchone()
         if row:  # noqa: B950
             # Parse the date string to datetime if it exists
             date_str = row[7]
+            archived_at_str = row[8]
             date = None
+            archived_at = None
             if date_str:
                 try:
                     date = dateutil.parser.parse(date_str).replace(
@@ -688,6 +705,15 @@ class CompanyRepository:
                     )
                 except (ValueError, TypeError):
                     logger.warning(f"Failed to parse date string: {date_str}")
+            if archived_at_str:
+                try:
+                    archived_at = dateutil.parser.parse(archived_at_str).replace(
+                        tzinfo=datetime.timezone.utc
+                    )
+                except (ValueError, TypeError):
+                    logger.warning(
+                        f"Failed to parse archived_at string: {archived_at_str}"
+                    )
 
             recruiter_message = RecruiterMessage(
                 message_id=row[0],
@@ -698,6 +724,7 @@ class CompanyRepository:
                 thread_id=row[5],
                 email_thread_link=row[6],
                 date=date,
+                archived_at=archived_at,
             )
             return recruiter_message
         return None
@@ -717,14 +744,15 @@ class CompanyRepository:
         """
         # Convert datetime to ISO format string for SQLite storage
         date_str = message.date.isoformat() if message.date else ""
+        archived_at_str = message.archived_at.isoformat() if message.archived_at else ""
 
         try:
             # Try to insert first
             conn.execute(
                 """
                 INSERT INTO recruiter_messages (
-                    message_id, company_id, subject, sender, message, thread_id, email_thread_link, date
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    message_id, company_id, subject, sender, message, thread_id, email_thread_link, date, archived_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     message.message_id,
@@ -735,6 +763,7 @@ class CompanyRepository:
                     message.thread_id,
                     message.email_thread_link,
                     date_str,
+                    archived_at_str,
                 ),
             )
         except sqlite3.IntegrityError:
@@ -742,7 +771,7 @@ class CompanyRepository:
             conn.execute(
                 """
                 UPDATE recruiter_messages
-                SET company_id = ?, subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?
+                SET company_id = ?, subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?, archived_at = ?
                 WHERE message_id = ?
                 """,
                 (
@@ -753,6 +782,7 @@ class CompanyRepository:
                     message.thread_id,
                     message.email_thread_link,
                     date_str,
+                    archived_at_str,
                     message.message_id,
                 ),
             )
