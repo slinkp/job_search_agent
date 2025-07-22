@@ -648,6 +648,336 @@ document.addEventListener("alpine:init", () => {
           this.showError(`Failed to start import: ${error.message}`);
         }
       },
+
+      // Restored methods from git history (removed in commit 54d57a7)
+
+      get filteredCompanies() {
+        const filtered = this.companies.filter((company) => {
+          switch (this.filterMode) {
+            case "reply-sent":
+              return company.sent_at;
+            case "reply-not-sent":
+              return !company.sent_at;
+            case "researched":
+              return company.research_completed_at;
+            case "not-researched":
+              return !company.research_completed_at;
+            default:
+              return true;
+          }
+        });
+        return filtered;
+      },
+
+      get sortedAndFilteredCompanies() {
+        return [...this.filteredCompanies].sort((a, b) => {
+          const aVal =
+            this.sortField === "updated_at"
+              ? new Date(a.updated_at).getTime()
+              : a[this.sortField];
+          const bVal =
+            this.sortField === "updated_at"
+              ? new Date(b.updated_at).getTime()
+              : b[this.sortField];
+
+          const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+          return this.sortAsc ? comparison : -comparison;
+        });
+      },
+
+      toggleSort(field) {
+        if (this.sortField === field) {
+          this.sortAsc = !this.sortAsc;
+        } else {
+          this.sortField = field;
+          this.sortAsc = true;
+        }
+      },
+
+      formatRecruiterMessageDate(dateString) {
+        if (!dateString) return "";
+
+        const date = new Date(dateString);
+        const now = new Date();
+
+        // Calculate days ago
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        // Format the date as YYYY/MM/DD
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+
+        // Format the time as h:mm am/pm
+        let hours = date.getHours();
+        const ampm = hours >= 12 ? "pm" : "am";
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+
+        return `${year}/${month}/${day} ${hours}:${minutes}${ampm} (${diffDays} days ago)`;
+      },
+
+      // New method to fetch and update a single company
+      async fetchAndUpdateCompany(companyId) {
+        try {
+          const response = await fetch(
+            `/api/companies/${encodeURIComponent(companyId)}`
+          );
+          if (!response.ok) {
+            console.error(`Failed to fetch company data for ${companyId}`);
+            return;
+          }
+
+          const updatedCompany = await response.json();
+          console.log(`Fetched fresh data for ${companyId}:`, updatedCompany);
+
+          // Find and replace the company in our array
+          const index = this.companies.findIndex(
+            (c) => c.company_id === companyId
+          );
+          if (index !== -1) {
+            // Make sure to preserve details object structure
+            this.companies[index] = {
+              ...updatedCompany,
+              details: updatedCompany.details || {},
+            };
+
+            // If this is also the current editing company, update that reference
+            if (
+              this.editingCompany &&
+              this.editingCompany.company_id === companyId
+            ) {
+              Object.assign(this.editingCompany, updatedCompany);
+              this.editingReply = updatedCompany.reply_message;
+            }
+          }
+        } catch (err) {
+          console.error("Error fetching individual company:", err);
+        }
+      },
+
+      // New method to refresh all companies
+      async refreshAllCompanies() {
+        console.log("Refreshing all companies");
+        try {
+          const response = await fetch("/api/companies");
+          const data = await response.json();
+          console.log("Got companies json response");
+          this.companies = data.map((company) => ({
+            ...company,
+            details: company.details || {},
+          }));
+          return data;
+        } catch (err) {
+          console.error("Failed to refresh companies:", err);
+          return [];
+        }
+      },
+
+      formatResearchErrors(company) {
+        if (!company || !company.research_errors) return "";
+
+        // If it's already a formatted string, just return it
+        if (typeof company.research_errors === "string") {
+          return company.research_errors;
+        }
+
+        // If it's an array of objects, try to format it
+        if (Array.isArray(company.research_errors)) {
+          return company.research_errors
+            .map((err) => {
+              if (typeof err === "string") return err;
+              if (err && err.step && err.error)
+                return `${err.step}: ${err.error}`;
+              return JSON.stringify(err);
+            })
+            .join("; ");
+        }
+
+        // Fallback for unknown formats
+        return JSON.stringify(company.research_errors);
+      },
+
+      async ignoreAndArchive(company) {
+        if (!company) {
+          this.showError("No company selected");
+          return;
+        }
+
+        // Confirm with the user before proceeding
+        if (
+          !confirm(
+            "Are you sure you want to archive this message without replying?"
+          )
+        ) {
+          return;
+        }
+
+        try {
+          // Call the ignore and archive endpoint
+          const response = await fetch(
+            `/api/companies/${company.company_id}/ignore_and_archive`,
+            {
+              method: "POST",
+            }
+          );
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(
+              error.error || `Failed to ignore and archive: ${response.status}`
+            );
+          }
+
+          const data = await response.json();
+
+          // Fetch fresh company data
+          await this.fetchAndUpdateCompany(company.company_id);
+
+          this.showSuccess("Message archived without reply");
+          this.cancelEdit();
+        } catch (err) {
+          console.error("Failed to ignore and archive:", err);
+          this.showError(
+            err.message || "Failed to ignore and archive. Please try again."
+          );
+        }
+      },
+
+      togglePromising(company, value) {
+        if (!company) return;
+
+        // If clicking the same value that's already set, clear it
+        if (company.promising === value) {
+          value = null;
+        }
+
+        company.promising = value;
+
+        // Save to backend
+        fetch(
+          `/api/companies/${encodeURIComponent(company.company_id)}/details`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ promising: value }),
+          }
+        )
+          .then((response) => {
+            if (!response.ok) {
+              // Revert the local change if the server update failed
+              company.promising = null;
+            }
+          })
+          .catch((err) => {
+            console.error("Failed to update promising status:", err);
+            // Revert the local change if the server update failed
+            company.promising = null;
+          });
+      },
+
+      showResearchCompanyModal() {
+        console.log("showResearchCompanyModal called");
+        document.getElementById("research-company-modal").showModal();
+        this.researchCompanyForm = {
+          url: "",
+          name: "",
+        };
+        console.log("Modal form reset");
+      },
+
+      closeResearchCompanyModal() {
+        document.getElementById("research-company-modal").close();
+      },
+
+      showImportCompaniesModal() {
+        // Show the import companies modal dialog
+        document.getElementById("import-companies-modal").showModal();
+      },
+
+      closeImportCompaniesModal() {
+        // Close the import companies modal dialog
+        document.getElementById("import-companies-modal").close();
+      },
+
+      confirmImportCompanies() {
+        // Close the modal and start the import
+        this.closeImportCompaniesModal();
+        this.importCompaniesFromSpreadsheet();
+      },
+
+      async submitResearchCompany() {
+        try {
+          console.log(
+            "submitResearchCompany called with form data:",
+            this.researchCompanyForm
+          );
+          // Validate form
+          if (!this.researchCompanyForm.url && !this.researchCompanyForm.name) {
+            this.showError("Please provide either a company URL or name");
+            return;
+          }
+
+          this.researchingCompany = true;
+          console.log("Set researchingCompany to true");
+
+          const data = await researchService.submitResearch(
+            this.researchCompanyForm
+          );
+          console.log("API success response:", data);
+          this.researchCompanyTaskId = data.task_id;
+
+          // Close modal and show success message
+          this.closeResearchCompanyModal();
+          this.showSuccess(
+            "Company research started. This may take a few minutes."
+          );
+
+          // Poll for task completion
+          console.log("Starting to poll task:", this.researchCompanyTaskId);
+          this.pollResearchCompanyTask();
+        } catch (err) {
+          console.error("Failed to research company:", err);
+          this.showError(
+            err.message || "Failed to start research. Please try again."
+          );
+        } finally {
+          this.researchingCompany = researchService.researchingCompany;
+          console.log("Set researchingCompany back to false");
+        }
+      },
+
+      async pollResearchCompanyTask() {
+        if (!this.researchCompanyTaskId) return;
+
+        try {
+          const data = await researchService.pollResearchTask(
+            this.researchCompanyTaskId
+          );
+
+          if (data.status === "completed") {
+            this.showSuccess("Company research completed!");
+            this.researchCompanyTaskId = null;
+            await this.refreshAllCompanies();
+          } else if (data.status === "failed") {
+            this.showError(`Research failed: ${data.error || "Unknown error"}`);
+            this.researchCompanyTaskId = null;
+          } else {
+            // Task still running, check again in 5 seconds
+            setTimeout(() => this.pollResearchCompanyTask(), 5000);
+          }
+        } catch (err) {
+          console.error("Error polling research task:", err);
+          this.showError(
+            "Failed to check research status. Please refresh the page."
+          );
+          this.researchCompanyTaskId = null;
+        }
+      },
     };
   });
 });
