@@ -18,6 +18,10 @@ test_dir
 
 # Troubleshooting images from screen scraping
 *not_visible.png
+search_error.png
+ad_or_invalid_salary_row.png
+no_salary_pagination_found.png
+
 
 # Python
 __pycache__/
