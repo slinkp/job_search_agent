@@ -195,3 +195,146 @@ def test_scan_recruiter_emails_with_null_max_messages(mock_task_manager):
         tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
         {"max_messages": None, "do_research": False},
     )
+
+
+# Add fixture for database tests
+import os
+
+from models import CompanyRepository, RecruiterMessage
+
+TEST_DB_PATH = "data/_test_companies_endpoint.db"
+
+
+@pytest.fixture(scope="function")
+def clean_test_db():
+    """Ensure we have a clean test database for each test."""
+    # Remove the test database if it exists
+    if os.path.exists(TEST_DB_PATH):
+        os.remove(TEST_DB_PATH)
+
+    # Make sure the directory exists
+    os.makedirs(os.path.dirname(TEST_DB_PATH), exist_ok=True)
+
+    # Create a new repository with the test database
+    repo = CompanyRepository(db_path=TEST_DB_PATH, clear_data=True)
+
+    yield repo
+
+    # Clean up after the test
+    if os.path.exists(TEST_DB_PATH):
+        os.remove(TEST_DB_PATH)
+
+
+def test_ignore_and_archive_specific_message(clean_test_db):
+    """Test archiving a specific message by message_id"""
+    repo = clean_test_db
+
+    # Create a company with multiple messages
+    company = Company(
+        company_id="test-msg-archive",
+        name="Test Message Archive",
+        details=CompaniesSheetRow(name="Test Message Archive"),
+    )
+
+    # Create two messages for this company
+    message1 = RecruiterMessage(
+        message_id="msg1",
+        company_id="test-msg-archive",
+        subject="First message",
+        message="First recruiter message",
+        thread_id="thread1",
+    )
+    message2 = RecruiterMessage(
+        message_id="msg2",
+        company_id="test-msg-archive",
+        subject="Second message",
+        message="Second recruiter message",
+        thread_id="thread2",
+    )
+
+    # Save company and messages
+    repo.create(company)
+    repo.create_recruiter_message(message1)
+    repo.create_recruiter_message(message2)
+
+    # Mock the repository in the app
+    with patch("models.company_repository", return_value=repo):
+        # Archive specific message
+        request = DummyRequest(json_body={"message_id": "msg1"})
+        request.matchdict = {"company_id": "test-msg-archive"}
+
+        response = server.app.ignore_and_archive(request)
+
+        # Check response
+        assert response["message"] == "Message archived successfully"
+        assert response["message_id"] == "msg1"
+        assert "archived_at" in response
+
+        # Verify the specific message was archived
+        messages = repo.get_recruiter_messages("test-msg-archive")
+        archived_msg = next(msg for msg in messages if msg.message_id == "msg1")
+        unarchived_msg = next(msg for msg in messages if msg.message_id == "msg2")
+
+        assert archived_msg.archived_at is not None
+        assert unarchived_msg.archived_at is None
+
+        # Verify company itself is not archived
+        updated_company = repo.get("test-msg-archive")
+        assert updated_company.status.archived_at is None
+
+
+def test_ignore_and_archive_without_message_id_still_works(
+    clean_test_db, mock_task_manager
+):
+    """Test that company-level archiving still works when no message_id is provided"""
+    repo = clean_test_db
+
+    # Create a company
+    company = Company(
+        company_id="test-company-archive",
+        name="Test Company Archive",
+        details=CompaniesSheetRow(name="Test Company Archive"),
+    )
+    repo.create(company)
+
+    # Mock the repository and task manager
+    mock_task_manager.create_task.return_value = "task-123"
+
+    with patch("models.company_repository", return_value=repo):
+        # Archive company (no message_id in body)
+        request = DummyRequest(json_body={})  # Empty body, no message_id
+        request.matchdict = {"company_id": "test-company-archive"}
+
+        response = server.app.ignore_and_archive(request)
+
+        # Check response has task_id (company-level archiving)
+        assert "task_id" in response
+        assert "archived_at" in response
+        assert response["task_id"] == "task-123"
+
+        # Verify company was archived
+        updated_company = repo.get("test-company-archive")
+        assert updated_company.status.archived_at is not None
+
+
+def test_ignore_and_archive_message_not_found(clean_test_db):
+    """Test error handling when message_id doesn't exist"""
+    repo = clean_test_db
+
+    # Create a company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+    )
+    repo.create(company)
+
+    with patch("models.company_repository", return_value=repo):
+        # Try to archive non-existent message
+        request = DummyRequest(json_body={"message_id": "non-existent"})
+        request.matchdict = {"company_id": "test-company"}
+
+        response = server.app.ignore_and_archive(request)
+
+        # Check error response
+        assert response["error"] == "Message not found"

@@ -79,6 +79,12 @@ Make sure not to duplicate code that already does the same job for the companies
 - [x] Research
 - [x] Generate Reply
 - [ ] Archive
+  - [x] Add to dashboard page
+  - [x] Fix archive backend to take an optional message ID.
+        If passed, archive that specific message, not just the default company message
+  - [ ] Change frontend to send message ID
+  - [ ] Do the same on app.js
+  - [ ] Clean up backend: remove support for archive(company)
 
 
 ### 2.5 Manual workarounds and enhancements

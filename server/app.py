@@ -279,23 +279,64 @@ def ignore_and_archive(request):
         request.response.status = 404
         return {"error": "Company not found"}
 
-    # Create a new task for just archiving (no reply sent)
-    task_id = tasks.task_manager().create_task(
-        tasks.TaskType.IGNORE_AND_ARCHIVE,
-        {"company_id": company.company_id},
-    )
+    # Check if a specific message_id was provided in the request body
+    message_id = None
+    try:
+        body = request.json_body
+        message_id = body.get("message_id") if body else None
+    except (ValueError, AttributeError):
+        # No JSON body or invalid JSON - continue with company-level archiving
+        pass
 
-    # Set archived_at status field
-    company.status.archived_at = datetime.datetime.now(datetime.timezone.utc)
-    models.company_repository().update(company)
+    current_time = datetime.datetime.now(datetime.timezone.utc)
 
-    logger.info(f"Ignore and archive requested for {company.name}, task_id: {task_id}")
+    if message_id:
+        # Archive specific message
+        repo = models.company_repository()
+        message = None
 
-    return {
-        "task_id": task_id,
-        "status": tasks.TaskStatus.PENDING.value,
-        "archived_at": company.status.archived_at.isoformat(),
-    }
+        # Find the specific message
+        for msg in repo.get_recruiter_messages(company_id):
+            if msg.message_id == message_id:
+                message = msg
+                break
+
+        if not message:
+            request.response.status = 404
+            return {"error": "Message not found"}
+
+        # Set archived_at on the specific message
+        message.archived_at = current_time
+        repo.create_recruiter_message(message)  # This will update via upsert
+
+        logger.info(f"Specific message {message_id} archived for {company.name}")
+
+        return {
+            "message": "Message archived successfully",
+            "message_id": message_id,
+            "archived_at": current_time.isoformat(),
+        }
+    else:
+        # Original company-level archiving logic
+        # Create a new task for just archiving (no reply sent)
+        task_id = tasks.task_manager().create_task(
+            tasks.TaskType.IGNORE_AND_ARCHIVE,
+            {"company_id": company.company_id},
+        )
+
+        # Set archived_at status field
+        company.status.archived_at = current_time
+        models.company_repository().update(company)
+
+        logger.info(
+            f"Ignore and archive requested for {company.name}, task_id: {task_id}"
+        )
+
+        return {
+            "task_id": task_id,
+            "status": tasks.TaskStatus.PENDING.value,
+            "archived_at": company.status.archived_at.isoformat(),
+        }
 
 
 @view_config(route_name="company_details", renderer="json", request_method="PATCH")
