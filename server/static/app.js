@@ -1,4 +1,11 @@
 import { CompanyResearchService } from "./company-research.js";
+import { EmailScanningService } from "./email-scanning.js";
+import {
+  formatRecruiterMessageDate,
+  isUrl,
+  showError,
+  showSuccess,
+} from "./ui-utils.js";
 
 // Add CSS for message date styling and status icons
 const style = document.createElement("style");
@@ -83,9 +90,7 @@ document.addEventListener("alpine:init", () => {
       },
       researchCompanyTaskId: null,
 
-      isUrl(value) {
-        return typeof value === "string" && value.startsWith("http");
-      },
+      isUrl,
 
       async init() {
         console.log("Initializing companyList component");
@@ -115,13 +120,8 @@ document.addEventListener("alpine:init", () => {
         return this.viewMode === "daily_dashboard";
       },
 
-      showError(message) {
-        alert(message); // We can make this fancier later with a toast or custom modal
-      },
-
-      showSuccess(message) {
-        alert(message); // Simple success notification, can be improved later
-      },
+      showError,
+      showSuccess,
 
       async generateReply(company, updateModal = false) {
         try {
@@ -703,30 +703,7 @@ document.addEventListener("alpine:init", () => {
         }
       },
 
-      formatRecruiterMessageDate(dateString) {
-        if (!dateString) return "";
-
-        const date = new Date(dateString);
-        const now = new Date();
-
-        // Calculate days ago
-        const diffTime = Math.abs(now - date);
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-        // Format the date as YYYY/MM/DD
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-
-        // Format the time as h:mm am/pm
-        let hours = date.getHours();
-        const ampm = hours >= 12 ? "pm" : "am";
-        hours = hours % 12;
-        hours = hours ? hours : 12; // the hour '0' should be '12'
-        const minutes = String(date.getMinutes()).padStart(2, "0");
-
-        return `${year}/${month}/${day} ${hours}:${minutes}${ampm} (${diffDays} days ago)`;
-      },
+      formatRecruiterMessageDate,
 
       // New method to fetch and update a single company
       async fetchAndUpdateCompany(companyId) {

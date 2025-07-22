@@ -2,6 +2,7 @@
 // Handles the display and interaction with unprocessed recruiter messages
 
 import { EmailScanningService } from "./email-scanning.js";
+import { formatMessageDate } from "./ui-utils.js";
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("dailyDashboard", () => {
@@ -89,20 +90,7 @@ document.addEventListener("alpine:init", () => {
         }
       },
 
-      // Format message date for display
-      formatMessageDate(dateString) {
-        if (!dateString) return "Unknown date";
-        try {
-          const date = new Date(dateString);
-          return (
-            date.toLocaleDateString() +
-            " " +
-            date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          );
-        } catch (error) {
-          return "Invalid date";
-        }
-      },
+      formatMessageDate,
 
       // Get company name or fallback
       getCompanyName(company) {
