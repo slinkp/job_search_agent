@@ -5,7 +5,7 @@ from pyramid.testing import DummyRequest  # type: ignore[import-untyped]
 
 import server.app
 import tasks
-from models import CompaniesSheetRow, Company, CompanyStatus
+from models import CompaniesSheetRow, Company, CompanyStatus, RecruiterMessage
 
 
 @pytest.fixture
@@ -338,3 +338,135 @@ def test_ignore_and_archive_message_not_found(clean_test_db):
 
         # Check error response
         assert response["error"] == "Message not found"
+
+
+def test_archive_message_by_id_success(clean_test_db):
+    """Test archiving a specific message using the new /messages/{message_id}/archive endpoint"""
+    repo = clean_test_db
+
+    # Create a company with a message
+    company = Company(
+        company_id="test-msg-archive",
+        name="Test Message Archive",
+        details=CompaniesSheetRow(name="Test Message Archive"),
+    )
+
+    # Create a message for this company
+    message = RecruiterMessage(
+        message_id="msg1",
+        company_id="test-msg-archive",
+        subject="Test message",
+        message="Test recruiter message",
+        thread_id="thread1",
+    )
+
+    # Save company and message
+    repo.create(company)
+    repo.create_recruiter_message(message)
+
+    # Mock the repository in the app
+    with patch("models.company_repository", return_value=repo):
+        # Archive specific message using new endpoint
+        request = DummyRequest()
+        request.matchdict = {"message_id": "msg1"}
+
+        response = server.app.archive_message_by_id(request)
+
+        # Check response
+        assert response["message"] == "Message archived successfully"
+        assert response["message_id"] == "msg1"
+        assert "archived_at" in response
+
+        # Verify the message was archived
+        messages = repo.get_recruiter_messages("test-msg-archive")
+        archived_msg = next(msg for msg in messages if msg.message_id == "msg1")
+        assert archived_msg.archived_at is not None
+
+        # Verify company itself is not archived
+        updated_company = repo.get("test-msg-archive")
+        assert updated_company.status.archived_at is None
+
+
+def test_archive_message_by_id_not_found(clean_test_db):
+    """Test error handling when message_id doesn't exist in new endpoint"""
+    repo = clean_test_db
+
+    # Create a company without any messages
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+    )
+    repo.create(company)
+
+    with patch("models.company_repository", return_value=repo):
+        # Try to archive non-existent message
+        request = DummyRequest()
+        request.matchdict = {"message_id": "non-existent"}
+
+        response = server.app.archive_message_by_id(request)
+
+        # Check error response
+        assert response["error"] == "Message not found"
+        assert request.response.status == "404 Not Found"
+
+
+def test_archive_message_by_id_multiple_companies(clean_test_db):
+    """Test that archiving a message only affects the specific message, not other companies"""
+    repo = clean_test_db
+
+    # Create two companies with messages
+    company1 = Company(
+        company_id="test-company-1",
+        name="Test Company 1",
+        details=CompaniesSheetRow(name="Test Company 1"),
+    )
+    company2 = Company(
+        company_id="test-company-2",
+        name="Test Company 2",
+        details=CompaniesSheetRow(name="Test Company 2"),
+    )
+
+    # Create messages for both companies
+    message1 = RecruiterMessage(
+        message_id="msg1",
+        company_id="test-company-1",
+        subject="Message 1",
+        message="First recruiter message",
+        thread_id="thread1",
+    )
+    message2 = RecruiterMessage(
+        message_id="msg2",
+        company_id="test-company-2",
+        subject="Message 2",
+        message="Second recruiter message",
+        thread_id="thread2",
+    )
+
+    # Save companies and messages
+    repo.create(company1)
+    repo.create(company2)
+    repo.create_recruiter_message(message1)
+    repo.create_recruiter_message(message2)
+
+    # Mock the repository in the app
+    with patch("models.company_repository", return_value=repo):
+        # Archive message from company 1
+        request = DummyRequest()
+        request.matchdict = {"message_id": "msg1"}
+
+        response = server.app.archive_message_by_id(request)
+
+        # Check response
+        assert response["message"] == "Message archived successfully"
+        assert response["message_id"] == "msg1"
+
+        # Verify only message1 was archived
+        messages1 = repo.get_recruiter_messages("test-company-1")
+        messages2 = repo.get_recruiter_messages("test-company-2")
+
+        archived_msg1 = next(msg for msg in messages1 if msg.message_id == "msg1")
+        unarchived_msg2 = next(msg for msg in messages2 if msg.message_id == "msg2")
+
+        assert archived_msg1.archived_at is not None
+        assert unarchived_msg2.archived_at is None

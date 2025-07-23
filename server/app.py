@@ -339,6 +339,38 @@ def ignore_and_archive(request):
         }
 
 
+@view_config(route_name="archive_message_by_id", renderer="json", request_method="POST")
+def archive_message_by_id(request):
+    """Archive a specific message by message_id."""
+    message_id = request.matchdict["message_id"]
+
+    if not message_id:
+        request.response.status = 400
+        return {"error": "Message ID is required"}
+
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    repo = models.company_repository()
+
+    # Get the message directly by ID
+    message = repo.get_recruiter_message_by_id(message_id)
+
+    if not message:
+        request.response.status = 404
+        return {"error": "Message not found"}
+
+    # Set archived_at on the specific message
+    message.archived_at = current_time
+    repo.create_recruiter_message(message)  # This will update via upsert
+
+    logger.info(f"Message {message_id} archived via direct endpoint")
+
+    return {
+        "message": "Message archived successfully",
+        "message_id": message_id,
+        "archived_at": current_time.isoformat(),
+    }
+
+
 @view_config(route_name="company_details", renderer="json", request_method="PATCH")
 def patch_company_details(request) -> dict:
     company_id = request.matchdict["company_id"]
@@ -455,6 +487,7 @@ def main(global_config, **settings):
         config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
         config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_route("import_companies", "/api/import_companies")
+        config.add_route("archive_message_by_id", "/api/messages/{message_id}/archive")
         config.add_static_view(name="static", path="static")
         config.scan()
 
