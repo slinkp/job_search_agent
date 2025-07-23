@@ -1398,3 +1398,104 @@ class TestCompanyMessages:
         assert final_message.company_id == "another-company"  # Should be updated
         assert final_message.subject == "Yet Another Subject"  # Should be updated
         assert final_message.message == "Yet another message content"  # Should be updated
+
+    def test_get_recruiter_message_by_id_success(self, clean_test_db):
+        """Test getting a recruiter message by its message_id."""
+        repo = clean_test_db
+
+        # Create a company with a message
+        company = Company(
+            company_id="test-company",
+            name="Test Company",
+            details=CompaniesSheetRow(name="Test Company"),
+        )
+
+        # Create a message for this company
+        message = RecruiterMessage(
+            message_id="test-message-123",
+            company_id="test-company",
+            subject="Test message",
+            message="Test recruiter message",
+            thread_id="thread1",
+        )
+
+        # Save company and message
+        repo.create(company)
+        repo.create_recruiter_message(message)
+
+        # Get the message by ID
+        retrieved_message = repo.get_recruiter_message_by_id("test-message-123")
+
+        # Verify the message was retrieved correctly
+        assert retrieved_message is not None
+        assert retrieved_message.message_id == "test-message-123"
+        assert retrieved_message.company_id == "test-company"
+        assert retrieved_message.subject == "Test message"
+        assert retrieved_message.message == "Test recruiter message"
+
+    def test_get_recruiter_message_by_id_not_found(self, clean_test_db):
+        """Test getting a recruiter message by non-existent message_id."""
+        repo = clean_test_db
+
+        # Try to get a non-existent message
+        retrieved_message = repo.get_recruiter_message_by_id("non-existent-message")
+
+        # Verify no message was found
+        assert retrieved_message is None
+
+    def test_get_recruiter_message_by_id_multiple_companies(self, clean_test_db):
+        """Test getting a message by ID when multiple companies have messages."""
+        repo = clean_test_db
+
+        # Create two companies with messages
+        company1 = Company(
+            company_id="test-company-1",
+            name="Test Company 1",
+            details=CompaniesSheetRow(name="Test Company 1"),
+        )
+        company2 = Company(
+            company_id="test-company-2",
+            name="Test Company 2",
+            details=CompaniesSheetRow(name="Test Company 2"),
+        )
+
+        # Create messages for both companies
+        message1 = RecruiterMessage(
+            message_id="message-1",
+            company_id="test-company-1",
+            subject="Message 1",
+            message="First recruiter message",
+            thread_id="thread1",
+        )
+        message2 = RecruiterMessage(
+            message_id="message-2",
+            company_id="test-company-2",
+            subject="Message 2",
+            message="Second recruiter message",
+            thread_id="thread2",
+        )
+
+        # Save companies and messages
+        repo.create(company1)
+        repo.create(company2)
+        repo.create_recruiter_message(message1)
+        repo.create_recruiter_message(message2)
+
+        # Get message from company 1
+        retrieved_message1 = repo.get_recruiter_message_by_id("message-1")
+        assert retrieved_message1 is not None
+        assert retrieved_message1.message_id == "message-1"
+        assert retrieved_message1.company_id == "test-company-1"
+
+        # Get message from company 2
+        retrieved_message2 = repo.get_recruiter_message_by_id("message-2")
+        assert retrieved_message2 is not None
+        assert retrieved_message2.message_id == "message-2"
+        assert retrieved_message2.company_id == "test-company-2"
+
+        # Verify we can't get the wrong message
+        wrong_message = repo.get_recruiter_message_by_id("message-1")
+        assert wrong_message is not None
+        assert (
+            wrong_message.company_id == "test-company-1"
+        )  # Should be from company 1, not company 2

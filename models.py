@@ -609,6 +609,13 @@ class CompanyRepository:
         with self._get_connection() as conn:
             return self._get_recruiter_messages(company_id, conn)
 
+    def get_recruiter_message_by_id(self, message_id: str) -> Optional[RecruiterMessage]:
+        """
+        Get a recruiter message by its message_id.
+        """
+        with self._get_connection() as conn:
+            return self._get_recruiter_message_by_id(message_id, conn)
+
     def _get_recruiter_messages(
         self, company_id: str, conn: sqlite3.Connection
     ) -> List[RecruiterMessage]:
@@ -654,6 +661,52 @@ class CompanyRepository:
             )
             messages.append(recruiter_message)
         return messages
+
+    def _get_recruiter_message_by_id(
+        self, message_id: str, conn: sqlite3.Connection
+    ) -> Optional[RecruiterMessage]:
+        """Get a recruiter message by its message_id from the database."""
+        cursor = conn.execute(
+            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date, archived_at FROM recruiter_messages WHERE message_id = ?",
+            (message_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            # Parse the date string to datetime if it exists
+            date_str = row[7]
+            archived_at_str = row[8]
+            date = None
+            archived_at = None
+            if date_str:
+                try:
+                    date = dateutil.parser.parse(date_str).replace(
+                        tzinfo=datetime.timezone.utc
+                    )
+                except (ValueError, TypeError):
+                    logger.warning(f"Failed to parse date string: {date_str}")
+            if archived_at_str:
+                try:
+                    archived_at = dateutil.parser.parse(archived_at_str).replace(
+                        tzinfo=datetime.timezone.utc
+                    )
+                except (ValueError, TypeError):
+                    logger.warning(
+                        f"Failed to parse archived_at string: {archived_at_str}"
+                    )
+
+            recruiter_message = RecruiterMessage(
+                message_id=row[0],
+                company_id=row[1],
+                subject=row[2],
+                sender=row[3],
+                message=row[4],
+                thread_id=row[5],
+                email_thread_link=row[6],
+                date=date,
+                archived_at=archived_at,
+            )
+            return recruiter_message
+        return None
 
     def get_by_normalized_name(self, name: str) -> Optional[Company]:
         """
