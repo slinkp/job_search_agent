@@ -126,26 +126,6 @@ def create_stub_message(company_name: str) -> str:
     return f"generated reply {company_name} {datetime.datetime.now().isoformat()}"
 
 
-@view_config(route_name="generate_message", renderer="json", request_method="POST")
-def generate_message(request):
-    company_id = request.matchdict["company_id"]
-    company = models.company_repository().get(company_id)
-    if company is None:
-        request.response.status = 404
-        return {"error": "Company not found"}
-    if not company.recruiter_message:
-        request.response.status = 400
-        return {"error": "No recruiter message to reply to"}
-
-    task_id = tasks.task_manager().create_task(
-        tasks.TaskType.GENERATE_REPLY,
-        {"company_id": company.company_id},
-    )
-    logger.info(f"Generate reply requested for {company.name}, task_id: {task_id}")
-
-    return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
-
-
 @view_config(route_name="generate_message_by_id", renderer="json", request_method="POST")
 def generate_message_by_id(request):
     """Generate a reply for a specific message by message_id."""
@@ -222,31 +202,6 @@ def update_message_by_id(request):
         f"Updated reply message for message {message_id} (company: {company.name}): {message}"
     )
     return models.serialize_company(company)
-
-
-@view_config(route_name="generate_message", renderer="json", request_method="PUT")
-def update_message(request):
-    company_id = request.matchdict["company_id"]
-    try:
-        body = request.json_body
-        message = body.get("message")
-        if not message:
-            request.response.status = 400
-            return {"error": "Message is required"}
-
-        company = models.company_repository().get(company_id)
-        if not company:
-            request.response.status = 404
-            return {"error": "Company not found"}
-
-        company.reply_message = message
-        models.company_repository().update(company)
-
-        logger.info(f"Updated message for {company.name}: {message}")
-        return models.serialize_company(company)
-    except json.JSONDecodeError:
-        request.response.status = 400
-        return {"error": "Invalid JSON"}
 
 
 @view_config(route_name="research", renderer="json", request_method="POST")
@@ -487,7 +442,7 @@ def main(global_config, **settings):
         config.add_route("home", "/")
         config.add_route("companies", "/api/companies")
         config.add_route("research", "/api/companies/{company_id}/research")
-        config.add_route("generate_message", "/api/companies/{company_id}/reply_message")
+
         config.add_route("generate_message_by_id", "/api/messages/{message_id}/reply")
         config.add_route("update_message_by_id", "/api/messages/{message_id}/reply")
         config.add_route(

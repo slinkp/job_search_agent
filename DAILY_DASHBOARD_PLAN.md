@@ -104,7 +104,7 @@ Make sure not to duplicate code that already does the same job for the companies
   - [x] Add new endpoint `/api/messages/{message_id}/reply` for updating replies by message_id (PUT)
   - [x] Add comprehensive tests for the update endpoint
   - [x] Update frontend to use these instead of "/api/companies/{company_id}/reply_message"
-  - [ ] Remove "/api/companies/{company_id}/reply_message"
+  - [x] Remove "/api/companies/{company_id}/reply_message"
 
 - [ ] GET    /api/messages   # List all messages
   - [ ] Update dashboard to use this instead of /api/companies
