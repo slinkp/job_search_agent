@@ -96,10 +96,25 @@ Make sure not to duplicate code that already does the same job for the companies
 ### 2.4 Message-centric API refactor
 
 - [ ] Examine all backend endpoints and think hard about which actually make sense for company and which should actually work directly with messages
-- [ ] Create more subtasks here when we've done that
-- [ ] Update this checklist and do them!
-- [ ] Gradually migrate the frontend to use new message-centric backend APIs
-- [ ] Remove any unnecessary company-centric backend APIs
+
+- [ ] GET    /api/messages   # List all messages
+  - [ ] Update dashboard to use this instead of /api/companies
+
+
+- [ ] POST   /api/messages/{message_id}/reply to generate, PUT /api/messages/{message_id}/reply to manually update
+  - [ ] Update frontend to use these instead of "/api/companies/{company_id}/reply_message"
+  - [ ] Remove "/api/companies/{company_id}/reply_message"
+
+
+- [ ] QUESTION: Pause here and think about: Do we really need
+      send + archive to be atomic? It's probably not in the models anyway.
+      Could we wait for the send to succeed and then do an archive?
+      Maybe not because it's all done async
+
+- [ ] POST /api/messages/{message_id}/send_and_archive  # Send reply and archive message
+  - [ ] Update frontend to use these instead of "/api/companies/{company_id}/send_and_archive"
+  - [ ] Remove the old method
+
 
 ### 2.5 Manual workarounds and enhancements
 - [x] Allow expanding the entire message body in the dashboard view
@@ -173,9 +188,29 @@ archived)
 - [ ] Add advanced filtering and search within daily dashboard
 - [ ] Add batch editing of replies before sending?
 
+### 10. API refactorings deferred:
+
+- [ ] GET  /api/messages?filter=unprocessed   # List all unprocessed messages
+  - [ ] Can probably defer until we are doing filters
+
+- [ ] GET  /api/messages/{message_id}  # Get specific message details
+  - [ ] Defer this until we have a definite use case where we don't have the message already eg via company.message
+  - [ ] Update frontend to use this instead of company.message
+
+### 11. Data Model Refactoring (Future)
+
+- [ ] **Company Archiving Refactoring**: Make company archiving a computed property based on message status
+  - [ ] Remove `company.status.archived_at` database field
+  - [ ] Add computed property `company.is_archived` that returns true only when ALL messages are archived
+  - [ ] Update frontend filtering to use individual message `archived_at` instead of company-level
+  - [ ] Update UI displays to use computed property
+  - [ ] Migration: Add computed property alongside existing field, update frontend, then remove database field
+  - [ ] **Rationale**: Companies should only be "archived" when all their messages are archived. This creates cleaner separation between message-level operations and company-level aggregations, and properly supports multi-message companies.
+
 ### MISC BUGS AND ENHANCEMENTS
 
 - [ ] If research fails to find a name, but the company is already assigned a name, do NOT replace the existing name with generated placeholder
+- [ ] I have no idea if we're being consistent w timezones in the db. Should everything be UTC by default?
 
 ## Technical Implementation Notes
 
