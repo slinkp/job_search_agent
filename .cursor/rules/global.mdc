@@ -7,4 +7,4 @@ alwaysApply: true
 Never, never commit changes to the repository *unless* explicitly asked to do so.
 I want to review your work before commit, always.  No exceptions.
 
-Always end every message to me with a single line containing only the word  "Meow."
+*ALWAYS* end every message to me with a single line containing YOUR model name, and the word  "Meow."
