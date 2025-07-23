@@ -8,6 +8,7 @@ from typing import Any, Optional
 import libjobsearch
 import models
 import spreadsheet_client
+from email_client import GmailRepliesSearcher
 from logsetup import setup_logging
 from tasks import TaskManager, TaskStatus, TaskType, task_manager
 
@@ -418,9 +419,17 @@ class ResearchDaemon:
     def do_ignore_and_archive(self, args: dict):
         """
         Archives a company's message without sending a reply.
+        Supports both company-level and message-level archiving.
         """
         company_id = args["company_id"]
-        logger.info(f"Ignoring and archiving message for {company_id}")
+        message_id = args.get(
+            "message_id"
+        )  # Optional message_id for specific message archiving
+
+        logger.info(
+            f"Ignoring and archiving message for {company_id}"
+            + (f" (message_id: {message_id})" if message_id else "")
+        )
 
         # Get the company
         company = self.company_repo.get(company_id)
@@ -428,10 +437,30 @@ class ResearchDaemon:
             logger.error(f"Company {company_id} not found")
             return {"error": "Company not found"}
 
-        # Archive the message in Gmail
-        # TODO: Implement the archiving logic here
+        # Archive the message in Gmail if message_id is provided
+        if company and not message_id:
+            message_id = company.message_id
 
-        # Record the event
+        if message_id:
+            try:
+                email_searcher = GmailRepliesSearcher()
+                email_searcher.authenticate()
+
+                success = email_searcher.label_and_archive_message(message_id)
+                if success:
+                    logger.info(f"Successfully archived message {message_id} in Gmail")
+                else:
+                    logger.error(f"Failed to archive message {message_id} in Gmail")
+                    return {"error": "Failed to archive message in Gmail"}
+            except Exception as e:
+                logger.exception(f"Error archiving message {message_id} in Gmail: {e}")
+                return {"error": f"Error archiving message in Gmail: {str(e)}"}
+        else:
+            # TODO: Implement company-level archiving logic here
+            logger.warning("Company-level archiving not yet implemented")
+
+        # Record the event.
+
         event = models.Event(
             company_id=company.company_id,
             event_type=models.EventType.ARCHIVED,
@@ -441,7 +470,7 @@ class ResearchDaemon:
         logger.info(f"Successfully archived message for {company_id}")
         # Mark the company as sent/archived in the spreadsheet data
         company.details.current_state = "70. ruled out, without reply"
-        company.details.updated = datetime.date.today()
+        company.details.updated = company.status.archived_at = datetime.datetime.now()
         # TODO actually update the spreadsheet
         self.company_repo.update(company)
 

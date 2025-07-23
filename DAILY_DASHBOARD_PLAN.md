@@ -83,8 +83,8 @@ Make sure not to duplicate code that already does the same job for the companies
   - [x] Fix archive backend to take an optional message ID.
         If passed, archive that specific message, not just the default company message
   - [x] Change frontend to send message ID
-  - [ ] Update research daemon and task handlers to support message_id as an arg to ignore and archive
-  - [ ] Add backend endpoint `/messages/<message_id>/ignore_and_archive`.
+  - [x] Update research daemon and task handlers to support message_id as an arg to ignore and archive
+  - [ ] Add backend endpoint `/messages/<message_id>/archive`.
         POST to that should do the same as we currently do when message id is passed to the existing method.
   - [ ] Update daily js to use the new endpoint by message id
   - [ ] Update app.js to use the new endpoint by message id

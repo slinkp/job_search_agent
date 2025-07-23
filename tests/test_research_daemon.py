@@ -566,7 +566,8 @@ def test_do_ignore_and_archive(daemon, test_company):
 
     # Verify company was updated
     assert test_company.details.current_state == "70. ruled out, without reply"
-    assert test_company.details.updated == date.today()
+    # updated should be set (datetime instead of date)
+    assert test_company.details.updated is not None
     daemon.company_repo.update.assert_called_once_with(test_company)
 
     # Verify event was created
@@ -589,6 +590,101 @@ def test_do_ignore_and_archive_missing_company(daemon):
     assert result == {"error": "Company not found"}
     daemon.company_repo.update.assert_not_called()
     daemon.company_repo.create_event.assert_not_called()
+
+    def test_do_ignore_and_archive_with_message_id(daemon, test_company):
+        """Test ignoring and archiving a specific message by message_id."""
+        args = {"company_id": "test-corp", "message_id": "test-message-123"}
+
+        daemon.company_repo.get.return_value = test_company
+
+        # Mock the GmailRepliesSearcher
+        with patch(
+            "research_daemon.GmailRepliesSearcher", autospec=True
+        ) as mock_searcher_class:
+            mock_searcher = mock_searcher_class.return_value
+        mock_searcher.label_and_archive_message.return_value = True
+
+        result = daemon.do_ignore_and_archive(args)
+
+        # Verify Gmail archiving was called
+        mock_searcher_class.assert_called_once()
+        mock_searcher.authenticate.assert_called_once()
+        mock_searcher.label_and_archive_message.assert_called_once_with(
+            "test-message-123"
+        )
+
+        # Verify company was updated
+        assert test_company.details.current_state == "70. ruled out, without reply"
+        # updated should be set (datetime instead of date)
+        assert test_company.details.updated is not None
+        daemon.company_repo.update.assert_called_once_with(test_company)
+
+        # Verify event was created
+        daemon.company_repo.create_event.assert_called_once()
+        event = daemon.company_repo.create_event.call_args[0][0]
+        assert event.company_id == test_company.company_id
+        assert event.event_type == models.EventType.ARCHIVED
+
+        assert result == {"status": "success"}
+
+
+def test_do_ignore_and_archive_with_message_id_gmail_failure(daemon, test_company):
+    """Test ignoring and archiving when Gmail archiving fails."""
+    args = {"company_id": "test-corp", "message_id": "test-message-123"}
+
+    daemon.company_repo.get.return_value = test_company
+
+    # Mock the GmailRepliesSearcher
+    with patch(
+        "research_daemon.GmailRepliesSearcher", autospec=True
+    ) as mock_searcher_class:
+        mock_searcher = mock_searcher_class.return_value
+        mock_searcher.label_and_archive_message.return_value = False
+
+        result = daemon.do_ignore_and_archive(args)
+
+        # Verify Gmail archiving was called
+        mock_searcher_class.assert_called_once()
+        mock_searcher.authenticate.assert_called_once()
+        mock_searcher.label_and_archive_message.assert_called_once_with(
+            "test-message-123"
+        )
+
+        # Verify error was returned
+        assert result == {"error": "Failed to archive message in Gmail"}
+
+        # Verify company was NOT updated
+        daemon.company_repo.update.assert_not_called()
+        daemon.company_repo.create_event.assert_not_called()
+
+
+def test_do_ignore_and_archive_with_message_id_gmail_exception(daemon, test_company):
+    """Test ignoring and archiving when Gmail archiving raises an exception."""
+    args = {"company_id": "test-corp", "message_id": "test-message-123"}
+
+    daemon.company_repo.get.return_value = test_company
+
+    # Mock the GmailRepliesSearcher
+    with patch(
+        "research_daemon.GmailRepliesSearcher", autospec=True
+    ) as mock_searcher_class:
+        mock_searcher = mock_searcher_class.return_value
+        mock_searcher.authenticate.side_effect = Exception("Gmail authentication failed")
+
+        result = daemon.do_ignore_and_archive(args)
+
+        # Verify Gmail archiving was attempted
+        mock_searcher_class.assert_called_once()
+        mock_searcher.authenticate.assert_called_once()
+
+        # Verify error was returned
+        assert result == {
+            "error": "Error archiving message in Gmail: Gmail authentication failed"
+        }
+
+        # Verify company was NOT updated
+        daemon.company_repo.update.assert_not_called()
+        daemon.company_repo.create_event.assert_not_called()
 
 
 def test_do_research_with_url(daemon, test_company, mock_spreadsheet_upsert):

@@ -256,7 +256,7 @@ class CompaniesSheetRow(BaseSheetRow):
     current_state: Optional[str] = Field(
         default=DEFAULT_CURRENT_STATE
     )  # TODO validate other values
-    updated: Optional[datetime.date] = Field(default=None)
+    updated: Optional[datetime.date | datetime.datetime] = Field(default=None)
 
     started: Optional[datetime.date] = Field(default=None)
     latest_step: Optional[str] = Field(default=None)
