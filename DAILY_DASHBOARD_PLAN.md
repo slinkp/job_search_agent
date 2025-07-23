@@ -78,7 +78,7 @@ Make sure not to duplicate code that already does the same job for the companies
 
 - [x] Research
 - [x] Generate Reply
-- [ ] Archive
+- [x] Archive
   - [x] Add to dashboard page
   - [x] Fix archive backend to take an optional message ID.
         If passed, archive that specific message, not just the default company message
@@ -107,8 +107,11 @@ Make sure not to duplicate code that already does the same job for the companies
   - [x] Add comprehensive tests for the new endpoint
   - [x] Add new endpoint `/api/messages/{message_id}/reply` for updating replies by message_id (PUT)
   - [x] Add comprehensive tests for the update endpoint
-  - [ ] Update frontend to use these instead of "/api/companies/{company_id}/reply_message"
+  - [x] Update frontend to use these instead of "/api/companies/{company_id}/reply_message"
   - [ ] Remove "/api/companies/{company_id}/reply_message"
+
+- [ ] GET    /api/messages   # List all messages
+  - [ ] Update dashboard to use this instead of /api/companies
 
 
 - [ ] QUESTION: Pause here and think about: Do we really need
