@@ -88,9 +88,10 @@ Make sure not to duplicate code that already does the same job for the companies
         POST to that should do the same as we currently do when message id is passed to the existing method.
   - [x] Update daily js to use the new endpoint by message id
   - [x] Update app.js to use the new endpoint by message id
-- [ ] Clean up backend: 
-   - [ ] remove endpoint for archive(company)
-   - [ ] remove company_id support from research daemon and handler
+- [x] Clean up backend: 
+   - [x] Check if anything in frontend or back end still using archive(company)
+   - [x] remove API endpoint for archive(company)
+   - [x] remove company_id support from archive feature everywhere else
   
 
 ### 2.4 Message-centric API refactor

@@ -270,73 +270,7 @@ def send_and_archive(request):
     }
 
 
-@view_config(route_name="ignore_and_archive", renderer="json", request_method="POST")
-def ignore_and_archive(request):
-    company_id = request.matchdict["company_id"]
-    company = models.company_repository().get(company_id)
-
-    if not company:
-        request.response.status = 404
-        return {"error": "Company not found"}
-
-    # Check if a specific message_id was provided in the request body
-    message_id = None
-    try:
-        body = request.json_body
-        message_id = body.get("message_id") if body else None
-    except (ValueError, AttributeError):
-        # No JSON body or invalid JSON - continue with company-level archiving
-        pass
-
-    current_time = datetime.datetime.now(datetime.timezone.utc)
-
-    if message_id:
-        # Archive specific message
-        repo = models.company_repository()
-        message = None
-
-        # Find the specific message
-        for msg in repo.get_recruiter_messages(company_id):
-            if msg.message_id == message_id:
-                message = msg
-                break
-
-        if not message:
-            request.response.status = 404
-            return {"error": "Message not found"}
-
-        # Set archived_at on the specific message
-        message.archived_at = current_time
-        repo.create_recruiter_message(message)  # This will update via upsert
-
-        logger.info(f"Specific message {message_id} archived for {company.name}")
-
-        return {
-            "message": "Message archived successfully",
-            "message_id": message_id,
-            "archived_at": current_time.isoformat(),
-        }
-    else:
-        # Original company-level archiving logic
-        # Create a new task for just archiving (no reply sent)
-        task_id = tasks.task_manager().create_task(
-            tasks.TaskType.IGNORE_AND_ARCHIVE,
-            {"company_id": company.company_id},
-        )
-
-        # Set archived_at status field
-        company.status.archived_at = current_time
-        models.company_repository().update(company)
-
-        logger.info(
-            f"Ignore and archive requested for {company.name}, task_id: {task_id}"
-        )
-
-        return {
-            "task_id": task_id,
-            "status": tasks.TaskStatus.PENDING.value,
-            "archived_at": company.status.archived_at.isoformat(),
-        }
+# Remove the old ignore_and_archive handler function since frontend now uses message-centric endpoint
 
 
 @view_config(route_name="archive_message_by_id", renderer="json", request_method="POST")
@@ -479,9 +413,7 @@ def main(global_config, **settings):
         config.add_route(
             "send_and_archive", "/api/companies/{company_id}/send_and_archive"
         )
-        config.add_route(
-            "ignore_and_archive", "/api/companies/{company_id}/ignore_and_archive"
-        )
+        # Remove the old ignore_and_archive route since frontend now uses message-centric endpoint
         config.add_route("company_details", "/api/companies/{company_id}/details")
         config.add_route("company", "/api/companies/{company_id}")
         config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
