@@ -96,10 +96,6 @@ Make sure not to duplicate code that already does the same job for the companies
 
 ### 2.4 Message-centric API refactor
 
-- [ ] Examine all backend endpoints and think hard about which actually make sense for company and which should actually work directly with messages
-
-- [ ] GET    /api/messages   # List all messages
-  - [ ] Update dashboard to use this instead of /api/companies
 
 
 - [x] POST   /api/messages/{message_id}/reply to generate, PUT /api/messages/{message_id}/reply to manually update
