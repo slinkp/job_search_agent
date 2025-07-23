@@ -83,9 +83,23 @@ Make sure not to duplicate code that already does the same job for the companies
   - [x] Fix archive backend to take an optional message ID.
         If passed, archive that specific message, not just the default company message
   - [x] Change frontend to send message ID
-  - [ ] Do the same on app.js
-  - [ ] Clean up backend: remove support for archive(company)
+  - [ ] Update research daemon and task handlers to support message_id as an arg to ignore and archive
+  - [ ] Add backend endpoint `/messages/<message_id>/ignore_and_archive`.
+        POST to that should do the same as we currently do when message id is passed to the existing method.
+  - [ ] Update daily js to use the new endpoint by message id
+  - [ ] Update app.js to use the new endpoint by message id
+- [ ] Clean up backend: 
+   - [ ] remove endpoint for archive(company)
+   - [ ] remove company_id support from research daemon and handler
+  
 
+### 2.4 Message-centric API refactor
+
+- [ ] Examine all backend endpoints and think hard about which actually make sense for company and which should actually work directly with messages
+- [ ] Create more subtasks here when we've done that
+- [ ] Update this checklist and do them!
+- [ ] Gradually migrate the frontend to use new message-centric backend APIs
+- [ ] Remove any unnecessary company-centric backend APIs
 
 ### 2.5 Manual workarounds and enhancements
 - [x] Allow expanding the entire message body in the dashboard view
