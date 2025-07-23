@@ -235,9 +235,11 @@ describe("Daily Dashboard Integration", () => {
       expect(template).toBeTruthy();
 
       // Verify Archive button exists and is properly wired
-      // Should call archive(company) instead of console.log
+      // Should call archive with message_id instead of company
       expect(template.innerHTML).toContain("Archive");
-      expect(template.innerHTML).toContain('@click="archive(company)"');
+      expect(template.innerHTML).toContain(
+        '@click="archive(company.recruiter_message?.message_id)"'
+      );
 
       // Should not have console.log placeholder
       expect(template.innerHTML).not.toContain("console.log('Archive for:");

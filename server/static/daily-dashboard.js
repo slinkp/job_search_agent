@@ -182,9 +182,9 @@ document.addEventListener("alpine:init", () => {
       },
 
       // Archive a message without replying - follows same pattern as other actions
-      async archive(company) {
-        if (!company) {
-          showError("No company selected");
+      async archive(message_id) {
+        if (!message_id) {
+          showError("No message ID provided");
           return;
         }
 
@@ -198,22 +198,13 @@ document.addEventListener("alpine:init", () => {
         }
 
         try {
-          // Get the message ID from the company's recruiter message
-          const messageId = company.recruiter_message?.message_id;
-
-          // Call the ignore and archive endpoint with message ID
-          const response = await fetch(
-            `/api/companies/${company.company_id}/ignore_and_archive`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                message_id: messageId,
-              }),
-            }
-          );
+          // Call the message-centric archive endpoint
+          const response = await fetch(`/api/messages/${message_id}/archive`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
 
           if (!response.ok) {
             const error = await response.json();

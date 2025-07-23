@@ -798,18 +798,23 @@ document.addEventListener("alpine:init", () => {
         }
 
         try {
-          // Call the ignore and archive endpoint
-          const response = await fetch(
-            `/api/companies/${company.company_id}/ignore_and_archive`,
-            {
-              method: "POST",
-            }
-          );
+          // Get the message ID from the company's recruiter message
+          const messageId = company.recruiter_message?.message_id;
+
+          if (!messageId) {
+            this.showError("No message ID found for this company");
+            return;
+          }
+
+          // Call the new message-centric archive endpoint
+          const response = await fetch(`/api/messages/${messageId}/archive`, {
+            method: "POST",
+          });
 
           if (!response.ok) {
             const error = await response.json();
             throw new Error(
-              error.error || `Failed to ignore and archive: ${response.status}`
+              error.error || `Failed to archive message: ${response.status}`
             );
           }
 
@@ -821,9 +826,9 @@ document.addEventListener("alpine:init", () => {
           this.showSuccess("Message archived without reply");
           this.cancelEdit();
         } catch (err) {
-          console.error("Failed to ignore and archive:", err);
+          console.error("Failed to archive message:", err);
           this.showError(
-            err.message || "Failed to ignore and archive. Please try again."
+            err.message || "Failed to archive message. Please try again."
           );
         }
       },

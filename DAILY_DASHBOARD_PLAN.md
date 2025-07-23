@@ -84,10 +84,10 @@ Make sure not to duplicate code that already does the same job for the companies
         If passed, archive that specific message, not just the default company message
   - [x] Change frontend to send message ID
   - [x] Update research daemon and task handlers to support message_id as an arg to ignore and archive
-  - [ ] Add backend endpoint `/messages/<message_id>/archive`.
+  - [x] Add backend endpoint `/messages/<message_id>/archive`.
         POST to that should do the same as we currently do when message id is passed to the existing method.
-  - [ ] Update daily js to use the new endpoint by message id
-  - [ ] Update app.js to use the new endpoint by message id
+  - [x] Update daily js to use the new endpoint by message id
+  - [x] Update app.js to use the new endpoint by message id
 - [ ] Clean up backend: 
    - [ ] remove endpoint for archive(company)
    - [ ] remove company_id support from research daemon and handler
@@ -115,6 +115,7 @@ Make sure not to duplicate code that already does the same job for the companies
   - [ ] Update frontend to use these instead of "/api/companies/{company_id}/send_and_archive"
   - [ ] Remove the old method
 
+- [ ] refactor frontend to make `isGeneratingMessage(company)` work with message id instead
 
 ### 2.5 Manual workarounds and enhancements
 - [x] Allow expanding the entire message body in the dashboard view
