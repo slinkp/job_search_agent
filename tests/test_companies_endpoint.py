@@ -358,3 +358,259 @@ def test_archive_message_by_id_multiple_companies(clean_test_db):
 
         assert archived_msg1.archived_at is not None
         assert unarchived_msg2.archived_at is None
+
+
+def test_generate_message_by_id_success(clean_test_db, mock_task_manager):
+    """Test successful reply generation for a specific message."""
+    repo = clean_test_db
+    mock_task_manager.create_task.return_value = "task-123"
+
+    # Create a company with a message
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+    )
+    message = RecruiterMessage(
+        message_id="msg1",
+        company_id="test-company",
+        subject="Test Message",
+        message="Test recruiter message",
+        thread_id="thread1",
+    )
+
+    # Save company and message
+    repo.create(company)
+    repo.create_recruiter_message(message)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"message_id": "msg1"}
+
+        response = server.app.generate_message_by_id(request)
+
+        # Check response
+        assert response["task_id"] == "task-123"
+        assert response["status"] == tasks.TaskStatus.PENDING.value
+
+        # Verify task was created with correct company_id
+        mock_task_manager.create_task.assert_called_once_with(
+            tasks.TaskType.GENERATE_REPLY,
+            {"company_id": "test-company"},
+        )
+
+
+def test_generate_message_by_id_message_not_found(clean_test_db, mock_task_manager):
+    """Test error handling when message_id doesn't exist."""
+    repo = clean_test_db
+
+    # Create a company without any messages
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+    )
+    repo.create(company)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"message_id": "non-existent"}
+
+        response = server.app.generate_message_by_id(request)
+
+        # Check error response
+        assert response["error"] == "Message not found"
+        assert request.response.status == "404 Not Found"
+
+        # Verify no task was created
+        mock_task_manager.create_task.assert_not_called()
+
+
+def test_generate_message_by_id_company_not_found(clean_test_db, mock_task_manager):
+    """Test error handling when company associated with message doesn't exist."""
+    repo = clean_test_db
+
+    # Create a message with a non-existent company_id
+    message = RecruiterMessage(
+        message_id="msg1",
+        company_id="non-existent-company",
+        subject="Test Message",
+        message="Test recruiter message",
+        thread_id="thread1",
+    )
+    repo.create_recruiter_message(message)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"message_id": "msg1"}
+
+        response = server.app.generate_message_by_id(request)
+
+        # Check error response
+        assert response["error"] == "Company not found for this message"
+        assert request.response.status == "404 Not Found"
+
+        # Verify no task was created
+        mock_task_manager.create_task.assert_not_called()
+
+
+def test_generate_message_by_id_missing_message_id(clean_test_db, mock_task_manager):
+    """Test error handling when message_id is missing."""
+    with patch("models.company_repository", return_value=clean_test_db):
+        request = DummyRequest()
+        request.matchdict = {"message_id": ""}
+
+        response = server.app.generate_message_by_id(request)
+
+        # Check error response
+        assert response["error"] == "Message ID is required"
+        assert request.response.status == "400 Bad Request"
+
+        # Verify no task was created
+        mock_task_manager.create_task.assert_not_called()
+
+
+def test_update_message_by_id_success(clean_test_db):
+    """Test successful reply message update for a specific message."""
+    repo = clean_test_db
+
+    # Create a company with a message
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        reply_message="Old reply",
+    )
+    message = RecruiterMessage(
+        message_id="msg1",
+        company_id="test-company",
+        subject="Test Message",
+        message="Test recruiter message",
+        thread_id="thread1",
+    )
+
+    # Save company and message
+    repo.create(company)
+    repo.create_recruiter_message(message)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"message": "New reply message"})
+        request.matchdict = {"message_id": "msg1"}
+
+        response = server.app.update_message_by_id(request)
+
+        # Check response contains updated company data
+        assert response["reply_message"] == "New reply message"
+        assert response["name"] == "Test Company"
+
+        # Verify the company was updated in the database
+        updated_company = repo.get("test-company")
+        assert updated_company.reply_message == "New reply message"
+
+
+def test_update_message_by_id_message_not_found(clean_test_db):
+    """Test error handling when message_id doesn't exist."""
+    repo = clean_test_db
+
+    # Create a company without any messages
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+    )
+    repo.create(company)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"message": "New reply"})
+        request.matchdict = {"message_id": "non-existent"}
+
+        response = server.app.update_message_by_id(request)
+
+        # Check error response
+        assert response["error"] == "Message not found"
+        assert request.response.status == "404 Not Found"
+
+
+def test_update_message_by_id_company_not_found(clean_test_db):
+    """Test error handling when company associated with message doesn't exist."""
+    repo = clean_test_db
+
+    # Create a message with a non-existent company_id
+    message = RecruiterMessage(
+        message_id="msg1",
+        company_id="non-existent-company",
+        subject="Test Message",
+        message="Test recruiter message",
+        thread_id="thread1",
+    )
+    repo.create_recruiter_message(message)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"message": "New reply"})
+        request.matchdict = {"message_id": "msg1"}
+
+        response = server.app.update_message_by_id(request)
+
+        # Check error response
+        assert response["error"] == "Company not found for this message"
+        assert request.response.status == "404 Not Found"
+
+
+def test_update_message_by_id_missing_message_id(clean_test_db):
+    """Test error handling when message_id is missing."""
+    with patch("models.company_repository", return_value=clean_test_db):
+        request = DummyRequest(json_body={"message": "New reply"})
+        request.matchdict = {"message_id": ""}
+
+        response = server.app.update_message_by_id(request)
+
+        # Check error response
+        assert response["error"] == "Message ID is required"
+        assert request.response.status == "400 Bad Request"
+
+
+def test_update_message_by_id_missing_message_body(clean_test_db):
+    """Test error handling when message body is missing."""
+    repo = clean_test_db
+
+    # Create a company with a message
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+    )
+    message = RecruiterMessage(
+        message_id="msg1",
+        company_id="test-company",
+        subject="Test Message",
+        message="Test recruiter message",
+        thread_id="thread1",
+    )
+
+    # Save company and message
+    repo.create(company)
+    repo.create_recruiter_message(message)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={})
+        request.matchdict = {"message_id": "msg1"}
+
+        response = server.app.update_message_by_id(request)
+
+        # Check error response
+        assert response["error"] == "Message is required"
+        assert request.response.status == "400 Bad Request"
+
+
+def test_update_message_by_id_invalid_json(clean_test_db):
+    """Test error handling when JSON is invalid."""
+    with patch("models.company_repository", return_value=clean_test_db):
+        request = DummyRequest()
+        request.json_body = None  # This will cause JSONDecodeError
+        request.matchdict = {"message_id": "msg1"}
+
+        response = server.app.update_message_by_id(request)
+
+        # Check error response
+        assert response["error"] == "Invalid JSON"
+        assert request.response.status == "400 Bad Request"

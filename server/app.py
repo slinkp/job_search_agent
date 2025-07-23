@@ -146,6 +146,84 @@ def generate_message(request):
     return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
 
 
+@view_config(route_name="generate_message_by_id", renderer="json", request_method="POST")
+def generate_message_by_id(request):
+    """Generate a reply for a specific message by message_id."""
+    message_id = request.matchdict["message_id"]
+
+    if not message_id:
+        request.response.status = 400
+        return {"error": "Message ID is required"}
+
+    repo = models.company_repository()
+    message = repo.get_recruiter_message_by_id(message_id)
+
+    if not message:
+        request.response.status = 404
+        return {"error": "Message not found"}
+
+    # Get the company associated with this message
+    company = repo.get(message.company_id)
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found for this message"}
+
+    task_id = tasks.task_manager().create_task(
+        tasks.TaskType.GENERATE_REPLY,
+        {"company_id": company.company_id},
+    )
+    logger.info(
+        f"Generate reply requested for message {message_id} (company: {company.name}), task_id: {task_id}"
+    )
+
+    return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
+
+
+@view_config(route_name="update_message_by_id", renderer="json", request_method="PUT")
+def update_message_by_id(request):
+    """Update a reply message for a specific message by message_id."""
+    message_id = request.matchdict["message_id"]
+
+    if not message_id:
+        request.response.status = 400
+        return {"error": "Message ID is required"}
+
+    try:
+        body = request.json_body
+        if body is None:
+            request.response.status = 400
+            return {"error": "Invalid JSON"}
+        message = body.get("message")
+        if not message:
+            request.response.status = 400
+            return {"error": "Message is required"}
+    except json.JSONDecodeError:
+        request.response.status = 400
+        return {"error": "Invalid JSON"}
+
+    repo = models.company_repository()
+    recruiter_message = repo.get_recruiter_message_by_id(message_id)
+
+    if not recruiter_message:
+        request.response.status = 404
+        return {"error": "Message not found"}
+
+    # Get the company associated with this message
+    company = repo.get(recruiter_message.company_id)
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found for this message"}
+
+    # Update the company's reply message
+    company.reply_message = message
+    repo.update(company)
+
+    logger.info(
+        f"Updated reply message for message {message_id} (company: {company.name}): {message}"
+    )
+    return models.serialize_company(company)
+
+
 @view_config(route_name="generate_message", renderer="json", request_method="PUT")
 def update_message(request):
     company_id = request.matchdict["company_id"]
@@ -410,6 +488,8 @@ def main(global_config, **settings):
         config.add_route("companies", "/api/companies")
         config.add_route("research", "/api/companies/{company_id}/research")
         config.add_route("generate_message", "/api/companies/{company_id}/reply_message")
+        config.add_route("generate_message_by_id", "/api/messages/{message_id}/reply")
+        config.add_route("update_message_by_id", "/api/messages/{message_id}/reply")
         config.add_route(
             "send_and_archive", "/api/companies/{company_id}/send_and_archive"
         )
