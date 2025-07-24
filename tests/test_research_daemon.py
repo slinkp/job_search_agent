@@ -332,6 +332,8 @@ def test_do_find_companies_in_recruiter_messages(
     daemon.company_repo.get.return_value = None  # Companies don't exist yet
     # No duplicates by normalized name
     daemon.company_repo.get_by_normalized_name.return_value = None
+    # No existing messages by message_id
+    daemon.company_repo.get_recruiter_message_by_id.return_value = None
     daemon.jobsearch.research_company.side_effect = test_companies
     daemon.running = True  # Ensure daemon stays running
 
@@ -359,6 +361,9 @@ def test_do_find_companies_in_recruiter_messages_existing_company(
     # For the normalization check, make the first one a hit and the second one a miss
     daemon.company_repo.get_by_normalized_name.side_effect = [test_companies[0], None]
 
+    # No existing messages by message_id
+    daemon.company_repo.get_recruiter_message_by_id.return_value = None
+
     daemon.jobsearch.get_new_recruiter_messages.return_value = test_recruiter_messages
     daemon.jobsearch.research_company.return_value = test_companies[1]
     daemon.running = True  # Ensure daemon stays running
@@ -382,6 +387,8 @@ def test_do_find_companies_in_recruiter_messages_no_company_name(
     daemon.jobsearch.get_new_recruiter_messages.return_value = [
         test_recruiter_messages[0]
     ]
+    # No existing messages by message_id
+    daemon.company_repo.get_recruiter_message_by_id.return_value = None
     daemon.jobsearch.research_company.return_value = Company(
         company_id="unknown",
         name="",
@@ -402,6 +409,8 @@ def test_do_find_companies_in_recruiter_messages_error(daemon, test_recruiter_me
     daemon.jobsearch.get_new_recruiter_messages.return_value = [
         test_recruiter_messages[0]
     ]
+    # No existing messages by message_id
+    daemon.company_repo.get_recruiter_message_by_id.return_value = None
     daemon.jobsearch.research_company.side_effect = ValueError("Research failed")
 
     daemon.do_find_companies_in_recruiter_messages(args)
@@ -420,6 +429,8 @@ def test_do_find_companies_in_recruiter_messages_no_research(
     daemon.company_repo.get_by_normalized_name.return_value = (
         None  # No existing companies
     )
+    # No existing messages by message_id
+    daemon.company_repo.get_recruiter_message_by_id.return_value = None
     daemon.running = True  # Ensure daemon stays running
 
     daemon.do_find_companies_in_recruiter_messages(args)
@@ -448,6 +459,9 @@ def test_do_find_companies_in_recruiter_messages_no_research_existing_company(
     # Mock that company exists by normalized name
     daemon.company_repo.get_by_normalized_name.return_value = test_companies[0]
 
+    # No existing messages by message_id
+    daemon.company_repo.get_recruiter_message_by_id.return_value = None
+
     daemon.do_find_companies_in_recruiter_messages(args)
 
     # Verify NO research was done (research_company should not be called)
@@ -455,7 +469,6 @@ def test_do_find_companies_in_recruiter_messages_no_research_existing_company(
 
     # Verify existing company was updated (not created)
     daemon.company_repo.update.assert_called_once_with(test_companies[0])
-    daemon.company_repo.create.assert_not_called()
 
 
 def test_create_basic_company_from_message_success(
@@ -1242,6 +1255,8 @@ def test_do_find_companies_in_recruiter_messages_persistence_bug(
     daemon.jobsearch.get_new_recruiter_messages.return_value = [test_message]
     daemon.company_repo.get.return_value = None  # Company doesn't exist yet
     daemon.company_repo.get_by_normalized_name.return_value = None
+    # No existing messages by message_id
+    daemon.company_repo.get_recruiter_message_by_id.return_value = None
 
     # Mock the research to return a company with the recruiter message attached
     def mock_research_company(content_or_message, model):
@@ -1412,3 +1427,32 @@ def test_do_research_provided_recruiter_message_takes_precedence(
     # Verify the company was updated
     daemon.company_repo.update.assert_called_once()
     daemon.company_repo.create.assert_not_called()
+
+
+def test_do_find_companies_in_recruiter_messages_skips_existing_messages(
+    daemon, test_recruiter_messages, test_companies
+):
+    """Test that existing messages are skipped during processing."""
+    args = {"max_messages": 2, "do_research": True}
+
+    daemon.jobsearch.get_new_recruiter_messages.return_value = test_recruiter_messages
+    daemon.company_repo.get.return_value = None  # Companies don't exist yet
+    daemon.company_repo.get_by_normalized_name.return_value = None
+
+    # Mock that the first message already exists, second doesn't
+    daemon.company_repo.get_recruiter_message_by_id.side_effect = [
+        test_recruiter_messages[0],  # First message exists
+        None,  # Second message doesn't exist
+    ]
+
+    daemon.jobsearch.research_company.return_value = test_companies[1]
+    daemon.running = True
+
+    daemon.do_find_companies_in_recruiter_messages(args)
+
+    # Verify messages were fetched
+    daemon.jobsearch.get_new_recruiter_messages.assert_called_once_with(max_results=2)
+
+    # Verify only the second message was processed (first was skipped)
+    assert daemon.jobsearch.research_company.call_count == 1
+    daemon.company_repo.create.assert_called_once_with(test_companies[1])

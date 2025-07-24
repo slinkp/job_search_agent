@@ -324,7 +324,7 @@ class ResearchDaemon:
         logger.info(f"Updated reply for {company.company_id}")
 
     def do_find_companies_in_recruiter_messages(self, args: dict):
-        max_messages = args.get("max_messages", 100)
+        max_messages = args.get("max_messages", None)
         do_research = args.get("do_research", False)
 
         # If max_messages is None, fetch all messages (use a very large number)
@@ -339,10 +339,27 @@ class ResearchDaemon:
             )
 
         messages = self.jobsearch.get_new_recruiter_messages(max_results=max_messages)
+        logger.info(f"Retrieved {len(messages)} messages from Gmail")
+
+        processed_count = 0
+        skipped_count = 0
+
         for i, message in enumerate(messages):
             if not self.running:
                 logger.warning("Research daemon stopping, skipping remaining messages")
                 return
+
+            # Check if message already exists in database
+            existing_message = self.company_repo.get_recruiter_message_by_id(
+                message.message_id
+            )
+            if existing_message:
+                logger.info(
+                    f"Message {message.message_id} already exists in database, skipping"
+                )
+                skipped_count += 1
+                continue
+
             logger.info(
                 f"Processing message {i+1} of {len(messages)} [max {max_messages}]..."
             )
@@ -363,11 +380,14 @@ class ResearchDaemon:
                             f"No company extracted from message {i + 1}, skipping"
                         )
                         continue
+                processed_count += 1
             except Exception:
                 logger.exception(f"Unexpected error processing recruiter message {i + 1}")
                 continue
 
-        logger.info("Finished processing recruiter messages")
+        logger.info(
+            f"Finished processing recruiter messages: {processed_count} processed, {skipped_count} skipped"
+        )
 
     def do_send_and_archive(self, args: dict):
         """Handle sending a reply and archiving the message."""
