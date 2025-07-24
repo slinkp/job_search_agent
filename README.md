@@ -149,6 +149,72 @@ These have no recruiter message.
 - clicking "generate" on the company page shows an error about no message to reply to, but it disappears too fast to see
 - "generate" should just be deactivated if there's no message
 
+## Send and archive should mark message as read in gmail
+
+## Company view date sort seems to go off database mod time, not logical update time
+
+## Google api token can expire while daemon is running
+
+I think that's what's up with this?  If this happens in a task, the task should be marked as failed
+```
+google.auth.exceptions.RefreshError: ('invalid_grant: Token has been expired or revoked.', {'error': 'invalid_grant', 'error_description': 'Token has been expired or revoked.'})
+```
+
+## Invalid URL bug
+
+```
+18:57:12 ERROR research_daemon: Error researching company Company from Praveen Kotla <inmail-hit-reply@linkedin.com>
+Traceback (most recent call last):
+  File "/Users/paul/src/job_search_agent/research_daemon.py", line 216, in do_research
+    company = self.jobsearch.research_company(
+        content_or_message, model=self.ai_model
+    )
+  File "/Users/paul/src/job_search_agent/libjobsearch.py", line 444, in research_company
+    company_info: CompaniesSheetRow = self.initial_research_company(
+                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        message, model=model
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/paul/src/job_search_agent/libjobsearch.py", line 117, in wrapper
+    result = func(self, *args, **kwargs)
+  File "/Users/paul/src/job_search_agent/libjobsearch.py", line 536, in initial_research_company
+    row = company_researcher.main(url_or_message=message, model=model, is_url=False)
+  File "/Users/paul/src/job_search_agent/company_researcher.py", line 464, in main
+    return researcher.main(message=url_or_message)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/paul/src/job_search_agent/company_researcher.py", line 351, in main
+    self._plaintext_from_url(company_info.url)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/Users/paul/src/job_search_agent/company_researcher.py", line 266, in _plaintext_from_url
+    response = requests.get(url, headers=headers)
+  File "/Users/paul/src/job_search_agent/.direnv/python-3.13/lib/python3.13/site-packages/requests/api.py", line 73, in get
+    return request("get", url, params=params, **kwargs)
+  File "/Users/paul/src/job_search_agent/.direnv/python-3.13/lib/python3.13/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/paul/src/job_search_agent/.direnv/python-3.13/lib/python3.13/site-packages/requests/sessions.py", line 575, in request
+    prep = self.prepare_request(req)
+  File "/Users/paul/src/job_search_agent/.direnv/python-3.13/lib/python3.13/site-packages/requests/sessions.py", line 484, in prepare_request
+    p.prepare(
+    ~~~~~~~~~^
+        method=request.method.upper(),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+        hooks=merge_hooks(request.hooks, self.hooks),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/paul/src/job_search_agent/.direnv/python-3.13/lib/python3.13/site-packages/requests/models.py", line 367, in prepare
+    self.prepare_url(url, params)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/Users/paul/src/job_search_agent/.direnv/python-3.13/lib/python3.13/site-packages/requests/models.py", line 438, in prepare_url
+    raise MissingSchema(
+    ...<2 lines>...
+    )
+requests.exceptions.MissingSchema: Invalid URL 'www.stiorg.com': No scheme supplied. Perhaps you meant https://www.stiorg.com?
+```
+
 # Deferred Features
 
 These are valuable but not on the critical path to daily use:

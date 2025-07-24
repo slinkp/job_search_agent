@@ -109,7 +109,6 @@ Make sure not to duplicate code that already does the same job for the companies
 - [x] GET    /api/messages   # List all messages
   - [x] Update dashboard to use this instead of /api/companies
 
-
 - [ ] QUESTION: Pause here and think about: Do we really need
       send + archive to be atomic? It's probably not in the models anyway.
       Could we wait for the send to succeed and then do an archive?
@@ -121,8 +120,22 @@ Make sure not to duplicate code that already does the same job for the companies
 
 - [ ] refactor frontend to make `isGeneratingMessage(company)` work with message id instead
 
-### 2.5 Manual workarounds and enhancements
+### 2.5 Basic usability bugs and missing features
+
+These really get in my way:
+
 - [x] Allow expanding the entire message body in the dashboard view
+- [ ] Filter out replied / archived companies in the dashboard view
+- [ ] "regenerate" causes alert "company.get_message_id is not a function"
+- [ ] Same for "save" when editing message!
+- [ ] Show (unsent) replies in the dashboard view
+  - [ ] Needs same UX as company page: option to manually edit; send, ignore, save, archive, etc
+- [ ] Add link(s) from a company on the companies page to all associated emails on the email dashboard, and vice versa
+  - [ ] I don't think we have real permalinks to companies or messages, or the two main views. We should!
+- [ ] "Send & Archive" MUST implicitly save if you've edited the message. Currently have to click Save, then Send & Archive, or it sends the old message!
+
+### 2.6 Manual name workaround
+
 - [ ] Allow manually overriding the company name on a message:
   - [ ] Add a concept of "alternate names" to the backend data model
   - [ ] Add a concept of "verified name" to the backend data model
@@ -169,12 +182,15 @@ Make sure not to duplicate code that already does the same job for the companies
 - [ ] Add proper error handling for batch operations
 
 ### 7. Polish and Integration
-- [ ] Add link(s) from a company on the companies page to all associated emails on the email dashboard, and vice versa
-  - [ ] I don't think we have real permalinks to companies or messages. We should!
-- [ ] Add spinner indicator for all buttons on the dashboard that start async tasks
+- [ ] Sending email needs to update spreadsheet:
+      - [ ] started, latest step, next step, next step date, latest contact
+      - [ ] maybe also "current state" and "end date" if we're ruling out already
+- [ ] "Researched" filter on company page should show companies with ANY successful research.
+      Only filter out failures. I think?
 - [ ] Refresh dashboard automatically when email fetch task is done
-- [ ] Refresh message in
+- [ ] Refresh automatically when generation is done
 - [ ] Show the right name in company list after research (it gets updated in the details but not in the clickable header)
+- [ ] Add spinner indicator and disable button, for all buttons that start async tasks
 - [ ] Add confirmation dialogs for batch operations
 - [ ] Ensure proper error handling and user feedback
 - [ ] Add loading states for batch operations
@@ -191,7 +207,7 @@ Make sure not to duplicate code that already does the same job for the companies
 
 ### 9. Enhanced UI Features (Future Iteration)
 - [ ] On email view, add link to original message in gmail
-- [ ] On the companies view, list all messages for the company.
+- [ ] On the companies view, list all messages for the company?
   - [ ] Group them by normalized sender name and/or thread
 - [ ] Add filter for "unprocessed messages" (messages that haven't been replied to or 
 archived)
@@ -224,6 +240,7 @@ archived)
 - [ ] I have no idea if we're being consistent w timezones in the db. Should everything be UTC by default?
   - [ ] And show in local time everywhere in UX?
   - [ ] Would just doing everything in local zone be more pragmatic??
+- [ ] Send & Archive says: "this.editingCompany.get_message_id is not a function"
 
 ## Technical Implementation Notes
 
