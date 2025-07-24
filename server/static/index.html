@@ -276,52 +276,52 @@
         <div x-show="!loading && unprocessedMessages.length > 0" class="message-list">
           <h3>Unprocessed Messages (<span x-text="unprocessedMessages.length"></span>)</h3>
           
-          <template x-for="company in sortedMessages" :key="company.company_id">
+          <template x-for="message in sortedMessages" :key="message.message_id">
             <article class="message-item">
               <header>
                 <div class="message-info">
-                  <div class="message-sender" x-text="getMessageSender(company)"></div>
-                  <div class="message-subject" x-text="getMessageSubject(company)"></div>
-                  <div class="message-date" x-text="formatMessageDate(getMessageDate(company))"></div>
+                  <div class="message-sender" x-text="getMessageSender(message)"></div>
+                  <div class="message-subject" x-text="getMessageSubject(message)"></div>
+                  <div class="message-date" x-text="formatMessageDate(getMessageDate(message))"></div>
                 </div>
-                <div class="company-name" x-text="getCompanyName(company)"></div>
+                <div class="company-name" x-text="getCompanyName(message)"></div>
               </header>
               
               <div class="message-preview">
-                <p x-text="getMessagePreview(company)"></p>
+                <p x-text="getMessagePreview(message)"></p>
                 <button 
-                  x-show="company.recruiter_message?.message?.length > 200"
-                  @click="toggleMessageExpansion(company.company_id)" 
+                  x-show="message.message?.length > 200"
+                  @click="toggleMessageExpansion(message.message_id)" 
                   class="expand-button outline"
-                  x-text="getExpandButtonText(company.company_id)"
+                  x-text="getExpandButtonText(message.message_id)"
                 ></button>
               </div>
               
               <div class="message-actions">
                 <div class="research-section">
                   <button 
-                    @click="research(company)" 
-                    :disabled="isResearching(company)"
+                    @click="research(message)" 
+                    :disabled="isResearching(message)"
                     class="outline"
                   >
-                    <span x-text="isResearching(company) ? 'Researching...' : (company.research_completed_at ? 'Redo research' : 'Research!')"></span>
-                    <span x-show="isResearching(company)" class="loading-spinner"></span>
+                    <span x-text="isResearching(message) ? 'Researching...' : (message.research_completed_at ? 'Redo research' : 'Research!')"></span>
+                    <span x-show="isResearching(message)" class="loading-spinner"></span>
                   </button>
                   <span
-                    x-show="company.research_status"
-                    x-text="getResearchStatusText(company)"
-                    :class="getResearchStatusClass(company)"
+                    x-show="message.research_status"
+                    x-text="getResearchStatusText(message)"
+                    :class="getResearchStatusClass(message)"
                   ></span>
                 </div>
                 <button 
-                  @click="generateReply(company)" 
-                  :disabled="isGeneratingMessage(company)"
+                  @click="generateReply(message)" 
+                  :disabled="isGeneratingMessage(message)"
                   class="outline"
                 >
-                  <span x-text="isGeneratingMessage(company) ? 'Generating...' : 'Generate Reply'"></span>
-                  <span x-show="isGeneratingMessage(company)" class="loading-spinner"></span>
+                  <span x-text="isGeneratingMessage(message) ? 'Generating...' : 'Generate Reply'"></span>
+                  <span x-show="isGeneratingMessage(message)" class="loading-spinner"></span>
                 </button>
-                <button @click="archive(company.recruiter_message?.message_id)" class="outline">
+                <button @click="archive(message.message_id)" class="outline">
                   Archive
                 </button>
               </div>

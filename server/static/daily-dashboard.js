@@ -60,25 +60,21 @@ document.addEventListener("alpine:init", () => {
         return this.sortNewestFirst ? "Newest First" : "Oldest First";
       },
 
-      // Load unprocessed messages from the companies endpoint
+      // Load unprocessed messages from the messages endpoint
       async loadUnprocessedMessages() {
         this.loading = true;
         try {
-          const response = await fetch("/api/companies");
+          const response = await fetch("/api/messages");
           if (!response.ok) {
-            throw new Error(`Failed to load companies: ${response.status}`);
+            throw new Error(`Failed to load messages: ${response.status}`);
           }
 
-          const companies = await response.json();
+          const messages = await response.json();
 
-          // Filter for companies with unprocessed recruiter messages
-          // Unprocessed = has recruiter message but not replied to or archived
-          this.unprocessedMessages = companies.filter((company) => {
-            return (
-              company.recruiter_message &&
-              !company.sent_at &&
-              !company.archived_at
-            );
+          // Filter for unprocessed messages
+          // Unprocessed = not archived and not replied to
+          this.unprocessedMessages = messages.filter((message) => {
+            return !message.archived_at;
           });
 
           console.log(
@@ -93,11 +89,11 @@ document.addEventListener("alpine:init", () => {
       },
 
       // Research a company - follows same pattern as companies dashboard
-      async research(company) {
+      async research(message) {
         try {
-          taskPollingService.addResearching(company);
+          taskPollingService.addResearching(message);
           const response = await fetch(
-            `/api/companies/${company.company_id}/research`,
+            `/api/companies/${message.company_id}/research`,
             {
               method: "POST",
             }
@@ -111,48 +107,45 @@ document.addEventListener("alpine:init", () => {
           }
 
           const data = await response.json();
-          company.research_task_id = data.task_id;
-          company.research_status = data.status;
+          message.research_task_id = data.task_id;
+          message.research_status = data.status;
 
-          await this.pollResearchStatus(company);
+          await this.pollResearchStatus(message);
         } catch (err) {
           console.error("Failed to research company:", err);
           // Could add user notification here
         } finally {
-          taskPollingService.removeResearching(company);
+          taskPollingService.removeResearching(message);
         }
       },
 
       // Poll research status using the shared service
-      pollResearchStatus: (company) =>
-        taskPollingService.pollResearchStatus(company),
+      pollResearchStatus: (message) =>
+        taskPollingService.pollResearchStatus(message),
 
       // Get research status text using the shared service
-      getResearchStatusText: (company) =>
-        taskPollingService.getResearchStatusText(company),
+      getResearchStatusText: (message) =>
+        taskPollingService.getResearchStatusText(message),
 
       // Get research status CSS classes using the shared service
-      getResearchStatusClass: (company) =>
-        taskPollingService.getResearchStatusClass(company),
+      getResearchStatusClass: (message) =>
+        taskPollingService.getResearchStatusClass(message),
 
       // Check if company is being researched using the shared service
-      isResearching: (company) => taskPollingService.isResearching(company),
+      isResearching: (message) => taskPollingService.isResearching(message),
 
       // Generate reply functionality (similar to app.js)
-      async generateReply(company) {
+      async generateReply(message) {
         try {
-          // Check if company has a recruiter message
-          if (
-            !company.recruiter_message ||
-            !company.recruiter_message.message
-          ) {
-            showError("No recruiter message to reply to");
+          // Check if message has content
+          if (!message.message) {
+            showError("No message content to reply to");
             return;
           }
 
-          taskPollingService.addGeneratingMessage(company);
+          taskPollingService.addGeneratingMessage(message);
           const response = await fetch(
-            `/api/messages/${company.get_message_id()}/reply`,
+            `/api/messages/${message.message_id}/reply`,
             {
               method: "POST",
             }
@@ -166,18 +159,18 @@ document.addEventListener("alpine:init", () => {
           }
 
           const data = await response.json();
-          company.message_task_id = data.task_id;
-          company.message_status = data.status;
+          message.message_task_id = data.task_id;
+          message.message_status = data.status;
 
           // Start polling for updates
-          await this.pollMessageStatus(company);
+          await this.pollMessageStatus(message);
         } catch (err) {
           console.error("Failed to generate reply:", err);
           showError(
             err.message || "Failed to generate reply. Please try again."
           );
         } finally {
-          taskPollingService.removeGeneratingMessage(company);
+          taskPollingService.removeGeneratingMessage(message);
         }
       },
 
@@ -226,33 +219,33 @@ document.addEventListener("alpine:init", () => {
       },
 
       // Poll message status using the shared service
-      pollMessageStatus: (company) =>
-        taskPollingService.pollMessageStatus(company),
+      pollMessageStatus: (message) =>
+        taskPollingService.pollMessageStatus(message),
 
       // Check if company is generating message using the shared service
-      isGeneratingMessage: (company) =>
-        taskPollingService.isGeneratingMessage(company),
+      isGeneratingMessage: (message) =>
+        taskPollingService.isGeneratingMessage(message),
 
       formatMessageDate,
 
       // Get company name or fallback
-      getCompanyName(company) {
-        return company.name || "Unknown Company";
+      getCompanyName(message) {
+        return message.company_name || "Unknown Company";
       },
 
       // Get message sender
-      getMessageSender(company) {
-        return company.recruiter_message?.sender || "Unknown Sender";
+      getMessageSender(message) {
+        return message.sender || "Unknown Sender";
       },
 
       // Get message subject
-      getMessageSubject(company) {
-        return company.recruiter_message?.subject || "No Subject";
+      getMessageSubject(message) {
+        return message.subject || "No Subject";
       },
 
       // Get message date
-      getMessageDate(company) {
-        return company.recruiter_message?.date || null;
+      getMessageDate(message) {
+        return message.date || null;
       },
 
       // Refresh the message list
@@ -302,33 +295,33 @@ document.addEventListener("alpine:init", () => {
       },
 
       // Toggle message expansion
-      toggleMessageExpansion(companyId) {
-        if (this.expandedMessages.has(companyId)) {
-          this.expandedMessages.delete(companyId);
+      toggleMessageExpansion(messageId) {
+        if (this.expandedMessages.has(messageId)) {
+          this.expandedMessages.delete(messageId);
         } else {
-          this.expandedMessages.add(companyId);
+          this.expandedMessages.add(messageId);
         }
       },
 
       // Check if message is expanded
-      isMessageExpanded(companyId) {
-        return this.expandedMessages.has(companyId);
+      isMessageExpanded(messageId) {
+        return this.expandedMessages.has(messageId);
       },
 
       // Get message preview text (truncated or full)
-      getMessagePreview(company) {
-        const message = company.recruiter_message?.message || "";
-        if (this.isMessageExpanded(company.company_id)) {
-          return message;
+      getMessagePreview(message) {
+        const messageText = message.message || "";
+        if (this.isMessageExpanded(message.message_id)) {
+          return messageText;
         }
-        return message.length > 200
-          ? message.substring(0, 200) + "..."
-          : message;
+        return messageText.length > 200
+          ? messageText.substring(0, 200) + "..."
+          : messageText;
       },
 
       // Get expand/collapse button text
-      getExpandButtonText(companyId) {
-        return this.isMessageExpanded(companyId) ? "Show Less" : "Show More";
+      getExpandButtonText(messageId) {
+        return this.isMessageExpanded(messageId) ? "Show Less" : "Show More";
       },
     };
   });

@@ -124,7 +124,7 @@ describe("Daily Dashboard Integration", () => {
     if (messageList) {
       const template = messageList.querySelector("template");
       expect(template.hasAttribute("x-for")).toBe(true);
-      expect(template.getAttribute("x-for")).toBe("company in sortedMessages");
+      expect(template.getAttribute("x-for")).toBe("message in sortedMessages");
     }
   });
 
@@ -136,7 +136,7 @@ describe("Daily Dashboard Integration", () => {
       const template = messageList.querySelector("template");
 
       // Verify message preview uses the new getMessagePreview function
-      expect(template.innerHTML).toContain("getMessagePreview(company)");
+      expect(template.innerHTML).toContain("getMessagePreview(message)");
 
       // Verify expand button exists with proper attributes
       expect(template.innerHTML).toContain("expand-button");
@@ -145,7 +145,7 @@ describe("Daily Dashboard Integration", () => {
 
       // Verify expand button only shows for long messages
       expect(template.innerHTML).toContain(
-        'x-show="company.recruiter_message?.message?.length > 200"'
+        'x-show="message.message?.length > 200"'
       );
     }
   });
@@ -162,7 +162,7 @@ describe("Daily Dashboard Integration", () => {
 
       // Verify message preview has paragraph for text
       expect(template.innerHTML).toContain(
-        '<p x-text="getMessagePreview(company)"></p>'
+        '<p x-text="getMessagePreview(message)"></p>'
       );
 
       // Verify expand button is properly structured
@@ -181,29 +181,29 @@ describe("Daily Dashboard Integration", () => {
       expect(template.innerHTML).toContain("research-section");
 
       // Verify research button has proper click handler
-      expect(template.innerHTML).toContain('@click="research(company)"');
+      expect(template.innerHTML).toContain('@click="research(message)"');
 
       // Verify research button has proper disabled state
       expect(template.innerHTML).toContain(
-        ':disabled="isResearching(company)"'
+        ':disabled="isResearching(message)"'
       );
 
       // Verify research button shows proper text based on state
       expect(template.innerHTML).toContain(
-        "x-text=\"isResearching(company) ? 'Researching...' : (company.research_completed_at ? 'Redo research' : 'Research!')\""
+        "x-text=\"isResearching(message) ? 'Researching...' : (message.research_completed_at ? 'Redo research' : 'Research!')\""
       );
 
       // Verify loading spinner shows during research
       expect(template.innerHTML).toContain(
-        'x-show="isResearching(company)" class="loading-spinner"'
+        'x-show="isResearching(message)" class="loading-spinner"'
       );
 
       // Verify research status display
       expect(template.innerHTML).toContain(
-        'x-text="getResearchStatusText(company)"'
+        'x-text="getResearchStatusText(message)"'
       );
       expect(template.innerHTML).toContain(
-        ':class="getResearchStatusClass(company)"'
+        ':class="getResearchStatusClass(message)"'
       );
     }
   });
@@ -217,9 +217,9 @@ describe("Daily Dashboard Integration", () => {
       expect(template).toBeTruthy();
 
       // Verify Generate Reply button exists and is properly wired
-      // Should call generateReply(company) instead of console.log
+      // Should call generateReply(message) instead of console.log
       expect(template.innerHTML).toContain("Generate Reply");
-      expect(template.innerHTML).toContain('@click="generateReply(company)"');
+      expect(template.innerHTML).toContain('@click="generateReply(message)"');
 
       // Should not have console.log placeholder
       expect(template.innerHTML).not.toContain("console.log('Generate reply");
@@ -238,7 +238,7 @@ describe("Daily Dashboard Integration", () => {
       // Should call archive with message_id instead of company
       expect(template.innerHTML).toContain("Archive");
       expect(template.innerHTML).toContain(
-        '@click="archive(company.recruiter_message?.message_id)"'
+        '@click="archive(message.message_id)"'
       );
 
       // Should not have console.log placeholder

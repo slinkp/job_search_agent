@@ -107,7 +107,7 @@ Make sure not to duplicate code that already does the same job for the companies
   - [x] Remove "/api/companies/{company_id}/reply_message"
 
 - [x] GET    /api/messages   # List all messages
-  - [ ] Update dashboard to use this instead of /api/companies
+  - [x] Update dashboard to use this instead of /api/companies
 
 
 - [ ] QUESTION: Pause here and think about: Do we really need
