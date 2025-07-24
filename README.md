@@ -143,6 +143,11 @@ for me to do away with it, and that doesn't seem worthwhile...yet)
 - AWS becomes "amazon web services (AWS)" but levels.fyi expects "Amazon"
 - **Solution**: Add manual name override with persistence flag
 
+## Bad UX with companies imported from spreadsheet
+
+These have no recruiter message.
+- clicking "generate" on the company page shows an error about no message to reply to, but it disappears too fast to see
+- "generate" should just be deactivated if there's no message
 
 # Deferred Features
 

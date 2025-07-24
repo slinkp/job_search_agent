@@ -171,10 +171,15 @@ Make sure not to duplicate code that already does the same job for the companies
 ### 7. Polish and Integration
 - [ ] Add link(s) from a company on the companies page to all associated emails on the email dashboard, and vice versa
   - [ ] I don't think we have real permalinks to companies or messages. We should!
+- [ ] Add spinner indicator for all buttons on the dashboard that start async tasks
+- [ ] Refresh dashboard automatically when email fetch task is done
+- [ ] Refresh message in
+- [ ] Show the right name in company list after research (it gets updated in the details but not in the clickable header)
 - [ ] Add confirmation dialogs for batch operations
 - [ ] Ensure proper error handling and user feedback
 - [ ] Add loading states for batch operations
 - [ ] Start with daily dashboard as default view
+- [ ] "Generate" works but doesn't show the message until force refresh
 - [ ] Add tests for untested error scenarios and edge cases
 
 ### 8. Documentation and Testing
@@ -192,6 +197,7 @@ Make sure not to duplicate code that already does the same job for the companies
 archived)
 - [ ] Add advanced filtering and search within daily dashboard
 - [ ] Add batch editing of replies before sending?
+- [ ] Server should log task type
 
 ### 10. API refactorings deferred:
 
@@ -216,6 +222,8 @@ archived)
 
 - [ ] If research fails to find a name, but the company is already assigned a name, do NOT replace the existing name with generated placeholder
 - [ ] I have no idea if we're being consistent w timezones in the db. Should everything be UTC by default?
+  - [ ] And show in local time everywhere in UX?
+  - [ ] Would just doing everything in local zone be more pragmatic??
 
 ## Technical Implementation Notes
 
