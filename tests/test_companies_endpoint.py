@@ -1,3 +1,4 @@
+import datetime
 from unittest.mock import patch
 
 import pytest
@@ -614,3 +615,91 @@ def test_update_message_by_id_invalid_json(clean_test_db):
         # Check error response
         assert response["error"] == "Invalid JSON"
         assert request.response.status == "400 Bad Request"
+
+
+def test_get_messages_endpoint(clean_test_db):
+    """Test the GET /api/messages endpoint returns all messages with company info."""
+    # Create test companies with messages
+    repo = clean_test_db
+
+    # Company 1 with a message
+    company1 = Company(
+        company_id="test-corp-1",
+        name="Test Corp 1",
+        details=CompaniesSheetRow(name="Test Corp 1"),
+        status=CompanyStatus(),
+    )
+    repo.create(company1)
+
+    message1 = RecruiterMessage(
+        message_id="msg-1",
+        company_id="test-corp-1",
+        subject="Test Subject 1",
+        sender="recruiter1@test.com",
+        date=datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="Test message content 1",
+        email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread1",
+        thread_id="thread1",
+    )
+    repo.create_recruiter_message(message1)
+
+    # Company 2 with a message
+    company2 = Company(
+        company_id="test-corp-2",
+        name="Test Corp 2",
+        details=CompaniesSheetRow(name="Test Corp 2"),
+        status=CompanyStatus(),
+    )
+    repo.create(company2)
+
+    message2 = RecruiterMessage(
+        message_id="msg-2",
+        company_id="test-corp-2",
+        subject="Test Subject 2",
+        sender="recruiter2@test.com",
+        date=datetime.datetime(2024, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="Test message content 2",
+        email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread2",
+        thread_id="thread2",
+    )
+    repo.create_recruiter_message(message2)
+
+    # Test the endpoint
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        response = server.app.get_messages(request)
+
+    # Verify response structure
+    assert isinstance(response, list)
+    assert len(response) == 2
+
+    # Verify first message
+    msg1_data = next(msg for msg in response if msg["message_id"] == "msg-1")
+    assert msg1_data["message_id"] == "msg-1"
+    assert msg1_data["company_id"] == "test-corp-1"
+    assert msg1_data["subject"] == "Test Subject 1"
+    assert msg1_data["sender"] == "recruiter1@test.com"
+    assert msg1_data["company_name"] == "Test Corp 1"
+    assert "date" in msg1_data
+    assert "archived_at" in msg1_data
+
+    # Verify second message
+    msg2_data = next(msg for msg in response if msg["message_id"] == "msg-2")
+    assert msg2_data["message_id"] == "msg-2"
+    assert msg2_data["company_id"] == "test-corp-2"
+    assert msg2_data["subject"] == "Test Subject 2"
+    assert msg2_data["sender"] == "recruiter2@test.com"
+    assert msg2_data["company_name"] == "Test Corp 2"
+    assert "date" in msg2_data
+    assert "archived_at" in msg2_data
+
+
+def test_get_messages_endpoint_empty(clean_test_db):
+    """Test the GET /api/messages endpoint returns empty list when no messages exist."""
+    repo = clean_test_db
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        response = server.app.get_messages(request)
+
+        assert isinstance(response, list)
+        assert len(response) == 0

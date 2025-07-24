@@ -114,6 +114,23 @@ def get_companies(request) -> list[dict]:
     return company_data
 
 
+@view_config(route_name="messages", renderer="json", request_method="GET")
+def get_messages(request) -> list[dict]:
+    """Get all recruiter messages with company info."""
+    repo = models.company_repository()
+    messages = repo.get_all_messages()
+
+    message_data = []
+    for message in messages:
+        message_dict = message.model_dump()
+        message_dict["company_name"] = getattr(
+            message, "_company_name", "Unknown Company"
+        )
+        message_data.append(message_dict)
+
+    return message_data
+
+
 @view_config(route_name="home")
 def home(request):
     # Read and return the index.html file
@@ -441,6 +458,7 @@ def main(global_config, **settings):
         # Routes
         config.add_route("home", "/")
         config.add_route("companies", "/api/companies")
+        config.add_route("messages", "/api/messages")
         config.add_route("research", "/api/companies/{company_id}/research")
 
         config.add_route("generate_message_by_id", "/api/messages/{message_id}/reply")

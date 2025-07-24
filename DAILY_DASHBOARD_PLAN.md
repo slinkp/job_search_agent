@@ -106,7 +106,7 @@ Make sure not to duplicate code that already does the same job for the companies
   - [x] Update frontend to use these instead of "/api/companies/{company_id}/reply_message"
   - [x] Remove "/api/companies/{company_id}/reply_message"
 
-- [ ] GET    /api/messages   # List all messages
+- [x] GET    /api/messages   # List all messages
   - [ ] Update dashboard to use this instead of /api/companies
 
 
