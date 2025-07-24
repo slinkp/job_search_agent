@@ -346,6 +346,137 @@ class TestCompanyRepository:
         assert retrieved_company.recruiter_message.message == "Updated message content"
         assert retrieved_company.recruiter_message.message_id == "test123"
 
+    def test_get_all_messages(self, clean_test_db):
+        """Test the get_all_messages method returns all messages with company info."""
+        repo = clean_test_db
+
+        # Create multiple companies with messages
+        company1 = Company(
+            company_id="test-corp-1",
+            name="Test Corp 1",
+            details=CompaniesSheetRow(name="Test Corp 1"),
+            status=CompanyStatus(),
+        )
+        repo.create(company1)
+
+        company2 = Company(
+            company_id="test-corp-2",
+            name="Test Corp 2",
+            details=CompaniesSheetRow(name="Test Corp 2"),
+            status=CompanyStatus(),
+        )
+        repo.create(company2)
+
+        # Create messages for both companies
+        message1 = RecruiterMessage(
+            message_id="msg-1",
+            company_id="test-corp-1",
+            subject="Test Subject 1",
+            sender="recruiter1@test.com",
+            date=datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+            message="Test message content 1",
+            email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread1",
+            thread_id="thread1",
+        )
+        repo.create_recruiter_message(message1)
+
+        message2 = RecruiterMessage(
+            message_id="msg-2",
+            company_id="test-corp-2",
+            subject="Test Subject 2",
+            sender="recruiter2@test.com",
+            date=datetime.datetime(2024, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc),
+            message="Test message content 2",
+            email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread2",
+            thread_id="thread2",
+        )
+        repo.create_recruiter_message(message2)
+
+        # Get all messages
+        all_messages = repo.get_all_messages()
+
+        # Verify we got all messages
+        assert isinstance(all_messages, list)
+        assert len(all_messages) == 2
+
+        # Verify messages are RecruiterMessage objects
+        assert all(isinstance(msg, RecruiterMessage) for msg in all_messages)
+
+        # Verify messages are ordered by date (newest first)
+        assert all_messages[0].message_id == "msg-2"  # Newer date
+        assert all_messages[1].message_id == "msg-1"  # Older date
+
+        # Verify message content
+        msg1 = next(msg for msg in all_messages if msg.message_id == "msg-1")
+        assert msg1.company_id == "test-corp-1"
+        assert msg1.subject == "Test Subject 1"
+        assert msg1.sender == "recruiter1@test.com"
+        assert msg1.message == "Test message content 1"
+        assert getattr(msg1, "_company_name") == "Test Corp 1"
+
+        msg2 = next(msg for msg in all_messages if msg.message_id == "msg-2")
+        assert msg2.company_id == "test-corp-2"
+        assert msg2.subject == "Test Subject 2"
+        assert msg2.sender == "recruiter2@test.com"
+        assert msg2.message == "Test message content 2"
+        assert getattr(msg2, "_company_name") == "Test Corp 2"
+
+    def test_get_all_messages_empty(self, clean_test_db):
+        """Test get_all_messages returns empty list when no messages exist."""
+        repo = clean_test_db
+
+        # Create a company without any messages
+        company = Company(
+            company_id="test-company",
+            name="Test Company",
+            details=CompaniesSheetRow(name="Test Company"),
+        )
+        repo.create(company)
+
+        # Get all messages
+        all_messages = repo.get_all_messages()
+
+        # Verify empty result
+        assert isinstance(all_messages, list)
+        assert len(all_messages) == 0
+
+    def test_get_all_messages_with_archived_messages(self, clean_test_db):
+        """Test get_all_messages includes archived messages."""
+        repo = clean_test_db
+
+        # Create a company
+        company = Company(
+            company_id="test-company",
+            name="Test Company",
+            details=CompaniesSheetRow(name="Test Company"),
+        )
+        repo.create(company)
+
+        # Create a message and archive it
+        message = RecruiterMessage(
+            message_id="archived-msg",
+            company_id="test-company",
+            subject="Archived Message",
+            sender="recruiter@test.com",
+            date=datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+            message="This message is archived",
+            email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread1",
+            thread_id="thread1",
+            archived_at=datetime.datetime(
+                2024, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc
+            ),
+        )
+        repo.create_recruiter_message(message)
+
+        # Get all messages
+        all_messages = repo.get_all_messages()
+
+        # Verify archived message is included
+        assert len(all_messages) == 1
+        assert all_messages[0].message_id == "archived-msg"
+        assert all_messages[0].archived_at is not None
+        assert getattr(all_messages[0], "_company_name") == "Test Company"
+
 
 class TestCompaniesSheetRow:
 

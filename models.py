@@ -854,6 +854,59 @@ class CompanyRepository:
                     comp.recruiter_message = message
             return companies
 
+    def get_all_messages(self) -> List[RecruiterMessage]:
+        """Get all recruiter messages with basic company info."""
+        # Reads can happen without the lock
+        with self._get_connection() as conn:
+            # Check if archived_at column exists
+            # TODO: delete this hack once we've migrated all data
+            cursor = conn.execute("PRAGMA table_info(recruiter_messages)")
+            columns = [row[1] for row in cursor.fetchall()]
+            has_archived_at = "archived_at" in columns
+
+            if has_archived_at:
+                cursor = conn.execute(
+                    """
+                    SELECT m.message_id, m.company_id, m.message, m.subject, m.sender, 
+                           m.email_thread_link, m.thread_id, m.date, m.archived_at,
+                           c.name as company_name
+                    FROM recruiter_messages m
+                    LEFT JOIN companies c ON m.company_id = c.company_id
+                    ORDER BY m.date DESC
+                    """
+                )
+            else:
+                # Fallback for older schema without archived_at
+                cursor = conn.execute(
+                    """
+                    SELECT m.message_id, m.company_id, m.message, m.subject, m.sender, 
+                           m.email_thread_link, m.thread_id, m.date, NULL as archived_at,
+                           c.name as company_name
+                    FROM recruiter_messages m
+                    LEFT JOIN companies c ON m.company_id = c.company_id
+                    ORDER BY m.date DESC
+                    """
+                )
+
+            messages = []
+            for row in cursor.fetchall():
+                message = RecruiterMessage(
+                    message_id=row[0],
+                    company_id=row[1],
+                    message=row[2],
+                    subject=row[3],
+                    sender=row[4],
+                    email_thread_link=row[5],
+                    thread_id=row[6],
+                    date=dateutil.parser.parse(row[7]) if row[7] else None,
+                    archived_at=dateutil.parser.parse(row[8]) if row[8] else None,
+                )
+                # Store company name in a way that doesn't conflict with Pydantic
+                # We'll use a private attribute that can be accessed by the API layer
+                object.__setattr__(message, "_company_name", row[9] or "Unknown Company")
+                messages.append(message)
+            return messages
+
     def create(self, company: Company) -> Company:
         with self.lock:
             with self._get_connection() as conn:
