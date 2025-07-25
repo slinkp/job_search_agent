@@ -300,4 +300,32 @@ document.addEventListener("alpine:init", () => {
 
       // Get email scan status from service
       get emailScanStatus() {
-        return emailScanningService
+        return emailScanningService.emailScanStatus;
+      },
+
+      // Get message preview (first 200 characters)
+      getMessagePreview(message) {
+        if (!message.message) return "No message content";
+        return message.message.length > 200
+          ? message.message.substring(0, 200) + "..."
+          : message.message;
+      },
+
+      // Toggle message expansion
+      toggleMessageExpansion(messageId) {
+        if (this.expandedMessages.has(messageId)) {
+          this.expandedMessages.delete(messageId);
+        } else {
+          this.expandedMessages.add(messageId);
+        }
+      },
+
+      // Get expand button text
+      getExpandButtonText(messageId) {
+        return this.expandedMessages.has(messageId)
+          ? "Show Less"
+          : "Show More";
+      }
+    };
+  });
+});
