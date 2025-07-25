@@ -374,6 +374,25 @@ def upsert_company_in_spreadsheet(
         client.append_rows([company_info.as_list_of_str()])
 
 
+def _parse_cache_step(value: str) -> CacheStep:
+    """Parse a cache step value that can be either a name or a number."""
+    try:
+        # First try to parse as integer
+        return CacheStep(int(value))
+    except ValueError:
+        # If that fails, try to parse as enum name
+        try:
+            return CacheStep[value.upper()]
+        except KeyError:
+            valid_names = [step.name for step in CacheStep]
+            valid_numbers = [str(step.value) for step in CacheStep]
+            raise ValueError(
+                f"Invalid cache step: {value}. "
+                f"Valid names: {', '.join(valid_names)}. "
+                f"Valid numbers: {', '.join(valid_numbers)}."
+            )
+
+
 class JobSearch:
     """
     Main entry points for this module.
@@ -667,11 +686,15 @@ def arg_parser():
         help="Do not use any caching",
     )
 
+    # Create a list of valid cache step names for help text
+    valid_cache_steps = [step.name for step in CacheStep]
+    cache_step_help = f"Cache steps up to and including this step. Valid values: {', '.join(valid_cache_steps)}"
+
     parser.add_argument(
         "--cache-until",
-        type=lambda s: CacheStep[s.upper()],
-        choices=list(CacheStep),
-        help="Cache steps up to and including this step",
+        type=_parse_cache_step,
+        help=cache_step_help,
+        metavar="STEP",
     )
 
     # Clear cache options
@@ -680,12 +703,15 @@ def arg_parser():
         action="store_true",
         help="Clear all cached data before running",
     )
+
+    clear_cache_help = f"Clear cache for specific steps before running. Valid values: {', '.join(valid_cache_steps)}"
+
     parser.add_argument(
         "--clear-cache",
-        type=lambda s: CacheStep[s.upper()],
-        choices=list(CacheStep),
+        type=_parse_cache_step,
         nargs="+",
-        help="Clear cache for specific steps before running",
+        help=clear_cache_help,
+        metavar="STEP",
     )
 
     parser.add_argument(
@@ -727,7 +753,7 @@ if __name__ == "__main__":
 
     cache_settings = CacheSettings(
         clear_all_cache=args.clear_all_cache,
-        clear_cache=args.clear_cache,
+        clear_cache=args.clear_cache or [],
         cache_until=args.cache_until,
         no_cache=args.no_cache,
     )
