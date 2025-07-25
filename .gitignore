@@ -61,6 +61,7 @@ coverage/
 .vscode/
 *.swp
 *.swo
-
+.aider.model.settings.yml
+.claude/*
 
 *.ipynb_checkpoints/
