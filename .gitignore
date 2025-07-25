@@ -2,6 +2,7 @@
 secrets/*json
 processed_messages.json
 data/*
+logs/*
 .langchain-cache.db
 credentials.json
 token.json
