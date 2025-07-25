@@ -136,7 +136,7 @@ document.addEventListener("alpine:init", () => {
 
           taskPollingService.addGeneratingMessage(company);
           const response = await fetch(
-            `/api/messages/${company.get_message_id()}/reply`,
+            `/api/messages/${company.recruiter_message?.message_id}/reply`,
             {
               method: "POST",
             }
@@ -192,7 +192,7 @@ document.addEventListener("alpine:init", () => {
         if (this.editingCompany) {
           try {
             const response = await fetch(
-              `/api/messages/${this.editingCompany.get_message_id()}/reply`,
+              `/api/messages/${this.editingCompany.recruiter_message?.message_id}/reply`,
               {
                 method: "PUT",
                 headers: {
