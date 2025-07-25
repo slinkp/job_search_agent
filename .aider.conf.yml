@@ -5,6 +5,14 @@ dark-mode: true
 # I want this config in my repo
 gitignore: false
 
+
+######################################################################
+## Enable/disable automatic linting after changes (default: True)
+
+auto-lint: true
+test-cmd: ./test
+auto-test: true
+
 ## Lint and fix provided files, or dirty files if none provided
 ## This means at load time - no thanks!
 lint: false
@@ -16,11 +24,16 @@ lint-cmd: "python: ./black-flake8-mypy"
 ## as it relies on "invalid" attributes that i can't stop tidy from removing.
 # lint-cmd: "html: tidy --doctype html5 --indent auto --warn-proprietary-attributes no --drop-empty-elements no -m"
 
-## Enable/disable automatic linting after changes (default: True)
-auto-lint: true
+######################################################################
+## Commit behavior
 
-test-cmd: ./test
-auto-test: true
+attribute-co-authored-by: true
+attribute-commit-message-author: true
+no-dirty-commits: true
+auto-commits: true
+
+######################################################################
+## Misc stuff
 
 # I think I want this? Try it
 restore-chat-history: true
