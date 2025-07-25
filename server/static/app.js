@@ -96,7 +96,25 @@ document.addEventListener("alpine:init", () => {
         console.log("Initializing companyList component");
         this.loading = true;
         try {
-          await this.refreshAllCompanies();
+          // Check URL for permalink
+          const urlParams = new URLSearchParams(window.location.search);
+          const companyId = urlParams.get('company');
+          const messageId = urlParams.get('message');
+          
+          if (companyId) {
+            // Load specific company
+            await this.loadCompany(companyId);
+            // Switch to company management view
+            this.viewMode = "company_management";
+          } else if (messageId) {
+            // Load message and associated company
+            await this.loadMessageAndCompany(messageId);
+            // Switch to company management view
+            this.viewMode = "company_management";
+          } else {
+            // Load all companies
+            await this.refreshAllCompanies();
+          }
         } catch (err) {
           console.error("Failed to load companies:", err);
         } finally {
@@ -110,6 +128,16 @@ document.addEventListener("alpine:init", () => {
           this.viewMode === "company_management"
             ? "daily_dashboard"
             : "company_management";
+        // Update URL without reloading
+        const url = new URL(window.location);
+        url.searchParams.delete('company');
+        url.searchParams.delete('message');
+        if (this.viewMode === "daily_dashboard") {
+          url.searchParams.set('view', 'daily');
+        } else {
+          url.searchParams.delete('view');
+        }
+        window.history.replaceState({}, '', url);
       },
 
       isCompanyManagementView() {
@@ -118,6 +146,97 @@ document.addEventListener("alpine:init", () => {
 
       isDailyDashboardView() {
         return this.viewMode === "daily_dashboard";
+      },
+
+      // Navigation methods
+      navigateToCompany(companyId) {
+        // Update URL
+        const url = new URL(window.location);
+        url.searchParams.set('company', companyId);
+        url.searchParams.delete('message');
+        window.history.pushState({}, '', url);
+        
+        // Load company data
+        this.loadCompany(companyId);
+      },
+
+      navigateToMessage(messageId) {
+        // Update URL
+        const url = new URL(window.location);
+        url.searchParams.set('message', messageId);
+        url.searchParams.delete('company');
+        window.history.pushState({}, '', url);
+        
+        // Load message and associated company
+        this.loadMessageAndCompany(messageId);
+      },
+
+      async loadCompany(companyId) {
+        this.loading = true;
+        try {
+          const response = await fetch(`/api/companies/${encodeURIComponent(companyId)}`);
+          if (!response.ok) {
+            throw new Error(`Failed to load company: ${response.status}`);
+          }
+          
+          const company = await response.json();
+          // Get associated messages
+          const messagesResponse = await fetch(`/api/messages`);
+          if (messagesResponse.ok) {
+            const allMessages = await messagesResponse.json();
+            company.associated_messages = allMessages.filter(msg => msg.company_id === companyId);
+          } else {
+            company.associated_messages = [];
+          }
+          
+          this.companies = [company];
+        } catch (err) {
+          console.error("Failed to load company:", err);
+          this.showError("Failed to load company data");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async loadMessageAndCompany(messageId) {
+        this.loading = true;
+        try {
+          // Get message details
+          const messagesResponse = await fetch(`/api/messages`);
+          if (!messagesResponse.ok) {
+            throw new Error(`Failed to load messages: ${messagesResponse.status}`);
+          }
+          
+          const allMessages = await messagesResponse.json();
+          const message = allMessages.find(msg => msg.message_id === messageId);
+          
+          if (!message) {
+            throw new Error("Message not found");
+          }
+          
+          // Get associated company
+          const companyResponse = await fetch(`/api/companies/${encodeURIComponent(message.company_id)}`);
+          if (!companyResponse.ok) {
+            throw new Error(`Failed to load company: ${companyResponse.status}`);
+          }
+          
+          const company = await companyResponse.json();
+          company.associated_messages = allMessages.filter(msg => msg.company_id === message.company_id);
+          
+          this.companies = [company];
+          this.editingCompany = company;
+          this.editingReply = company.reply_message || "";
+          
+          // Show edit modal for the message
+          setTimeout(() => {
+            document.getElementById("editModal").showModal();
+          }, 100);
+        } catch (err) {
+          console.error("Failed to load message and company:", err);
+          this.showError("Failed to load message and company data");
+        } finally {
+          this.loading = false;
+        }
       },
 
       showError,
@@ -186,6 +305,11 @@ document.addEventListener("alpine:init", () => {
         this.editingCompany = null;
         this.editingReply = "";
         document.getElementById("editModal").close();
+        
+        // Update URL to remove message parameter
+        const url = new URL(window.location);
+        url.searchParams.delete('message');
+        window.history.replaceState({}, '', url);
       },
 
       async saveReply() {

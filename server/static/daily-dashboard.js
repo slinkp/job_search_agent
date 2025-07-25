@@ -88,6 +88,15 @@ document.addEventListener("alpine:init", () => {
         }
       },
 
+      // Navigation method
+      navigateToCompany(companyId) {
+        // Switch to company management view and load company
+        const companyList = Alpine.store('companyList');
+        if (companyList) {
+          companyList.navigateToCompany(companyId);
+        }
+      },
+
       // Research a company - follows same pattern as companies dashboard
       async research(message) {
         try {
@@ -291,38 +300,4 @@ document.addEventListener("alpine:init", () => {
 
       // Get email scan status from service
       get emailScanStatus() {
-        return emailScanningService.emailScanStatus;
-      },
-
-      // Toggle message expansion
-      toggleMessageExpansion(messageId) {
-        if (this.expandedMessages.has(messageId)) {
-          this.expandedMessages.delete(messageId);
-        } else {
-          this.expandedMessages.add(messageId);
-        }
-      },
-
-      // Check if message is expanded
-      isMessageExpanded(messageId) {
-        return this.expandedMessages.has(messageId);
-      },
-
-      // Get message preview text (truncated or full)
-      getMessagePreview(message) {
-        const messageText = message.message || "";
-        if (this.isMessageExpanded(message.message_id)) {
-          return messageText;
-        }
-        return messageText.length > 200
-          ? messageText.substring(0, 200) + "..."
-          : messageText;
-      },
-
-      // Get expand/collapse button text
-      getExpandButtonText(messageId) {
-        return this.isMessageExpanded(messageId) ? "Show Less" : "Show More";
-      },
-    };
-  });
-});
+        return emailScanningService

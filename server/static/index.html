@@ -103,7 +103,7 @@
                 <span class="status-icon promising-positive" x-show="company.promising === true" title="Promising">👍</span>
                 <span class="status-icon promising-negative" x-show="company.promising === false" title="Not promising">👎</span>
               </div>
-              <a href="#" @click.prevent="document.getElementById(encodeURIComponent(company.company_id)).scrollIntoView({behavior: 'smooth'})" x-text="company.name" :id="encodeURIComponent(company.company_id)"></a>
+              <a href="#" @click.prevent="navigateToCompany(company.company_id)" x-text="company.name" :id="encodeURIComponent(company.company_id)"></a>
               updated <span x-text="company.updated_at"></span>
             </header>
             <div class="research-status">
@@ -213,6 +213,18 @@
                   <strong>Research Errors:</strong>
                   <span x-text="formatResearchErrors(company)" class="research-error-text"></span>
                 </div>
+                <!-- Associated messages section -->
+                <div class="status-item" x-show="company.associated_messages && company.associated_messages.length > 0">
+                  <strong>Associated Messages:</strong>
+                  <ul>
+                    <template x-for="message in company.associated_messages" :key="message.message_id">
+                      <li>
+                        <a href="#" @click.prevent="navigateToMessage(message.message_id)" x-text="message.subject || 'No Subject'"></a>
+                        (<span x-text="new Date(message.date).toLocaleDateString()"></span>)
+                      </li>
+                    </template>
+                  </ul>
+                </div>
               </div>
               <p>
                 <template
@@ -284,7 +296,9 @@
                   <div class="message-subject" x-text="getMessageSubject(message)"></div>
                   <div class="message-date" x-text="formatMessageDate(getMessageDate(message))"></div>
                 </div>
-                <div class="company-name" x-text="getCompanyName(message)"></div>
+                <div class="company-name">
+                  <a href="#" @click.prevent="navigateToCompany(message.company_id)" x-text="getCompanyName(message)"></a>
+                </div>
               </header>
               
               <div class="message-preview">
