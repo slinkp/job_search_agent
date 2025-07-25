@@ -147,7 +147,7 @@ def create_stub_message(company_name: str) -> str:
     return f"generated reply {company_name} {datetime.datetime.now().isoformat()}"
 
 
-@view_config(route_name="generate_message_by_id", renderer="json", request_method="POST")
+@view_config(route_name="message_reply", renderer="json", request_method="POST")
 def generate_message_by_id(request):
     """Generate a reply for a specific message by message_id."""
     message_id = request.matchdict["message_id"]
@@ -180,7 +180,7 @@ def generate_message_by_id(request):
     return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
 
 
-@view_config(route_name="update_message_by_id", renderer="json", request_method="PUT")
+@view_config(route_name="message_reply", renderer="json", request_method="PUT")
 def update_message_by_id(request):
     """Update a reply message for a specific message by message_id."""
     message_id = request.matchdict["message_id"]
@@ -464,9 +464,7 @@ def main(global_config, **settings):
         config.add_route("companies", "/api/companies")
         config.add_route("messages", "/api/messages")
         config.add_route("research", "/api/companies/{company_id}/research")
-
-        config.add_route("generate_message_by_id", "/api/messages/{message_id}/reply")
-        config.add_route("update_message_by_id", "/api/messages/{message_id}/reply")
+        config.add_route("message_reply", "/api/messages/{message_id}/reply")
         config.add_route(
             "send_and_archive", "/api/companies/{company_id}/send_and_archive"
         )
