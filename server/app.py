@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import logging.handlers
 import os
 
 import colorama
@@ -58,10 +59,13 @@ def setup_colored_logging():
 
     # Configure root logger
     root_logger = logging.getLogger()
-    # Remove any existing handlers
+    # Remove only StreamHandler instances (console handlers), keep file handlers
     for h in root_logger.handlers[:]:
-        root_logger.removeHandler(h)
-    # Add our handler
+        if isinstance(h, logging.StreamHandler) and not isinstance(
+            h, logging.handlers.RotatingFileHandler
+        ):
+            root_logger.removeHandler(h)
+    # Add our colored console handler
     root_logger.addHandler(handler)
     root_logger.setLevel(logging.INFO)
 
