@@ -30,3 +30,11 @@
     - When creating mocks via `patch`, always use `autospec=True`.
     - When instantiating Mock or MagicMock directly, pass a `spec` whenever possible.
     - Use pytest fixtures to organize repetitive mocking or setup.
+
+## Logging
+
+- All Python applications log to both console and files by default
+- Log files are stored in the `logs/` directory at the project root
+- Log files are rotated when they reach 10MB, with up to 5 backup files kept
+- Log format includes timestamp, process name, process ID, log level, and message
+- Log file names correspond to the process: `research_daemon.log`, `server.log`, etc.

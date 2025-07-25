@@ -13,6 +13,10 @@ from pyramid.view import view_config  # type: ignore[import-untyped]
 
 import models
 import tasks
+from logsetup import setup_logging
+
+# Get our application logger
+logger = logging.getLogger("server.app")
 
 
 class ColoredFormatter(logging.Formatter):
@@ -60,10 +64,6 @@ def setup_colored_logging():
     # Add our handler
     root_logger.addHandler(handler)
     root_logger.setLevel(logging.INFO)
-
-
-# Get our application logger
-logger = logging.getLogger("server.app")
 
 
 @view_config(route_name="company", renderer="json", request_method="GET")
@@ -476,6 +476,7 @@ def main(global_config, **settings):
         config.add_static_view(name="static", path="static")
         config.scan()
 
+        setup_logging(process_name="server")
         setup_colored_logging()
 
         # Initialize repository

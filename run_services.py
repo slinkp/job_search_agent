@@ -225,7 +225,7 @@ def main():
     )
 
     args = parser.parse_args()
-    setup_logging(args.verbose)
+    setup_logging(args.verbose, process_name="combined")
 
     manager = ServiceManager()
     manager.start_services(args)

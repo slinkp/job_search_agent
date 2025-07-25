@@ -716,7 +716,7 @@ if __name__ == "__main__":
     parser = arg_parser()
     args = parser.parse_args()
 
-    setup_logging(args.verbose)
+    setup_logging(args.verbose, process_name="libjobsearch")
     if args.verbose:
         email_client.logger.setLevel(logging.DEBUG)
 

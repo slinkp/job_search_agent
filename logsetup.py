@@ -1,5 +1,6 @@
 import logging
-
+import os
+from logging.handlers import RotatingFileHandler
 from colorama import Fore, Style
 from colorama import init as colorama_init
 
@@ -26,8 +27,23 @@ class ColoredLogFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_logging(verbose: bool = False):
+class FileLogFormatter(logging.Formatter):
+    """Custom formatter for file logging without colors"""
+
+    def format(self, record):
+        return super().format(record)
+
+
+def setup_logging(verbose: bool = False, process_name: str = "main"):
     colorama_init()
+
+    # Create logs directory if it doesn't exist
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    # Log file path
+    log_file = os.path.join(log_dir, f"{process_name}.log")
 
     # Create console handler with custom formatter
     console_handler = logging.StreamHandler()
@@ -38,7 +54,17 @@ def setup_logging(verbose: bool = False):
         )
     )
 
+    # Create file handler with rotation (10MB max, 5 backup files)
+    file_handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)
+    file_handler.setFormatter(
+        FileLogFormatter(
+            fmt="%(asctime)s [%(processName)s:%(process)d] %(levelname)s %(name)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S %Z",
+        )
+    )
+
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG if verbose else logging.INFO)
     root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)

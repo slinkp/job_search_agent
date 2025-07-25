@@ -90,3 +90,11 @@ This is a **job search automation tool** that processes recruiter emails, resear
 - JavaScript tests use Vitest with happy-dom
 - Coverage reporting available for both stacks
 - Integration tests cover the full email → research → reply workflow
+
+## Logging
+
+- Applications log to both console and files by default
+- Log files are stored in the `logs/` directory
+- Log files are rotated when they reach 10MB, with up to 5 backup files kept
+- Log format includes timestamp, process name, process ID, log level, and message
+- Log file names correspond to the process: `research_daemon.log`, `server.log`, etc.

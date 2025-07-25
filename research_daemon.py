@@ -804,7 +804,7 @@ if __name__ == "__main__":
     parser.set_defaults(recruiter_message_limit=0)
     args = parser.parse_args()
 
-    setup_logging(args.verbose)
+    setup_logging(args.verbose, process_name="research_daemon")
     cache_args = libjobsearch.CacheSettings(
         clear_all_cache=args.clear_all_cache,
         clear_cache=args.clear_cache,
