@@ -96,27 +96,33 @@ document.addEventListener("alpine:init", () => {
         console.log("Initializing companyList component");
         this.loading = true;
         try {
-          // Check URL for permalink
+          // Check URL for view parameter first
           const urlParams = new URLSearchParams(window.location.search);
+          const viewParam = urlParams.get('view');
           const companyId = urlParams.get('company');
           const messageId = urlParams.get('message');
           
-          if (companyId) {
-            // Load specific company
-            await this.loadCompany(companyId);
-            // Switch to company management view
-            this.viewMode = "company_management";
-          } else if (messageId) {
-            // Load message and associated company
-            await this.loadMessageAndCompany(messageId);
-            // Switch to company management view
-            this.viewMode = "company_management";
-          } else {
-            // Load all companies
-            await this.refreshAllCompanies();
+          // Set view mode based on URL parameter
+          this.viewMode = viewParam === 'daily' 
+            ? "daily_dashboard" 
+            : "company_management";
+          
+          // Only load company data if in company management view
+          if (this.viewMode === "company_management") {
+            if (companyId) {
+              // Load specific company
+              await this.loadCompany(companyId);
+            } else if (messageId) {
+              // Load message and associated company
+              await this.loadMessageAndCompany(messageId);
+            } else {
+              // Load all companies
+              await this.refreshAllCompanies();
+            }
           }
         } catch (err) {
           console.error("Failed to load companies:", err);
+          this.showError("Failed to load company data");
         } finally {
           this.loading = false;
         }
@@ -330,7 +336,7 @@ document.addEventListener("alpine:init", () => {
               const error = await response.json();
               throw new Error(
                 error.error || `Failed to save reply: ${response.status}`
-              );
+            );
             }
 
             const data = await response.json();
@@ -618,7 +624,7 @@ document.addEventListener("alpine:init", () => {
                       );
 
                       // Show success message with the stats we've collected
-                      const created = this.importStatus.created || 0;
+                      const created = this.importStatus.created || 极
                       const updated = this.importStatus.updated || 0;
                       const skipped = this.importStatus.skipped || 0;
                       const errors = this.importStatus.errors || 0;
@@ -669,7 +675,7 @@ document.addEventListener("alpine:init", () => {
               this.importError = "Failed to check task status";
               this.importingCompanies = false;
             }
-            trackingSet.delete(trackingKey);
+            tracking极.delete(trackingKey);
             break;
           }
         }
@@ -719,7 +725,7 @@ document.addEventListener("alpine:init", () => {
       },
 
       // Alias for scanEmails to match HTML expectations
-      async scanRecruiterEmails() {
+      async scanRecruiter极ails() {
         return this.scanEmails();
       },
 

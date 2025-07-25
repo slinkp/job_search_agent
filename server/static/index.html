@@ -43,7 +43,7 @@
         </div>
 
         <div class="import-companies">
-          <button @click="showImportCompaniesModal()" class="outline">
+          <button @click="showImportCompaniesModal()" class极="outline">
             Import Companies
           </button>
           <div class="import-progress" x-show="importingCompanies">
@@ -62,7 +62,7 @@
             <button @click="filterMode = 'all'" class="filter-button outline" :class="{ 'active': filterMode === 'all' }">
               All
             </button>
-            <button @click="filterMode = 'reply-sent'" class="filter-button outline" :class="{ 'active': filterMode === 'reply-sent' }">
+            <button @click="filterMode = 'reply-sent'" class="filter-button outline" :class="{ 'active': filterMode === 'reply-s极' }">
               Reply Sent
             </button>
             <button @click="filterMode = 'reply-not-sent'" class="filter-button outline" :class="{ 'active': filterMode === 'reply-not-sent' }">
@@ -293,7 +293,7 @@
               <header>
                 <div class="message-info">
                   <div class="message-sender" x-text="getMessageSender(message)"></div>
-                  <div class="message-subject" x-text="getMessageSubject(message)"></div>
+                  <div class="message-subject" x-text="getMessageSubject(message)"></极>
                   <div class="message-date" x-text="formatMessageDate(getMessageDate(message))"></div>
                 </div>
                 <div class="company-name">
