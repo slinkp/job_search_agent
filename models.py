@@ -858,36 +858,16 @@ class CompanyRepository:
         """Get all recruiter messages with basic company info."""
         # Reads can happen without the lock
         with self._get_connection() as conn:
-            # Check if archived_at column exists
-            # TODO: delete this hack once we've migrated all data
-            cursor = conn.execute("PRAGMA table_info(recruiter_messages)")
-            columns = [row[1] for row in cursor.fetchall()]
-            has_archived_at = "archived_at" in columns
-
-            if has_archived_at:
-                cursor = conn.execute(
-                    """
-                    SELECT m.message_id, m.company_id, m.message, m.subject, m.sender, 
-                           m.email_thread_link, m.thread_id, m.date, m.archived_at,
-                           c.name as company_name
-                    FROM recruiter_messages m
-                    LEFT JOIN companies c ON m.company_id = c.company_id
-                    ORDER BY m.date DESC
-                    """
-                )
-            else:
-                # Fallback for older schema without archived_at
-                cursor = conn.execute(
-                    """
-                    SELECT m.message_id, m.company_id, m.message, m.subject, m.sender, 
-                           m.email_thread_link, m.thread_id, m.date, NULL as archived_at,
-                           c.name as company_name
-                    FROM recruiter_messages m
-                    LEFT JOIN companies c ON m.company_id = c.company_id
-                    ORDER BY m.date DESC
-                    """
-                )
-
+            cursor = conn.execute(
+                """
+                SELECT m.message_id, m.company_id, m.message, m.subject, m.sender,
+                       m.email_thread_link, m.thread_id, m.date, m.archived_at,
+                       c.name as company_name
+                FROM recruiter_messages m
+                LEFT JOIN companies c ON m.company_id = c.company_id
+                ORDER BY m.date DESC
+                """
+            )
             messages = []
             for row in cursor.fetchall():
                 message = RecruiterMessage(

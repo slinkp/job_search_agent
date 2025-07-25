@@ -311,7 +311,6 @@ class ResearchDaemon:
         return result_company
 
     def do_generate_reply(self, args: dict):
-        # TODO: Use LLM to generate reply
         assert "company_id" in args
         company = self.company_repo.get(args["company_id"])
         assert company is not None
