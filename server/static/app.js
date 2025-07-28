@@ -624,7 +624,7 @@ document.addEventListener("alpine:init", () => {
                       );
 
                       // Show success message with the stats we've collected
-                      const created = this.importStatus.created || 极
+                      const created = this.importStatus.created || 0;
                       const updated = this.importStatus.updated || 0;
                       const skipped = this.importStatus.skipped || 0;
                       const errors = this.importStatus.errors || 0;
@@ -675,7 +675,7 @@ document.addEventListener("alpine:init", () => {
               this.importError = "Failed to check task status";
               this.importingCompanies = false;
             }
-            tracking极.delete(trackingKey);
+            trackingSet.delete(trackingKey);
             break;
           }
         }
@@ -725,7 +725,7 @@ document.addEventListener("alpine:init", () => {
       },
 
       // Alias for scanEmails to match HTML expectations
-      async scanRecruiter极ails() {
+      async scanRecruiterEmails() {
         return this.scanEmails();
       },
 

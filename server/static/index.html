@@ -6,7 +6,7 @@
     <title>Companies Dashboard</title>
     <link
       rel="stylesheet"
-      href="https://unpkg.com/@picocss/pico@极/css/pico.min.css"
+      href="https://unpkg.com/@picocss/pico@1/css/pico.min.css"
     />
     <link rel="stylesheet" href="/static/styles.css" />
     <script type="module" src="/static/company-research.js"></script>
@@ -24,7 +24,7 @@
           <button @click="toggleViewMode()" :class="isCompanyManagementView() ? 'active' : 'outline'">
             Company Management
           </button>
-          <button @click="toggle极ewMode()" :class="isDailyDashboardView() ? 'active' : 'outline'">
+          <button @click="toggleViewMode()" :class="isDailyDashboardView() ? 'active' : 'outline'">
             Daily Dashboard
           </button>
         </div>
@@ -102,7 +102,7 @@
                 <span class="status-icon archived-icon" x-show="company.sent_at || company.archived_at" title="Archived">A</span>
                 <span class="status-icon promising-positive" x-show="company.promising === true" title="Promising">👍</span>
                 <span class="status-icon promising-negative" x-show="company.promising === false" title="Not promising">👎</span>
-              </极>
+              </div>
               <a href="#" @click.prevent="navigateToCompany(company.company_id)" x-text="company.name" :id="encodeURIComponent(company.company_id)"></a>
               updated <span x-text="company.updated_at"></span>
             </header>
