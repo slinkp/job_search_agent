@@ -1,40 +1,100 @@
-- Never re-order functions, methods, or classes in a file
-  unless explicitly asked to do so.
+# CLAUDE.md
 
-- Do not change or remove existing comments unless the code
-  has changed in such a way that the comment is no longer valid.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-- When adding functionality, always look for opportunities to re-use
-  code that already exists. If unsure, suggest the possible re-use.
+## Commands
 
-- When asked to refactor, assume the following guidelines:
-  - Break the refactoring into small steps.
-  - Make the smallest change possible at each step.
-  - Make no other changes to the code except those strictly
-    necessary to achieve the refactoring.
-  - The code should behave logically identical before and
-    after the refactoring, except insofar as the refactoring
-    involves interface changes (signatures, return types, etc).
-  - If there are tests, also update the tests if and only if
-    signatures of tested methods/functions were changed, or
-    new classes added. Suggest tests of newly created
-    functions/methods/classes.
+### Running the Application
 
-- Python-specific conventions:
-  - Use Python type annotations whenever possible.
-  - When creating tests for Python code:
-    - Use pytest conventions instead of unittest.
-    - Each test case should test one behavior.
-    - Use `mock` to avoid interacting with external resources
-      (APIs, files, network resources, etc).
-    - When creating mocks via `patch`, always use `autospec=True`.
-    - When instantiating Mock or MagicMock directly, pass a `spec` whenever possible.
-    - Use pytest fixtures to organize repetitive mocking or setup.
+**Environment notes:**
+
+Python environment is in `.direnv`.
+Various environment variables are exported via direnv
+and live in `.envrc`.
+
+```bash
+# Backend research daemon (in one terminal)
+python research_daemon.py
+
+# Web server (in another terminal)  
+python server/app.py
+```
+Web app runs at http://localhost:8080
+
+### Testing
+```bash
+# Run all python and javascript tests, always.
+./test
+```
+
+### Development Tools
+```bash
+# Code formatting (Black with 90 char line length)
+black .
+
+# Type checking (Pyright configured via pyrightconfig.json)
+mypy .
+
+# Python linting
+flake8 .
+
+# All of the above
+./black-flake8-mypy .
+```
+
+## Architecture
+
+This is a **job search automation tool** that processes recruiter emails, researches companies, and generates replies using AI. The system follows a multi-component architecture:
+
+### Core Backend Components
+- **`models.py`** - Pydantic models for Company, RecruiterMessage, CompanyStatus, and database interactions
+- **`email_client.py`** - Gmail API integration for reading/sending emails
+- **`libjobsearch.py`** - Main research and reply generation logic with RAG
+- **`company_researcher.py`** - Company research automation with web scraping
+- **`research_daemon.py`** - Background task processor for async operations
+- **`server/app.py`** - Pyramid REST API backend
+- **`tasks.py`** - Task queue management and processing
+
+### Tech Stack
+- **Backend**: Python with Pyramid web framework
+- **Frontend**: Alpine.js + Pico.css (Single Page Web App)
+- **Database**: SQLite with Pydantic models
+- **AI**: OpenAI/Anthropic APIs via LangChain for research and reply generation  
+- **Scraping**: Playwright for levels.fyi and LinkedIn data
+- **APIs**: Gmail API, Google Sheets API
+- **Testing**: pytest (Python), Vitest (JavaScript)
+
+### Data Flow
+1. **Email scanning** → RecruiterMessage objects → SQLite storage
+2. **Company research** → AI-powered search + web scraping → Company objects
+3. **Reply generation** → RAG chain using past replies → Gmail API sending
+4. **Data sync** → Google Sheets as canonical source (pragmatic choice)
+
+### Key Directories
+- **`server/`** - Web application (Pyramid backend + Alpine.js frontend)
+- **`company_classifier/`** - ML pipeline for company fit classification (WIP)
+- **`data/`** - SQLite database and vector storage (ChromaDB)
+- **`tests/`** - Python test suite 
+- **`server/frontend/tests/`** - JavaScript test suite
+- **`migrations/`** - Database migration scripts
+
+### Important Context
+- **Google Sheets sync**: The spreadsheet remains canonical for now due to manual data entry needs
+- **Company name normalization**: Uses slugify with custom replacements (& → and)
+- **AI Model Selection**: Configurable between OpenAI and Anthropic models
+- **Background Processing**: Research tasks run async via daemon to avoid blocking UI
+- **Email Integration**: Full Gmail API integration for both reading and sending
+
+### Testing Notes
+- Python tests use pytest with mocking via `autospec=True`
+- JavaScript tests use Vitest with happy-dom
+- Coverage reporting available for both stacks
+- Integration tests cover the full email → research → reply workflow
 
 ## Logging
 
-- All Python applications log to both console and files by default
-- Log files are stored in the `logs/` directory at the project root
+- Applications log to both console and files by default
+- Log files are stored in the `logs/` directory
 - Log files are rotated when they reach 10MB, with up to 5 backup files kept
 - Log format includes timestamp, process name, process ID, log level, and message
 - Log file names correspond to the process: `research_daemon.log`, `server.log`, etc.
