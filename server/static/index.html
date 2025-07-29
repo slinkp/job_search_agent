@@ -133,11 +133,11 @@
                 @click="generateReply(company)"
                 :disabled="isGeneratingMessage(company)"
               >
-                <span x-text="isGeneratingMessage(company) ? 'Generating...' : company.reply_message ? 'Regenerate' : 'Generate'"></span>
-                <span
-                  x-show="isGeneratingMessage(company)"
-                  class="loading-spinner"
-                ></span>
+                <span x-show="!isGeneratingMessage(company)" x-text="'Generate'"></span>
+                <span x-show="isGeneratingMessage(company)">
+                  <span class="loading-spinner"></span>
+                  Generating...
+                </span>
               </button>
             </template>
             <template x-if="company.reply_message">
@@ -150,8 +150,11 @@
                   @click="generateReply(company)"
                   :disabled="isGeneratingMessage(company)"
                 >
-                  <span x-text="isGeneratingMessage(company) ? 'Generating...' : company.reply_message ? 'Regenerate' : 'Generate'"></span>
-                  <span x-show="isGeneratingMessage(company)" class="loading-spinner"></span>
+                  <span x-show="!isGeneratingMessage(company)">Regenerate</span>
+                  <span x-show="isGeneratingMessage(company)">
+                    <span class="loading-spinner"></span>
+                    Generating...
+                  </span>
                 </button>
               </div>
             </template>
@@ -323,8 +326,11 @@
                   :disabled="isGeneratingMessage(message)"
                   class="outline"
                 >
-                  <span x-text="isGeneratingMessage(message) ? 'Generating...' : 'Generate Reply'"></span>
-                  <span x-show="isGeneratingMessage(message)" class="loading-spinner"></span>
+                  <span x-show="!isGeneratingMessage(message)">Generate Reply</span>
+                  <span x-show="isGeneratingMessage(message)">
+                    <span class="loading-spinner"></span>
+                    Generating...
+                  </span>
                 </button>
                 <button @click="archive(message.message_id)" class="outline">
                   Archive
@@ -387,8 +393,11 @@
                 @click="generateReply(editingCompany, true)"
                 :disabled="editingCompany && isGeneratingMessage(editingCompany)"
               >
-                <span x-text="isGeneratingMessage(editingCompany) ? 'Generating...' : 'Regenerate reply'"></span>
-                <span x-show="isGeneratingMessage(editingCompany)" class="loading-spinner"></span>
+                <span x-show="!isGeneratingMessage(editingCompany)">Regenerate reply</span>
+                <span x-show="isGeneratingMessage(editingCompany)">
+                  <span class="loading-spinner"></span>
+                  Generating...
+                </span>
               </button>
               <button 
                 type="button" 

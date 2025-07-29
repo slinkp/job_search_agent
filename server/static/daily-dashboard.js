@@ -14,6 +14,10 @@ document.addEventListener("alpine:init", () => {
       // Message list data
       unprocessedMessages: [],
       loading: false,
+      
+      // Local tracking for UI state
+      generatingMessages: new Set(),
+      researchingCompanies: new Set(),
 
       // Sorting state
       sortNewestFirst: true,
@@ -100,6 +104,7 @@ document.addEventListener("alpine:init", () => {
       // Research a company - follows same pattern as companies dashboard
       async research(message) {
         try {
+          this.researchingCompanies.add(message.name);
           taskPollingService.addResearching(message);
           const response = await fetch(
             `/api/companies/${message.company_id}/research`,
@@ -120,17 +125,22 @@ document.addEventListener("alpine:init", () => {
           message.research_status = data.status;
 
           await this.pollResearchStatus(message);
+          
+          await this.loadUnprocessedMessages();
+          showSuccess("Company research completed!");
         } catch (err) {
           console.error("Failed to research company:", err);
           // Could add user notification here
         } finally {
+          this.researchingCompanies.delete(message.name);
           taskPollingService.removeResearching(message);
         }
       },
 
       // Poll research status using the shared service
-      pollResearchStatus: (message) =>
-        taskPollingService.pollResearchStatus(message),
+      async pollResearchStatus(message) {
+        return await taskPollingService.pollResearchStatus(message);
+      },
 
       // Get research status text using the shared service
       getResearchStatusText: (message) =>
@@ -141,7 +151,10 @@ document.addEventListener("alpine:init", () => {
         taskPollingService.getResearchStatusClass(message),
 
       // Check if company is being researched using the shared service
-      isResearching: (message) => taskPollingService.isResearching(message),
+      isResearching(message) {
+        if (!message) return false;
+        return this.researchingCompanies.has(message.name);
+      },
 
       // Generate reply functionality (similar to app.js)
       async generateReply(message) {
@@ -152,7 +165,11 @@ document.addEventListener("alpine:init", () => {
             return;
           }
 
+          // Add to local tracking for immediate UI update
+          this.generatingMessages.add(message.name);
+          // Also add to service for polling
           taskPollingService.addGeneratingMessage(message);
+
           const response = await fetch(
             `/api/messages/${message.message_id}/reply`,
             {
@@ -173,12 +190,17 @@ document.addEventListener("alpine:init", () => {
 
           // Start polling for updates
           await this.pollMessageStatus(message);
+          
+          // Refresh the message list after generation
+          await this.loadUnprocessedMessages();
+          showSuccess("Reply generated successfully!");
         } catch (err) {
           console.error("Failed to generate reply:", err);
           showError(
             err.message || "Failed to generate reply. Please try again."
           );
         } finally {
+          this.generatingMessages.delete(message.name);
           taskPollingService.removeGeneratingMessage(message);
         }
       },
@@ -228,12 +250,15 @@ document.addEventListener("alpine:init", () => {
       },
 
       // Poll message status using the shared service
-      pollMessageStatus: (message) =>
-        taskPollingService.pollMessageStatus(message),
+      async pollMessageStatus(message) {
+        return await taskPollingService.pollMessageStatus(message);
+      },
 
       // Check if company is generating message using the shared service
-      isGeneratingMessage: (message) =>
-        taskPollingService.isGeneratingMessage(message),
+      isGeneratingMessage(message) {
+        if (!message) return false;
+        return this.generatingMessages.has(message.name);
+      },
 
       formatMessageDate,
 

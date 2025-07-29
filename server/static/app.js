@@ -58,6 +58,22 @@ style.textContent = `
     text-align: center;
     line-height: 16px;
   }
+  
+  .loading-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 5px;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
 `;
 document.head.appendChild(style);
 
@@ -71,6 +87,9 @@ document.addEventListener("alpine:init", () => {
       loading: false,
       editingCompany: null,
       editingReply: "",
+      // Local tracking for UI state
+      generatingMessages: new Set(),
+      researchingCompanies: new Set(),
       // Stubs for import functionality
       importingCompanies: false,
       importTaskId: null,
@@ -259,7 +278,11 @@ document.addEventListener("alpine:init", () => {
             return;
           }
 
+          // Add to local tracking for immediate UI update
+          this.generatingMessages.add(company.name);
+          // Also add to service for polling
           taskPollingService.addGeneratingMessage(company);
+
           const response = await fetch(
             `/api/messages/${company.recruiter_message?.message_id}/reply`,
             {
@@ -280,21 +303,28 @@ document.addEventListener("alpine:init", () => {
 
           // Start polling for updates
           await this.pollMessageStatus(company);
+          
           // After polling completes, get the fresh company data
-          if (updateModal && this.editingCompany) {
+          await this.fetchAndUpdateCompany(company.company_id);
+          
+          // Update editing modal if it's open for this company
+          if (updateModal && this.editingCompany && this.editingCompany.company_id === company.company_id) {
             const updatedCompany = this.companies.find(
-              (c) => c.name === company.name
+              (c) => c.company_id === company.company_id
             );
             if (updatedCompany) {
-              this.editingReply = updatedCompany.reply_message;
+              this.editingReply = updatedCompany.reply_message || "";
             }
           }
+          
+          this.showSuccess("Reply generated successfully!");
         } catch (err) {
           console.error("Failed to generate reply:", err);
           this.showError(
             err.message || "Failed to generate reply. Please try again."
           );
         } finally {
+          this.generatingMessages.delete(company.name);
           taskPollingService.removeGeneratingMessage(company);
         }
       },
@@ -404,6 +434,7 @@ document.addEventListener("alpine:init", () => {
 
       async research(company) {
         try {
+          this.researchingCompanies.add(company.name);
           taskPollingService.addResearching(company);
           const response = await fetch(
             `/api/companies/${company.company_id}/research`,
@@ -424,31 +455,40 @@ document.addEventListener("alpine:init", () => {
           company.research_status = data.status;
 
           await this.pollResearchStatus(company);
+          
+          await this.fetchAndUpdateCompany(company.company_id);
+          this.showSuccess("Company research completed!");
         } catch (err) {
           console.error("Failed to research company:", err);
           this.showError(
             err.message || "Failed to start research. Please try again."
           );
         } finally {
+          this.researchingCompanies.delete(company.name);
           taskPollingService.removeResearching(company);
         }
       },
 
-      pollResearchStatus: (company) =>
-        taskPollingService.pollResearchStatus(company),
+      async pollResearchStatus(company) {
+        return await taskPollingService.pollResearchStatus(company);
+      },
       getResearchStatusText: (company) =>
         taskPollingService.getResearchStatusText(company),
       getResearchStatusClass: (company) =>
         taskPollingService.getResearchStatusClass(company),
-      isResearching: (company) => taskPollingService.isResearching(company),
-      pollMessageStatus: (company) =>
-        taskPollingService.pollMessageStatus(company),
+      isResearching(company) {
+        if (!company) return false;
+        return this.researchingCompanies.has(company.name);
+      },
+      async pollMessageStatus(company) {
+        return await taskPollingService.pollMessageStatus(company);
+      },
       getMessageStatusText: (company) =>
         taskPollingService.getMessageStatusText(company),
       isGeneratingMessage(company) {
         if (this.loading) return false;
         if (!company) return false;
-        return taskPollingService.isGeneratingMessage(company);
+        return this.generatingMessages.has(company.name);
       },
 
       async pollTaskStatus(company, taskType) {
