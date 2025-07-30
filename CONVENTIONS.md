@@ -1,6 +1,7 @@
-# CLAUDE.md
+# CONVENTIONS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Aider
+when working with code in this repository.
 
 ## Commands
 
@@ -41,6 +42,17 @@ flake8 .
 # All of the above
 ./black-flake8-mypy .
 ```
+
+## Basic development process
+
+- Do the smallest possible step. Always.
+- Ask for clarification if unsure what to do.
+- Always run tests and lint fixes BEFORE committing.
+- Never commit with ANY failing tests.
+  If you can't fix a failing test after four attempts, give up and ask
+  for guidance.
+- NEVER commit frontend and backend changes at the same time.
+
 
 ## Architecture
 
