@@ -118,25 +118,29 @@ document.addEventListener("alpine:init", () => {
           // Check URL for view parameter first
           const urlParams = new URLSearchParams(window.location.search);
           const viewParam = urlParams.get('view');
-          const companyId = urlParams.get('company');
-          const messageId = urlParams.get('message');
           
           // Set view mode based on URL parameter
           this.viewMode = viewParam === 'daily' 
             ? "daily_dashboard" 
             : "company_management";
           
+          // Check for anchor in URL
+          const hash = window.location.hash;
+          const companyId = hash ? decodeURIComponent(hash.substring(1)) : null;
+          
           // Only load company data if in company management view
           if (this.viewMode === "company_management") {
+            // Always load all companies
+            await this.refreshAllCompanies();
+            
+            // If there's an anchor, scroll to that company after loading
             if (companyId) {
-              // Load specific company
-              await this.loadCompany(companyId);
-            } else if (messageId) {
-              // Load message and associated company
-              await this.loadMessageAndCompany(messageId);
-            } else {
-              // Load all companies
-              await this.refreshAllCompanies();
+              setTimeout(() => {
+                const element = document.getElementById(encodeURIComponent(companyId));
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, 100);
             }
           }
         } catch (err) {
@@ -175,14 +179,17 @@ document.addEventListener("alpine:init", () => {
 
       // Navigation methods
       navigateToCompany(companyId) {
-        // Update URL
+        // Update URL with anchor
         const url = new URL(window.location);
-        url.searchParams.set('company', companyId);
+        url.hash = encodeURIComponent(companyId);
         url.searchParams.delete('message');
         window.history.pushState({}, '', url);
         
-        // Load company data
-        this.loadCompany(companyId);
+        // Scroll to the company anchor
+        const element = document.getElementById(encodeURIComponent(companyId));
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
       },
 
       navigateToMessage(messageId) {
