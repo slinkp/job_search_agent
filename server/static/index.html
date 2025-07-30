@@ -287,15 +287,15 @@
               <header>
                 <div class="message-info">
                   <div class="message-sender">
-                    <a :href="'/#' + encodeURIComponent(message.company_id)" @click.prevent="navigateToCompany(message.company_id)" x-text="getMessageSender(message)"></a>
+                    <a :href="'/#' + encodeURIComponent(message.company_id)" @click="$dispatch('navigate-to-company', message.company_id)" x-text="getMessageSender(message)"></a>
                   </div>
                   <div class="message-subject">
-                    <a :href="'/#' + encodeURIComponent(message.company_id)" @click.prevent="navigateToCompany(message.company_id)" x-text="getMessageSubject(message)"></a>
+                    <a :href="'/#' + encodeURIComponent(message.company_id)" @click="$dispatch('navigate-to-company', message.company_id)" x-text="getMessageSubject(message)"></a>
                   </div>
                   <div class="message-date" x-text="formatMessageDate(getMessageDate(message))"></div>
                 </div>
                 <div class="company-name">
-                  <a :href="'/#' + encodeURIComponent(message.company_id)" @click.prevent="navigateToCompany(message.company_id)" x-text="getCompanyName(message)"></a>
+                  <a :href="'/#' + encodeURIComponent(message.company_id)" @click="$dispatch('navigate-to-company', message.company_id)" x-text="getCompanyName(message)"></a>
                 </div>
               </header>
               

@@ -78,6 +78,15 @@ style.textContent = `
 document.head.appendChild(style);
 
 document.addEventListener("alpine:init", () => {
+  // Listen for navigation events from other components
+  document.addEventListener("navigate-to-company", (event) => {
+    const companyId = event.detail;
+    const companyList = Alpine.store("companyList");
+    if (companyList) {
+      companyList.navigateToCompany(companyId);
+    }
+  });
+
   Alpine.data("companyList", () => {
     const researchService = new CompanyResearchService();
     const emailScanningService = new EmailScanningService();
@@ -179,17 +188,26 @@ document.addEventListener("alpine:init", () => {
 
       // Navigation methods
       navigateToCompany(companyId) {
+        // Ensure we're in company management view
+        this.viewMode = "company_management";
+        
         // Update URL with anchor
         const url = new URL(window.location);
         url.hash = encodeURIComponent(companyId);
         url.searchParams.delete('message');
+        url.searchParams.delete('view');
         window.history.pushState({}, '', url);
         
-        // Scroll to the company anchor
-        const element = document.getElementById(encodeURIComponent(companyId));
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }
+        // Ensure companies are loaded
+        this.refreshAllCompanies().then(() => {
+          // Scroll to the company anchor
+          setTimeout(() => {
+            const element = document.getElementById(encodeURIComponent(companyId));
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 100);
+        });
       },
 
       navigateToMessage(messageId) {
