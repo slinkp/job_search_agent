@@ -377,22 +377,27 @@ class TavilyRAGResearchAgent:
 
         # Company name is a special case - only update if research found a better name
         new_name = content.get("company_name", "").strip()
-        current_name = company_info.name or ""
+        current_name = (company_info.name or "").strip()
 
-        # Always assign new name if current is blank/None
-        if not current_name.strip() and new_name:
-            company_info.name = new_name
-        # Only replace existing name if new name is better
-        elif (
-            new_name
-            and not new_name.startswith("Company from ")
-            and not new_name.startswith("<UNKNOWN ")
-        ):
-            if new_name.lower() != current_name.lower():
-                logger.warning(
-                    f"Company name update: Will update '{current_name}' with '{new_name}'"
+        if new_name:
+            # Always assign new name if current is blank/None
+            if not current_name:
+                logger.info(
+                    f"Company name update: No existing name, setting to '{new_name}'"
                 )
                 company_info.name = new_name
+            # Only replace existing name if new name is better
+            elif is_placeholder(current_name):
+                if is_placeholder(new_name):
+                    logger.info(
+                        f"Not replacing '{current_name}' with placeholder '{new_name}'"
+                    )
+                else:
+                    logger.info(
+                        f"Company name update: Replacing '{current_name} with better '{new_name}'"
+                    )
+                    company_info.name = new_name
+
         update_field_from_key_if_present("ny_address", "nyc_office_address")
         update_field_from_key_if_present("headquarters", "headquarters_city")
         update_field_from_key_if_present("eng_size", "total_engineers")
@@ -469,6 +474,17 @@ def main(
         return researcher.main(url=url_or_message)
     else:
         return researcher.main(message=url_or_message)
+
+
+def is_placeholder(name: str | None) -> bool:
+    name = (name or "").strip().lower()
+    if name.startswith("company from"):
+        return True
+    if name.startswith("<unknown"):
+        return True
+    if name in ("unknown", "placeholder"):
+        return True
+    return False
 
 
 if __name__ == "__main__":
