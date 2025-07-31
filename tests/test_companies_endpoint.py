@@ -1,4 +1,5 @@
 import datetime
+import os
 from unittest.mock import patch
 
 import pytest
@@ -7,6 +8,9 @@ from pyramid.testing import DummyRequest  # type: ignore[import-untyped]
 import server.app
 import tasks
 from models import CompaniesSheetRow, Company, CompanyStatus, RecruiterMessage
+from models import CompanyRepository
+
+TEST_DB_PATH = "data/_test_companies_endpoint.db"
 
 
 @pytest.fixture
@@ -196,14 +200,6 @@ def test_scan_recruiter_emails_with_null_max_messages(mock_task_manager):
         tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
         {"max_messages": None, "do_research": False},
     )
-
-
-# Add fixture for database tests
-import os
-
-from models import CompanyRepository, RecruiterMessage
-
-TEST_DB_PATH = "data/_test_companies_endpoint.db"
 
 
 @pytest.fixture(scope="function")
