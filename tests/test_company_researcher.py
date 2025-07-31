@@ -203,3 +203,31 @@ class TestUpdateCompanyInfoFromDict:
 
         agent.update_company_info_from_dict(company, content)
         assert company.ny_address == "existing"
+
+    def test_extract_initial_company_info_basic(self):
+        """Test basic extraction of company info from recruiter message."""
+        mock_llm = mock.Mock()
+        agent = TavilyRAGResearchAgent(llm=mock_llm)
+
+        # Mock LLM response
+        expected_response = {
+            "company_name": "TechCorp Inc",
+            "company_url": "https://techcorp.com",
+            "role": "Senior Backend Engineer",
+            "recruiter_name": "Jane Smith",
+            "recruiter_contact": "jane@recruiter.com",
+        }
+        mock_llm.invoke.return_value.content = json.dumps(expected_response)
+
+        message = """
+        Hi! I'm Jane Smith from Recruiters Inc. 
+        TechCorp Inc is looking for a Senior Backend Engineer.
+        Check out their careers page: https://techcorp.com/careers
+        Contact me at jane@recruiter.com
+        """
+
+        with mock.patch.dict("os.environ", {"TAVILY_API_KEY": "fake-key-for-testing"}):
+            result = agent.extract_initial_company_info(message)
+
+        assert result == expected_response
+        mock_llm.invoke.assert_called_once()
