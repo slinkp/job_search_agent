@@ -103,7 +103,7 @@
                 <span class="status-icon promising-positive" x-show="company.promising === true" title="Promising">👍</span>
                 <span class="status-icon promising-negative" x-show="company.promising === false" title="Not promising">👎</span>
               </div>
-              <a href="#" @click.prevent="navigateToCompany(company.company_id)" x-text="company.name" :id="encodeURIComponent(company.company_id)"></a>
+              <a :href="'#' + encodeURIComponent(company.company_id)" @click="navigateToCompany(company.company_id)" x-text="company.name" :id="encodeURIComponent(company.company_id)"></a>
               updated <span x-text="company.updated_at"></span>
             </header>
             <div class="research-status">
@@ -283,15 +283,19 @@
           <h3>Unprocessed Messages (<span x-text="unprocessedMessages.length"></span>)</h3>
           
           <template x-for="message in sortedMessages" :key="message.message_id">
-            <article class="message-item">
+            <article class="message-item" :id="message.message_id">
               <header>
                 <div class="message-info">
-                  <div class="message-sender" x-text="getMessageSender(message)"></div>
-                  <div class="message-subject" x-text="getMessageSubject(message)"></div>
+                  <div class="message-sender">
+                    <a :href="'/#' + encodeURIComponent(message.company_id)" @click="$dispatch('navigate-to-company', message.company_id)" x-text="getMessageSender(message)"></a>
+                  </div>
+                  <div class="message-subject">
+                    <a :href="'/?view=daily#' + message.message_id" x-text="getMessageSubject(message)"></a>
+                  </div>
                   <div class="message-date" x-text="formatMessageDate(getMessageDate(message))"></div>
                 </div>
                 <div class="company-name">
-                  <a href="#" @click.prevent="navigateToCompany(message.company_id)" x-text="getCompanyName(message)"></a>
+                  <a :href="'/#' + encodeURIComponent(message.company_id)" @click="$dispatch('navigate-to-company', message.company_id)" x-text="getCompanyName(message)"></a>
                 </div>
               </header>
               
