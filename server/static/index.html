@@ -283,14 +283,14 @@
           <h3>Unprocessed Messages (<span x-text="unprocessedMessages.length"></span>)</h3>
           
           <template x-for="message in sortedMessages" :key="message.message_id">
-            <article class="message-item">
+            <article class="message-item" :id="message.message_id">
               <header>
                 <div class="message-info">
                   <div class="message-sender">
                     <a :href="'/#' + encodeURIComponent(message.company_id)" @click="$dispatch('navigate-to-company', message.company_id)" x-text="getMessageSender(message)"></a>
                   </div>
                   <div class="message-subject">
-                    <a :href="'/#' + encodeURIComponent(message.company_id)" @click="$dispatch('navigate-to-company', message.company_id)" x-text="getMessageSubject(message)"></a>
+                    <a :href="'/?view=daily#' + message.message_id" x-text="getMessageSubject(message)"></a>
                   </div>
                   <div class="message-date" x-text="formatMessageDate(getMessageDate(message))"></div>
                 </div>
