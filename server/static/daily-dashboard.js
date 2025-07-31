@@ -32,6 +32,16 @@ document.addEventListener("alpine:init", () => {
       async init() {
         console.log("Initializing daily dashboard component");
         await this.loadUnprocessedMessages();
+        
+        // Handle anchor scrolling after messages load
+        this.$nextTick(() => {
+          if (window.location.hash) {
+            const element = document.getElementById(window.location.hash.slice(1));
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        });
       },
 
       // Computed property for sorted messages
