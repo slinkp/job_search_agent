@@ -6,6 +6,7 @@ import datetime
 import json
 import logging
 import os
+
 from typing import Optional
 
 import requests
@@ -263,12 +264,19 @@ class TavilyRAGResearchAgent:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
             "Referer": "https://www.linkedin.com/",
         }
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
 
-        soup = BeautifulSoup(response.content, "html.parser")
-        text = soup.get_text(separator="\n", strip=True)
-        return text
+            soup = BeautifulSoup(response.content, "html.parser")
+            text = soup.get_text(separator="\n", strip=True)
+            return text
+        except requests.exceptions.SSLError as e:
+            logger.warning(f"SSL error when fetching {url}: {e}")
+            return f"SSL error occurred when accessing {url}"
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Request error when fetching {url}: {e}")
+            return f"Request error occurred when accessing {url}"
 
     def main(self, *, url: str = "", message: str = "") -> CompaniesSheetRow:
         """

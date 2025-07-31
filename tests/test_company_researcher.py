@@ -204,6 +204,99 @@ class TestUpdateCompanyInfoFromDict:
         agent.update_company_info_from_dict(company, content)
         assert company.ny_address == "existing"
 
+    def test_main_happy_path(self):
+        """Test main method with recruiter message successfully."""
+        from company_researcher import TavilyRAGResearchAgent
+
+        mock_llm = mock.Mock()
+        mock_tavily = mock.Mock()
+
+        # Mock LLM responses for extract_initial_company_info
+        initial_response_data = json.dumps(
+            {
+                "company_name": "Acme Corp",
+                "company_url": "https://acme.com",
+                "role": "Senior Software Engineer",
+                "recruiter_name": "John Doe",
+                "recruiter_contact": "john@recruiter.com",
+            }
+        )
+
+        # Mock LLM responses for research prompts
+        research_responses = [
+            initial_response_data,
+            json.dumps(
+                {
+                    "company_name": "Acme Corp",
+                    "headquarters_city": "san francisco, ca, usa",
+                    "nyc_office_address": "123 main st, san francisco, ca 94105",
+                    "total_employees": 1000,
+                    "total_engineers": 200,
+                }
+            ),
+            json.dumps(
+                {
+                    "remote_work_policy": "hybrid",
+                    "hiring_status": True,
+                    "hiring_status_ai": True,
+                    "jobs_homepage_url": "https://acme.com/careers",
+                }
+            ),
+            json.dumps(
+                {
+                    "public_status": "private",
+                    "valuation": "500m",
+                    "funding_series": "series c",
+                }
+            ),
+            json.dumps(
+                {"interview_style_systems": True, "interview_style_leetcode": True}
+            ),
+            json.dumps(
+                {
+                    "uses_ai": True,
+                    "ai_notes": "Uses AI for product recommendations and fraud detection",
+                }
+            ),
+            json.dumps({}),
+        ]
+
+        mock_invoke_responses = [
+            mock.Mock(spec=["content"], content=text) for text in research_responses
+        ]
+
+        mock_llm.invoke.side_effect = mock_invoke_responses
+
+        agent = TavilyRAGResearchAgent(llm=mock_llm)
+        agent.tavily_client = mock_tavily
+        mock_tavily.get_search_context.return_value = "mock search context"
+
+        # Mock _plaintext_from_url to avoid real web requests
+        with mock.patch.object(
+            agent,
+            "_plaintext_from_url",
+            return_value="mock website content",
+            autospec=True,
+        ):
+            message = """
+        Hi! I'm John Doe from Recruiters Inc.
+        Acme Corp is looking for a Senior Software Engineer.
+        Check their careers page at https://acme.com/careers
+        Contact me at john@recruiter.com
+        """
+
+            with mock.patch.dict("os.environ", {"TAVILY_API_KEY": "fake-key"}):
+                result = agent.main(message=message)
+
+        assert result.name == "Acme Corp"
+        assert result.url == "https://acme.com/careers"
+        assert result.headquarters == "san francisco, ca, usa"
+        assert result.eng_size == 200
+        assert result.total_size == 1000
+        assert result.remote_policy == "hybrid"
+        assert result.current_state == "10. consider applying"
+        assert result.updated is not None
+
     def test_extract_initial_company_info_basic(self):
         """Test basic extraction of company info from recruiter message."""
         mock_llm = mock.Mock()
@@ -220,7 +313,7 @@ class TestUpdateCompanyInfoFromDict:
         mock_llm.invoke.return_value.content = json.dumps(expected_response)
 
         message = """
-        Hi! I'm Jane Smith from Recruiters Inc. 
+        Hi! I'm Jane Smith from Recruiters Inc.
         TechCorp Inc is looking for a Senior Backend Engineer.
         Check out their careers page: https://techcorp.com/careers
         Contact me at jane@recruiter.com
