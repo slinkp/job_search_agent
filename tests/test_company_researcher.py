@@ -135,3 +135,71 @@ class TestIsPlaceholder:
         assert is_placeholder("placeholder")
         assert not is_placeholder("unknown company")  # Not exact match
         assert not is_placeholder("placeholder inc")  # Not exact match
+
+
+class TestUpdateCompanyInfoFromDict:
+
+    def test_update_company_name_from_blank(self):
+        """Test that company name is updated when current name is blank."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="", company_identifier="test")
+        content = {"company_name": "Google Inc"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Google Inc"
+
+    def test_update_company_name_from_placeholder(self):
+        """Test that company name is updated when current name is a placeholder."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Company from email", company_identifier="test")
+        content = {"company_name": "Microsoft"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Microsoft"
+
+    def test_dont_update_company_name_with_placeholder(self):
+        """Test that company name is not updated when new name is a placeholder."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Google", company_identifier="test")
+        content = {"company_name": "Company from LinkedIn"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Google"
+
+    def test_update_basic_fields(self):
+        """Test that basic fields are updated correctly."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Test", company_identifier="test")
+        content = {
+            "nyc_office_address": "123 NYC St, New York, NY 10001",
+            "headquarters_city": "San Francisco, CA, USA",
+            "total_engineers": 500,
+            "total_employees": 2000,
+        }
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.ny_address == "123 nyc st, new york, ny 10001"
+        assert company.headquarters == "san francisco, ca, usa"
+        assert company.eng_size == 500
+        assert company.total_size == 2000
+
+    def test_ignore_empty_values(self):
+        """Test that empty or null values are ignored."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(
+            name="Test", ny_address="existing", company_identifier="test"
+        )
+        content = {"nyc_office_address": ""}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.ny_address == "existing"
