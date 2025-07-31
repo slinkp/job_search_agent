@@ -477,7 +477,11 @@ def main(
 
 
 def is_placeholder(name: str | None) -> bool:
-    name = (name or "").strip().lower()
+    if name is None:
+        return True
+    name = name.strip().lower()
+    if not name:
+        return True
     if name.startswith("company from"):
         return True
     if name.startswith("<unknown"):
