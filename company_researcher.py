@@ -375,17 +375,24 @@ class TavilyRAGResearchAgent:
             else:
                 logger.warning(f"Skipping unknown field: {fieldname}")
 
-        # Company name is a special case, because it's the primary key for Company objects
-        if (
-            company_info.name is not None
-            and content.get("company_name") is not None
-            and content["company_name"].strip().lower()
-            != company_info.name.strip().lower()
+        # Company name is a special case - only update if research found a better name
+        new_name = content.get("company_name", "").strip()
+        current_name = company_info.name or ""
+
+        # Always assign new name if current is blank/None
+        if not current_name.strip() and new_name:
+            company_info.name = new_name
+        # Only replace existing name if new name is better
+        elif (
+            new_name
+            and not new_name.startswith("Company from ")
+            and not new_name.startswith("<UNKNOWN ")
         ):
-            logger.warning(
-                f"Company name mismatch!!!: Will update {company_info.name} with {content.get('company_name')}"
-            )
-        update_field_from_key_if_present("name", "company_name")
+            if new_name.lower() != current_name.lower():
+                logger.warning(
+                    f"Company name update: Will update '{current_name}' with '{new_name}'"
+                )
+                company_info.name = new_name
         update_field_from_key_if_present("ny_address", "nyc_office_address")
         update_field_from_key_if_present("headquarters", "headquarters_city")
         update_field_from_key_if_present("eng_size", "total_engineers")
