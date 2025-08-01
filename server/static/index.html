@@ -85,6 +85,8 @@
             </button>
           </div>
 
+          <button @click="toggleShowArchived()" class="outline" x-text="showArchived ? 'Hide archived' : 'Show archived'"></button>
+
           <span class="list-stats" x-text="`${sortedAndFilteredCompanies.length}/${companies.length}`"></span>
         </div>
       </div>

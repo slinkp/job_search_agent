@@ -127,11 +127,15 @@ document.addEventListener("alpine:init", () => {
           // Check URL for view parameter first
           const urlParams = new URLSearchParams(window.location.search);
           const viewParam = urlParams.get('view');
+          const includeAllParam = urlParams.get('include_all') === 'true';
           
           // Set view mode based on URL parameter
           this.viewMode = viewParam === 'daily' 
             ? "daily_dashboard" 
             : "company_management";
+          
+          // Track show archived state
+          this.showArchived = includeAllParam;
           
           // Check for anchor in URL
           const hash = window.location.hash;
@@ -139,8 +143,7 @@ document.addEventListener("alpine:init", () => {
           
           // Only load company data if in company management view
           if (this.viewMode === "company_management") {
-            // Always load all companies
-            await this.refreshAllCompanies();
+            await this.refreshAllCompanies(this.showArchived);
             
             // If there's an anchor, scroll to that company after loading
             if (companyId) {
@@ -191,15 +194,21 @@ document.addEventListener("alpine:init", () => {
         // Ensure we're in company management view
         this.viewMode = "company_management";
         
-        // Update URL with anchor
+        // Update URL with anchor and preserve include_all parameter
         const url = new URL(window.location);
         url.hash = encodeURIComponent(companyId);
         url.searchParams.delete('message');
         url.searchParams.delete('view');
+        
+        // Preserve include_all parameter if currently active
+        if (this.showArchived) {
+          url.searchParams.set('include_all', 'true');
+        }
+        
         window.history.pushState({}, '', url);
         
-        // Ensure companies are loaded
-        this.refreshAllCompanies().then(() => {
+        // Ensure companies are loaded with current include_all setting
+        this.refreshAllCompanies(this.showArchived).then(() => {
           // Scroll to the company anchor
           setTimeout(() => {
             const element = document.getElementById(encodeURIComponent(companyId));
@@ -851,6 +860,11 @@ document.addEventListener("alpine:init", () => {
 
       // Restored methods from git history (removed in commit 54d57a7)
 
+      toggleShowArchived() {
+        this.showArchived = !this.showArchived;
+        this.refreshAllCompanies(this.showArchived);
+      },
+
       get filteredCompanies() {
         const filtered = this.companies.filter((company) => {
           switch (this.filterMode) {
@@ -956,6 +970,21 @@ document.addEventListener("alpine:init", () => {
           console.error("Failed to refresh companies:", err);
           return [];
         }
+      },
+
+      // Toggle archived companies visibility
+      async toggleShowArchived() {
+        this.showArchived = !this.showArchived;
+        await this.refreshAllCompanies(this.showArchived);
+        
+        // Update URL to reflect the change
+        const url = new URL(window.location);
+        if (this.showArchived) {
+          url.searchParams.set('include_all', 'true');
+        } else {
+          url.searchParams.delete('include_all');
+        }
+        window.history.replaceState({}, '', url);
       },
 
       formatResearchErrors(company) {
