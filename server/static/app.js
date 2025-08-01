@@ -936,10 +936,15 @@ document.addEventListener("alpine:init", () => {
       },
 
       // New method to refresh all companies
-      async refreshAllCompanies() {
+      async refreshAllCompanies(includeAll = false) {
         console.log("Refreshing all companies");
         try {
-          const response = await fetch("/api/companies");
+          const params = new URLSearchParams();
+          if (includeAll) {
+            params.append('include_all', 'true');
+          }
+          const url = `/api/companies${params.toString() ? '?' + params.toString() : ''}`;
+          const response = await fetch(url);
           const data = await response.json();
           console.log("Got companies json response");
           this.companies = data.map((company) => ({
