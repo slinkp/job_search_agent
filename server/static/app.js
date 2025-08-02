@@ -858,13 +858,6 @@ document.addEventListener("alpine:init", () => {
         }
       },
 
-      // Restored methods from git history (removed in commit 54d57a7)
-
-      toggleShowArchived() {
-        this.showArchived = !this.showArchived;
-        this.refreshAllCompanies(this.showArchived);
-      },
-
       get filteredCompanies() {
         const filtered = this.companies.filter((company) => {
           switch (this.filterMode) {
@@ -949,7 +942,6 @@ document.addEventListener("alpine:init", () => {
         }
       },
 
-      // New method to refresh all companies
       async refreshAllCompanies(includeAll = false) {
         console.log("Refreshing all companies");
         try {
