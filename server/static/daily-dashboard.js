@@ -35,6 +35,8 @@ document.addEventListener("alpine:init", () => {
       // Initialize the component
       async init() {
         console.log("Initializing daily dashboard component");
+        // Read filtering state from URL
+        this.readFilterStateFromUrl();
         await this.loadMessages();
         
         // Handle anchor scrolling after messages load
@@ -46,6 +48,46 @@ document.addEventListener("alpine:init", () => {
             }
           }
         });
+      },
+
+      // Read filtering state from URL parameters
+      readFilterStateFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Read hideRepliedMessages state
+        const hideRepliedParam = urlParams.get('hideReplied');
+        if (hideRepliedParam !== null) {
+          this.hideRepliedMessages = hideRepliedParam === 'true';
+        }
+        
+        // Read hideArchivedCompanies state
+        const hideArchivedParam = urlParams.get('hideArchived');
+        if (hideArchivedParam !== null) {
+          this.hideArchivedCompanies = hideArchivedParam === 'true';
+        }
+      },
+
+      // Update URL with current filtering state
+      updateUrlWithFilterState() {
+        const url = new URL(window.location);
+        const params = url.searchParams;
+        
+        // Update hideRepliedMessages parameter
+        if (this.hideRepliedMessages !== true) {
+          params.set('hideReplied', this.hideRepliedMessages);
+        } else {
+          params.delete('hideReplied');
+        }
+        
+        // Update hideArchivedCompanies parameter
+        if (this.hideArchivedCompanies !== true) {
+          params.set('hideArchived', this.hideArchivedCompanies);
+        } else {
+          params.delete('hideArchived');
+        }
+        
+        // Update the URL without reloading the page
+        window.history.replaceState({}, '', url);
       },
 
       // Computed property for sorted messages
