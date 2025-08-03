@@ -166,6 +166,8 @@ function createMockCompanyList() {
     researchCompanyTaskId: null,
     // View mode toggle functionality
     viewMode: "company_management",
+    // Show archived toggle functionality
+    showArchived: false,
     init() {
       console.log("Mock companyList initialized");
     },
@@ -183,6 +185,12 @@ function createMockCompanyList() {
     },
     isDailyDashboardView() {
       return this.viewMode === "daily_dashboard";
+    },
+    toggleShowArchived() {
+      this.showArchived = !this.showArchived;
+    },
+    refreshAllCompanies() {
+      // Stub method
     },
     isResearching() {
       return false;

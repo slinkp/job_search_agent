@@ -699,3 +699,61 @@ def test_get_messages_endpoint_empty(clean_test_db):
 
         assert isinstance(response, list)
         assert len(response) == 0
+
+
+def test_get_companies_filters_replied_and_archived(clean_test_db):
+    """Test that replied and archived companies are filtered out via the API endpoint."""
+    repo = clean_test_db
+
+    # Create test companies
+    replied_company = Company(
+        company_id="replied-company",
+        name="Replied Company",
+        details=CompaniesSheetRow(name="Replied Company"),
+        status=CompanyStatus(),
+    )
+    replied_company.status.reply_sent_at = datetime.datetime.now(datetime.timezone.utc)
+
+    archived_company = Company(
+        company_id="archived-company",
+        name="Archived Company",
+        details=CompaniesSheetRow(name="Archived Company"),
+        status=CompanyStatus(),
+    )
+    archived_company.status.archived_at = datetime.datetime.now(datetime.timezone.utc)
+
+    normal_company = Company(
+        company_id="normal-company",
+        name="Normal Company",
+        details=CompaniesSheetRow(name="Normal Company"),
+        status=CompanyStatus(),
+    )
+
+    # Save companies
+    repo.create(replied_company)
+    repo.create(archived_company)
+    repo.create(normal_company)
+
+    with patch("models.company_repository", return_value=repo):
+        # Test default filtering (no include_all parameter)
+        request = DummyRequest()
+        request.params = {}
+        response = server.app.get_companies(request)
+
+        company_names = [c["name"] for c in response]
+        assert "Normal Company" in company_names
+        assert "Replied Company" not in company_names
+        assert "Archived Company" not in company_names
+
+        # Test with include_all=true (should show all companies)
+        request = DummyRequest()
+        request.params = {"include_all": "true"}
+        response = server.app.get_companies(request)
+
+        company_names = [c["name"] for c in response]
+        # When include_all=true, we expect to see all companies
+        all_expected = ["Normal Company", "Replied Company", "Archived Company"]
+        for name in all_expected:
+            assert (
+                name in company_names
+            ), f"Expected {name} to be in response when include_all=true"

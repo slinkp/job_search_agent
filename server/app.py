@@ -110,8 +110,16 @@ def get_companies(request) -> list[dict]:
     repo = models.company_repository()
     companies = repo.get_all(include_messages=True)
 
+    # Check if we should include all companies or filter out replied/archived
+    include_all = request.params.get("include_all", "").lower() == "true"
+
     company_data = []
     for company in companies:
+        # Filter out companies that have been replied to or archived
+        if not include_all:
+            if company.status.reply_sent_at or company.status.archived_at:
+                continue
+
         company_dict = get_company_dict_with_status(company, repo)
         company_data.append(company_dict)
 

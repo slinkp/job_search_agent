@@ -519,7 +519,12 @@ class CompanyRepository:
 
     def _ensure_db_dir(self):
         """Ensure the database directory exists."""
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        # Skip directory creation for in-memory databases
+        if self.db_path == ":memory:":
+            return
+        db_dir = os.path.dirname(self.db_path)
+        if db_dir:  # Only create directory if there's a directory part
+            os.makedirs(db_dir, exist_ok=True)
 
     def _init_db(self, load_sample_data: bool, clear_data: bool):
         with self.lock:
