@@ -6,10 +6,13 @@ import { TaskPollingService } from "./task-polling.js";
 import { formatMessageDate, showError, showSuccess } from "./ui-utils.js";
 
 document.addEventListener("alpine:init", () => {
-  Alpine.data("dailyDashboard", () => {
-    const emailScanningService = new EmailScanningService();
-    const taskPollingService = new TaskPollingService();
+  const emailScanningService = new EmailScanningService();
+  const taskPollingService = new TaskPollingService();
 
+  // Make services available globally for methods
+  window.emailScanningService = emailScanningService;
+
+  Alpine.data("dailyDashboard", () => {
     return {
       // Message list data
       unprocessedMessages: [],
@@ -88,6 +91,30 @@ document.addEventListener("alpine:init", () => {
         
         // Update the URL without reloading the page
         window.history.replaceState({}, '', url);
+      },
+
+      // Toggle hideRepliedMessages filter
+      toggleHideRepliedMessages() {
+        this.hideRepliedMessages = !this.hideRepliedMessages;
+        this.updateUrlWithFilterState();
+        this.loadMessages();
+      },
+
+      // Toggle hideArchivedCompanies filter
+      toggleHideArchivedCompanies() {
+        this.hideArchivedCompanies = !this.hideArchivedCompanies;
+        this.updateUrlWithFilterState();
+        this.loadMessages();
+      },
+
+      // Get text for the replied messages toggle button
+      getRepliedToggleText() {
+        return this.hideRepliedMessages ? "Show replied messages" : "Hide replied messages";
+      },
+
+      // Get text for the archived companies toggle button
+      getArchivedToggleText() {
+        return this.hideArchivedCompanies ? "Show archived" : "Hide archived";
       },
 
       // Computed property for sorted messages
