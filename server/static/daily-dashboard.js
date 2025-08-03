@@ -35,7 +35,7 @@ document.addEventListener("alpine:init", () => {
       // Initialize the component
       async init() {
         console.log("Initializing daily dashboard component");
-        await this.loadUnprocessedMessages();
+        await this.loadMessages();
         
         // Handle anchor scrolling after messages load
         this.$nextTick(() => {
@@ -78,8 +78,8 @@ document.addEventListener("alpine:init", () => {
         return this.sortNewestFirst ? "Newest First" : "Oldest First";
       },
 
-      // Load unprocessed messages from the messages endpoint
-      async loadUnprocessedMessages() {
+      // Load messages from the messages endpoint
+      async loadMessages() {
         this.loading = true;
         try {
           const response = await fetch("/api/messages");
@@ -140,7 +140,7 @@ document.addEventListener("alpine:init", () => {
 
           await this.pollResearchStatus(message);
           
-          await this.loadUnprocessedMessages();
+          await this.loadMessages();
           showSuccess("Company research completed!");
         } catch (err) {
           console.error("Failed to research company:", err);
@@ -206,7 +206,7 @@ document.addEventListener("alpine:init", () => {
           await this.pollMessageStatus(message);
           
           // Refresh the message list after generation
-          await this.loadUnprocessedMessages();
+          await this.loadMessages();
           showSuccess("Reply generated successfully!");
         } catch (err) {
           console.error("Failed to generate reply:", err);
@@ -252,7 +252,7 @@ document.addEventListener("alpine:init", () => {
           }
 
           // Refresh the message list to remove the archived message
-          await this.loadUnprocessedMessages();
+          await this.loadMessages();
 
           showSuccess("Message archived successfully");
         } catch (err) {
@@ -298,7 +298,7 @@ document.addEventListener("alpine:init", () => {
 
       // Refresh the message list
       async refresh() {
-        await this.loadUnprocessedMessages();
+        await this.loadMessages();
       },
 
       // Scan for new recruiter emails from Gmail
@@ -318,7 +318,7 @@ document.addEventListener("alpine:init", () => {
 
         if (result?.status === "completed") {
           // Reload messages after successful scan
-          await this.loadUnprocessedMessages();
+          await this.loadMessages();
         }
       },
 
