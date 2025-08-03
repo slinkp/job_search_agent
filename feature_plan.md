@@ -20,7 +20,7 @@ We can do this with client-side filtering.
 3. Filtering
 
  - [x] Rename `loadUnprocessedMessages` to `loadMessages`.
- - [ ] `loadMessages` should filter messages client side, based on state from step 1.
+ - [x] `loadMessages` should filter messages client side, based on state from step 1.
        (We already have logic for hiding messages with archived_at; do the
        changese there)
 

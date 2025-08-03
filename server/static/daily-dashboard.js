@@ -120,7 +120,7 @@ document.addEventListener("alpine:init", () => {
         return this.sortNewestFirst ? "Newest First" : "Oldest First";
       },
 
-      // Load messages from the messages endpoint
+      // Load messages from the messages endpoint and apply client-side filtering
       async loadMessages() {
         this.loading = true;
         try {
@@ -131,17 +131,34 @@ document.addEventListener("alpine:init", () => {
 
           const messages = await response.json();
 
-          // Filter for unprocessed messages
-          // Unprocessed = not archived and not replied to
-          this.unprocessedMessages = messages.filter((message) => {
-            return !message.archived_at;
-          });
+          // Apply client-side filtering based on our new properties
+          let filteredMessages = messages;
+          
+          // Filter out replied messages if hideRepliedMessages is true
+          if (this.hideRepliedMessages) {
+            filteredMessages = filteredMessages.filter(message => {
+              // Filter out messages that have been replied to
+              // Assuming messages with reply_sent_at are replied messages
+              return !message.reply_sent_at;
+            });
+          }
+          
+          // Filter out messages from archived companies if hideArchivedCompanies is true
+          if (this.hideArchivedCompanies) {
+            filteredMessages = filteredMessages.filter(message => {
+              // Filter out messages from archived companies
+              // A message is considered archived if it has archived_at or its company has archived_at
+              return !message.archived_at && !message.company_archived_at;
+            });
+          }
+
+          this.unprocessedMessages = filteredMessages;
 
           console.log(
-            `Loaded ${this.unprocessedMessages.length} unprocessed messages`
+            `Loaded ${this.unprocessedMessages.length} messages after filtering`
           );
         } catch (error) {
-          console.error("Failed to load unprocessed messages:", error);
+          console.error("Failed to load messages:", error);
           // Could add user notification here
         } finally {
           this.loading = false;
