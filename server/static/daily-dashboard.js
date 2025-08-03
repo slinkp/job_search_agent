@@ -15,6 +15,10 @@ document.addEventListener("alpine:init", () => {
       unprocessedMessages: [],
       loading: false,
       
+      // Filtering state - NEW PROPERTIES ADDED
+      hideRepliedMessages: true,
+      hideArchivedCompanies: true,
+      
       // Local tracking for UI state
       generatingMessages: new Set(),
       researchingCompanies: new Set(),
