@@ -252,6 +252,12 @@
         <div class="dashboard-header">
           <h2>Daily Dashboard</h2>
           <div class="dashboard-actions">
+            <!-- Filter toggle buttons -->
+            <div class="filter-toggle-buttons">
+              <button @click="toggleHideRepliedMessages()" class="outline" x-text="getRepliedToggleText()"></button>
+              <button @click="toggleHideArchivedCompanies()" class="outline" x-text="getArchivedToggleText()"></button>
+            </div>
+            
             <div class="scan-options">
               <label class="checkbox-label">
                 <input type="checkbox" x-model="doResearch">
