@@ -3,12 +3,12 @@ We can do this with client-side filtering.
 
 1. Frontend State Management
 
- - [ ] Add two new properties to the daily dashboard Alpine.js component:
+ - [x] Add two new properties to the daily dashboard Alpine.js component:
     - [x] hideRepliedMessages: true (default)
     - [x] hideArchivedCompanies: true (default) (we might already have
           something like this)
     - [ ] Unit tests for this
- - [ ] Add state of these to URL so page reload preserves state. With test.
+ - [x] Add state of these to URL so page reload preserves state. With test.
 
 2. Data Model Changes
   - [ ] RecruiterMessage backend model needs a `reply_sent_at` timestamp.
@@ -19,7 +19,7 @@ We can do this with client-side filtering.
 
 3. Filtering
 
- - [ ] Rename `loadUnprocessedMessages` to `loadMessages`.
+ - [x] Rename `loadUnprocessedMessages` to `loadMessages`.
  - [ ] `loadMessages` should filter messages client side, based on state from step 1.
        (We already have logic for hiding messages with archived_at; do the
        changese there)
