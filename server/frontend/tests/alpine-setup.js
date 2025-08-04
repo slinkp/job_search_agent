@@ -98,7 +98,9 @@ function createMockDailyDashboard() {
     unprocessedMessages: [],
     loading: false,
     sortNewestFirst: true,
-    doResearch: false, // Add the missing doResearch property
+    doResearch: false,
+    hideRepliedMessages: true,
+    hideArchivedCompanies: true,
     init() {
       console.log("Mock dailyDashboard initialized");
     },
@@ -124,13 +126,64 @@ function createMockDailyDashboard() {
       // Stub method
     },
     toggleSortOrder() {
-      // Stub method
+      this.sortNewestFirst = !this.sortNewestFirst;
     },
     getSortButtonText() {
-      return "Newest First";
+      return this.sortNewestFirst ? "Sort Oldest First" : "Sort Newest First";
+    },
+    scanRecruiterEmails() {
+      // Stub method
+    },
+    toggleHideRepliedMessages() {
+      this.hideRepliedMessages = !this.hideRepliedMessages;
+    },
+    toggleHideArchivedCompanies() {
+      this.hideArchivedCompanies = !this.hideArchivedCompanies;
+    },
+    getRepliedToggleText() {
+      return this.hideRepliedMessages ? "Show Replied Messages" : "Hide Replied Messages";
+    },
+    getArchivedToggleText() {
+      return this.hideArchivedCompanies ? "Show Archived Companies" : "Hide Archived Companies";
+    },
+    getEmailScanStatusText() {
+      return this.emailScanStatus || "";
+    },
+    getEmailScanStatusClass() {
+      return "email-scan-status";
+    },
+    research() {
+      // Stub method
+    },
+    generateReply() {
+      // Stub method
+    },
+    archive() {
+      // Stub method
+    },
+    isResearching() {
+      return false;
+    },
+    isGeneratingMessage() {
+      return false;
+    },
+    getResearchStatusText() {
+      return "";
+    },
+    getResearchStatusClass() {
+      return "";
+    },
+    getMessagePreview() {
+      return "";
+    },
+    toggleMessageExpansion() {
+      // Stub method
+    },
+    getExpandButtonText() {
+      return "Expand";
     },
     get sortedMessages() {
-      return [];
+      return this.unprocessedMessages; // Return the messages for the template
     },
   };
 }
@@ -222,6 +275,66 @@ function createMockCompanyList() {
     importCompaniesFromSpreadsheet() {
       // Stub method
       console.log("Import companies stub called");
+    },
+    // Navigation methods to handle the click handlers added to index.html
+    navigateToCompany(companyId) {
+      // This handles the navigation event dispatching in the HTML
+      console.log("Navigating to company:", companyId);
+    },
+    navigateToMessage(messageId) {
+      // This handles the navigation event dispatching in the HTML
+      console.log("Navigating to message:", messageId);
+    },
+    // Research company modal methods
+    showResearchCompanyModal() {
+      this.researchCompanyModalOpen = true;
+    },
+    closeResearchCompanyModal() {
+      this.researchCompanyModalOpen = false;
+      this.researchCompanyForm = { url: "", name: "" };
+    },
+    submitResearchCompany() {
+      this.researchingCompany = true;
+      // Simulate async operation
+      setTimeout(() => {
+        this.researchingCompany = false;
+        this.closeResearchCompanyModal();
+      }, 100);
+    },
+    // Import companies modal methods
+    showImportCompaniesModal() {
+      // Stub method
+    },
+    closeImportCompaniesModal() {
+      // Stub method
+    },
+    confirmImportCompanies() {
+      // Stub method
+    },
+    // Research methods
+    research() {
+      // Stub method
+    },
+    generateReply() {
+      // Stub method
+    },
+    editReply() {
+      // Stub method
+    },
+    saveReply() {
+      // Stub method
+    },
+    cancelEdit() {
+      // Stub method
+    },
+    togglePromising() {
+      // Stub method
+    },
+    toggleSort() {
+      // Stub method
+    },
+    isUrl() {
+      return false;
     },
     get filteredCompanies() {
       return [];
