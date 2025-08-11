@@ -11,9 +11,9 @@ We can do this with client-side filtering.
  - [x] Add state of these to URL so page reload preserves state. With test.
 
 2. Data Model Changes
-  - [ ] RecruiterMessage backend model needs a `reply_sent_at` timestamp.
+  - [x] RecruiterMessage backend model needs a `reply_sent_at` timestamp.
         `None` by default. Expose this in API.
-  - [ ] Add an `is_archived` boolean property:
+  - [x] Add an `is_archived` boolean property:
         True if message has `archived_at` OR message company has `archived_at`.
         Expose this in API.
 
