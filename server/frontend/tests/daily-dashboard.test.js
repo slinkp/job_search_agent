@@ -24,14 +24,30 @@ describe("Daily Dashboard State Management", () => {
       // Mock methods
       readFilterStateFromUrl: vi.fn(function() {
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('hideReplied') !== null) {
-          this.hideRepliedMessages = urlParams.get('hideReplied') === 'true';
+        // Only accept explicit 'true'/'false' values
+        const hideRepliedParam = urlParams.get('hideReplied');
+        if (hideRepliedParam === 'true' || hideRepliedParam === 'false') {
+          this.hideRepliedMessages = hideRepliedParam === 'true';
         }
-        if (urlParams.get('hideArchived') !== null) {
-          this.hideArchivedCompanies = urlParams.get('hideArchived') === 'true';
+        
+        const hideArchivedParam = urlParams.get('hideArchived');
+        if (hideArchivedParam === 'true' || hideArchivedParam === 'false') {
+          this.hideArchivedCompanies = hideArchivedParam === 'true';
         }
       }),
-      updateUrlWithFilterState: vi.fn(),
+      updateUrlWithFilterState: vi.fn(function() {
+        // Get fresh URL params from current URL state
+        const currentSearch = window.location.search;
+        const params = new URLSearchParams(currentSearch);
+        
+        // Update filter params
+        params.set('hideReplied', this.hideRepliedMessages);
+        params.set('hideArchived', this.hideArchivedCompanies);
+        
+        // Preserve existing path and hash
+        const newUrl = `${window.location.pathname}?${params}${window.location.hash}`;
+        window.history.replaceState({}, '', newUrl);
+      }),
       loadMessages: vi.fn(),
       toggleHideRepliedMessages: vi.fn(function() {
         this.hideRepliedMessages = !this.hideRepliedMessages;
@@ -141,5 +157,91 @@ describe("Daily Dashboard State Management", () => {
     
     expect(dailyDashboard.hideRepliedMessages).toBe(true);
     expect(dailyDashboard.hideArchivedCompanies).toBe(true);
+  });
+
+  it("handles multiple filter parameters together", () => {
+    const urlParams = new URLSearchParams();
+    urlParams.set('hideReplied', 'false');
+    urlParams.set('hideArchived', 'false');
+    Object.defineProperty(window, 'location', {
+      value: {
+        search: urlParams.toString()
+      },
+      writable: true
+    });
+
+    dailyDashboard.readFilterStateFromUrl();
+    expect(dailyDashboard.hideRepliedMessages).toBe(false);
+    expect(dailyDashboard.hideArchivedCompanies).toBe(false);
+  });
+
+  it("falls back to defaults for invalid parameter values", () => {
+    const urlParams = new URLSearchParams();
+    urlParams.set('hideReplied', 'notaboolean');
+    urlParams.set('hideArchived', '123');
+    Object.defineProperty(window, 'location', {
+      value: {
+        search: urlParams.toString()
+      },
+      writable: true
+    });
+
+    dailyDashboard.readFilterStateFromUrl();
+    expect(dailyDashboard.hideRepliedMessages).toBe(true); 
+    expect(dailyDashboard.hideArchivedCompanies).toBe(true);
+  });
+
+  it("maintains other URL parameters when updating filter state", () => {
+    // Mock URL with existing params
+    const originalReplaceState = window.history.replaceState;
+    let lastUrl = '';
+    
+    window.history.replaceState = (state, title, url) => {
+      lastUrl = url;
+      originalReplaceState.call(window.history, state, title, url);
+    };
+
+    // Set up URL params without host to match test environment origin
+    const params = new URLSearchParams('view=daily&tab=2');
+    
+    // Mock location with path-relative URL
+    Object.defineProperty(window, 'location', {
+      value: {
+        pathname: '/',
+        search: params.toString(),
+        hash: '',
+        replaceState: (state, title, url) => {
+          // Parse URL relative to current path
+          const newUrl = new URL(url, 'about:blank');
+          lastUrl = newUrl.search;
+        }
+      },
+      writable: true
+    });
+    
+    // Change filter state
+    dailyDashboard.hideRepliedMessages = false;
+    dailyDashboard.updateUrlWithFilterState();
+
+    // Check the URL that was passed to replaceState
+    const url = new URL(lastUrl, 'http://localhost');
+    const urlParams = url.searchParams;
+    expect(urlParams.get('view')).toBe('daily');
+    expect(urlParams.get('tab')).toBe('2');
+    expect(urlParams.get('hideReplied')).toBe('false');
+  });
+
+  it("handles URL-encoded parameter values", () => {
+    const encodedParams = 'hideReplied=%74%72%75%65&hideArchived=%66%61%6c%73%65';
+    Object.defineProperty(window, 'location', {
+      value: {
+        search: encodedParams
+      },
+      writable: true
+    });
+
+    dailyDashboard.readFilterStateFromUrl();
+    expect(dailyDashboard.hideRepliedMessages).toBe(true);
+    expect(dailyDashboard.hideArchivedCompanies).toBe(false);
   });
 });

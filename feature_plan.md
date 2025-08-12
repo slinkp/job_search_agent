@@ -9,6 +9,7 @@ We can do this with client-side filtering.
           something like this)
     - [ ] Unit tests for this
  - [x] Add state of these to URL so page reload preserves state. With test.
+ - [x] Finish unit tests for the URL state persistence
 
 2. Data Model Changes
   - [x] RecruiterMessage backend model needs a `reply_sent_at` timestamp.

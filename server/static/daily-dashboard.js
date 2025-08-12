@@ -72,25 +72,26 @@ document.addEventListener("alpine:init", () => {
 
       // Update URL with current filtering state
       updateUrlWithFilterState() {
-        const url = new URL(window.location);
-        const params = url.searchParams;
+        // Preserve existing parameters while updating filter state
+        const params = new URLSearchParams(window.location.search);
         
-        // Update hideRepliedMessages parameter
-        if (this.hideRepliedMessages !== true) {
-          params.set('hideReplied', this.hideRepliedMessages);
-        } else {
-          params.delete('hideReplied');
-        }
+        // Update filter values
+        params.set('hideReplied', this.hideRepliedMessages);
+        params.set('hideArchived', this.hideArchivedCompanies);
         
-        // Update hideArchivedCompanies parameter
-        if (this.hideArchivedCompanies !== true) {
-          params.set('hideArchived', this.hideArchivedCompanies);
-        } else {
-          params.delete('hideArchived');
-        }
+        // Preserve hash and path
+        const hash = window.location.hash;
+        const path = window.location.pathname || '/';
         
-        // Update the URL without reloading the page
-        window.history.replaceState({}, '', url);
+        // Build new URL with updated search params while preserving existing ones
+        const newUrl = `${path}?${params.toString()}${hash}`.replace(/([^:])\/\//g, '$1/');
+        
+        // Update history without reloading
+        window.history.replaceState(
+          { ...window.history.state, filtersUpdated: true },
+          '',
+          newUrl
+        );
       },
 
       // Toggle hideRepliedMessages filter
