@@ -7,7 +7,7 @@ We can do this with client-side filtering.
     - [x] hideRepliedMessages: true (default)
     - [x] hideArchivedCompanies: true (default) (we might already have
           something like this)
-    - [ ] Unit tests for this
+    - [x] Unit tests for this
  - [x] Add state of these to URL so page reload preserves state. With test.
  - [x] Finish unit tests for the URL state persistence
 
