@@ -27,10 +27,10 @@ We can do this with client-side filtering.
 
 3. UI Implementation
 
- - [ ] Add two toggle buttons in the dashboard view:
-    - [ ] "Show replied messages" / "Hide replied messages" (hidden by default)
-    - [ ] "Show archived" / "Hide archived" (hidden by default)
- - [ ] When toggles are switched, trigger a refresh of the message list
- - [ ] Position these in the dashboard header
- - [ ] Follow style of existing buttons
- - [ ] Write tests for this
+ - [x] Add two toggle buttons in the dashboard view:
+    - [x] "Show replied messages" / "Hide replied messages" (hidden by default)
+    - [x] "Show archived" / "Hide archived" (hidden by default)
+ - [x] When toggles are switched, trigger a refresh of the message list
+ - [x] Position these in the dashboard header
+ - [x] Follow style of existing buttons
+ - [x] Write tests for this
