@@ -68,6 +68,12 @@ document.addEventListener("alpine:init", () => {
         if (hideArchivedParam !== null) {
           this.hideArchivedCompanies = hideArchivedParam === 'true';
         }
+        
+        // New: Read sort order from URL
+        const sortParam = urlParams.get('sort');
+        if (sortParam) {
+          this.sortNewestFirst = sortParam === 'newest';
+        }
       },
 
       // Update URL with current filtering state
@@ -78,6 +84,8 @@ document.addEventListener("alpine:init", () => {
         // Update filter values
         params.set('hideReplied', this.hideRepliedMessages);
         params.set('hideArchived', this.hideArchivedCompanies);
+        
+        params.set('sort', this.sortNewestFirst ? 'newest' : 'oldest');
         
         // Preserve hash and path
         const hash = window.location.hash;
@@ -141,6 +149,7 @@ document.addEventListener("alpine:init", () => {
       // Toggle sort order
       toggleSortOrder() {
         this.sortNewestFirst = !this.sortNewestFirst;
+        this.updateUrlWithFilterState(); // Now updates URL
       },
 
       // Get sort button text

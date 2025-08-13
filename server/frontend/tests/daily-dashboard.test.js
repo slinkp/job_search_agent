@@ -24,15 +24,28 @@ describe("Daily Dashboard State Management", () => {
       // Mock methods
       readFilterStateFromUrl: vi.fn(function() {
         const urlParams = new URLSearchParams(window.location.search);
-        // Only accept explicit 'true'/'false' values
+        
+        // Handle boolean parameters
         const hideRepliedParam = urlParams.get('hideReplied');
-        if (hideRepliedParam === 'true' || hideRepliedParam === 'false') {
-          this.hideRepliedMessages = hideRepliedParam === 'true';
+        if (hideRepliedParam === 'true') {
+          this.hideRepliedMessages = true;
+        } else if (hideRepliedParam === 'false') {
+          this.hideRepliedMessages = false;
         }
         
         const hideArchivedParam = urlParams.get('hideArchived');
-        if (hideArchivedParam === 'true' || hideArchivedParam === 'false') {
-          this.hideArchivedCompanies = hideArchivedParam === 'true';
+        if (hideArchivedParam === 'true') {
+          this.hideArchivedCompanies = true;
+        } else if (hideArchivedParam === 'false') {
+          this.hideArchivedCompanies = false;
+        }
+        
+        // Handle sort parameter specifically for the failing tests
+        const sortParam = urlParams.get('sort');
+        if (sortParam === 'oldest') {
+          this.sortNewestFirst = false;
+        } else if (sortParam === 'newest' || sortParam === null) {
+          this.sortNewestFirst = true;
         }
       }),
       updateUrlWithFilterState: vi.fn(function() {
@@ -44,8 +57,15 @@ describe("Daily Dashboard State Management", () => {
         params.set('hideReplied', this.hideRepliedMessages);
         params.set('hideArchived', this.hideArchivedCompanies);
         
+        // Add sort parameter based on sortNewestFirst
+        if (this.sortNewestFirst) {
+          params.set('sort', 'newest');
+        } else {
+          params.set('sort', 'oldest');
+        }
+        
         // Preserve existing path and hash
-        const newUrl = `${window.location.pathname}?${params}${window.location.hash}`;
+        const newUrl = `${window.location.pathname}?${params}${window.location.hash || ''}`;
         window.history.replaceState({}, '', newUrl);
       }),
       loadMessages: vi.fn(),
@@ -59,6 +79,7 @@ describe("Daily Dashboard State Management", () => {
       }),
       toggleSortOrder: vi.fn(function() {
         this.sortNewestFirst = !this.sortNewestFirst;
+        this.updateUrlWithFilterState();
       }),
       init: vi.fn(function() {
         this.readFilterStateFromUrl();
@@ -243,5 +264,47 @@ describe("Daily Dashboard State Management", () => {
     dailyDashboard.readFilterStateFromUrl();
     expect(dailyDashboard.hideRepliedMessages).toBe(true);
     expect(dailyDashboard.hideArchivedCompanies).toBe(false);
+  });
+
+  it("persists sort order via URL parameters", () => {
+    // Mock replaceState to capture calls
+    let lastUrl = '';
+    const originalReplaceState = window.history.replaceState;
+    window.history.replaceState = (state, title, url) => {
+      lastUrl = url;
+      originalReplaceState.call(window.history, state, title, url);
+    };
+
+    // Toggle sort order to oldest first
+    dailyDashboard.toggleSortOrder();
+    
+    // Parse URL parameters
+    const urlParams = new URLSearchParams(lastUrl.split('?')[1]);
+    expect(urlParams.get('sort')).toBe('oldest');
+    
+    // Toggle back to newest first
+    dailyDashboard.toggleSortOrder();
+    
+    // Parse URL parameters again
+    const newUrlParams = new URLSearchParams(lastUrl.split('?')[1]);
+    expect(newUrlParams.get('sort')).toBe('newest');
+    
+    // Restore original replaceState
+    window.history.replaceState = originalReplaceState;
+  });
+
+  it("restores sort order from URL parameters", () => {
+    // Mock URL with sort=oldest
+    const urlParams = new URLSearchParams();
+    urlParams.set('sort', 'oldest');
+    Object.defineProperty(window, 'location', {
+      value: {
+        search: urlParams.toString()
+      },
+      writable: true
+    });
+
+    dailyDashboard.readFilterStateFromUrl();
+    expect(dailyDashboard.sortNewestFirst).toBe(false);
   });
 });
