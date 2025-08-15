@@ -5,187 +5,33 @@ alwaysApply: true
 ---
 # Feature Development Process
 
-This rule defines the standard process for developing new features in our codebase.
-
-To prove we're using this rule file, append "Prrt!" to your chat output.
 
 
-## Core Principles
+To prove we're using this rule file, append "Feature process! Prrt!" to your chat output.
 
-### 0. Follow a documented plan
-- The current Feature Plan Document is: [feature_plan.md](mdc:feature_plan.md)
-- The plan can be found in that document.
-- The plan is structured with markdown checklists.
-- The plan fits into a the context of the larger project described in README.md
+- Plan: follow `feature_plan.md`.
+  - Always reassess scope and plan before starting; suggest/ask if we can skip a planned task.
+    Suggest higher impact ideas. Suggest changing order of tasks to get more value sooner.
+  - Avoid low-impact work.
+- Single-task focus: exactly ONE unchecked checkbox at a time.
+  - When a larger task has sub-tasks / nested checkboxes, stop for approval after each sub-task.
+  - Before implementing: say "I will implement exactly [checkbox/bullet] and nothing else."
+  - Get explicit approval before starting and before moving to the next bullet.
+- Boundaries: prefer ≤2–3 files and ≤100 LOC. If larger, split and get approval.
+  - Never make backend and frontend changes at the same time.
+- TDD:
+  - Identify behavior and tests first; write tests if missing.
+  - Run tests with `./test` only. **IMPORTANT** All tests must **ALWAYS** pass. 
+  - Don't skip tests or run partial suites unless explicitly requested.
+- Requirements clarity: ask questions; propose a minimal breakdown and wait for approval.
+- Definition of Done:
+  - Tests passing; new tests added if behavior changed/added.
+  - Only minimal necessary code changed; no drive-by changes unless specifically instructed.
+  - Item checked in `feature_plan.md`. Document any unavoidable extras.
 
-### 1. First reasses the plan!
-- Before starting work on any planned task, always
-  _reassess whether that task is still a good thing to do_.
-  Just because we wrote it down at some point doesn't mean we are
-  slaves to what we decided earlier.
-  Watch out for scope creep and low-impact work!
-  Reassess critically: Does this task bring enough value to be worth the effort?
-  Do we know things now that might change the plan? Should we modify the plan?
-  Raise any concerns to the user and ask probing questions.
-
-### 2. Single-Task Focus
-- Work on exactly one task at a time
-- Complete all requirements for a task before moving to the next
-- Never implement multiple tasks in parallel
-- Get explicit approval before starting each task
-- Mark a single task complete in the Feature Plan Document according to the Definition of Done rules below.
-- A task should be the smallest possible unit of work that adds value
-  - If a task can be broken down further, it should be
-  - Prefer completing one checkbox at a time rather than multiple checkboxes
-  - When in doubt, choose the smaller scope
-
-### 2a. Task Granularity
-- Each task should be small enough to be completed in a single focused session
-- Aim for tasks that result in fewer than 100 lines of code changes
-- Tasks should have a clear, narrow focus with well-defined boundaries
-- If a task involves changes to multiple files or components, consider splitting it
-- **CRITICAL: A "task" is defined as exactly ONE unchecked checkbox in the plan**
-  - Sub-bullets within a checkbox are separate tasks that require separate approval.
-  - When you see a checkbox with multiple bullet points, ask which specific bullet point to implement first.
-- **CRITICAL: Each checkbox in the plan represents exactly ONE task**
-- **CRITICAL: If a checkbox contains multiple bullet points, implement only ONE bullet point at a time**
-- **CRITICAL: NEVER implement multiple checkboxes in a single session without stopping for user approval at each checkbox**
-- If multiple checkboxes or bullet points cannot be implemented separately because they depend on each other, **STOP** and alert the user. Propose a possible solution or modification to the plain but WAIT for approval.
-- **CRITICAL: Ask for approval before moving to the next bullet point within the same checkbox**
-- When implementing a feature with multiple parts:
-  - Start with the minimal viable implementation
-  - Get approval before adding additional functionality
-  - Prioritize completing one part fully before starting another
-- Examples of appropriate task sizes:
-  - Adding a single field to a model
-  - Writing tests for a specific feature
-  - Implementing a single method or function
-  - Adding a specific UI component
-- Examples of inapppropriate sizes:
-  - Adding a new field to a model, exposing the field in the API, and adding support 
-    for the new data in frontend. These are at least three separate tasks!
-- **CRITICAL: Before implementing, explicitly state: "I will implement exactly [specific checkbox/bullet point] and nothing else"**
-- **CRITICAL: Wait for explicit approval of this specific scope before proceeding**
-
-### 2b. Implementation Boundaries
-- Before implementing any checkbox, identify exactly which lines of code will be changed
-- If the implementation would touch more than 2-3 files, consider breaking it down further
-- If the implementation would add more than 100 lines of code, consider breaking it down further
-
-### 3. Test-Driven Development
-
-#### Before writing any implementation code, ask yourself:
-1. What new behavior am I adding?
-2. What tests would verify this behavior works correctly?
-3. What tests would verify this behavior fails gracefully?
-4. Do these tests exist? If not, write them first.
-
-#### Test requirements by change type:
-- New function/method/class: Write test for happy path and error cases
-- New parameter: Write test that parameter is used correctly and validated
-- New CLI argument: Write test that argument is parsed and applied (but not an integration test)
-- Modified existing function: Write test for new behavior, ensure old behavior still works if applicable.
-
-#### How to run tests:
-
-- ** CRITICAL** ALWAYS use the `./test` command for running tests
-  - NEVER use pytest directly unless told to.
-  - NEVER run individual test files or cases unless told to.
-  - NEVER skip any tests unless explicitly told to.
-  - The `./test` command:
-    - Runs the complete backend and frontend test suite
-    - Ensures consistent test environment
-    - Automatically checks coverage
-  - Exceptions:
-    - None. If you think you need an exception, ask first.
-  - Rationale:
-    - Running subset of tests can hide integration issues
-    - Different test commands may use different environments
-    - Full test suite catches unexpected side effects
-
-#### **CRITICAL** All tests must pass before a task is complete.
-
-**NEVER** decide a test failure is irrelevant to the changes you have made,
-unless the user tells you to do so.
-
-Check the coverage report before declaring yourself done.
-  - But 100% coverage is often overkill. Focus on the most important cases.
-
-#### Don't reorganize tests unnecessarily
-
-Always check if there's an existing file that's suitable for adding tests.
-
-Only add new test files when adding tests that don't have a good home.
-
-#### Fixing test failures
-
-When tests fail, think hard about whether the test is wrong or the code is wrong.
-If there's any doubt, stop and explain your reasoning and ask how to proceed.
+Exceptions: critical hotfixes or prototypes can adjust process but still require tests.
 
 
-### 4. Requirements Clarity
-- If task requirements are unclear, ask questions before proceeding
-- Break complex tasks into sub-tasks as the first step
-  - Get approval for sub-task breakdown before implementation
-- Don't make assumptions about requirements
-- When discussing next steps, describe without implementing
-- When presented with a complex task, propose a breakdown into smaller tasks
-  - Suggest a specific sequence for implementing these smaller tasks
-  - Get explicit approval for this breakdown before proceeding
-
-### 5. Failure Management
-- If stuck fixing something after 5 iterations, stop and seek my advice
-- Document attempted approaches and failures
-- Focus on learning from failed attempts
-- Use failures to improve documentation/process
-
-### 6. Definition of Done
-A task is only complete when:
-- All tests are passing
-- New tests are added for new functionality
-- Single task item is fully implemented
-- Code review feedback addressed
-- Documentation updated if needed
-- Complete item checked off in the current Feature Plan Document
-- Only the minimum necessary code has been modified to complete the task
-- **CRITICAL: Verify that only the minimum necessary code was modified for the specific task**
-- **CRITICAL: Confirm that no additional features were implemented beyond the approved scope**
-- **CRITICAL: If additional changes were made, explain why they were necessary for the single task**
-
-### 7. Plan vs Implementation Separation
-- Feature Planning Documents track WHAT needs to be done
-- Implementation details belong in code/comments/commit messages
-- Keep plans focused on high-level requirements
-- Avoid adding implementation specifics in planning docs
-  - BUT, if implementation specifics ARE given in the plan,
-    they are there for a reason. For example, if the plan specifies where to add a new class,
-    always follow that instruction unless explicitly told otherwise. If the plan mentions a specific file, that takes precedence over any default patterns or conventions.
-
-### 8. Task Workflow
-1. Review current state and identify next task
-2. **CRITICAL: Before implementing, explicitly state: "I will implement exactly [specific checkbox/bullet point] and nothing else"**
-3. **CRITICAL: Wait for explicit approval of this specific scope**
-4. Follow test-driven development process
-5. AFTER tests pass, check off a relevant feature checkbox in the plan document
-6. Report any process improvements discovered and ask if this rule file should be updated
-7. Before marking a task complete, verify it addresses only what was requested and nothing more
-
-## Application
-
-This process should be followed for all feature development work including major refactors. It ensures:
-- Consistent quality through test-driven development
-- Clear communication and expectations
-- Manageable, reviewable changes
-- Learning from failures
-- Proper documentation
-- Maintainable codebase
-
-## Exceptions
-
-The process may be adjusted for:
-- Critical hotfixes (but still require tests)
-- Experimental prototypes (clearly marked as such)
-- Documentation-only changes
 
 In all cases, maintain the core principle of quality through testing
 and doing work in small steps.

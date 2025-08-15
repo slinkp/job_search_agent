@@ -1,0 +1,12 @@
+---
+description: Minimal, behavior-preserving refactors and simplifications
+globs: 
+alwaysApply: false
+---
+# Refactoring and Simplification
+
+- Minimal change first: remove or inline before adding abstractions.
+- No behavior change during refactors; preserve style, structure, and comments verbatim unless strictly required.
+- Prefer direct delegation over extra layers and preprocessing.
+- Split refactors into tiny steps with working code at each step.
+- Verify `./test` passes before and after; tests should not change except for required signatures/types.

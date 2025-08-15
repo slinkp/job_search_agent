@@ -5,80 +5,11 @@ alwaysApply: false
 ---
 # Frontend Development Best Practices
 
-Standards for frontend development, debugging, and component implementation.
-
-<rule>
-name: frontend_development_practices
-description: Guidelines for frontend development workflow and component implementation
-filters:
-  - type: file_extension
-    pattern: "\\.(js|jsx|ts|tsx|vue|html)$"
-  - type: content
-    pattern: "(?s)<template|<script|<style|function|class|const|let"
-
-actions:
-  - type: suggest
-    message: |
-      When working on frontend components:
-
-      1. Focus on the Actual Problem:
-         - Stay focused on specific UI component issues
-         - Trust user reports about working components
-         - Debug reported issues before exploring related problems
-
-      2. Learn from Working Code:
-         - Check for similar existing functionality
-         - Follow established patterns
-         - Use existing components as references
-
-      3. Component Scope Requirements:
-         - Keep interactive elements within framework scope
-         - For Alpine.js: elements must be inside x-data
-         - Verify scope requirements when refactoring
-
-      4. Modal Implementation Standards:
-         - Use HTML5 <dialog> elements
-         - Implement dialog API (showModal()/close())
-         - Maintain consistent modal structure
-
-      5. Debugging Process:
-         - Fix visibility issues before interaction logic
-         - Use strategic console logging
-         - Test incrementally
-         - Focus on one issue at a time
-
-      6. Code Conventions:
-         - Match existing HTML structures
-         - Use consistent JavaScript patterns
-         - Follow established code organization
-         - Avoid introducing new patterns without requirements
-
-examples:
-  - input: |
-      // Bad: Mixing multiple issues
-      function fixEverything() {
-        fixVisibility();
-        fixInteraction();
-        fixStyling();
-      }
-
-      // Good: Focused fix
-      function fixVisibilityIssue() {
-        // Fix one specific issue
-      }
-    output: "Properly focused problem-solving approach"
-
-  - input: |
-      <!-- Bad: Custom modal implementation -->
-      <div class="modal" style="display: none">
-        <!-- modal content -->
-      </div>
-
-      <!-- Good: Standard dialog usage -->
-      <dialog id="myModal">
-        <!-- modal content -->
-      </dialog>
-    output: "Correct modal implementation using HTML5 dialog"
+- Bug fixes: Focus on the reported UI issue and/or a single test failure; avoid tackling adjacent problems.
+- Learn from working code; follow existing patterns and structures.
+- Alpine.js scope: interactive elements must live within `x-data`.
+- Modals: use HTML5 `<dialog>`; use `showModal()`/`close()`.
+- Debugging order: visibility → interaction → styling; use targeted logs; test incrementally.
 
 metadata:
   priority: high
