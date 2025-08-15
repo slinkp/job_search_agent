@@ -5,7 +5,7 @@ describe("Daily Dashboard Integration", () => {
   let consoleErrorSpy;
 
   beforeEach(() => {
-    // Reset document with actual HTML
+    // Set up document with actual HTML
     setupDocumentWithIndexHtml(document);
 
     // Spy on console.error to catch JavaScript errors
@@ -35,17 +35,18 @@ describe("Daily Dashboard Integration", () => {
       dashboardHeader.querySelector(".dashboard-actions");
     expect(dashboardActions).toBeTruthy();
 
-    // Verify all three buttons exist
+    // Verify all five buttons exist
     const buttons = dashboardActions.querySelectorAll("button");
-    expect(buttons.length).toBe(3);
-    expect(buttons[0].textContent.trim()).toBe("Scan Emails");
-    expect(buttons[1].textContent.trim()).toBe("Refresh");
-
+    expect(buttons.length).toBe(5);
+    expect(buttons[0].getAttribute("x-text")).toBe("getRepliedToggleText()");
+    expect(buttons[1].getAttribute("x-text")).toBe("getArchivedToggleText()");
+    expect(buttons[2].textContent.trim()).toBe("Scan Emails");
+    expect(buttons[3].textContent.trim()).toBe("Refresh");
+    
     // Verify sort button exists and has Alpine directive
-    const sortButton = buttons[2];
+    const sortButton = buttons[4];
     expect(sortButton).toBeTruthy();
     expect(sortButton.querySelector("span")).toBeTruthy();
-    expect(sortButton.querySelector("span").hasAttribute("x-text")).toBe(true);
     expect(sortButton.querySelector("span").getAttribute("x-text")).toBe(
       "getSortButtonText()"
     );
@@ -117,7 +118,7 @@ describe("Daily Dashboard Integration", () => {
     );
     expect(sortButton).toBeTruthy();
     expect(sortButton.hasAttribute("@click")).toBe(true);
-    expect(sortButton.getAttribute("@click")).toBe("toggleSortOrder()");
+    expect(sortButton.getAttribute("@click")).toBe("toggleHideArchivedCompanies()");
 
     // Verify the template uses sortedMessages instead of unprocessedMessages
     const messageList = dashboardView.querySelector(".message-list");

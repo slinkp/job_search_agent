@@ -1,6 +1,8 @@
+import argparse
 import datetime
 import decimal
 import enum
+import importlib
 import json
 import logging
 import multiprocessing
@@ -339,7 +341,14 @@ class RecruiterMessage(BaseModel):
         thread_id: Gmail thread ID
         date: Timestamp of the message as UTC datetime
         archived_at: When this specific message was archived (optional)
+        reply_sent_at: When a reply was sent to this message (optional)
     """
+
+    @property
+    def is_archived(self) -> bool:
+        """True if either message is archived or company is archived."""
+        # Company check will be implemented in repository queries
+        return self.archived_at is not None
 
     message_id: str = ""
     company_id: str = ""
@@ -557,6 +566,7 @@ class CompanyRepository:
                         email_thread_link TEXT DEFAULT '',
                         date TEXT DEFAULT '',
                         archived_at TEXT DEFAULT '',
+                        reply_sent_at TEXT DEFAULT '',
                         FOREIGN KEY (company_id) REFERENCES companies (company_id)
                     )
                 """
@@ -1244,9 +1254,16 @@ def merge_company_data(
 
 
 if __name__ == "__main__":
-    import argparse
-
     parser = argparse.ArgumentParser()
+    migration_group = parser.add_mutually_exclusive_group()
+    migration_group.add_argument(
+        "--migrate", action="store_true", help="Run database migrations"
+    )
+    migration_group.add_argument(
+        "--migration-dir",
+        default="migrations",
+        help="Directory containing migration scripts (default: migrations)",
+    )
     parser.add_argument("--clear-data", action="store_true", help="Clear existing data")
     parser.add_argument("--sample-data", action="store_true", help="Load sample data")
     parser.add_argument("--dump", action="store_true", help="Dump company data to stdout")
@@ -1258,6 +1275,44 @@ if __name__ == "__main__":
         "--event-type", choices=[e.value for e in EventType], help="Filter events by type"
     )
     args = parser.parse_args()
+
+    if args.migrate:
+        from pathlib import Path
+        import sys
+
+        migration_dir = Path(args.migration_dir)
+        if not migration_dir.exists():
+            print(f"Migration directory {migration_dir} not found")
+            sys.exit(1)
+
+        migration_files = sorted(
+            f for f in migration_dir.glob("*.py") if f.name != "__init__.py"
+        )
+
+        if not migration_files:
+            print("No migration files found")
+            sys.exit(0)
+
+        print(f"Running {len(migration_files)} migrations from {migration_dir}")
+
+        conn = sqlite3.connect("data/companies.db")
+        try:
+            for idx, path in enumerate(migration_files, 1):
+                print(f"Running migration {idx}/{len(migration_files)}: {path.name}")
+                try:
+                    module_name = path.stem
+                    spec = importlib.util.spec_from_file_location(module_name, str(path))
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    module.migrate(conn)
+                    conn.commit()
+                except Exception as e:
+                    print(f"Failed to run migration {path.name}: {str(e)}")
+                    conn.rollback()
+                    sys.exit(1)
+        finally:
+            conn.close()
+        sys.exit(0)
 
     repo = company_repository(
         clear_data=args.clear_data, load_sample_data=args.sample_data

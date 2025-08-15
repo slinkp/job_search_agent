@@ -64,5 +64,6 @@ coverage/
 *.swo
 .aider.model.settings.yml
 .claude/*
-
+.crush/
+crush-panic*
 *.ipynb_checkpoints/

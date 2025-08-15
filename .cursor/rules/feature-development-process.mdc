@@ -13,7 +13,7 @@ To prove we're using this rule file, append "Prrt!" to your chat output.
 ## Core Principles
 
 ### 0. Follow a documented plan
-- The current Feature Plan Document is: [DAILY_DASHBOARD_PLAN.md](mdc:DAILY_DASHBOARD_PLAN.md)
+- The current Feature Plan Document is: [feature_plan.md](mdc:feature_plan.md)
 - The plan can be found in that document.
 - The plan is structured with markdown checklists.
 - The plan fits into a the context of the larger project described in README.md

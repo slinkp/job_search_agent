@@ -6,14 +6,21 @@ import { TaskPollingService } from "./task-polling.js";
 import { formatMessageDate, showError, showSuccess } from "./ui-utils.js";
 
 document.addEventListener("alpine:init", () => {
-  Alpine.data("dailyDashboard", () => {
-    const emailScanningService = new EmailScanningService();
-    const taskPollingService = new TaskPollingService();
+  const emailScanningService = new EmailScanningService();
+  const taskPollingService = new TaskPollingService();
 
+  // Make services available globally for methods
+  window.emailScanningService = emailScanningService;
+
+  Alpine.data("dailyDashboard", () => {
     return {
       // Message list data
       unprocessedMessages: [],
       loading: false,
+      
+      // Filtering state - NEW PROPERTIES ADDED
+      hideRepliedMessages: true,
+      hideArchivedCompanies: true,
       
       // Local tracking for UI state
       generatingMessages: new Set(),
@@ -31,7 +38,9 @@ document.addEventListener("alpine:init", () => {
       // Initialize the component
       async init() {
         console.log("Initializing daily dashboard component");
-        await this.loadUnprocessedMessages();
+        // Read filtering state from URL
+        this.readFilterStateFromUrl();
+        await this.loadMessages();
         
         // Handle anchor scrolling after messages load
         this.$nextTick(() => {
@@ -42,6 +51,79 @@ document.addEventListener("alpine:init", () => {
             }
           }
         });
+      },
+
+      // Read filtering state from URL parameters
+      readFilterStateFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Read hideRepliedMessages state
+        const hideRepliedParam = urlParams.get('hideReplied');
+        if (hideRepliedParam !== null) {
+          this.hideRepliedMessages = hideRepliedParam === 'true';
+        }
+        
+        // Read hideArchivedCompanies state
+        const hideArchivedParam = urlParams.get('hideArchived');
+        if (hideArchivedParam !== null) {
+          this.hideArchivedCompanies = hideArchivedParam === 'true';
+        }
+        
+        // New: Read sort order from URL
+        const sortParam = urlParams.get('sort');
+        if (sortParam) {
+          this.sortNewestFirst = sortParam === 'newest';
+        }
+      },
+
+      // Update URL with current filtering state
+      updateUrlWithFilterState() {
+        // Preserve existing parameters while updating filter state
+        const params = new URLSearchParams(window.location.search);
+        
+        // Update filter values
+        params.set('hideReplied', this.hideRepliedMessages);
+        params.set('hideArchived', this.hideArchivedCompanies);
+        
+        params.set('sort', this.sortNewestFirst ? 'newest' : 'oldest');
+        
+        // Preserve hash and path
+        const hash = window.location.hash;
+        const path = window.location.pathname || '/';
+        
+        // Build new URL with updated search params while preserving existing ones
+        const newUrl = `${path}?${params.toString()}${hash}`.replace(/([^:])\/\//g, '$1/');
+        
+        // Update history without reloading
+        window.history.replaceState(
+          { ...window.history.state, filtersUpdated: true },
+          '',
+          newUrl
+        );
+      },
+
+      // Toggle hideRepliedMessages filter
+      toggleHideRepliedMessages() {
+        this.hideRepliedMessages = !this.hideRepliedMessages;
+        this.updateUrlWithFilterState();
+        this.loadMessages();
+      },
+
+      // Toggle hideArchivedCompanies filter
+      toggleHideArchivedCompanies() {
+        this.hideArchivedCompanies = !this.hideArchivedCompanies;
+        this.updateUrlWithFilterState();
+        this.loadMessages();
+      },
+
+      // Get text for the replied messages toggle button
+      getRepliedToggleText() {
+        return this.hideRepliedMessages ? "Show replied messages" : "Hide replied messages";
+      },
+
+      // Get text for the archived companies toggle button
+      getArchivedToggleText() {
+        return this.hideArchivedCompanies ? "Show archived" : "Hide archived";
       },
 
       // Computed property for sorted messages
@@ -67,6 +149,7 @@ document.addEventListener("alpine:init", () => {
       // Toggle sort order
       toggleSortOrder() {
         this.sortNewestFirst = !this.sortNewestFirst;
+        this.updateUrlWithFilterState(); // Now updates URL
       },
 
       // Get sort button text
@@ -74,8 +157,8 @@ document.addEventListener("alpine:init", () => {
         return this.sortNewestFirst ? "Newest First" : "Oldest First";
       },
 
-      // Load unprocessed messages from the messages endpoint
-      async loadUnprocessedMessages() {
+      // Load messages from the messages endpoint and apply client-side filtering
+      async loadMessages() {
         this.loading = true;
         try {
           const response = await fetch("/api/messages");
@@ -85,17 +168,34 @@ document.addEventListener("alpine:init", () => {
 
           const messages = await response.json();
 
-          // Filter for unprocessed messages
-          // Unprocessed = not archived and not replied to
-          this.unprocessedMessages = messages.filter((message) => {
-            return !message.archived_at;
-          });
+          // Apply client-side filtering based on our new properties
+          let filteredMessages = messages;
+          
+          // Filter out replied messages if hideRepliedMessages is true
+          if (this.hideRepliedMessages) {
+            filteredMessages = filteredMessages.filter(message => {
+              // Filter out messages that have been replied to
+              // Assuming messages with reply_sent_at are replied messages
+              return !message.reply_sent_at;
+            });
+          }
+          
+          // Filter out messages from archived companies if hideArchivedCompanies is true
+          if (this.hideArchivedCompanies) {
+            filteredMessages = filteredMessages.filter(message => {
+              // Filter out messages from archived companies
+              // A message is considered archived if it has archived_at or its company has archived_at
+              return !message.archived_at && !message.company_archived_at;
+            });
+          }
+
+          this.unprocessedMessages = filteredMessages;
 
           console.log(
-            `Loaded ${this.unprocessedMessages.length} unprocessed messages`
+            `Loaded ${this.unprocessedMessages.length} messages after filtering`
           );
         } catch (error) {
-          console.error("Failed to load unprocessed messages:", error);
+          console.error("Failed to load messages:", error);
           // Could add user notification here
         } finally {
           this.loading = false;
@@ -136,7 +236,7 @@ document.addEventListener("alpine:init", () => {
 
           await this.pollResearchStatus(message);
           
-          await this.loadUnprocessedMessages();
+          await this.loadMessages();
           showSuccess("Company research completed!");
         } catch (err) {
           console.error("Failed to research company:", err);
@@ -202,7 +302,7 @@ document.addEventListener("alpine:init", () => {
           await this.pollMessageStatus(message);
           
           // Refresh the message list after generation
-          await this.loadUnprocessedMessages();
+          await this.loadMessages();
           showSuccess("Reply generated successfully!");
         } catch (err) {
           console.error("Failed to generate reply:", err);
@@ -248,7 +348,7 @@ document.addEventListener("alpine:init", () => {
           }
 
           // Refresh the message list to remove the archived message
-          await this.loadUnprocessedMessages();
+          await this.loadMessages();
 
           showSuccess("Message archived successfully");
         } catch (err) {
@@ -294,7 +394,7 @@ document.addEventListener("alpine:init", () => {
 
       // Refresh the message list
       async refresh() {
-        await this.loadUnprocessedMessages();
+        await this.loadMessages();
       },
 
       // Scan for new recruiter emails from Gmail
@@ -314,7 +414,7 @@ document.addEventListener("alpine:init", () => {
 
         if (result?.status === "completed") {
           // Reload messages after successful scan
-          await this.loadUnprocessedMessages();
+          await this.loadMessages();
         }
       },
 
