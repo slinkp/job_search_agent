@@ -344,17 +344,31 @@
                     :class="getResearchStatusClass(message)"
                   ></span>
                 </div>
-                <button 
-                  @click="generateReply(message)" 
-                  :disabled="isGeneratingMessage(message)"
-                  class="outline"
-                >
-                  <span x-show="!isGeneratingMessage(message)">Generate Reply</span>
-                  <span x-show="isGeneratingMessage(message)">
-                    <span class="loading-spinner"></span>
-                    Generating...
-                  </span>
-                </button>
+                
+                <!-- Reply actions based on reply_status -->
+                <template x-if="message.reply_status === 'none'">
+                  <div class="reply-actions">
+                    <button 
+                      @click="generateReply(message)" 
+                      :disabled="isGeneratingMessage(message)"
+                      class="outline"
+                    >
+                      <span x-show="!isGeneratingMessage(message)">Generate Reply</span>
+                      <span x-show="isGeneratingMessage(message)">
+                        <span class="loading-spinner"></span>
+                        Generating...
+                      </span>
+                    </button>
+                    <button 
+                      @click="$dispatch('edit-reply', message)" 
+                      :disabled="isGeneratingMessage(message)"
+                      class="outline"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </template>
+                
                 <button @click="archive(message.message_id)" class="outline">
                   Archive
                 </button>

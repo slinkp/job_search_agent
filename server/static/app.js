@@ -81,9 +81,29 @@ document.addEventListener("alpine:init", () => {
   // Listen for navigation events from other components
   document.addEventListener("navigate-to-company", (event) => {
     const companyId = event.detail;
-    const companyList = Alpine.store("companyList");
-    if (companyList) {
+    // Access the companyList component through the DOM
+    const companyListElement = document.querySelector('[x-data="companyList"]');
+    if (companyListElement && companyListElement._x_dataStack) {
+      const companyList = companyListElement._x_dataStack[0];
       companyList.navigateToCompany(companyId);
+    }
+  });
+
+  // Listen for edit reply events from daily dashboard
+  document.addEventListener("edit-reply", (event) => {
+    const message = event.detail;
+    // Access the companyList component through the DOM
+    const companyListElement = document.querySelector('[x-data="companyList"]');
+    if (companyListElement && companyListElement._x_dataStack) {
+      const companyList = companyListElement._x_dataStack[0];
+      // Convert message to company format for the existing editReply method
+      const company = {
+        company_id: message.company_id,
+        name: message.company_name,
+        reply_message: message.reply_message,
+        recruiter_message: message,
+      };
+      companyList.editReply(company);
     }
   });
 
