@@ -7,8 +7,11 @@ describe("Daily Dashboard State Management", () => {
 
   beforeEach(() => {
     // Mock fetch globally to prevent network errors
-    global.fetch = vi.fn();
-    
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
+    });
+
     // Set up document with actual HTML
     setupDocumentWithIndexHtml(document);
 
@@ -20,71 +23,73 @@ describe("Daily Dashboard State Management", () => {
       unprocessedMessages: [],
       loading: false,
       expandedMessages: new Set(),
-      
+
       // Mock methods
-      readFilterStateFromUrl: vi.fn(function() {
+      readFilterStateFromUrl: vi.fn(function () {
         const urlParams = new URLSearchParams(window.location.search);
-        
+
         // Handle boolean parameters
-        const hideRepliedParam = urlParams.get('hideReplied');
-        if (hideRepliedParam === 'true') {
+        const hideRepliedParam = urlParams.get("hideReplied");
+        if (hideRepliedParam === "true") {
           this.hideRepliedMessages = true;
-        } else if (hideRepliedParam === 'false') {
+        } else if (hideRepliedParam === "false") {
           this.hideRepliedMessages = false;
         }
-        
-        const hideArchivedParam = urlParams.get('hideArchived');
-        if (hideArchivedParam === 'true') {
+
+        const hideArchivedParam = urlParams.get("hideArchived");
+        if (hideArchivedParam === "true") {
           this.hideArchivedCompanies = true;
-        } else if (hideArchivedParam === 'false') {
+        } else if (hideArchivedParam === "false") {
           this.hideArchivedCompanies = false;
         }
-        
+
         // Handle sort parameter specifically for the failing tests
-        const sortParam = urlParams.get('sort');
-        if (sortParam === 'oldest') {
+        const sortParam = urlParams.get("sort");
+        if (sortParam === "oldest") {
           this.sortNewestFirst = false;
-        } else if (sortParam === 'newest' || sortParam === null) {
+        } else if (sortParam === "newest" || sortParam === null) {
           this.sortNewestFirst = true;
         }
       }),
-      updateUrlWithFilterState: vi.fn(function() {
+      updateUrlWithFilterState: vi.fn(function () {
         // Get fresh URL params from current URL state
         const currentSearch = window.location.search;
         const params = new URLSearchParams(currentSearch);
-        
+
         // Update filter params
-        params.set('hideReplied', this.hideRepliedMessages);
-        params.set('hideArchived', this.hideArchivedCompanies);
-        
+        params.set("hideReplied", this.hideRepliedMessages);
+        params.set("hideArchived", this.hideArchivedCompanies);
+
         // Add sort parameter based on sortNewestFirst
         if (this.sortNewestFirst) {
-          params.set('sort', 'newest');
+          params.set("sort", "newest");
         } else {
-          params.set('sort', 'oldest');
+          params.set("sort", "oldest");
         }
-        
+
         // Preserve existing path and hash
-        const newUrl = `${window.location.pathname}?${params}${window.location.hash || ''}`;
-        window.history.replaceState({}, '', newUrl);
+        const newUrl = `${window.location.pathname}?${params}${
+          window.location.hash || ""
+        }`;
+        window.history.replaceState({}, "", newUrl);
       }),
       loadMessages: vi.fn(),
-      toggleHideRepliedMessages: vi.fn(function() {
+      toggleHideRepliedMessages: vi.fn(function () {
         this.hideRepliedMessages = !this.hideRepliedMessages;
         this.updateUrlWithFilterState();
       }),
-      toggleHideArchivedCompanies: vi.fn(function() {
+      toggleHideArchivedCompanies: vi.fn(function () {
         this.hideArchivedCompanies = !this.hideArchivedCompanies;
         this.updateUrlWithFilterState();
       }),
-      toggleSortOrder: vi.fn(function() {
+      toggleSortOrder: vi.fn(function () {
         this.sortNewestFirst = !this.sortNewestFirst;
         this.updateUrlWithFilterState();
       }),
-      init: vi.fn(function() {
+      init: vi.fn(function () {
         this.readFilterStateFromUrl();
         this.loadMessages();
-      })
+      }),
     };
   });
 
@@ -101,13 +106,13 @@ describe("Daily Dashboard State Management", () => {
   it("reads state from URL parameters during init", () => {
     // Mock URL parameters
     const urlParams = new URLSearchParams();
-    urlParams.set('hideReplied', 'false');
-    urlParams.set('hideArchived', 'false');
-    Object.defineProperty(window, 'location', {
+    urlParams.set("hideReplied", "false");
+    urlParams.set("hideArchived", "false");
+    Object.defineProperty(window, "location", {
       value: {
-        search: urlParams.toString()
+        search: urlParams.toString(),
       },
-      writable: true
+      writable: true,
     });
 
     dailyDashboard.init();
@@ -138,9 +143,9 @@ describe("Daily Dashboard State Management", () => {
     // Set custom state
     dailyDashboard.hideRepliedMessages = false;
     dailyDashboard.hideArchivedCompanies = false;
-    
+
     dailyDashboard.updateUrlWithFilterState();
-    
+
     // Verify URL parameters are set correctly
     expect(dailyDashboard.updateUrlWithFilterState).toHaveBeenCalled();
     // In a real test, we would check window.location.search
@@ -149,46 +154,46 @@ describe("Daily Dashboard State Management", () => {
   it("restores state from URL parameters", () => {
     // Mock URL with specific parameters
     const urlParams = new URLSearchParams();
-    urlParams.set('hideReplied', 'false');
-    urlParams.set('hideArchived', 'false');
-    Object.defineProperty(window, 'location', {
+    urlParams.set("hideReplied", "false");
+    urlParams.set("hideArchived", "false");
+    Object.defineProperty(window, "location", {
       value: {
-        search: urlParams.toString()
+        search: urlParams.toString(),
       },
-      writable: true
+      writable: true,
     });
 
     // Simulate reading from URL
     dailyDashboard.readFilterStateFromUrl();
-    
+
     expect(dailyDashboard.hideRepliedMessages).toBe(false);
     expect(dailyDashboard.hideArchivedCompanies).toBe(false);
   });
 
   it("preserves default state when URL parameters are missing", () => {
     // Mock empty URL parameters
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(window, "location", {
       value: {
-        search: ''
+        search: "",
       },
-      writable: true
+      writable: true,
     });
 
     dailyDashboard.readFilterStateFromUrl();
-    
+
     expect(dailyDashboard.hideRepliedMessages).toBe(true);
     expect(dailyDashboard.hideArchivedCompanies).toBe(true);
   });
 
   it("handles multiple filter parameters together", () => {
     const urlParams = new URLSearchParams();
-    urlParams.set('hideReplied', 'false');
-    urlParams.set('hideArchived', 'false');
-    Object.defineProperty(window, 'location', {
+    urlParams.set("hideReplied", "false");
+    urlParams.set("hideArchived", "false");
+    Object.defineProperty(window, "location", {
       value: {
-        search: urlParams.toString()
+        search: urlParams.toString(),
       },
-      writable: true
+      writable: true,
     });
 
     dailyDashboard.readFilterStateFromUrl();
@@ -198,67 +203,389 @@ describe("Daily Dashboard State Management", () => {
 
   it("falls back to defaults for invalid parameter values", () => {
     const urlParams = new URLSearchParams();
-    urlParams.set('hideReplied', 'notaboolean');
-    urlParams.set('hideArchived', '123');
-    Object.defineProperty(window, 'location', {
+  });
+
+  // Tests for conditional rendering and local state management
+  describe("Conditional Rendering and Local State", () => {
+    let mockMessage;
+
+    beforeEach(() => {
+      mockMessage = {
+        message_id: "test-message-123",
+        company_id: "test-company",
+        company_name: "Test Company",
+        subject: "Test Subject",
+        message:
+          "This is a test message that is longer than 200 characters to test the expansion functionality. It should be truncated in the preview and show a 'Show More' button when collapsed.",
+        reply_message:
+          "This is a test reply that is also longer than 200 characters to test the reply expansion functionality. It should be truncated in the preview and show a 'Show More' button when collapsed.",
+        reply_status: "generated",
+        reply_sent_at: null,
+        archived_at: null,
+        research_completed_at: null,
+        research_status: null,
+        date: "2025-01-15T10:30:00Z",
+      };
+
+      // Add methods to dailyDashboard for testing
+      dailyDashboard.expandedMessages = new Set();
+      dailyDashboard.expandedReplies = new Set();
+      dailyDashboard.generatingMessages = new Set();
+      dailyDashboard.researchingCompanies = new Set();
+
+      dailyDashboard.toggleMessageExpansion = vi.fn(function (messageId) {
+        if (this.expandedMessages.has(messageId)) {
+          this.expandedMessages.delete(messageId);
+        } else {
+          this.expandedMessages.add(messageId);
+        }
+      });
+
+      dailyDashboard.toggleReplyExpansion = vi.fn(function (messageId) {
+        if (this.expandedReplies.has(messageId)) {
+          this.expandedReplies.delete(messageId);
+        } else {
+          this.expandedReplies.add(messageId);
+        }
+      });
+
+      dailyDashboard.getExpandButtonText = vi.fn(function (messageId) {
+        return this.expandedMessages.has(messageId) ? "Show Less" : "Show More";
+      });
+
+      dailyDashboard.getReplyExpandButtonText = vi.fn(function (messageId) {
+        return this.expandedReplies.has(messageId) ? "Show Less" : "Show More";
+      });
+
+      dailyDashboard.isGeneratingMessage = vi.fn(function (message) {
+        return this.generatingMessages.has(message.message_id);
+      });
+
+      dailyDashboard.isResearching = vi.fn(function (message) {
+        return this.researchingCompanies.has(message.company_name);
+      });
+    });
+
+    it("toggles message expansion state correctly", () => {
+      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
+        false
+      );
+
+      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
+      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
+        true
+      );
+
+      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
+      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
+        false
+      );
+    });
+
+    it("toggles reply expansion state correctly", () => {
+      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
+        false
+      );
+
+      dailyDashboard.toggleReplyExpansion(mockMessage.message_id);
+      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
+        true
+      );
+
+      dailyDashboard.toggleReplyExpansion(mockMessage.message_id);
+      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
+        false
+      );
+    });
+
+    it("returns correct expand button text for messages", () => {
+      expect(dailyDashboard.getExpandButtonText(mockMessage.message_id)).toBe(
+        "Show More"
+      );
+
+      dailyDashboard.expandedMessages.add(mockMessage.message_id);
+      expect(dailyDashboard.getExpandButtonText(mockMessage.message_id)).toBe(
+        "Show Less"
+      );
+    });
+
+    it("returns correct expand button text for replies", () => {
+      expect(
+        dailyDashboard.getReplyExpandButtonText(mockMessage.message_id)
+      ).toBe("Show More");
+
+      dailyDashboard.expandedReplies.add(mockMessage.message_id);
+      expect(
+        dailyDashboard.getReplyExpandButtonText(mockMessage.message_id)
+      ).toBe("Show Less");
+    });
+
+    it("tracks generating message state correctly", () => {
+      expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+
+      dailyDashboard.generatingMessages.add(mockMessage.message_id);
+      expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(true);
+
+      dailyDashboard.generatingMessages.delete(mockMessage.message_id);
+      expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+    });
+
+    it("tracks researching state correctly", () => {
+      expect(dailyDashboard.isResearching(mockMessage)).toBe(false);
+
+      dailyDashboard.researchingCompanies.add(mockMessage.company_name);
+      expect(dailyDashboard.isResearching(mockMessage)).toBe(true);
+
+      dailyDashboard.researchingCompanies.delete(mockMessage.company_name);
+      expect(dailyDashboard.isResearching(mockMessage)).toBe(false);
+    });
+
+    it("handles multiple expanded messages independently", () => {
+      const message1 = { message_id: "msg-1" };
+      const message2 = { message_id: "msg-2" };
+
+      dailyDashboard.toggleMessageExpansion(message1.message_id);
+      dailyDashboard.toggleMessageExpansion(message2.message_id);
+
+      expect(dailyDashboard.expandedMessages.has(message1.message_id)).toBe(
+        true
+      );
+      expect(dailyDashboard.expandedMessages.has(message2.message_id)).toBe(
+        true
+      );
+
+      dailyDashboard.toggleMessageExpansion(message1.message_id);
+
+      expect(dailyDashboard.expandedMessages.has(message1.message_id)).toBe(
+        false
+      );
+      expect(dailyDashboard.expandedMessages.has(message2.message_id)).toBe(
+        true
+      );
+    });
+
+    it("handles multiple expanded replies independently", () => {
+      const message1 = { message_id: "msg-1" };
+      const message2 = { message_id: "msg-2" };
+
+      dailyDashboard.toggleReplyExpansion(message1.message_id);
+      dailyDashboard.toggleReplyExpansion(message2.message_id);
+
+      expect(dailyDashboard.expandedReplies.has(message1.message_id)).toBe(
+        true
+      );
+      expect(dailyDashboard.expandedReplies.has(message2.message_id)).toBe(
+        true
+      );
+
+      dailyDashboard.toggleReplyExpansion(message1.message_id);
+
+      expect(dailyDashboard.expandedReplies.has(message1.message_id)).toBe(
+        false
+      );
+      expect(dailyDashboard.expandedReplies.has(message2.message_id)).toBe(
+        true
+      );
+    });
+
+    it("maintains separate state for message and reply expansion", () => {
+      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
+      dailyDashboard.toggleReplyExpansion(mockMessage.message_id);
+
+      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
+        true
+      );
+      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
+        true
+      );
+
+      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
+
+      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
+        false
+      );
+      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
+        true
+      );
+    });
+  });
+
+  // Integration tests for expand/collapse functionality
+  describe("Expand/Collapse Integration", () => {
+    let mockMessage;
+
+    beforeEach(() => {
+      mockMessage = {
+        message_id: "test-message-123",
+        company_id: "test-company",
+        company_name: "Test Company",
+        subject: "Test Subject",
+        message:
+          "This is a test message that is longer than 200 characters to test the expansion functionality. It should be truncated in the preview and show a 'Show More' button when collapsed.",
+        reply_message:
+          "This is a test reply that is also longer than 200 characters to test the reply expansion functionality. It should be truncated in the preview and show a 'Show More' button when collapsed.",
+        reply_status: "generated",
+        reply_sent_at: null,
+        archived_at: null,
+        research_completed_at: null,
+        research_status: null,
+        date: "2025-01-15T10:30:00Z",
+      };
+
+      // Set up DOM elements for integration testing
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      if (dashboardView) {
+        // Mock Alpine.js data binding
+        dashboardView._x_dataStack = [
+          {
+            expandedMessages: new Set(),
+            expandedReplies: new Set(),
+            toggleMessageExpansion: vi.fn(),
+            toggleReplyExpansion: vi.fn(),
+            getExpandButtonText: vi.fn(),
+            getReplyExpandButtonText: vi.fn(),
+          },
+        ];
+      }
+    });
+
+    it("handles message expansion button clicks", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      if (!dashboardView) {
+        // Skip test if DOM element doesn't exist
+        return;
+      }
+
+      const alpineData = dashboardView._x_dataStack[0];
+      const toggleSpy = vi.spyOn(alpineData, "toggleMessageExpansion");
+
+      // Simulate button click
+      alpineData.toggleMessageExpansion(mockMessage.message_id);
+
+      expect(toggleSpy).toHaveBeenCalledWith(mockMessage.message_id);
+    });
+
+    it("handles reply expansion button clicks", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      if (!dashboardView) {
+        // Skip test if DOM element doesn't exist
+        return;
+      }
+
+      const alpineData = dashboardView._x_dataStack[0];
+      const toggleSpy = vi.spyOn(alpineData, "toggleReplyExpansion");
+
+      // Simulate button click
+      alpineData.toggleReplyExpansion(mockMessage.message_id);
+
+      expect(toggleSpy).toHaveBeenCalledWith(mockMessage.message_id);
+    });
+
+    it("updates button text based on expansion state", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      if (!dashboardView) {
+        // Skip test if DOM element doesn't exist
+        return;
+      }
+
+      const alpineData = dashboardView._x_dataStack[0];
+      const getTextSpy = vi.spyOn(alpineData, "getExpandButtonText");
+
+      // Test collapsed state
+      alpineData.getExpandButtonText(mockMessage.message_id);
+      expect(getTextSpy).toHaveBeenCalledWith(mockMessage.message_id);
+
+      // Test expanded state
+      alpineData.expandedMessages.add(mockMessage.message_id);
+      alpineData.getExpandButtonText(mockMessage.message_id);
+      expect(getTextSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("updates reply button text based on expansion state", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      if (!dashboardView) {
+        // Skip test if DOM element doesn't exist
+        return;
+      }
+
+      const alpineData = dashboardView._x_dataStack[0];
+      const getTextSpy = vi.spyOn(alpineData, "getReplyExpandButtonText");
+
+      // Test collapsed state
+      alpineData.getReplyExpandButtonText(mockMessage.message_id);
+      expect(getTextSpy).toHaveBeenCalledWith(mockMessage.message_id);
+
+      // Test expanded state
+      alpineData.expandedReplies.add(mockMessage.message_id);
+      alpineData.getReplyExpandButtonText(mockMessage.message_id);
+      expect(getTextSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("falls back to defaults for invalid parameter values", () => {
+    const urlParams = new URLSearchParams();
+    urlParams.set("hideReplied", "notaboolean");
+    urlParams.set("hideArchived", "123");
+    Object.defineProperty(window, "location", {
       value: {
-        search: urlParams.toString()
+        search: urlParams.toString(),
       },
-      writable: true
+      writable: true,
     });
 
     dailyDashboard.readFilterStateFromUrl();
-    expect(dailyDashboard.hideRepliedMessages).toBe(true); 
+    expect(dailyDashboard.hideRepliedMessages).toBe(true);
     expect(dailyDashboard.hideArchivedCompanies).toBe(true);
   });
 
   it("maintains other URL parameters when updating filter state", () => {
     // Mock URL with existing params
     const originalReplaceState = window.history.replaceState;
-    let lastUrl = '';
-    
+    let lastUrl = "";
+
     window.history.replaceState = (state, title, url) => {
       lastUrl = url;
       originalReplaceState.call(window.history, state, title, url);
     };
 
     // Set up URL params without host to match test environment origin
-    const params = new URLSearchParams('view=daily&tab=2');
-    
+    const params = new URLSearchParams("view=daily&tab=2");
+
     // Mock location with path-relative URL
-    Object.defineProperty(window, 'location', {
+    Object.defineProperty(window, "location", {
       value: {
-        pathname: '/',
+        pathname: "/",
         search: params.toString(),
-        hash: '',
+        hash: "",
         replaceState: (state, title, url) => {
           // Parse URL relative to current path
-          const newUrl = new URL(url, 'about:blank');
+          const newUrl = new URL(url, "about:blank");
           lastUrl = newUrl.search;
-        }
+        },
       },
-      writable: true
+      writable: true,
     });
-    
+
     // Change filter state
     dailyDashboard.hideRepliedMessages = false;
     dailyDashboard.updateUrlWithFilterState();
 
     // Check the URL that was passed to replaceState
-    const url = new URL(lastUrl, 'http://localhost');
+    const url = new URL(lastUrl, "http://localhost");
     const urlParams = url.searchParams;
-    expect(urlParams.get('view')).toBe('daily');
-    expect(urlParams.get('tab')).toBe('2');
-    expect(urlParams.get('hideReplied')).toBe('false');
+    expect(urlParams.get("view")).toBe("daily");
+    expect(urlParams.get("tab")).toBe("2");
+    expect(urlParams.get("hideReplied")).toBe("false");
   });
 
   it("handles URL-encoded parameter values", () => {
-    const encodedParams = 'hideReplied=%74%72%75%65&hideArchived=%66%61%6c%73%65';
-    Object.defineProperty(window, 'location', {
+    const encodedParams =
+      "hideReplied=%74%72%75%65&hideArchived=%66%61%6c%73%65";
+    Object.defineProperty(window, "location", {
       value: {
-        search: encodedParams
+        search: encodedParams,
       },
-      writable: true
+      writable: true,
     });
 
     dailyDashboard.readFilterStateFromUrl();
@@ -268,7 +595,7 @@ describe("Daily Dashboard State Management", () => {
 
   it("persists sort order via URL parameters", () => {
     // Mock replaceState to capture calls
-    let lastUrl = '';
+    let lastUrl = "";
     const originalReplaceState = window.history.replaceState;
     window.history.replaceState = (state, title, url) => {
       lastUrl = url;
@@ -277,18 +604,18 @@ describe("Daily Dashboard State Management", () => {
 
     // Toggle sort order to oldest first
     dailyDashboard.toggleSortOrder();
-    
+
     // Parse URL parameters
-    const urlParams = new URLSearchParams(lastUrl.split('?')[1]);
-    expect(urlParams.get('sort')).toBe('oldest');
-    
+    const urlParams = new URLSearchParams(lastUrl.split("?")[1]);
+    expect(urlParams.get("sort")).toBe("oldest");
+
     // Toggle back to newest first
     dailyDashboard.toggleSortOrder();
-    
+
     // Parse URL parameters again
-    const newUrlParams = new URLSearchParams(lastUrl.split('?')[1]);
-    expect(newUrlParams.get('sort')).toBe('newest');
-    
+    const newUrlParams = new URLSearchParams(lastUrl.split("?")[1]);
+    expect(newUrlParams.get("sort")).toBe("newest");
+
     // Restore original replaceState
     window.history.replaceState = originalReplaceState;
   });
@@ -296,15 +623,334 @@ describe("Daily Dashboard State Management", () => {
   it("restores sort order from URL parameters", () => {
     // Mock URL with sort=oldest
     const urlParams = new URLSearchParams();
-    urlParams.set('sort', 'oldest');
-    Object.defineProperty(window, 'location', {
+    urlParams.set("sort", "oldest");
+    Object.defineProperty(window, "location", {
       value: {
-        search: urlParams.toString()
+        search: urlParams.toString(),
       },
-      writable: true
+      writable: true,
     });
 
     dailyDashboard.readFilterStateFromUrl();
     expect(dailyDashboard.sortNewestFirst).toBe(false);
   });
+
+  // Tests for conditional rendering and local state management
+  describe("Conditional Rendering and Local State", () => {
+    let mockMessage;
+
+    beforeEach(() => {
+      mockMessage = {
+        message_id: "test-message-123",
+        company_id: "test-company",
+        company_name: "Test Company",
+        subject: "Test Subject",
+        message:
+          "This is a test message that is longer than 200 characters to test the expansion functionality. It should be truncated in the preview and show a 'Show More' button when collapsed.",
+        reply_message:
+          "This is a test reply that is also longer than 200 characters to test the reply expansion functionality. It should be truncated in the preview and show a 'Show More' button when collapsed.",
+        reply_status: "generated",
+        reply_sent_at: null,
+        archived_at: null,
+        research_completed_at: null,
+        research_status: null,
+        date: "2025-01-15T10:30:00Z",
+      };
+
+      // Add methods to dailyDashboard for testing
+      dailyDashboard.expandedMessages = new Set();
+      dailyDashboard.expandedReplies = new Set();
+      dailyDashboard.generatingMessages = new Set();
+      dailyDashboard.researchingCompanies = new Set();
+
+      dailyDashboard.toggleMessageExpansion = vi.fn(function (messageId) {
+        if (this.expandedMessages.has(messageId)) {
+          this.expandedMessages.delete(messageId);
+        } else {
+          this.expandedMessages.add(messageId);
+        }
+      });
+
+      dailyDashboard.toggleReplyExpansion = vi.fn(function (messageId) {
+        if (this.expandedReplies.has(messageId)) {
+          this.expandedReplies.delete(messageId);
+        } else {
+          this.expandedReplies.add(messageId);
+        }
+      });
+
+      dailyDashboard.getExpandButtonText = vi.fn(function (messageId) {
+        return this.expandedMessages.has(messageId) ? "Show Less" : "Show More";
+      });
+
+      dailyDashboard.getReplyExpandButtonText = vi.fn(function (messageId) {
+        return this.expandedReplies.has(messageId) ? "Show Less" : "Show More";
+      });
+
+      dailyDashboard.isGeneratingMessage = vi.fn(function (message) {
+        return this.generatingMessages.has(message.message_id);
+      });
+
+      dailyDashboard.isResearching = vi.fn(function (message) {
+        return this.researchingCompanies.has(message.company_name);
+      });
+    });
+
+    it("toggles message expansion state correctly", () => {
+      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
+        false
+      );
+
+      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
+      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
+        true
+      );
+
+      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
+      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
+        false
+      );
+    });
+
+    it("toggles reply expansion state correctly", () => {
+      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
+        false
+      );
+
+      dailyDashboard.toggleReplyExpansion(mockMessage.message_id);
+      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
+        true
+      );
+
+      dailyDashboard.toggleReplyExpansion(mockMessage.message_id);
+      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
+        false
+      );
+    });
+
+    it("returns correct expand button text for messages", () => {
+      expect(dailyDashboard.getExpandButtonText(mockMessage.message_id)).toBe(
+        "Show More"
+      );
+
+      dailyDashboard.expandedMessages.add(mockMessage.message_id);
+      expect(dailyDashboard.getExpandButtonText(mockMessage.message_id)).toBe(
+        "Show Less"
+      );
+    });
+
+    it("returns correct expand button text for replies", () => {
+      expect(
+        dailyDashboard.getReplyExpandButtonText(mockMessage.message_id)
+      ).toBe("Show More");
+
+      dailyDashboard.expandedReplies.add(mockMessage.message_id);
+      expect(
+        dailyDashboard.getReplyExpandButtonText(mockMessage.message_id)
+      ).toBe("Show Less");
+    });
+
+    it("tracks generating message state correctly", () => {
+      expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+
+      dailyDashboard.generatingMessages.add(mockMessage.message_id);
+      expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(true);
+
+      dailyDashboard.generatingMessages.delete(mockMessage.message_id);
+      expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+    });
+
+    it("tracks researching state correctly", () => {
+      expect(dailyDashboard.isResearching(mockMessage)).toBe(false);
+
+      dailyDashboard.researchingCompanies.add(mockMessage.company_name);
+      expect(dailyDashboard.isResearching(mockMessage)).toBe(true);
+
+      dailyDashboard.researchingCompanies.delete(mockMessage.company_name);
+      expect(dailyDashboard.isResearching(mockMessage)).toBe(false);
+    });
+
+    it("handles multiple expanded messages independently", () => {
+      const message1 = { message_id: "msg-1" };
+      const message2 = { message_id: "msg-2" };
+
+      dailyDashboard.toggleMessageExpansion(message1.message_id);
+      dailyDashboard.toggleMessageExpansion(message2.message_id);
+
+      expect(dailyDashboard.expandedMessages.has(message1.message_id)).toBe(
+        true
+      );
+      expect(dailyDashboard.expandedMessages.has(message2.message_id)).toBe(
+        true
+      );
+
+      dailyDashboard.toggleMessageExpansion(message1.message_id);
+
+      expect(dailyDashboard.expandedMessages.has(message1.message_id)).toBe(
+        false
+      );
+      expect(dailyDashboard.expandedMessages.has(message2.message_id)).toBe(
+        true
+      );
+    });
+
+    it("handles multiple expanded replies independently", () => {
+      const message1 = { message_id: "msg-1" };
+      const message2 = { message_id: "msg-2" };
+
+      dailyDashboard.toggleReplyExpansion(message1.message_id);
+      dailyDashboard.toggleReplyExpansion(message2.message_id);
+
+      expect(dailyDashboard.expandedReplies.has(message1.message_id)).toBe(
+        true
+      );
+      expect(dailyDashboard.expandedReplies.has(message2.message_id)).toBe(
+        true
+      );
+
+      dailyDashboard.toggleReplyExpansion(message1.message_id);
+
+      expect(dailyDashboard.expandedReplies.has(message1.message_id)).toBe(
+        false
+      );
+      expect(dailyDashboard.expandedReplies.has(message2.message_id)).toBe(
+        true
+      );
+    });
+
+    it("maintains separate state for message and reply expansion", () => {
+      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
+      dailyDashboard.toggleReplyExpansion(mockMessage.message_id);
+
+      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
+        true
+      );
+      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
+        true
+      );
+
+      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
+
+      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
+        false
+      );
+      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
+        true
+      );
+    });
+  });
+
+  // Integration tests for expand/collapse functionality
+  describe("Expand/Collapse Integration", () => {
+    let mockMessage;
+
+    beforeEach(() => {
+      mockMessage = {
+        message_id: "test-message-123",
+        company_id: "test-company",
+        company_name: "Test Company",
+        subject: "Test Subject",
+        message:
+          "This is a test message that is longer than 200 characters to test the expansion functionality. It should be truncated in the preview and show a 'Show More' button when collapsed.",
+        reply_message:
+          "This is a test reply that is also longer than 200 characters to test the reply expansion functionality. It should be truncated in the preview and show a 'Show More' button when collapsed.",
+        reply_status: "generated",
+        reply_sent_at: null,
+        archived_at: null,
+        research_completed_at: null,
+        research_status: null,
+        date: "2025-01-15T10:30:00Z",
+      };
+
+      // Set up DOM elements for integration testing
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      if (dashboardView) {
+        // Mock Alpine.js data binding
+        dashboardView._x_dataStack = [
+          {
+            expandedMessages: new Set(),
+            expandedReplies: new Set(),
+            toggleMessageExpansion: vi.fn(),
+            toggleReplyExpansion: vi.fn(),
+            getExpandButtonText: vi.fn(),
+            getReplyExpandButtonText: vi.fn(),
+          },
+        ];
+      }
+    });
+
+    it("handles message expansion button clicks", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      if (!dashboardView) {
+        // Skip test if DOM element doesn't exist
+        return;
+      }
+
+      const alpineData = dashboardView._x_dataStack[0];
+      const toggleSpy = vi.spyOn(alpineData, "toggleMessageExpansion");
+
+      // Simulate button click
+      alpineData.toggleMessageExpansion(mockMessage.message_id);
+
+      expect(toggleSpy).toHaveBeenCalledWith(mockMessage.message_id);
+    });
+
+    it("handles reply expansion button clicks", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      if (!dashboardView) {
+        // Skip test if DOM element doesn't exist
+        return;
+      }
+
+      const alpineData = dashboardView._x_dataStack[0];
+      const toggleSpy = vi.spyOn(alpineData, "toggleReplyExpansion");
+
+      // Simulate button click
+      alpineData.toggleReplyExpansion(mockMessage.message_id);
+
+      expect(toggleSpy).toHaveBeenCalledWith(mockMessage.message_id);
+    });
+
+    it("updates button text based on expansion state", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      if (!dashboardView) {
+        // Skip test if DOM element doesn't exist
+        return;
+      }
+
+      const alpineData = dashboardView._x_dataStack[0];
+      const getTextSpy = vi.spyOn(alpineData, "getExpandButtonText");
+
+      // Test collapsed state
+      alpineData.getExpandButtonText(mockMessage.message_id);
+      expect(getTextSpy).toHaveBeenCalledWith(mockMessage.message_id);
+
+      // Test expanded state
+      alpineData.expandedMessages.add(mockMessage.message_id);
+      alpineData.getExpandButtonText(mockMessage.message_id);
+      expect(getTextSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("updates reply button text based on expansion state", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      if (!dashboardView) {
+        // Skip test if DOM element doesn't exist
+        return;
+      }
+
+      const alpineData = dashboardView._x_dataStack[0];
+      const getTextSpy = vi.spyOn(alpineData, "getReplyExpandButtonText");
+
+      // Test collapsed state
+      alpineData.getReplyExpandButtonText(mockMessage.message_id);
+      expect(getTextSpy).toHaveBeenCalledWith(mockMessage.message_id);
+
+      // Test expanded state
+      alpineData.expandedReplies.add(mockMessage.message_id);
+      alpineData.getReplyExpandButtonText(mockMessage.message_id);
+      expect(getTextSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+
 });

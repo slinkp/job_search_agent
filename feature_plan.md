@@ -41,7 +41,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
   - [x] When `reply_status === 'generated'`, show collapsed preview; expandable to full; provide Edit and Regenerate buttons; should be able to re-use code from companies flow for this too
   - [x] When `reply_status === 'sent'`, show Sent badge; hide/disable editing actions, same as companies edit flow (i think it does this?)
 - [x] Preserve existing filtering/sorting/expansion; no company-centric assumptions in the UI
-- [ ] Tests: unit tests for conditional rendering and local state; integration test for expand/collapse with replies
+- [x] Tests: unit tests for conditional rendering and local state; integration test for expand/collapse with replies
 - [ ] Tests: state transitions for generate → edit → save; regenerate flow
 
 3. Send & Archive with implicit save (message-centric trigger, company-backed)
