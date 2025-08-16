@@ -24,7 +24,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 2. Frontend: render reply preview/editor inline (message-centric)
 
 - [ ] Under each message row, show a reply block:
-  - [ ] Show status badges (Generated, Sent, Archived) alongside existing fields
+  - [x] Show status badges (Generated, Sent, Archived) alongside existing fields
   - [ ] When `reply_status === 'none'`, show Generate Reply button (don't worry about wiring it up yet); should be able to reuse code from companies edit flow;
         also Edit button (don't worry about wiring that either)
   - [ ] Edit button opens textarea; re-use the same edit code and UX we have on the companies page, but refactor that code as needed to

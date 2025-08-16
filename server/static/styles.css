@@ -340,6 +340,26 @@ button.secondary:focus {
   line-height: 20px;
 }
 
+/* Message status icons styling */
+.message-status-icons {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.message-status-icons .status-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.reply-generated-icon {
+  background-color: #FF9800; /* Orange */
+  font-size: 12px; /* Slightly larger for emoji */
+  line-height: 16px;
+}
+
 .modal-promising-controls {
   display: flex;
   align-items: center;

@@ -299,6 +299,11 @@
           <template x-for="message in sortedMessages" :key="message.message_id">
             <article class="message-item" :id="message.message_id">
               <header>
+                <div class="message-status-icons">
+                  <span class="status-icon reply-generated-icon" x-show="message.reply_status === 'generated'" title="Reply generated">📝</span>
+                  <span class="status-icon reply-sent-icon" x-show="message.reply_status === 'sent'" title="Reply sent">📧</span>
+                  <span class="status-icon archived-icon" x-show="message.archived_at" title="Archived">A</span>
+                </div>
                 <div class="message-info">
                   <div class="message-sender">
                     <a :href="'/#' + encodeURIComponent(message.company_id)" @click="$dispatch('navigate-to-company', message.company_id)" x-text="getMessageSender(message)"></a>
