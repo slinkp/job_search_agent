@@ -17,7 +17,7 @@
   <body>
     <main class="container" x-data="companyList" x-init="init()">
       <div class="header-section">
-        <h1>Companies Dashboard</h1>
+        <h1 x-text="isDailyDashboardView() ? 'Messages Dashboard' : 'Companies Dashboard'">Companies Dashboard</h1>
         
         <!-- View Mode Toggle -->
         <div class="view-mode-toggle">
@@ -25,7 +25,7 @@
             Company Management
           </button>
           <button @click="toggleViewMode()" :class="isDailyDashboardView() ? 'active' : 'outline'">
-            Daily Dashboard
+            Messages Dashboard
           </button>
         </div>
       </div>
@@ -247,10 +247,9 @@
       </template>
       </div>
 
-      <!-- Daily Dashboard View -->
+      <!-- Messages Dashboard View -->
       <div x-show="isDailyDashboardView()" id="daily-dashboard-view" x-data="dailyDashboard" x-init="init()">
         <div class="dashboard-header">
-          <h2>Daily Dashboard</h2>
           <div class="dashboard-actions">
             <!-- Filter buttons -->
             <div class="filter-controls">

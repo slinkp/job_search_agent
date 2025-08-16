@@ -25,12 +25,7 @@ describe("Daily Dashboard Integration", () => {
     const dashboardHeader = dashboardView.querySelector(".dashboard-header");
     expect(dashboardHeader).toBeTruthy();
 
-    // Verify dashboard title exists
-    const dashboardTitle = dashboardHeader.querySelector("h2");
-    expect(dashboardTitle).toBeTruthy();
-    expect(dashboardTitle.textContent).toBe("Daily Dashboard");
-
-    // Verify dashboard actions container exists
+    // Verify dashboard actions container exists (h2 was removed, title is now in main h1)
     const dashboardActions =
       dashboardHeader.querySelector(".dashboard-actions");
     expect(dashboardActions).toBeTruthy();
@@ -75,7 +70,7 @@ describe("Daily Dashboard Integration", () => {
 
     // Verify button text
     expect(toggleButtons[0].textContent.trim()).toBe("Company Management");
-    expect(toggleButtons[1].textContent.trim()).toBe("Daily Dashboard");
+    expect(toggleButtons[1].textContent.trim()).toBe("Messages Dashboard");
   });
 
   it("should have both view containers", () => {
