@@ -9,6 +9,9 @@ source $HERE/.direnv/python-3.13/bin/activate
 # it messes up tests run by the cursor agent which
 # doesn't load my direnv settings.
 # Putting these here as a temporary hack.
+
+export TAVILY_API_KEY="test_key"
+export OPENAI_API_KEY="test_key"
 export SHEET_DOC_ID="sheet_xyz"
 export TAB_1_GID='0'  # Main tab for companies
 export TAB_1_RANGE='Active!A3:AE'  # Remember ranges are half-open
