@@ -40,14 +40,14 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
   - [x] Generate or Regenerate should trigger polling job, then when finished update state from the `reply_message` in the backend API. Should be able to re-use code from companies flow, refactor if needed.
   - [x] When `reply_status === 'generated'`, show collapsed preview; expandable to full; provide Edit and Regenerate buttons; should be able to re-use code from companies flow for this too
   - [x] When `reply_status === 'sent'`, show Sent badge; hide/disable editing actions, same as companies edit flow (i think it does this?)
-- [ ] Preserve existing filtering/sorting/expansion; no company-centric assumptions in the UI
+- [x] Preserve existing filtering/sorting/expansion; no company-centric assumptions in the UI
 - [ ] Tests: unit tests for conditional rendering and local state; integration test for expand/collapse with replies
 - [ ] Tests: state transitions for generate → edit → save; regenerate flow
 
 3. Send & Archive with implicit save (message-centric trigger, company-backed)
 
 - [ ] Wire Send & Archive button to a message-level action; on the server, implicitly save the current draft to the company first, then send and archive the message
-- [ ] Disable during send; on success mark message `sent` and reflect archive state; hide editing actions
+- [ ] Disable action buttons during send; on success mark message `sent` and reflect archive state; hide editing actions
 - [ ] Tests: backend for send-and-archive semantics via `message_id`; frontend integration to verify save-then-send
 
 4. Error handling, edge cases, and UX polish

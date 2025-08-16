@@ -36,19 +36,20 @@ describe("Daily Dashboard Integration", () => {
 
     // Verify filter buttons exist
     const filterButtons = filterControls.querySelectorAll("button");
-    expect(filterButtons.length).toBe(3);
+    expect(filterButtons.length).toBe(4);
     expect(filterButtons[0].textContent.trim()).toBe("All");
     expect(filterButtons[1].textContent.trim()).toBe("Not Replied");
-    expect(filterButtons[2].textContent.trim()).toBe("Archived");
+    expect(filterButtons[2].textContent.trim()).toBe("Replied");
+    expect(filterButtons[3].textContent.trim()).toBe("Archived");
 
     // Verify other buttons exist (scan emails, refresh, sort)
     const allButtons = dashboardActions.querySelectorAll("button");
-    expect(allButtons.length).toBeGreaterThanOrEqual(6); // 3 filter buttons + 3 other buttons
+    expect(allButtons.length).toBeGreaterThanOrEqual(7); // 4 filter buttons + 3 other buttons
 
     // Verify that buttons have Alpine directives
     const buttonsWithClick =
       dashboardActions.querySelectorAll("button[@click]");
-    expect(buttonsWithClick.length).toBeGreaterThanOrEqual(6);
+    expect(buttonsWithClick.length).toBeGreaterThanOrEqual(7);
   });
 
   it("should have proper Alpine data binding structure", () => {
@@ -115,7 +116,7 @@ describe("Daily Dashboard Integration", () => {
     const filterButtons = dashboardView.querySelectorAll(
       ".filter-controls button"
     );
-    expect(filterButtons.length).toBe(3);
+    expect(filterButtons.length).toBe(4);
     expect(filterButtons[0].hasAttribute("@click")).toBe(true);
     expect(filterButtons[0].getAttribute("@click")).toBe(
       "setFilterMode('all')"
@@ -126,6 +127,10 @@ describe("Daily Dashboard Integration", () => {
     );
     expect(filterButtons[2].hasAttribute("@click")).toBe(true);
     expect(filterButtons[2].getAttribute("@click")).toBe(
+      "setFilterMode('replied')"
+    );
+    expect(filterButtons[3].hasAttribute("@click")).toBe(true);
+    expect(filterButtons[3].getAttribute("@click")).toBe(
       "setFilterMode('archived')"
     );
 

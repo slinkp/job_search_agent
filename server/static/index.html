@@ -259,6 +259,9 @@
               <button @click="setFilterMode('not-replied')" class="filter-button outline" :class="{ 'active': filterMode === 'not-replied' }">
                 Not Replied
               </button>
+              <button @click="setFilterMode('replied')" class="filter-button outline" :class="{ 'active': filterMode === 'replied' }">
+                Replied
+              </button>
               <button @click="setFilterMode('archived')" class="filter-button outline" :class="{ 'active': filterMode === 'archived' }">
                 Archived
               </button>
