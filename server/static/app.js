@@ -146,31 +146,32 @@ document.addEventListener("alpine:init", () => {
         try {
           // Check URL for view parameter first
           const urlParams = new URLSearchParams(window.location.search);
-          const viewParam = urlParams.get('view');
-          const includeAllParam = urlParams.get('include_all') === 'true';
-          
+          const viewParam = urlParams.get("view");
+          const includeAllParam = urlParams.get("include_all") === "true";
+
           // Set view mode based on URL parameter
-          this.viewMode = viewParam === 'daily' 
-            ? "daily_dashboard" 
-            : "company_management";
-          
+          this.viewMode =
+            viewParam === "daily" ? "daily_dashboard" : "company_management";
+
           // Track show archived state
           this.showArchived = includeAllParam;
-          
+
           // Check for anchor in URL
           const hash = window.location.hash;
           const companyId = hash ? decodeURIComponent(hash.substring(1)) : null;
-          
+
           // Only load company data if in company management view
           if (this.viewMode === "company_management") {
             await this.refreshAllCompanies(this.showArchived);
-            
+
             // If there's an anchor, scroll to that company after loading
             if (companyId) {
               setTimeout(() => {
-                const element = document.getElementById(encodeURIComponent(companyId));
+                const element = document.getElementById(
+                  encodeURIComponent(companyId)
+                );
                 if (element) {
-                  element.scrollIntoView({ behavior: 'smooth' });
+                  element.scrollIntoView({ behavior: "smooth" });
                 }
               }, 100);
             }
@@ -191,14 +192,14 @@ document.addEventListener("alpine:init", () => {
             : "company_management";
         // Update URL without reloading
         const url = new URL(window.location);
-        url.searchParams.delete('company');
-        url.searchParams.delete('message');
+        url.searchParams.delete("company");
+        url.searchParams.delete("message");
         if (this.viewMode === "daily_dashboard") {
-          url.searchParams.set('view', 'daily');
+          url.searchParams.set("view", "daily");
         } else {
-          url.searchParams.delete('view');
+          url.searchParams.delete("view");
         }
-        window.history.replaceState({}, '', url);
+        window.history.replaceState({}, "", url);
       },
 
       isCompanyManagementView() {
@@ -213,27 +214,29 @@ document.addEventListener("alpine:init", () => {
       navigateToCompany(companyId) {
         // Ensure we're in company management view
         this.viewMode = "company_management";
-        
+
         // Update URL with anchor and preserve include_all parameter
         const url = new URL(window.location);
         url.hash = encodeURIComponent(companyId);
-        url.searchParams.delete('message');
-        url.searchParams.delete('view');
-        
+        url.searchParams.delete("message");
+        url.searchParams.delete("view");
+
         // Preserve include_all parameter if currently active
         if (this.showArchived) {
-          url.searchParams.set('include_all', 'true');
+          url.searchParams.set("include_all", "true");
         }
-        
-        window.history.pushState({}, '', url);
-        
+
+        window.history.pushState({}, "", url);
+
         // Ensure companies are loaded with current include_all setting
         this.refreshAllCompanies(this.showArchived).then(() => {
           // Scroll to the company anchor
           setTimeout(() => {
-            const element = document.getElementById(encodeURIComponent(companyId));
+            const element = document.getElementById(
+              encodeURIComponent(companyId)
+            );
             if (element) {
-              element.scrollIntoView({ behavior: 'smooth' });
+              element.scrollIntoView({ behavior: "smooth" });
             }
           }, 100);
         });
@@ -242,10 +245,10 @@ document.addEventListener("alpine:init", () => {
       navigateToMessage(messageId) {
         // Update URL
         const url = new URL(window.location);
-        url.searchParams.set('message', messageId);
-        url.searchParams.delete('company');
-        window.history.pushState({}, '', url);
-        
+        url.searchParams.set("message", messageId);
+        url.searchParams.delete("company");
+        window.history.pushState({}, "", url);
+
         // Load message and associated company
         this.loadMessageAndCompany(messageId);
       },
@@ -253,21 +256,25 @@ document.addEventListener("alpine:init", () => {
       async loadCompany(companyId) {
         this.loading = true;
         try {
-          const response = await fetch(`/api/companies/${encodeURIComponent(companyId)}`);
+          const response = await fetch(
+            `/api/companies/${encodeURIComponent(companyId)}`
+          );
           if (!response.ok) {
             throw new Error(`Failed to load company: ${response.status}`);
           }
-          
+
           const company = await response.json();
           // Get associated messages
           const messagesResponse = await fetch(`/api/messages`);
           if (messagesResponse.ok) {
             const allMessages = await messagesResponse.json();
-            company.associated_messages = allMessages.filter(msg => msg.company_id === companyId);
+            company.associated_messages = allMessages.filter(
+              (msg) => msg.company_id === companyId
+            );
           } else {
             company.associated_messages = [];
           }
-          
+
           this.companies = [company];
         } catch (err) {
           console.error("Failed to load company:", err);
@@ -283,29 +290,39 @@ document.addEventListener("alpine:init", () => {
           // Get message details
           const messagesResponse = await fetch(`/api/messages`);
           if (!messagesResponse.ok) {
-            throw new Error(`Failed to load messages: ${messagesResponse.status}`);
+            throw new Error(
+              `Failed to load messages: ${messagesResponse.status}`
+            );
           }
-          
+
           const allMessages = await messagesResponse.json();
-          const message = allMessages.find(msg => msg.message_id === messageId);
-          
+          const message = allMessages.find(
+            (msg) => msg.message_id === messageId
+          );
+
           if (!message) {
             throw new Error("Message not found");
           }
-          
+
           // Get associated company
-          const companyResponse = await fetch(`/api/companies/${encodeURIComponent(message.company_id)}`);
+          const companyResponse = await fetch(
+            `/api/companies/${encodeURIComponent(message.company_id)}`
+          );
           if (!companyResponse.ok) {
-            throw new Error(`Failed to load company: ${companyResponse.status}`);
+            throw new Error(
+              `Failed to load company: ${companyResponse.status}`
+            );
           }
-          
+
           const company = await companyResponse.json();
-          company.associated_messages = allMessages.filter(msg => msg.company_id === message.company_id);
-          
+          company.associated_messages = allMessages.filter(
+            (msg) => msg.company_id === message.company_id
+          );
+
           this.companies = [company];
           this.editingCompany = company;
           this.editingReply = company.reply_message || "";
-          
+
           // Show edit modal for the message
           setTimeout(() => {
             document.getElementById("editModal").showModal();
@@ -357,12 +374,16 @@ document.addEventListener("alpine:init", () => {
 
           // Start polling for updates
           await this.pollMessageStatus(company);
-          
+
           // After polling completes, get the fresh company data
           await this.fetchAndUpdateCompany(company.company_id);
-          
+
           // Update editing modal if it's open for this company
-          if (updateModal && this.editingCompany && this.editingCompany.company_id === company.company_id) {
+          if (
+            updateModal &&
+            this.editingCompany &&
+            this.editingCompany.company_id === company.company_id
+          ) {
             const updatedCompany = this.companies.find(
               (c) => c.company_id === company.company_id
             );
@@ -370,7 +391,7 @@ document.addEventListener("alpine:init", () => {
               this.editingReply = updatedCompany.reply_message || "";
             }
           }
-          
+
           this.showSuccess("Reply generated successfully!");
         } catch (err) {
           console.error("Failed to generate reply:", err);
@@ -395,11 +416,11 @@ document.addEventListener("alpine:init", () => {
         this.editingCompany = null;
         this.editingReply = "";
         document.getElementById("editModal").close();
-        
+
         // Update URL to remove message parameter
         const url = new URL(window.location);
-        url.searchParams.delete('message');
-        window.history.replaceState({}, '', url);
+        url.searchParams.delete("message");
+        window.history.replaceState({}, "", url);
       },
 
       async saveReply() {
@@ -420,7 +441,7 @@ document.addEventListener("alpine:init", () => {
               const error = await response.json();
               throw new Error(
                 error.error || `Failed to save reply: ${response.status}`
-            );
+              );
             }
 
             const data = await response.json();
@@ -509,7 +530,7 @@ document.addEventListener("alpine:init", () => {
           company.research_status = data.status;
 
           await this.pollResearchStatus(company);
-          
+
           await this.fetchAndUpdateCompany(company.company_id);
           this.showSuccess("Company research completed!");
         } catch (err) {
@@ -967,9 +988,11 @@ document.addEventListener("alpine:init", () => {
         try {
           const params = new URLSearchParams();
           if (includeAll) {
-            params.append('include_all', 'true');
+            params.append("include_all", "true");
           }
-          const url = `/api/companies${params.toString() ? '?' + params.toString() : ''}`;
+          const url = `/api/companies${
+            params.toString() ? "?" + params.toString() : ""
+          }`;
           const response = await fetch(url);
           const data = await response.json();
           console.log("Got companies json response");
@@ -988,15 +1011,15 @@ document.addEventListener("alpine:init", () => {
       async toggleShowArchived() {
         this.showArchived = !this.showArchived;
         await this.refreshAllCompanies(this.showArchived);
-        
+
         // Update URL to reflect the change
         const url = new URL(window.location);
         if (this.showArchived) {
-          url.searchParams.set('include_all', 'true');
+          url.searchParams.set("include_all", "true");
         } else {
-          url.searchParams.delete('include_all');
+          url.searchParams.delete("include_all");
         }
-        window.history.replaceState({}, '', url);
+        window.history.replaceState({}, "", url);
       },
 
       formatResearchErrors(company) {
