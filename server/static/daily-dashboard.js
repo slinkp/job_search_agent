@@ -263,7 +263,7 @@ document.addEventListener("alpine:init", () => {
           }
 
           // Add to local tracking for immediate UI update
-          this.generatingMessages.add(message.company_name);
+          this.generatingMessages.add(message.message_id);
           // Also add to service for polling
           taskPollingService.addGeneratingMessage(message);
 
@@ -297,7 +297,7 @@ document.addEventListener("alpine:init", () => {
             err.message || "Failed to generate reply. Please try again."
           );
         } finally {
-          this.generatingMessages.delete(message.company_name);
+          this.generatingMessages.delete(message.message_id);
           taskPollingService.removeGeneratingMessage(message);
         }
       },
@@ -354,7 +354,7 @@ document.addEventListener("alpine:init", () => {
       // Check if company is generating message using the shared service
       isGeneratingMessage(message) {
         if (!message) return false;
-        return this.generatingMessages.has(message.company_name);
+        return this.generatingMessages.has(message.message_id);
       },
 
       formatMessageDate,
