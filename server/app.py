@@ -138,6 +138,20 @@ def get_messages(request) -> list[dict]:
         message_dict["company_name"] = getattr(
             message, "_company_name", "Unknown Company"
         )
+
+        # Add reply_message from company
+        reply_message = getattr(message, "_reply_message", "")
+        message_dict["reply_message"] = reply_message
+
+        # Calculate reply_status based on reply_sent_at and reply_message
+        if message.reply_sent_at:
+            reply_status = "sent"
+        elif reply_message and reply_message.strip():
+            reply_status = "generated"
+        else:
+            reply_status = "none"
+
+        message_dict["reply_status"] = reply_status
         message_data.append(message_dict)
 
     return message_data

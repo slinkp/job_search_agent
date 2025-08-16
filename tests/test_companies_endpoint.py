@@ -7,8 +7,13 @@ from pyramid.testing import DummyRequest  # type: ignore[import-untyped]
 
 import server.app
 import tasks
-from models import CompaniesSheetRow, Company, CompanyStatus, RecruiterMessage
-from models import CompanyRepository
+from models import (
+    CompaniesSheetRow,
+    Company,
+    CompanyRepository,
+    CompanyStatus,
+    RecruiterMessage,
+)
 
 TEST_DB_PATH = "data/_test_companies_endpoint.db"
 
@@ -699,6 +704,100 @@ def test_get_messages_endpoint_empty(clean_test_db):
 
         assert isinstance(response, list)
         assert len(response) == 0
+
+
+def test_get_messages_endpoint_includes_reply_fields(clean_test_db):
+    """Test the GET /api/messages endpoint includes reply_message and reply_status fields."""
+    repo = clean_test_db
+
+    # Create test company with reply message
+    company = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(name="Test Corp"),
+        status=CompanyStatus(),
+        reply_message="Generated reply for Test Corp",
+    )
+    repo.create(company)
+
+    # Create message with reply_sent_at set (sent message)
+    sent_message = RecruiterMessage(
+        message_id="sent-msg",
+        company_id="test-corp",
+        subject="Sent Message",
+        sender="recruiter@test.com",
+        date=datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="Test message content",
+        email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread1",
+        thread_id="thread1",
+        reply_sent_at=datetime.datetime(
+            2024, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc
+        ),
+    )
+    repo.create_recruiter_message(sent_message)
+
+    # Create message without reply_sent_at (generated but not sent)
+    generated_message = RecruiterMessage(
+        message_id="generated-msg",
+        company_id="test-corp",
+        subject="Generated Message",
+        sender="recruiter@test.com",
+        date=datetime.datetime(2024, 1, 3, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="Test message content",
+        email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread2",
+        thread_id="thread2",
+    )
+    repo.create_recruiter_message(generated_message)
+
+    # Create company without reply message
+    company_no_reply = Company(
+        company_id="test-corp-no-reply",
+        name="Test Corp No Reply",
+        details=CompaniesSheetRow(name="Test Corp No Reply"),
+        status=CompanyStatus(),
+    )
+    repo.create(company_no_reply)
+
+    # Create message for company without reply
+    no_reply_message = RecruiterMessage(
+        message_id="no-reply-msg",
+        company_id="test-corp-no-reply",
+        subject="No Reply Message",
+        sender="recruiter@test.com",
+        date=datetime.datetime(2024, 1, 4, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="Test message content",
+        email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread3",
+        thread_id="thread3",
+    )
+    repo.create_recruiter_message(no_reply_message)
+
+    # Test the endpoint
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        response = server.app.get_messages(request)
+
+    # Verify response structure
+    assert isinstance(response, list)
+    assert len(response) == 3
+
+    # Verify sent message (should have reply_status="sent")
+    sent_msg_data = next(msg for msg in response if msg["message_id"] == "sent-msg")
+    assert sent_msg_data["reply_message"] == "Generated reply for Test Corp"
+    assert sent_msg_data["reply_status"] == "sent"
+
+    # Verify generated message (should have reply_status="generated")
+    generated_msg_data = next(
+        msg for msg in response if msg["message_id"] == "generated-msg"
+    )
+    assert generated_msg_data["reply_message"] == "Generated reply for Test Corp"
+    assert generated_msg_data["reply_status"] == "generated"
+
+    # Verify no reply message (should have reply_status="none")
+    no_reply_msg_data = next(
+        msg for msg in response if msg["message_id"] == "no-reply-msg"
+    )
+    assert no_reply_msg_data["reply_message"] == ""
+    assert no_reply_msg_data["reply_status"] == "none"
 
 
 def test_get_companies_filters_replied_and_archived(clean_test_db):

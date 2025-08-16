@@ -13,14 +13,13 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 1. Backend API: message-centric endpoints backed by company-level storage (temporary)
 
 - [ ] Do NOT change the DB schema for now; keep draft storage in `Company.reply_message`
-- [ ] `GET /api/messages`: include `reply_message` for each message derived from its company; add `reply_status` derived as:
-  - [ ] `sent` if `message.reply_sent_at` is set
-  - [ ] `generated` if `company.reply_message` is non-empty and `message.reply_sent_at` is not set
-  - [ ] `none` otherwise
+- [x] `GET /api/messages`: include `reply_message` for each message derived from its company; add `reply_status` derived as:
+  - [x] `sent` if `message.reply_sent_at` is set
+  - [x] `generated` if `company.reply_message` is non-empty and `message.reply_sent_at` is not set
+  - [x] `none` otherwise
 - [x] `POST /api/messages/{message_id}/reply`: generate a reply and store it in the associated company’s `reply_message`; reuse existing task/polling.
 - [x] `PUT /api/messages/{message_id}/reply`: update the associated company’s `reply_message` with user edits; return an updated company/message payload as needed.
-- [ ] Optional (later in this feature if needed): `POST /api/messages/{message_id}/send_and_archive` maps to existing company-centric send/archive flow but keyed by `message_id`
-- [ ] Tests: endpoint payload shape for `GET /api/messages`; generate/update flows update the company-level draft and reflect in subsequent GETs
+- [x] Tests: endpoint payload shape for `GET /api/messages`; generate/update flows update the company-level draft and reflect in subsequent GETs
 
 2. Frontend: render reply preview/editor inline (message-centric)
 
@@ -62,8 +61,9 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 
 7. Cleanup and deprecation (future work, not in this feature)
 
-- [ ] Migrate from `Company.reply_message` to per-message drafts
-- [ ] Migrate generation task and task polling response to be message-centric, not company-centric. Probably do this by making a new task type and deprecating the old one.
+- [ ] Optional: `POST /api/messages/{message_id}/send_and_archive` maps to existing company-centric send/archive flow but keyed by `message_id`
+- [ ] Migrate backend from `Company.reply_message` to per-message drafts
+- [ ] Migrate reply generation task and task polling response to be message-centric, not company-centric. Probably do this by making a new task type and deprecating the old one.
 - [ ] Update company view to be message-centric throughout
 - [ ] Remove legacy company-level draft usage once migration is complete
 - [ ] Update README/docs accordingly
