@@ -46,35 +46,42 @@ export class TaskPollingService {
     };
   }
 
+  // Get the name/key for tracking (works with both company and message objects)
+  _getTrackingKey(obj) {
+    if (!obj) return "";
+    // Message objects have company_name, company objects have name
+    return obj.company_name || obj.name || "";
+  }
+
   // Check if company is being researched
   isResearching(company) {
-    return this.researchingCompanies.has(company.name);
+    return this.researchingCompanies.has(this._getTrackingKey(company));
   }
 
   // Check if message is being generated for company
   isGeneratingMessage(company) {
     if (!company) return false;
-    return this.generatingMessages.has(company.name);
+    return this.generatingMessages.has(this._getTrackingKey(company));
   }
 
   // Add company to researching set
   addResearching(company) {
-    this.researchingCompanies.add(company.name);
+    this.researchingCompanies.add(this._getTrackingKey(company));
   }
 
   // Remove company from researching set
   removeResearching(company) {
-    this.researchingCompanies.delete(company.name);
+    this.researchingCompanies.delete(this._getTrackingKey(company));
   }
 
   // Add company to generating messages set
   addGeneratingMessage(company) {
-    this.generatingMessages.add(company.name);
+    this.generatingMessages.add(this._getTrackingKey(company));
   }
 
   // Remove company from generating messages set
   removeGeneratingMessage(company) {
-    this.generatingMessages.delete(company.name);
+    this.generatingMessages.delete(this._getTrackingKey(company));
   }
 
   // Generic task status text generator
@@ -121,10 +128,10 @@ export class TaskPollingService {
     const errorField = isMessage ? "message_error" : "research_error";
 
     const taskId = company ? company[taskIdField] : null;
-    const trackingKey = company ? company.name : "";
+    const trackingKey = this._getTrackingKey(company);
 
     console.log(`Starting poll for ${taskType}`, {
-      companyName: company?.name,
+      companyName: trackingKey,
       taskId,
     });
 

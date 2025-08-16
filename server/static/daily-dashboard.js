@@ -201,7 +201,7 @@ document.addEventListener("alpine:init", () => {
       // Research a company - follows same pattern as companies dashboard
       async research(message) {
         try {
-          this.researchingCompanies.add(message.name);
+          this.researchingCompanies.add(message.company_name);
           taskPollingService.addResearching(message);
           const response = await fetch(
             `/api/companies/${message.company_id}/research`,
@@ -229,7 +229,7 @@ document.addEventListener("alpine:init", () => {
           console.error("Failed to research company:", err);
           // Could add user notification here
         } finally {
-          this.researchingCompanies.delete(message.name);
+          this.researchingCompanies.delete(message.company_name);
           taskPollingService.removeResearching(message);
         }
       },
@@ -250,7 +250,7 @@ document.addEventListener("alpine:init", () => {
       // Check if company is being researched using the shared service
       isResearching(message) {
         if (!message) return false;
-        return this.researchingCompanies.has(message.name);
+        return this.researchingCompanies.has(message.company_name);
       },
 
       // Generate reply functionality (similar to app.js)
@@ -263,7 +263,7 @@ document.addEventListener("alpine:init", () => {
           }
 
           // Add to local tracking for immediate UI update
-          this.generatingMessages.add(message.name);
+          this.generatingMessages.add(message.company_name);
           // Also add to service for polling
           taskPollingService.addGeneratingMessage(message);
 
@@ -297,7 +297,7 @@ document.addEventListener("alpine:init", () => {
             err.message || "Failed to generate reply. Please try again."
           );
         } finally {
-          this.generatingMessages.delete(message.name);
+          this.generatingMessages.delete(message.company_name);
           taskPollingService.removeGeneratingMessage(message);
         }
       },
@@ -354,7 +354,7 @@ document.addEventListener("alpine:init", () => {
       // Check if company is generating message using the shared service
       isGeneratingMessage(message) {
         if (!message) return false;
-        return this.generatingMessages.has(message.name);
+        return this.generatingMessages.has(message.company_name);
       },
 
       formatMessageDate,
