@@ -683,7 +683,7 @@ class CompanyRepository:
     ) -> Optional[RecruiterMessage]:
         """Get a recruiter message by its message_id from the database."""
         cursor = conn.execute(
-            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date, archived_at FROM recruiter_messages WHERE message_id = ?",
+            "SELECT message_id, company_id, subject, sender, message, thread_id, email_thread_link, date, archived_at, reply_sent_at FROM recruiter_messages WHERE message_id = ?",
             (message_id,),
         )
         row = cursor.fetchone()
@@ -691,8 +691,10 @@ class CompanyRepository:
             # Parse the date string to datetime if it exists
             date_str = row[7]
             archived_at_str = row[8]
+            reply_sent_at_str = row[9]
             date = None
             archived_at = None
+            reply_sent_at = None
             if date_str:
                 try:
                     date = dateutil.parser.parse(date_str).replace(
@@ -709,6 +711,15 @@ class CompanyRepository:
                     logger.warning(
                         f"Failed to parse archived_at string: {archived_at_str}"
                     )
+            if reply_sent_at_str:
+                try:
+                    reply_sent_at = dateutil.parser.parse(reply_sent_at_str).replace(
+                        tzinfo=datetime.timezone.utc
+                    )
+                except (ValueError, TypeError):
+                    logger.warning(
+                        f"Failed to parse reply_sent_at string: {reply_sent_at_str}"
+                    )
 
             recruiter_message = RecruiterMessage(
                 message_id=row[0],
@@ -720,6 +731,7 @@ class CompanyRepository:
                 email_thread_link=row[6],
                 date=date,
                 archived_at=archived_at,
+                reply_sent_at=reply_sent_at,
             )
             return recruiter_message
         return None
@@ -1285,8 +1297,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.migrate:
-        from pathlib import Path
         import sys
+        from pathlib import Path
 
         migration_dir = Path(args.migration_dir)
         if not migration_dir.exists():

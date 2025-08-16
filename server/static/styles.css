@@ -698,3 +698,25 @@ button.secondary:focus {
   font-size: 0.85em;
   padding: 0.3rem 0.6rem;
 }
+
+/* Sent reply styling */
+.reply-preview.sent {
+  background-color: #e8f5e8;
+  border-left-color: #28a745;
+}
+
+.reply-preview.sent .reply-label {
+  color: #28a745;
+}
+
+.sent-badge {
+  background-color: #28a745;
+  color: white;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
