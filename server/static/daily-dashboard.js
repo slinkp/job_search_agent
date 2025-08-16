@@ -2,6 +2,7 @@
 // Handles the display and interaction with unprocessed recruiter messages
 
 import { EmailScanningService } from "./email-scanning.js";
+import { computeMessagePreview } from "./message-utils.js";
 import { TaskPollingService } from "./task-polling.js";
 import { formatMessageDate, showError, showSuccess } from "./ui-utils.js";
 
@@ -426,10 +427,10 @@ document.addEventListener("alpine:init", () => {
 
       // Get message preview (first 200 characters)
       getMessagePreview(message) {
-        if (!message.message) return "No message content";
-        return message.message.length > 200
-          ? message.message.substring(0, 200) + "..."
-          : message.message;
+        return computeMessagePreview(
+          message,
+          this.expandedMessages.has(message.message_id)
+        );
       },
 
       // Toggle message expansion
