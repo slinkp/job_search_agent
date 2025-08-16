@@ -41,18 +41,19 @@ describe("Daily Dashboard Integration", () => {
 
     // Verify filter buttons exist
     const filterButtons = filterControls.querySelectorAll("button");
-    expect(filterButtons.length).toBe(2);
+    expect(filterButtons.length).toBe(3);
     expect(filterButtons[0].textContent.trim()).toBe("All");
-    expect(filterButtons[1].textContent.trim()).toBe("Archived");
+    expect(filterButtons[1].textContent.trim()).toBe("Not Replied");
+    expect(filterButtons[2].textContent.trim()).toBe("Archived");
 
     // Verify other buttons exist (scan emails, refresh, sort)
     const allButtons = dashboardActions.querySelectorAll("button");
-    expect(allButtons.length).toBeGreaterThanOrEqual(5); // 2 filter buttons + 3 other buttons
+    expect(allButtons.length).toBeGreaterThanOrEqual(6); // 3 filter buttons + 3 other buttons
 
     // Verify that buttons have Alpine directives
     const buttonsWithClick =
       dashboardActions.querySelectorAll("button[@click]");
-    expect(buttonsWithClick.length).toBeGreaterThanOrEqual(5);
+    expect(buttonsWithClick.length).toBeGreaterThanOrEqual(6);
   });
 
   it("should have proper Alpine data binding structure", () => {
@@ -119,19 +120,23 @@ describe("Daily Dashboard Integration", () => {
     const filterButtons = dashboardView.querySelectorAll(
       ".filter-controls button"
     );
-    expect(filterButtons.length).toBe(2);
+    expect(filterButtons.length).toBe(3);
     expect(filterButtons[0].hasAttribute("@click")).toBe(true);
     expect(filterButtons[0].getAttribute("@click")).toBe(
       "setFilterMode('all')"
     );
     expect(filterButtons[1].hasAttribute("@click")).toBe(true);
     expect(filterButtons[1].getAttribute("@click")).toBe(
+      "setFilterMode('not-replied')"
+    );
+    expect(filterButtons[2].hasAttribute("@click")).toBe(true);
+    expect(filterButtons[2].getAttribute("@click")).toBe(
       "setFilterMode('archived')"
     );
 
     // Verify that buttons have Alpine directives
     const buttonsWithClick = dashboardView.querySelectorAll("button[@click]");
-    expect(buttonsWithClick.length).toBeGreaterThanOrEqual(5);
+    expect(buttonsWithClick.length).toBeGreaterThanOrEqual(6);
 
     // Verify the template uses sortedMessages instead of unprocessedMessages
     const messageList = dashboardView.querySelector(".message-list");

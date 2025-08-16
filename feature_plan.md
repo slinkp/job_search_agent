@@ -41,6 +41,6 @@ We can do this with client-side filtering.
         where there are a series of filter buttons which are either blue (the filter is active) or white (inactive).
         Let's do that instead. Rename them to "archived" and "replied"
         - [x] "archived" should show ONLY archived messages
-        - [ ] Add a "not replied" button which should show ONLY un-replied messages, and un-toggle "replied"
+        - [x] Add a "not replied" button which should show ONLY un-replied messages, and un-toggle "replied"
  - [x] Add an "All" filter which shows all messages
 

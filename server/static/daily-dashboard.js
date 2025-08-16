@@ -445,6 +445,28 @@ document.addEventListener("alpine:init", () => {
       getExpandButtonText(messageId) {
         return this.expandedMessages.has(messageId) ? "Show Less" : "Show More";
       },
+
+      // Get filter heading based on current filter mode
+      getFilterHeading() {
+        // Defensive check for test environments
+        if (!this.unprocessedMessages || !this.filterMode) {
+          return "Messages (0)";
+        }
+
+        const count = this.unprocessedMessages.length;
+        switch (this.filterMode) {
+          case "all":
+            return `All Messages (${count})`;
+          case "not-replied":
+            return `Unreplied Messages (${count})`;
+          case "archived":
+            return `Archived Messages (${count})`;
+          case "replied":
+            return `Replied Messages (${count})`;
+          default:
+            return `Messages (${count})`;
+        }
+      },
     };
   });
 });

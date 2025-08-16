@@ -257,6 +257,9 @@
               <button @click="setFilterMode('all')" class="filter-button outline" :class="{ 'active': filterMode === 'all' }">
                 All
               </button>
+              <button @click="setFilterMode('not-replied')" class="filter-button outline" :class="{ 'active': filterMode === 'not-replied' }">
+                Not Replied
+              </button>
               <button @click="setFilterMode('archived')" class="filter-button outline" :class="{ 'active': filterMode === 'archived' }">
                 Archived
               </button>
@@ -292,7 +295,7 @@
         </div>
         
         <div x-show="!loading && unprocessedMessages.length > 0" class="message-list">
-          <h3>Unprocessed Messages (<span x-text="unprocessedMessages.length"></span>)</h3>
+          <h3 x-text="typeof getFilterHeading === 'function' ? getFilterHeading() : 'Messages (0)'"></h3>
           
           <template x-for="message in sortedMessages" :key="message.message_id">
             <article class="message-item" :id="message.message_id">
