@@ -369,6 +369,45 @@
                   </div>
                 </template>
                 
+                <template x-if="message.reply_status === 'generated'">
+                  <div class="reply-actions">
+                    <div class="reply-preview">
+                      <div class="reply-preview-content">
+                        <p x-text="message.reply_message?.substring(0, 200) + (message.reply_message?.length > 200 ? '...' : '')"></p>
+                        <button 
+                          x-show="message.reply_message?.length > 200"
+                          @click="toggleReplyExpansion(message.message_id)" 
+                          class="expand-button outline"
+                          x-text="getReplyExpandButtonText(message.message_id)"
+                        ></button>
+                      </div>
+                      <div class="reply-preview-full" x-show="expandedReplies.has(message.message_id)">
+                        <p x-text="message.reply_message"></p>
+                      </div>
+                    </div>
+                    <div class="reply-buttons">
+                      <button 
+                        @click="$dispatch('edit-reply', message)" 
+                        :disabled="isGeneratingMessage(message)"
+                        class="outline"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        @click="generateReply(message)" 
+                        :disabled="isGeneratingMessage(message)"
+                        class="outline"
+                      >
+                        <span x-show="!isGeneratingMessage(message)">Regenerate</span>
+                        <span x-show="isGeneratingMessage(message)">
+                          <span class="loading-spinner"></span>
+                          Generating...
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+                
                 <button @click="archive(message.message_id)" class="outline">
                   Archive
                 </button>

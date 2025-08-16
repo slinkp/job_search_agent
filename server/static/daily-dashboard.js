@@ -34,6 +34,7 @@ document.addEventListener("alpine:init", () => {
 
       // Message expansion state
       expandedMessages: new Set(), // Track which messages are expanded by company_id
+      expandedReplies: new Set(), // Track which replies are expanded by message_id
 
       // Initialize the component
       async init() {
@@ -445,6 +446,20 @@ document.addEventListener("alpine:init", () => {
       // Get expand button text
       getExpandButtonText(messageId) {
         return this.expandedMessages.has(messageId) ? "Show Less" : "Show More";
+      },
+
+      // Toggle reply expansion
+      toggleReplyExpansion(messageId) {
+        if (this.expandedReplies.has(messageId)) {
+          this.expandedReplies.delete(messageId);
+        } else {
+          this.expandedReplies.add(messageId);
+        }
+      },
+
+      // Get reply expand button text
+      getReplyExpandButtonText(messageId) {
+        return this.expandedReplies.has(messageId) ? "Show Less" : "Show More";
       },
 
       // Get filter heading based on current filter mode
