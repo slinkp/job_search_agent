@@ -21,6 +21,12 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 - [x] `PUT /api/messages/{message_id}/reply`: update the associated company’s `reply_message` with user edits; return an updated company/message payload as needed.
 - [x] Tests: endpoint payload shape for `GET /api/messages`; generate/update flows update the company-level draft and reflect in subsequent GETs
 
+1.5 Database backfill
+
+- [x] Add a migration script to backfill `recruiter_messages.reply_sent_at`. Follow existing migration script format / pattern
+- [x] For each message: iff `message.reply_sent_at` is not set: Look up the company; check if `company.status.reply_sent_at` is set. If so, set the message's `reply_sent_at` to the same value.  
+- [x] Log if updated. Log total count of updates and total count of rows not updated
+
 2. Frontend: render reply preview/editor inline (message-centric)
 
 - [ ] Under each message row, show a reply block:
