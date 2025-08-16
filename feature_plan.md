@@ -12,7 +12,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 
 1. Backend API: message-centric endpoints backed by company-level storage (temporary)
 
-- [ ] Do NOT change the DB schema for now; keep draft storage in `Company.reply_message`
+- [x] Do NOT change the DB schema for now; keep draft storage in `Company.reply_message`
 - [x] `GET /api/messages`: include `reply_message` for each message derived from its company; add `reply_status` derived as:
   - [x] `sent` if `message.reply_sent_at` is set
   - [x] `generated` if `company.reply_message` is non-empty and `message.reply_sent_at` is not set
@@ -24,28 +24,27 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 2. Frontend: render reply preview/editor inline (message-centric)
 
 - [ ] Under each message row, show a reply block:
-  - [ ] When `reply_status === 'generated'`, show collapsed preview; expandable to full; provide Edit
-  - [ ] Edit opens textarea; re-use the same edit code and UX we have on the companies page. Save calls `PUT /api/messages/{id}/reply`
-  - [ ] When `reply_status === 'none'`, show Generate Reply button (`POST /api/messages/{id}/reply`)
-  - [ ] When `reply_status === 'sent'`, show Sent badge; hide editing actions
-- [ ] Show status badges (Generated, Sent, Archived) alongside existing fields
+  - [ ] Show status badges (Generated, Sent, Archived) alongside existing fields
+  - [ ] When `reply_status === 'none'`, show Generate Reply button (don't worry about wiring it up yet); should be able to reuse code from companies edit flow;
+        also Edit button (don't worry about wiring that either)
+  - [ ] Edit button opens textarea; re-use the same edit code and UX we have on the companies page, but refactor that code as needed to
+        use message data model instead of company data model.
+  - [ ] Save button calls `PUT /api/messages/{id}/reply` and updates preview on success; should be able to reuse code from companies edit flow
+  - [ ] Generate button should send `POST /api/messages/{id}/reply`). Use `message_id` in `generatingMessages` and related UI state. Should be able to re-use code from companies flow, refactor as needed if it assumes company data model.
+  - [ ] Generate or Regenerate should trigger polling job, then when finished update state from the `reply_message` in the backend API. Should be able to re-use code from companies flow, refactor if needed.
+  - [ ] When `reply_status === 'generated'`, show collapsed preview; expandable to full; provide Edit and Regenerate buttons; should be able to re-use code from companies flow for this too
+  - [ ] When `reply_status === 'sent'`, show Sent badge; hide/disable editing actions, same as companies edit flow (i think it does this?)
 - [ ] Preserve existing filtering/sorting/expansion; no company-centric assumptions in the UI
 - [ ] Tests: unit tests for conditional rendering and local state; integration test for expand/collapse with replies
-
-3. Frontend: generation/edit/save flow bound to message_id
-
-- [ ] Use `message_id` in `generatingMessages` and related UI state
-- [ ] Generate → poll → populate from `reply_message`; Regenerate replaces the draft (with confirmation)
-- [ ] Save edits via `PUT /api/messages/{id}/reply` and update preview on success
 - [ ] Tests: state transitions for generate → edit → save; regenerate flow
 
-4. Send & Archive with implicit save (message-centric trigger, company-backed)
+3. Send & Archive with implicit save (message-centric trigger, company-backed)
 
 - [ ] Wire Send & Archive button to a message-level action; on the server, implicitly save the current draft to the company first, then send and archive the message
 - [ ] Disable during send; on success mark message `sent` and reflect archive state; hide editing actions
 - [ ] Tests: backend for send-and-archive semantics via `message_id`; frontend integration to verify save-then-send
 
-5. Error handling, edge cases, and UX polish
+4. Error handling, edge cases, and UX polish
 
 - [ ] Archived or sent messages render as non-editable; actions hidden/disabled
 - [ ] API failures show toasts; user edits remain in textarea
@@ -53,20 +52,21 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 - [ ] Unknown company on a message: show with `company_name = "Unknown Company"`; disable reply editing/generation
 - [ ] Tests: edge cases (no draft + sent, archived, unknown company)
 
-6. Test inventory and coverage
+5. Test inventory and coverage
 
 - [ ] Backend tests: `GET /api/messages` payload (includes `reply_message`, `reply_status`), `POST/PUT /api/messages/{id}/reply` map to company draft, optional `send_and_archive` behavior
 - [ ] Frontend unit: conditional rendering, loading states, state transitions per `message_id`
 - [ ] Frontend integration: end-to-end dashboard flows (generate → edit → save; regenerate confirmation; send & archive with implicit save)
 
-7. Cleanup and deprecation (future work, not in this feature)
+6. Cleanup and deprecation (future work, not in this feature)
 
+- [ ] Mark issue 7 as complete on github
 - [ ] Optional: `POST /api/messages/{message_id}/send_and_archive` maps to existing company-centric send/archive flow but keyed by `message_id`
 - [ ] Migrate backend from `Company.reply_message` to per-message drafts
 - [ ] Migrate reply generation task and task polling response to be message-centric, not company-centric. Probably do this by making a new task type and deprecating the old one.
-- [ ] Update company view to be message-centric throughout
+- [ ] Remove message flow from company page? Don't really need same UX in two places?
 - [ ] Remove legacy company-level draft usage once migration is complete
-- [ ] Update README/docs accordingly
+- [ ] Update README/docs if needed
 
 Notes
 
