@@ -359,6 +359,7 @@ class RecruiterMessage(BaseModel):
     thread_id: str = ""
     date: Optional[datetime.datetime] = None
     archived_at: Optional[datetime.datetime] = None
+    reply_sent_at: Optional[datetime.datetime] = None
 
 
 class FitCategory(str, enum.Enum):
@@ -813,14 +814,17 @@ class CompanyRepository:
         # Convert datetime to ISO format string for SQLite storage
         date_str = message.date.isoformat() if message.date else ""
         archived_at_str = message.archived_at.isoformat() if message.archived_at else ""
+        reply_sent_at_str = (
+            message.reply_sent_at.isoformat() if message.reply_sent_at else ""
+        )
 
         try:
             # Try to insert first
             conn.execute(
                 """
                 INSERT INTO recruiter_messages (
-                    message_id, company_id, subject, sender, message, thread_id, email_thread_link, date, archived_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    message_id, company_id, subject, sender, message, thread_id, email_thread_link, date, archived_at, reply_sent_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     message.message_id,
@@ -832,6 +836,7 @@ class CompanyRepository:
                     message.email_thread_link,
                     date_str,
                     archived_at_str,
+                    reply_sent_at_str,
                 ),
             )
         except sqlite3.IntegrityError:
@@ -839,7 +844,7 @@ class CompanyRepository:
             conn.execute(
                 """
                 UPDATE recruiter_messages
-                SET company_id = ?, subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?, archived_at = ?
+                SET company_id = ?, subject = ?, sender = ?, message = ?, thread_id = ?, email_thread_link = ?, date = ?, archived_at = ?, reply_sent_at = ?
                 WHERE message_id = ?
                 """,
                 (
@@ -851,6 +856,7 @@ class CompanyRepository:
                     message.email_thread_link,
                     date_str,
                     archived_at_str,
+                    reply_sent_at_str,
                     message.message_id,
                 ),
             )
@@ -877,7 +883,7 @@ class CompanyRepository:
                 """
                 SELECT m.message_id, m.company_id, m.message, m.subject, m.sender,
                        m.email_thread_link, m.thread_id, m.date, m.archived_at,
-                       c.name as company_name
+                       m.reply_sent_at, c.name as company_name, c.reply_message
                 FROM recruiter_messages m
                 LEFT JOIN companies c ON m.company_id = c.company_id
                 ORDER BY m.date DESC
@@ -895,10 +901,12 @@ class CompanyRepository:
                     thread_id=row[6],
                     date=dateutil.parser.parse(row[7]) if row[7] else None,
                     archived_at=dateutil.parser.parse(row[8]) if row[8] else None,
+                    reply_sent_at=dateutil.parser.parse(row[9]) if row[9] else None,
                 )
-                # Store company name in a way that doesn't conflict with Pydantic
-                # We'll use a private attribute that can be accessed by the API layer
-                object.__setattr__(message, "_company_name", row[9] or "Unknown Company")
+                # Store company name and reply message in a way that doesn't conflict with Pydantic
+                # We'll use private attributes that can be accessed by the API layer
+                object.__setattr__(message, "_company_name", row[10] or "Unknown Company")
+                object.__setattr__(message, "_reply_message", row[11] or "")
                 messages.append(message)
             return messages
 
