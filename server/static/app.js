@@ -448,8 +448,20 @@ document.addEventListener("alpine:init", () => {
             // Update the local company object
             Object.assign(this.editingCompany, data);
 
-            // Also update the companies array with fresh data
-            await this.fetchAndUpdateCompany(this.editingCompany.company_id);
+            // Refresh data based on current view mode
+            if (this.isDailyDashboardView()) {
+              // Refresh messages in daily dashboard
+              const dailyDashboardElement = document.querySelector(
+                '[x-data="dailyDashboard"]'
+              );
+              if (dailyDashboardElement && dailyDashboardElement._x_dataStack) {
+                const dailyDashboard = dailyDashboardElement._x_dataStack[0];
+                await dailyDashboard.loadMessages();
+              }
+            } else {
+              // Refresh companies in company management view
+              await this.fetchAndUpdateCompany(this.editingCompany.company_id);
+            }
 
             this.cancelEdit();
           } catch (err) {

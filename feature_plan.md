@@ -35,7 +35,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
         also Edit button (don't worry about wiring that either)
   - [x] Edit button opens textarea; re-use the same edit code and UX we have on the companies page, but refactor that code as needed to
         use message data model instead of company data model.
-  - [ ] Save button calls `PUT /api/messages/{id}/reply` and updates preview on success; should be able to reuse code from companies edit flow
+  - [x] Save button calls `PUT /api/messages/{id}/reply` and updates preview on success; should be able to reuse code from companies edit flow
   - [ ] Generate button should send `POST /api/messages/{id}/reply`). Use `message_id` in `generatingMessages` and related UI state. Should be able to re-use code from companies flow, refactor as needed if it assumes company data model.
   - [ ] Generate or Regenerate should trigger polling job, then when finished update state from the `reply_message` in the backend API. Should be able to re-use code from companies flow, refactor if needed.
   - [ ] When `reply_status === 'generated'`, show collapsed preview; expandable to full; provide Edit and Regenerate buttons; should be able to re-use code from companies flow for this too
