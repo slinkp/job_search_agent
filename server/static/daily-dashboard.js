@@ -17,11 +17,10 @@ document.addEventListener("alpine:init", () => {
       // Message list data
       unprocessedMessages: [],
       loading: false,
-      
-      // Filtering state - NEW PROPERTIES ADDED
-      hideRepliedMessages: true,
-      hideArchivedCompanies: true,
-      
+
+      // Filtering state - REPLACED with filterMode approach
+      filterMode: "all", // 'all', 'archived', 'replied', 'not-replied'
+
       // Local tracking for UI state
       generatingMessages: new Set(),
       researchingCompanies: new Set(),
@@ -41,13 +40,15 @@ document.addEventListener("alpine:init", () => {
         // Read filtering state from URL
         this.readFilterStateFromUrl();
         await this.loadMessages();
-        
+
         // Handle anchor scrolling after messages load
         this.$nextTick(() => {
           if (window.location.hash) {
-            const element = document.getElementById(window.location.hash.slice(1));
+            const element = document.getElementById(
+              window.location.hash.slice(1)
+            );
             if (element) {
-              element.scrollIntoView({ behavior: 'smooth' });
+              element.scrollIntoView({ behavior: "smooth" });
             }
           }
         });
@@ -56,23 +57,17 @@ document.addEventListener("alpine:init", () => {
       // Read filtering state from URL parameters
       readFilterStateFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
-        
-        // Read hideRepliedMessages state
-        const hideRepliedParam = urlParams.get('hideReplied');
-        if (hideRepliedParam !== null) {
-          this.hideRepliedMessages = hideRepliedParam === 'true';
+
+        // Read filterMode state
+        const filterModeParam = urlParams.get("filterMode");
+        if (filterModeParam) {
+          this.filterMode = filterModeParam;
         }
-        
-        // Read hideArchivedCompanies state
-        const hideArchivedParam = urlParams.get('hideArchived');
-        if (hideArchivedParam !== null) {
-          this.hideArchivedCompanies = hideArchivedParam === 'true';
-        }
-        
+
         // New: Read sort order from URL
-        const sortParam = urlParams.get('sort');
+        const sortParam = urlParams.get("sort");
         if (sortParam) {
-          this.sortNewestFirst = sortParam === 'newest';
+          this.sortNewestFirst = sortParam === "newest";
         }
       },
 
@@ -80,50 +75,34 @@ document.addEventListener("alpine:init", () => {
       updateUrlWithFilterState() {
         // Preserve existing parameters while updating filter state
         const params = new URLSearchParams(window.location.search);
-        
+
         // Update filter values
-        params.set('hideReplied', this.hideRepliedMessages);
-        params.set('hideArchived', this.hideArchivedCompanies);
-        
-        params.set('sort', this.sortNewestFirst ? 'newest' : 'oldest');
-        
+        params.set("filterMode", this.filterMode);
+        params.set("sort", this.sortNewestFirst ? "newest" : "oldest");
+
         // Preserve hash and path
         const hash = window.location.hash;
-        const path = window.location.pathname || '/';
-        
+        const path = window.location.pathname || "/";
+
         // Build new URL with updated search params while preserving existing ones
-        const newUrl = `${path}?${params.toString()}${hash}`.replace(/([^:])\/\//g, '$1/');
-        
+        const newUrl = `${path}?${params.toString()}${hash}`.replace(
+          /([^:])\/\//g,
+          "$1/"
+        );
+
         // Update history without reloading
         window.history.replaceState(
           { ...window.history.state, filtersUpdated: true },
-          '',
+          "",
           newUrl
         );
       },
 
-      // Toggle hideRepliedMessages filter
-      toggleHideRepliedMessages() {
-        this.hideRepliedMessages = !this.hideRepliedMessages;
+      // Set filter mode
+      setFilterMode(mode) {
+        this.filterMode = mode;
         this.updateUrlWithFilterState();
         this.loadMessages();
-      },
-
-      // Toggle hideArchivedCompanies filter
-      toggleHideArchivedCompanies() {
-        this.hideArchivedCompanies = !this.hideArchivedCompanies;
-        this.updateUrlWithFilterState();
-        this.loadMessages();
-      },
-
-      // Get text for the replied messages toggle button
-      getRepliedToggleText() {
-        return this.hideRepliedMessages ? "Show replied messages" : "Hide replied messages";
-      },
-
-      // Get text for the archived companies toggle button
-      getArchivedToggleText() {
-        return this.hideArchivedCompanies ? "Show archived" : "Hide archived";
       },
 
       // Computed property for sorted messages
@@ -168,31 +147,38 @@ document.addEventListener("alpine:init", () => {
 
           const messages = await response.json();
 
-          // Apply client-side filtering based on our new properties
+          // Apply client-side filtering based on filterMode
           let filteredMessages = messages;
-          
-          // Filter out replied messages if hideRepliedMessages is true
-          if (this.hideRepliedMessages) {
-            filteredMessages = filteredMessages.filter(message => {
-              // Filter out messages that have been replied to
-              // Assuming messages with reply_sent_at are replied messages
-              return !message.reply_sent_at;
-            });
-          }
-          
-          // Filter out messages from archived companies if hideArchivedCompanies is true
-          if (this.hideArchivedCompanies) {
-            filteredMessages = filteredMessages.filter(message => {
-              // Filter out messages from archived companies
-              // A message is considered archived if it has archived_at or its company has archived_at
-              return !message.archived_at && !message.company_archived_at;
-            });
+
+          switch (this.filterMode) {
+            case "archived":
+              // Show ONLY archived messages
+              filteredMessages = filteredMessages.filter((message) => {
+                return message.archived_at || message.company_archived_at;
+              });
+              break;
+            case "replied":
+              // Show ONLY replied messages
+              filteredMessages = filteredMessages.filter((message) => {
+                return message.reply_sent_at;
+              });
+              break;
+            case "not-replied":
+              // Show ONLY un-replied messages
+              filteredMessages = filteredMessages.filter((message) => {
+                return !message.reply_sent_at;
+              });
+              break;
+            case "all":
+            default:
+              // Show all messages (no filtering)
+              break;
           }
 
           this.unprocessedMessages = filteredMessages;
 
           console.log(
-            `Loaded ${this.unprocessedMessages.length} messages after filtering`
+            `Loaded ${this.unprocessedMessages.length} messages after filtering (mode: ${this.filterMode})`
           );
         } catch (error) {
           console.error("Failed to load messages:", error);
@@ -205,7 +191,7 @@ document.addEventListener("alpine:init", () => {
       // Navigation method
       navigateToCompany(companyId) {
         // Switch to company management view and load company
-        const companyList = Alpine.store('companyList');
+        const companyList = Alpine.store("companyList");
         if (companyList) {
           companyList.navigateToCompany(companyId);
         }
@@ -235,7 +221,7 @@ document.addEventListener("alpine:init", () => {
           message.research_status = data.status;
 
           await this.pollResearchStatus(message);
-          
+
           await this.loadMessages();
           showSuccess("Company research completed!");
         } catch (err) {
@@ -300,7 +286,7 @@ document.addEventListener("alpine:init", () => {
 
           // Start polling for updates
           await this.pollMessageStatus(message);
-          
+
           // Refresh the message list after generation
           await this.loadMessages();
           showSuccess("Reply generated successfully!");
@@ -457,10 +443,8 @@ document.addEventListener("alpine:init", () => {
 
       // Get expand button text
       getExpandButtonText(messageId) {
-        return this.expandedMessages.has(messageId)
-          ? "Show Less"
-          : "Show More";
-      }
+        return this.expandedMessages.has(messageId) ? "Show Less" : "Show More";
+      },
     };
   });
 });

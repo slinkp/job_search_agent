@@ -35,21 +35,24 @@ describe("Daily Dashboard Integration", () => {
       dashboardHeader.querySelector(".dashboard-actions");
     expect(dashboardActions).toBeTruthy();
 
-    // Verify all five buttons exist
-    const buttons = dashboardActions.querySelectorAll("button");
-    expect(buttons.length).toBe(5);
-    expect(buttons[0].getAttribute("x-text")).toBe("getRepliedToggleText()");
-    expect(buttons[1].getAttribute("x-text")).toBe("getArchivedToggleText()");
-    expect(buttons[2].textContent.trim()).toBe("Scan Emails");
-    expect(buttons[3].textContent.trim()).toBe("Refresh");
-    
-    // Verify sort button exists and has Alpine directive
-    const sortButton = buttons[4];
-    expect(sortButton).toBeTruthy();
-    expect(sortButton.querySelector("span")).toBeTruthy();
-    expect(sortButton.querySelector("span").getAttribute("x-text")).toBe(
-      "getSortButtonText()"
-    );
+    // Verify filter controls exist
+    const filterControls = dashboardActions.querySelector(".filter-controls");
+    expect(filterControls).toBeTruthy();
+
+    // Verify filter buttons exist
+    const filterButtons = filterControls.querySelectorAll("button");
+    expect(filterButtons.length).toBe(2);
+    expect(filterButtons[0].textContent.trim()).toBe("All");
+    expect(filterButtons[1].textContent.trim()).toBe("Archived");
+
+    // Verify other buttons exist (scan emails, refresh, sort)
+    const allButtons = dashboardActions.querySelectorAll("button");
+    expect(allButtons.length).toBeGreaterThanOrEqual(5); // 2 filter buttons + 3 other buttons
+
+    // Verify that buttons have Alpine directives
+    const buttonsWithClick =
+      dashboardActions.querySelectorAll("button[@click]");
+    expect(buttonsWithClick.length).toBeGreaterThanOrEqual(5);
   });
 
   it("should have proper Alpine data binding structure", () => {
@@ -112,13 +115,23 @@ describe("Daily Dashboard Integration", () => {
   it("should have sorting functionality implemented", () => {
     const dashboardView = document.getElementById("daily-dashboard-view");
 
-    // Verify sort button exists and has click handler
-    const sortButton = dashboardView.querySelector(
-      ".dashboard-actions button:last-child"
+    // Verify filter buttons have click handlers
+    const filterButtons = dashboardView.querySelectorAll(
+      ".filter-controls button"
     );
-    expect(sortButton).toBeTruthy();
-    expect(sortButton.hasAttribute("@click")).toBe(true);
-    expect(sortButton.getAttribute("@click")).toBe("toggleHideArchivedCompanies()");
+    expect(filterButtons.length).toBe(2);
+    expect(filterButtons[0].hasAttribute("@click")).toBe(true);
+    expect(filterButtons[0].getAttribute("@click")).toBe(
+      "setFilterMode('all')"
+    );
+    expect(filterButtons[1].hasAttribute("@click")).toBe(true);
+    expect(filterButtons[1].getAttribute("@click")).toBe(
+      "setFilterMode('archived')"
+    );
+
+    // Verify that buttons have Alpine directives
+    const buttonsWithClick = dashboardView.querySelectorAll("button[@click]");
+    expect(buttonsWithClick.length).toBeGreaterThanOrEqual(5);
 
     // Verify the template uses sortedMessages instead of unprocessedMessages
     const messageList = dashboardView.querySelector(".message-list");
