@@ -264,4 +264,71 @@ describe("Daily Dashboard Integration", () => {
       expect(template.innerHTML).not.toContain("console.log('Archive for:");
     }
   });
+
+  describe("Reply actions by status (template correctness)", () => {
+    it("shows Generate + Edit actions when reply_status is none", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      const messageList = dashboardView.querySelector(".message-list");
+
+      if (messageList) {
+        const template = messageList.querySelector("template");
+        expect(template).toBeTruthy();
+
+        const html = template.innerHTML;
+
+        // Block guarded by x-if for reply_status === 'none'
+        expect(html).toContain("x-if=\"message.reply_status === 'none'\"");
+
+        // Within that block, Generate Reply and Edit buttons should exist and be wired
+        expect(html).toContain("Generate Reply");
+        expect(html).toContain('@click="generateReply(message)"');
+        expect(html).toContain("@click=\"$dispatch('edit-reply', message)\"");
+      }
+    });
+
+    it("shows preview + Edit + Regenerate when reply_status is generated", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      const messageList = dashboardView.querySelector(".message-list");
+
+      if (messageList) {
+        const template = messageList.querySelector("template");
+        expect(template).toBeTruthy();
+
+        const html = template.innerHTML;
+
+        // Block guarded by x-if for reply_status === 'generated'
+        expect(html).toContain("x-if=\"message.reply_status === 'generated'\"");
+
+        // Preview content and expand button
+        expect(html).toContain("reply-preview");
+        expect(html).toContain("toggleReplyExpansion(message.message_id)");
+
+        // Edit and Regenerate buttons
+        expect(html).toContain("@click=\"$dispatch('edit-reply', message)\"");
+        expect(html).toContain('@click="generateReply(message)"');
+      }
+    });
+
+    it("shows sent reply preview block without action buttons when reply_status is sent", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      const messageList = dashboardView.querySelector(".message-list");
+
+      if (messageList) {
+        const template = messageList.querySelector("template");
+        expect(template).toBeTruthy();
+
+        const html = template.innerHTML;
+
+        // Block guarded by x-if for reply_status === 'sent'
+        expect(html).toContain("x-if=\"message.reply_status === 'sent'\"");
+
+        // Sent preview is rendered
+        expect(html).toContain("reply-preview sent");
+        // Template comment indicates no action buttons for sent replies
+        expect(html).toContain(
+          "<!-- No action buttons for sent replies - editing is disabled -->"
+        );
+      }
+    });
+  });
 });
