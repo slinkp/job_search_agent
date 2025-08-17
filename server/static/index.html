@@ -407,6 +407,13 @@
                           Generating...
                         </span>
                       </button>
+                      <button 
+                        @click="sendAndArchive(message)" 
+                        :disabled="isGeneratingMessage(message)"
+                        class="primary"
+                      >
+                        Send &amp; Archive
+                      </button>
                     </div>
                   </div>
                 </template>

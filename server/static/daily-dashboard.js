@@ -347,6 +347,62 @@ document.addEventListener("alpine:init", () => {
         }
       },
 
+      // Send and archive a message - uses message-centric endpoint
+      async sendAndArchive(message) {
+        if (!message || !message.message_id) {
+          showError("No message provided");
+          return;
+        }
+
+        if (!message.reply_message) {
+          showError("No reply message to send");
+          return;
+        }
+
+        // Confirm with the user before proceeding
+        if (
+          !confirm(
+            "Are you sure you want to send this reply and archive the message?"
+          )
+        ) {
+          return;
+        }
+
+        try {
+          // Call the message-centric send and archive endpoint
+          const response = await fetch(
+            `/api/messages/${message.message_id}/send_and_archive`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(
+              error.error ||
+                `Failed to send and archive message: ${response.status}`
+            );
+          }
+
+          const data = await response.json();
+
+          // Refresh the message list to reflect the changes
+          await this.loadMessages();
+
+          showSuccess("Reply sent and message archived successfully");
+        } catch (err) {
+          console.error("Failed to send and archive message:", err);
+          showError(
+            err.message ||
+              "Failed to send and archive message. Please try again."
+          );
+        }
+      },
+
       // Poll message status using the shared service
       async pollMessageStatus(message) {
         return await taskPollingService.pollMessageStatus(message);
@@ -374,7 +430,6 @@ document.addEventListener("alpine:init", () => {
       getMessageSubject(message) {
         return message.subject || "No Subject";
       },
-
       // Get message date
       getMessageDate(message) {
         return message.date || null;
