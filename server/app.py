@@ -311,6 +311,63 @@ def scan_recruiter_emails(request):
     return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
 
 
+@view_config(
+    route_name="send_and_archive_message", renderer="json", request_method="POST"
+)
+def send_and_archive_message(request):
+    """Send and archive a specific message by message_id, implicitly saving the current draft first."""
+    message_id = request.matchdict.get("message_id")
+
+    if not message_id:
+        request.response.status = 400
+        return {"error": "Message ID is required"}
+
+    repo = models.company_repository()
+    message = repo.get_recruiter_message_by_id(message_id)
+
+    if not message:
+        request.response.status = 404
+        return {"error": "Message not found"}
+
+    # Get the company associated with this message
+    company = repo.get(message.company_id)
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found for this message"}
+
+    if not company.reply_message:
+        request.response.status = 400
+        return {"error": "No reply message to send"}
+
+    # Create a new task for sending and archiving
+    task_id = tasks.task_manager().create_task(
+        tasks.TaskType.SEND_AND_ARCHIVE,
+        {"company_id": company.company_id},
+    )
+
+    # Set archived_at and reply_sent_at status fields
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    company.status.archived_at = current_time
+    company.status.reply_sent_at = current_time
+    repo.update(company)
+
+    # Also set reply_sent_at on the specific message
+    message.reply_sent_at = current_time
+    repo.create_recruiter_message(message)  # This will update via upsert
+
+    logger.info(
+        f"Send and archive requested for message {message_id} (company: {company.name}), task_id: {task_id}"
+    )
+
+    return {
+        "task_id": task_id,
+        "status": tasks.TaskStatus.PENDING.value,
+        "sent_at": current_time.isoformat(),
+        "archived_at": current_time.isoformat(),
+        "message_id": message_id,
+    }
+
+
 @view_config(route_name="send_and_archive", renderer="json", request_method="POST")
 def send_and_archive(request):
     company_id = request.matchdict["company_id"]
@@ -489,6 +546,9 @@ def main(global_config, **settings):
         config.add_route("message_reply", "/api/messages/{message_id}/reply")
         config.add_route(
             "send_and_archive", "/api/companies/{company_id}/send_and_archive"
+        )
+        config.add_route(
+            "send_and_archive_message", "/api/messages/{message_id}/send_and_archive"
         )
         # Remove the old ignore_and_archive route since frontend now uses message-centric endpoint
         config.add_route("company_details", "/api/companies/{company_id}/details")

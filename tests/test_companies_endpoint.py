@@ -856,3 +856,142 @@ def test_get_companies_filters_replied_and_archived(clean_test_db):
             assert (
                 name in company_names
             ), f"Expected {name} to be in response when include_all=true"
+
+
+def test_send_and_archive_message_success(
+    mock_task_manager, mock_company_repo, test_company
+):
+    """Test successful send and archive for a specific message."""
+    # Create a test message
+    test_message = RecruiterMessage(
+        message_id="test-message-123",
+        company_id=test_company.company_id,
+        subject="Test Subject",
+        sender="test@example.com",
+        message="Test message content",
+        thread_id="thread-123",
+        date=datetime.datetime.now(datetime.timezone.utc),
+    )
+
+    # Set up the company with a reply message
+    test_company.reply_message = "Test reply message"
+
+    # Mock the repository methods
+    mock_company_repo.get_recruiter_message_by_id.return_value = test_message
+    mock_company_repo.get.return_value = test_company
+    mock_task_manager.create_task.return_value = "task-456"
+
+    # Create the request
+    request = DummyRequest()
+    request.matchdict = {"message_id": "test-message-123"}
+
+    # Call the endpoint
+    response = server.app.send_and_archive_message(request)
+
+    # Verify the response
+    assert response["task_id"] == "task-456"
+    assert response["status"] == tasks.TaskStatus.PENDING.value
+    assert "sent_at" in response
+    assert "archived_at" in response
+    assert response["message_id"] == "test-message-123"
+
+    # Verify the task was created with correct arguments
+    mock_task_manager.create_task.assert_called_once_with(
+        tasks.TaskType.SEND_AND_ARCHIVE,
+        {"company_id": test_company.company_id},
+    )
+
+    # Verify the company was updated with sent/archived timestamps
+    assert test_company.status.reply_sent_at is not None
+    assert test_company.status.archived_at is not None
+    mock_company_repo.update.assert_called_once_with(test_company)
+
+    # Verify the message was updated with reply_sent_at
+    assert test_message.reply_sent_at is not None
+    mock_company_repo.create_recruiter_message.assert_called_once_with(test_message)
+
+
+def test_send_and_archive_message_not_found(mock_company_repo):
+    """Test send and archive when message is not found."""
+    mock_company_repo.get_recruiter_message_by_id.return_value = None
+
+    request = DummyRequest()
+    request.matchdict = {"message_id": "nonexistent-message"}
+
+    response = server.app.send_and_archive_message(request)
+
+    assert response["error"] == "Message not found"
+    assert request.response.status == "404 Not Found"
+
+
+def test_send_and_archive_message_company_not_found(mock_company_repo):
+    """Test send and archive when company is not found."""
+    test_message = RecruiterMessage(
+        message_id="test-message-123",
+        company_id="nonexistent-company",
+        subject="Test Subject",
+        sender="test@example.com",
+        message="Test message content",
+        thread_id="thread-123",
+        date=datetime.datetime.now(datetime.timezone.utc),
+    )
+
+    mock_company_repo.get_recruiter_message_by_id.return_value = test_message
+    mock_company_repo.get.return_value = None
+
+    request = DummyRequest()
+    request.matchdict = {"message_id": "test-message-123"}
+
+    response = server.app.send_and_archive_message(request)
+
+    assert response["error"] == "Company not found for this message"
+    assert request.response.status == "404 Not Found"
+
+
+def test_send_and_archive_message_no_reply(mock_company_repo, test_company):
+    """Test send and archive when company has no reply message."""
+    test_message = RecruiterMessage(
+        message_id="test-message-123",
+        company_id=test_company.company_id,
+        subject="Test Subject",
+        sender="test@example.com",
+        message="Test message content",
+        thread_id="thread-123",
+        date=datetime.datetime.now(datetime.timezone.utc),
+    )
+
+    # Company has no reply message
+    test_company.reply_message = None
+
+    mock_company_repo.get_recruiter_message_by_id.return_value = test_message
+    mock_company_repo.get.return_value = test_company
+
+    request = DummyRequest()
+    request.matchdict = {"message_id": "test-message-123"}
+
+    response = server.app.send_and_archive_message(request)
+
+    assert response["error"] == "No reply message to send"
+    assert request.response.status == "400 Bad Request"
+
+
+def test_send_and_archive_message_missing_message_id():
+    """Test send and archive with missing message_id."""
+    request = DummyRequest()
+    request.matchdict = {}
+
+    response = server.app.send_and_archive_message(request)
+
+    assert response["error"] == "Message ID is required"
+    assert request.response.status == "400 Bad Request"
+
+
+def test_send_and_archive_message_empty_message_id():
+    """Test send and archive with empty message_id."""
+    request = DummyRequest()
+    request.matchdict = {"message_id": ""}
+
+    response = server.app.send_and_archive_message(request)
+
+    assert response["error"] == "Message ID is required"
+    assert request.response.status == "400 Bad Request"

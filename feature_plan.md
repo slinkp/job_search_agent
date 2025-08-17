@@ -46,9 +46,10 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 
 3. Send & Archive with implicit save (message-centric trigger, company-backed)
 
-- [ ] Wire Send & Archive button to a message-level action; on the server, implicitly save the current draft to the company first, then send and archive the message
+- [ ] Wire Send & Archive button to a message-level action (keyed by message id); on the server, send message, then archive the message and mark company archived too
+- [ ] Frontend: implicitly call save of current draft text first. Then send_and_archive_message
 - [ ] Disable action buttons during send; on success mark message `sent` and reflect archive state; hide editing actions
-- [ ] Tests: backend for send-and-archive semantics via `message_id`; frontend integration to verify save-then-send
+- [x] Tests: backend for send-and-archive semantics via `message_id`; frontend integration to verify save-then-send
 
 4. Error handling, edge cases, and UX polish
 
@@ -67,7 +68,6 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 6. Cleanup and deprecation (future work, not in this feature)
 
 - [ ] Mark issue 7 as complete on github
-- [ ] Optional: `POST /api/messages/{message_id}/send_and_archive` maps to existing company-centric send/archive flow but keyed by `message_id`
 - [ ] Migrate backend from `Company.reply_message` to per-message drafts
 - [ ] Migrate reply generation task and task polling response to be message-centric, not company-centric. Probably do this by making a new task type and deprecating the old one.
 - [ ] Remove message flow from company page? Don't really need same UX in two places?
