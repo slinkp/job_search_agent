@@ -204,7 +204,7 @@ describe("Daily Dashboard Integration", () => {
 
       // Verify research button has proper disabled state
       expect(template.innerHTML).toContain(
-        ':disabled="isResearching(message) || isSendingMessage(message)"'
+        ':disabled="isResearching(message) || isSendingMessage(message) || message.archived_at"'
       );
 
       // Verify research button shows proper text based on state

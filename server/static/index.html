@@ -335,7 +335,7 @@
                 <div class="research-section">
                   <button 
                     @click="research(message)" 
-                    :disabled="isResearching(message) || isSendingMessage(message)"
+                    :disabled="isResearching(message) || isSendingMessage(message) || message.archived_at"
                     class="outline"
                   >
                     <span x-text="isResearching(message) ? 'Researching...' : (message.research_completed_at ? 'Redo research' : 'Research!')"></span>
