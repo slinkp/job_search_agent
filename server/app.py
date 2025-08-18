@@ -351,8 +351,9 @@ def send_and_archive_message(request):
     company.status.reply_sent_at = current_time
     repo.update(company)
 
-    # Also set reply_sent_at on the specific message
+    # Also set reply_sent_at and archived_at on the specific message
     message.reply_sent_at = current_time
+    message.archived_at = current_time
     repo.create_recruiter_message(message)  # This will update via upsert
 
     logger.info(

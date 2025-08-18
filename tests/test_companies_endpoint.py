@@ -906,8 +906,9 @@ def test_send_and_archive_message_success(
     assert test_company.status.archived_at is not None
     mock_company_repo.update.assert_called_once_with(test_company)
 
-    # Verify the message was updated with reply_sent_at
+    # Verify the message was updated with reply_sent_at and archived_at
     assert test_message.reply_sent_at is not None
+    assert test_message.archived_at is not None
     mock_company_repo.create_recruiter_message.assert_called_once_with(test_message)
 
 
