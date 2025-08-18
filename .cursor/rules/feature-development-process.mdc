@@ -1,7 +1,6 @@
 ---
 description: Standard feature development process
-globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # Feature Development Process
 
