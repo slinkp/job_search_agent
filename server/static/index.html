@@ -111,7 +111,7 @@
             <div class="research-status">
               <button
                 @click="research(company)"
-                :disabled="isResearching(company)"
+                :disabled="isResearching(company) || isSendingMessage(company) || company.archived_at"
                 class="research-button"
               >
                 <span
@@ -133,7 +133,7 @@
             <template x-if="!company.reply_message">
               <button
                 @click="generateReply(company)"
-                :disabled="isGeneratingMessage(company)"
+                :disabled="isGeneratingMessage(company) || isSendingMessage(company)"
               >
                 <span x-show="!isGeneratingMessage(company)" x-text="'Generate'"></span>
                 <span x-show="isGeneratingMessage(company)">
@@ -146,11 +146,11 @@
               <div class="reply-actions">
                 <button 
                   @click="editReply(company)" 
-                  :disabled="isGeneratingMessage(company)"
+                  :disabled="isGeneratingMessage(company) || isSendingMessage(company) || company.sent_at"
                 >Edit reply</button>
                 <button 
                   @click="generateReply(company)"
-                  :disabled="isGeneratingMessage(company)"
+                  :disabled="isGeneratingMessage(company) || isSendingMessage(company) || company.sent_at"
                 >
                   <span x-show="!isGeneratingMessage(company)">Regenerate</span>
                   <span x-show="isGeneratingMessage(company)">

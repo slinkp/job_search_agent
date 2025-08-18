@@ -56,7 +56,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
   - [x]  for messages that are sent, disable edit and regenerate buttons
   - [x]  for messages that are archived, disable archive button
   - [x]  for messages that are archived, disable research button
-  - [ ]  Do all that on company page too
+  - [x]  Do all that on company page too
 - [x] Tests: backend for send-and-archive semantics via `message_id`; frontend integration to verify save-then-send
 
 4. Error handling, edge cases, and UX polish
