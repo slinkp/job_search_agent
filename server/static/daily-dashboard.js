@@ -25,6 +25,7 @@ document.addEventListener("alpine:init", () => {
       // Local tracking for UI state
       generatingMessages: new Set(),
       researchingCompanies: new Set(),
+      sendingMessages: new Set(), // Track messages being sent and archived
 
       // Sorting state
       sortNewestFirst: true,
@@ -369,6 +370,30 @@ document.addEventListener("alpine:init", () => {
         }
 
         try {
+          // First check if there's an active edit session and save it
+          const companyListElement = document.querySelector(
+            '[x-data="companyList"]'
+          );
+          if (companyListElement && companyListElement._x_dataStack) {
+            const companyList = companyListElement._x_dataStack[0];
+
+            // Check if we're currently editing this message's reply
+            if (
+              companyList.editingCompany &&
+              companyList.editingCompany.recruiter_message?.message_id ===
+                message.message_id &&
+              companyList.editingReply !== message.reply_message
+            ) {
+              // Save the current draft first
+              companyList.editingCompany.reply_message =
+                companyList.editingReply;
+              await companyList.saveReply();
+
+              // Refresh the message list to get the updated reply
+              await this.loadMessages();
+            }
+          }
+
           // Call the message-centric send and archive endpoint
           const response = await fetch(
             `/api/messages/${message.message_id}/send_and_archive`,

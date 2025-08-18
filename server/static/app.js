@@ -489,22 +489,48 @@ document.addEventListener("alpine:init", () => {
             await this.saveReply();
           }
 
-          // Send the reply and archive
-          const response = await fetch(
-            `/api/companies/${company.company_id}/send_and_archive`,
-            {
-              method: "POST",
-            }
-          );
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to send and archive: ${response.status}`
+          // Check if we have a message_id to use the message-centric endpoint
+          if (
+            company.recruiter_message &&
+            company.recruiter_message.message_id
+          ) {
+            // Use the message-centric endpoint
+            const response = await fetch(
+              `/api/messages/${company.recruiter_message.message_id}/send_and_archive`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
             );
-          }
 
-          const data = await response.json();
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(
+                error.error || `Failed to send and archive: ${response.status}`
+              );
+            }
+
+            const data = await response.json();
+          } else {
+            // Fallback to company-centric endpoint for backward compatibility
+            const response = await fetch(
+              `/api/companies/${company.company_id}/send_and_archive`,
+              {
+                method: "POST",
+              }
+            );
+
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(
+                error.error || `Failed to send and archive: ${response.status}`
+              );
+            }
+
+            const data = await response.json();
+          }
 
           // Fetch fresh company data instead of just updating properties
           await this.fetchAndUpdateCompany(company.company_id);
