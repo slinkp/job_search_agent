@@ -511,6 +511,106 @@ class TestGmailRepliesSearcher:
         result = gmail_searcher._get_or_create_label_id(label_name)
         assert result == label_id
 
+    def test_send_reply_with_non_ascii_display_name(self, gmail_searcher, mock_message):
+        """Test that send_reply correctly extracts email address from From header with non-ASCII display name."""
+        # Setup
+        thread_id = "thread123"
+        message_id = "msg456"
+        reply_text = "Thank you for your message"
+
+        # Mock message with non-ASCII display name in From header
+        mock_message_with_non_ascii = {
+            "id": "msg456",
+            "threadId": "thread123",
+            "internalDate": "1617235200000",
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "Job Opportunity"},
+                    {
+                        "name": "From",
+                        "value": '"Paul Fστυσ Winkler" <slinkp+testy@gmail.com>',
+                    },
+                    {"name": "Message-ID", "value": "<msg123@example.com>"},
+                ],
+                "body": {"data": base64.b64encode(b"Message content").decode()},
+            },
+        }
+
+        gmail_searcher.service.users().messages().get.return_value.execute.return_value = (
+            mock_message_with_non_ascii
+        )
+        gmail_searcher.service.users().messages().send.return_value.execute.return_value = {
+            "id": "sent123"
+        }
+
+        # Call the method
+        result = gmail_searcher.send_reply(thread_id, message_id, reply_text)
+
+        # Assertions
+        assert result is True
+
+        # Verify the message was constructed correctly
+        send_call = gmail_searcher.service.users().messages().send.call_args
+        assert send_call is not None
+
+        # Check that the threadId was included
+        body_arg = send_call[1]["body"]
+        assert body_arg["threadId"] == thread_id
+
+        # Verify that the raw message contains the correct email address (not the display name)
+        raw_message = body_arg["raw"]
+        decoded_message = base64.urlsafe_b64decode(raw_message).decode("utf-8")
+        assert "To: slinkp+testy@gmail.com" in decoded_message
+        assert "Paul Fστυσ Winkler" not in decoded_message
+
+    def test_send_reply_with_simple_email(self, gmail_searcher, mock_message):
+        """Test that send_reply works with simple email addresses without display names."""
+        # Setup
+        thread_id = "thread123"
+        message_id = "msg456"
+        reply_text = "Thank you for your message"
+
+        # Mock message with simple email address
+        mock_message_simple = {
+            "id": "msg456",
+            "threadId": "thread123",
+            "internalDate": "1617235200000",
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "Job Opportunity"},
+                    {"name": "From", "value": "simple@example.com"},
+                    {"name": "Message-ID", "value": "<msg123@example.com>"},
+                ],
+                "body": {"data": base64.b64encode(b"Message content").decode()},
+            },
+        }
+
+        gmail_searcher.service.users().messages().get.return_value.execute.return_value = (
+            mock_message_simple
+        )
+        gmail_searcher.service.users().messages().send.return_value.execute.return_value = {
+            "id": "sent123"
+        }
+
+        # Call the method
+        result = gmail_searcher.send_reply(thread_id, message_id, reply_text)
+
+        # Assertions
+        assert result is True
+
+        # Verify the message was constructed correctly
+        send_call = gmail_searcher.service.users().messages().send.call_args
+        assert send_call is not None
+
+        # Check that the threadId was included
+        body_arg = send_call[1]["body"]
+        assert body_arg["threadId"] == thread_id
+
+        # Verify that the raw message contains the correct email address
+        raw_message = body_arg["raw"]
+        decoded_message = base64.urlsafe_b64decode(raw_message).decode("utf-8")
+        assert "To: simple@example.com" in decoded_message
+
 
 class TestBatchMessageFetching:
     """Test the optimized batch message fetching functionality."""

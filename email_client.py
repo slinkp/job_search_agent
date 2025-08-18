@@ -454,7 +454,18 @@ class GmailRepliesSearcher:
 
             # Create message
             message = MIMEText(reply_text)
-            message["To"] = headers.get("From", "")
+
+            # Extract email address from From header to avoid character encoding issues
+            from_header = headers.get("From", "")
+            # Parse email address from "Display Name <email@domain.com>" format
+            email_match = re.search(r"<([^>]+)>", from_header)
+            if email_match:
+                to_email = email_match.group(1)
+            else:
+                # If no angle brackets, assume the whole thing is an email
+                to_email = from_header.strip()
+
+            message["To"] = to_email
             message["Subject"] = subject
             message["In-Reply-To"] = headers.get("Message-ID", "")
             message["References"] = headers.get("Message-ID", "")
