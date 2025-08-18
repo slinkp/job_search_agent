@@ -251,6 +251,9 @@ function createMockCompanyList() {
     isGeneratingMessage() {
       return false;
     },
+    isSendingMessage() {
+      return false;
+    },
     formatRecruiterMessageDate() {
       return "";
     },

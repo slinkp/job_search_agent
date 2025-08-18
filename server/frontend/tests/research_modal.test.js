@@ -66,6 +66,7 @@ describe("Research Company Modal", () => {
       researchCompanyTaskId: null,
       showError: vi.fn(),
       showSuccess: vi.fn(),
+      isSendingMessage: vi.fn(() => false),
       showResearchCompanyModal() {
         modal.showModal();
       },

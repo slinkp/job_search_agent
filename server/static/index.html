@@ -335,7 +335,7 @@
                 <div class="research-section">
                   <button 
                     @click="research(message)" 
-                    :disabled="isResearching(message)"
+                    :disabled="isResearching(message) || isSendingMessage(message)"
                     class="outline"
                   >
                     <span x-text="isResearching(message) ? 'Researching...' : (message.research_completed_at ? 'Redo research' : 'Research!')"></span>
@@ -353,7 +353,7 @@
                   <div class="reply-actions">
                     <button 
                       @click="generateReply(message)" 
-                      :disabled="isGeneratingMessage(message)"
+                      :disabled="isGeneratingMessage(message) || isSendingMessage(message)"
                       class="outline"
                     >
                       <span x-show="!isGeneratingMessage(message)">Generate Reply</span>
@@ -364,7 +364,7 @@
                     </button>
                     <button 
                       @click="$dispatch('edit-reply', message)" 
-                      :disabled="isGeneratingMessage(message)"
+                      :disabled="isGeneratingMessage(message) || isSendingMessage(message)"
                       class="outline"
                     >
                       Edit
@@ -391,14 +391,14 @@
                     <div class="reply-buttons">
                       <button 
                         @click="$dispatch('edit-reply', message)" 
-                        :disabled="isGeneratingMessage(message)"
+                        :disabled="isGeneratingMessage(message) || isSendingMessage(message)"
                         class="outline"
                       >
                         Edit
                       </button>
                       <button 
                         @click="generateReply(message)" 
-                        :disabled="isGeneratingMessage(message)"
+                        :disabled="isGeneratingMessage(message) || isSendingMessage(message)"
                         class="outline"
                       >
                         <span x-show="!isGeneratingMessage(message)">Regenerate</span>
@@ -409,10 +409,14 @@
                       </button>
                       <button 
                         @click="sendAndArchive(message)" 
-                        :disabled="isGeneratingMessage(message)"
+                        :disabled="isGeneratingMessage(message) || isSendingMessage(message)"
                         class="primary"
                       >
-                        Send &amp; Archive
+                        <span x-show="!isSendingMessage(message)">Send &amp; Archive</span>
+                        <span x-show="isSendingMessage(message)">
+                          <span class="loading-spinner"></span>
+                          Sending...
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -442,7 +446,7 @@
                   </div>
                 </template>
                 
-                <button @click="archive(message.message_id)" class="outline">
+                <button @click="archive(message.message_id)" :disabled="isSendingMessage(message)" class="outline">
                   Archive
                 </button>
               </div>
@@ -496,12 +500,12 @@
             </div>
             <textarea x-model="editingReply" rows="5"></textarea>
             <footer>
-              <button type="button" @click="cancelEdit" :disabled="editingCompany && isGeneratingMessage(editingCompany)">Cancel</button>
-              <button type="submit" :disabled="editingCompany && isGeneratingMessage(editingCompany)">Save</button>
+              <button type="button" @click="cancelEdit" :disabled="editingCompany && (isGeneratingMessage(editingCompany) || isSendingMessage(editingCompany))">Cancel</button>
+              <button type="submit" :disabled="editingCompany && (isGeneratingMessage(editingCompany) || isSendingMessage(editingCompany))">Save</button>
               <button 
                 type="button" 
                 @click="generateReply(editingCompany, true)"
-                :disabled="editingCompany && isGeneratingMessage(editingCompany)"
+                :disabled="editingCompany && (isGeneratingMessage(editingCompany) || isSendingMessage(editingCompany))"
               >
                 <span x-show="!isGeneratingMessage(editingCompany)">Regenerate reply</span>
                 <span x-show="isGeneratingMessage(editingCompany)">
@@ -512,7 +516,7 @@
               <button 
                 type="button" 
                 @click="ignoreAndArchive(editingCompany)"
-                :disabled="editingCompany && isGeneratingMessage(editingCompany)"
+                :disabled="editingCompany && (isGeneratingMessage(editingCompany) || isSendingMessage(editingCompany))"
                 class="secondary"
               >
                 Ignore &amp; Archive
@@ -520,10 +524,14 @@
               <button 
                 type="button" 
                 @click="sendAndArchive(editingCompany)"
-                :disabled="!editingCompany || isGeneratingMessage(editingCompany) || !editingCompany?.reply_message"
+                :disabled="!editingCompany || isGeneratingMessage(editingCompany) || isSendingMessage(editingCompany) || !editingCompany?.reply_message"
                 class="primary"
               >
-                Send &amp; Archive
+                <span x-show="!isSendingMessage(editingCompany)">Send &amp; Archive</span>
+                <span x-show="isSendingMessage(editingCompany)">
+                  <span class="loading-spinner"></span>
+                  Sending...
+                </span>
               </button>
             </footer>
           </form>

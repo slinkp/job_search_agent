@@ -350,6 +350,8 @@ document.addEventListener("alpine:init", () => {
 
       // Send and archive a message - uses message-centric endpoint
       async sendAndArchive(message) {
+        console.log("sendAndArchive called with message:", message);
+
         if (!message || !message.message_id) {
           showError("No message provided");
           return;
@@ -361,13 +363,21 @@ document.addEventListener("alpine:init", () => {
         }
 
         // Confirm with the user before proceeding
+        console.log("About to show confirmation dialog");
         if (
           !confirm(
             "Are you sure you want to send this reply and archive the message?"
           )
         ) {
+          console.log("User cancelled confirmation");
           return;
         }
+        console.log("User confirmed, proceeding with send and archive");
+
+        // Add to local tracking for immediate UI update - do this BEFORE any API calls
+        this.sendingMessages.add(message.message_id);
+        // Also add to service for polling
+        taskPollingService.addSendingMessage(message);
 
         try {
           // First check if there's an active edit session and save it
@@ -414,17 +424,45 @@ document.addEventListener("alpine:init", () => {
           }
 
           const data = await response.json();
+          console.log("Send and archive response:", data);
 
-          // Refresh the message list to reflect the changes
-          await this.loadMessages();
+          // Poll for task completion before showing success/failure
+          console.log("Polling for task completion...");
+          try {
+            const taskResult =
+              await taskPollingService.pollSendAndArchiveStatus(data.task_id);
+            console.log("Task completed:", taskResult);
 
-          showSuccess("Reply sent and message archived successfully");
+            // Refresh the message list to reflect the changes
+            console.log("Refreshing message list...");
+            await this.loadMessages();
+            console.log("Message list refreshed successfully");
+
+            // Show appropriate alert based on actual task result
+            if (taskResult.status === "completed") {
+              showSuccess("Reply sent and message archived successfully");
+            } else {
+              showError(
+                `Failed to send and archive: ${
+                  taskResult.error || "Unknown error"
+                }`
+              );
+            }
+          } catch (pollError) {
+            console.error("Failed to poll task status:", pollError);
+            showError(
+              "Failed to check task status. Please refresh to see current state."
+            );
+          }
         } catch (err) {
           console.error("Failed to send and archive message:", err);
           showError(
             err.message ||
               "Failed to send and archive message. Please try again."
           );
+        } finally {
+          this.sendingMessages.delete(message.message_id);
+          taskPollingService.removeSendingMessage(message);
         }
       },
 
@@ -437,6 +475,12 @@ document.addEventListener("alpine:init", () => {
       isGeneratingMessage(message) {
         if (!message) return false;
         return this.generatingMessages.has(message.message_id);
+      },
+
+      // Check if message is being sent and archived
+      isSendingMessage(message) {
+        if (!message) return false;
+        return this.sendingMessages.has(message.message_id);
       },
 
       formatMessageDate,

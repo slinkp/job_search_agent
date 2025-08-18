@@ -119,6 +119,7 @@ document.addEventListener("alpine:init", () => {
       // Local tracking for UI state
       generatingMessages: new Set(),
       researchingCompanies: new Set(),
+      sendingMessages: new Set(),
       // Stubs for import functionality
       importingCompanies: false,
       importTaskId: null,
@@ -479,6 +480,11 @@ document.addEventListener("alpine:init", () => {
           return;
         }
 
+        // Add to local tracking for immediate UI update - do this BEFORE any API calls
+        this.sendingMessages.add(company.name);
+        // Also add to service for polling
+        taskPollingService.addSendingMessage(company);
+
         try {
           // First save any edits to the reply
           if (
@@ -542,6 +548,9 @@ document.addEventListener("alpine:init", () => {
           this.showError(
             err.message || "Failed to send and archive. Please try again."
           );
+        } finally {
+          this.sendingMessages.delete(company.name);
+          taskPollingService.removeSendingMessage(company);
         }
       },
 
@@ -602,6 +611,11 @@ document.addEventListener("alpine:init", () => {
         if (this.loading) return false;
         if (!company) return false;
         return this.generatingMessages.has(company.name);
+      },
+      isSendingMessage(company) {
+        if (this.loading) return false;
+        if (!company) return false;
+        return this.sendingMessages.has(company.name);
       },
 
       async pollTaskStatus(company, taskType) {

@@ -30,6 +30,7 @@ describe("Research Task Polling", () => {
       showError: vi.fn(),
       showSuccess: vi.fn(),
       refreshAllCompanies: vi.fn(),
+      isSendingMessage: vi.fn(() => false),
       // Helper method to simulate form submission
       async submitResearchCompanyForm(event) {
         if (event) event.preventDefault();

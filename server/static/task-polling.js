@@ -2,6 +2,7 @@ export class TaskPollingService {
   constructor() {
     this.researchingCompanies = new Set();
     this.generatingMessages = new Set();
+    this.sendingMessages = new Set();
   }
 
   // Poll for research task status
@@ -12,6 +13,29 @@ export class TaskPollingService {
   // Poll for message generation task status
   async pollMessageStatus(company) {
     return this.pollTaskStatus(company, "message");
+  }
+
+  // Poll for send and archive task status
+  async pollSendAndArchiveStatus(taskId) {
+    console.log(`Starting poll for send and archive task:`, { taskId });
+
+    while (true) {
+      try {
+        const response = await fetch(`/api/tasks/${taskId}`);
+        const task = await response.json();
+
+        console.log(`Send and archive poll response:`, task);
+
+        if (task.status === "completed" || task.status === "failed") {
+          return task;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } catch (err) {
+        console.error(`Failed to poll send and archive status:`, err);
+        throw err;
+      }
+    }
   }
 
   // Get research status text for display
@@ -82,6 +106,16 @@ export class TaskPollingService {
   // Remove company from generating messages set
   removeGeneratingMessage(company) {
     this.generatingMessages.delete(this._getTrackingKey(company));
+  }
+
+  // Add company to sending messages set
+  addSendingMessage(company) {
+    this.sendingMessages.add(this._getTrackingKey(company));
+  }
+
+  // Remove company from sending messages set
+  removeSendingMessage(company) {
+    this.sendingMessages.delete(this._getTrackingKey(company));
   }
 
   // Generic task status text generator
@@ -172,5 +206,6 @@ export class TaskPollingService {
   reset() {
     this.researchingCompanies.clear();
     this.generatingMessages.clear();
+    this.sendingMessages.clear();
   }
 }

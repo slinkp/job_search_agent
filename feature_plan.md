@@ -49,9 +49,9 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 - [x] Wire Send & Archive button to a message-level action (keyed by message id); on the server, send message, then archive the message and mark company archived too
 - [x] Frontend: implicitly call save of current draft text first. Then send_and_archive_message
 - [ ] Do send async:
-  - [ ] Disable action buttons during send
-  - [ ] show spinner during send
-  - [ ]  alert when job done
+  - [x] Disable action buttons during send
+  - [x] show spinner during send
+  - [x]  alert when job done
   - [ ]  on success mark message `sent` and reflect archive state; 
   - [ ]  for messages that are sent, disable edit and regenerate buttons
   - [ ]  for messages that are archived, disable archive button
