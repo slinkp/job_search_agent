@@ -52,9 +52,9 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
   - [x] Disable action buttons during send
   - [x] show spinner during send
   - [x]  alert when job done
-  - [x]  on success mark message `sent` and reflect archive state; 
-  - [ ]  for messages that are sent, disable edit and regenerate buttons
-  - [ ]  for messages that are archived, disable archive button
+  - [x]  on success mark message `sent` and reflect archive state;
+  - [x]  for messages that are sent, disable edit and regenerate buttons
+  - [x]  for messages that are archived, disable archive button
   - [ ]  for messages that are archived, disable research button
   - [ ]  Do all that on company page too
 - [x] Tests: backend for send-and-archive semantics via `message_id`; frontend integration to verify save-then-send
