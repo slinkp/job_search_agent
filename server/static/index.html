@@ -446,7 +446,7 @@
                   </div>
                 </template>
                 
-                <button @click="archive(message.message_id)" :disabled="isSendingMessage(message)" class="outline">
+                <button @click="archive(message.message_id)" :disabled="isSendingMessage(message) || message.archived_at" class="outline">
                   Archive
                 </button>
               </div>
