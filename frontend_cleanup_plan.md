@@ -33,8 +33,8 @@
 
 ### Tooling
 
-[ ] Set up coverage reports for JS tests. Something that gives experience on par with python coverage
-[ ] Enable js coverage in `./test`
+[x] Set up coverage reports for JS tests. Something that gives experience on par with python coverage
+[x] Enable js coverage in `./test`
 
 ### Service tests (thin)
 [ ] server/frontend/tests/task-polling.service.test.js: poll loop with fake timers; status text mapping
@@ -42,16 +42,16 @@
 
 ### Refactor/trim existing tests
 [x] Remove duplicated suites and outdated URL-state logic in daily-dashboard.test.js
-[ ] Convert template-innerHTML assertions in daily-dashboard-integration.test.js into user-visible behavior assertions (or delete if redundant with component tests)
-[ ] Stop using _x_dataStack directly; prefer DOM interactions
+[x] Convert template-innerHTML assertions in daily-dashboard-integration.test.js into user-visible behavior assertions (or delete if redundant with component tests)
+[x] Stop using _x_dataStack directly; prefer DOM interactions
 
 ### Optional e2e (future)
 [ ] Consider 1–2 Playwright flows (generate reply → poll → UI update; send & archive disabled/enabled states) when backend is stable. Do not auto-start server (manual step).
 
 ### Coverage and CI signals
 [x] Ensure coverage includes server/static/*.js but excludes HTML and setup
-[ ] Keep tests deterministic with fake timers and controlled fetch mocks
+[x] Keep tests deterministic with fake timers and controlled fetch mocks
 
 ### Cleanup
 [x] Remove/rename old test files to avoid confusion; update docs
-[ ] Keep a tiny smoke test to catch catastrophic template load issues
+[x] Keep a tiny smoke test to catch catastrophic template load issues
