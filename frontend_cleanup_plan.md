@@ -31,6 +31,11 @@
 [x] Action taken: deleted `server/frontend/tests/daily-dashboard.component.test.js` to keep suite deterministic and fast
 [ ] Future: consider 1–2 Playwright flows for true mount-level coverage once backend is stable (see Optional e2e)
 
+### Tooling
+
+[ ] Set up coverage reports for JS tests. Something that gives experience on par with python coverage
+[ ] Enable js coverage in `./test`
+
 ### Service tests (thin)
 [ ] server/frontend/tests/task-polling.service.test.js: poll loop with fake timers; status text mapping
 [ ] server/frontend/tests/email-scanning.service.test.js: status text/class; polling completes → triggers refresh hook (mock)
