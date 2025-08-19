@@ -68,10 +68,11 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 
 5. Test inventory and coverage
 
+- [ ] Frontend: think hard about what value the test strategy brings. Tests that simply exercise mocks aren't very useful; we have mocks that re-implement much of the behavior of the mocked code and that's a very bad smell. Can we do better?  Would it help to refactor some more of the code into functions that don't depend on alpine so we can do more simple unit testing of input/output ?
+  - [ ] Also, look for redundancy between server/frontend/tests/daily-dashboard-integration.test.js and server/frontend/tests/daily-dashboard.test.js 
 - [ ] Backend tests: `GET /api/messages` payload (includes `reply_message`, `reply_status`), `POST/PUT /api/messages/{id}/reply` map to company draft, optional `send_and_archive` behavior
 - [ ] Frontend unit: conditional rendering, loading states, state transitions per `message_id`
 - [ ] Frontend integration: end-to-end dashboard flows (generate → edit → save; regenerate confirmation; send & archive with implicit save)
-- [ ] Frontend: think hard about what value the test strategy brings. Tests that simply exercise mocks aren't very useful; mocks that re-implement much of the behavior of the mocked code are a bad code smell. Can we do better?
 
 6. Cleanup and deprecation (future work, not in this feature)
 
