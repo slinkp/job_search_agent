@@ -20,12 +20,17 @@ export TEST_SHEET_DOC_ID='sheet_test_xyz'
 export TEST_TAB_1_GID='xyz'
 export TEST_TAB_1_RANGE="$TAB_1_RANGE"
 
-# Run Python tests with coverage
-coverage run -m pytest $* 
-PYTHON_EXIT=$?
-
-# Always show coverage report
-coverage report -m && coverage html
+if [ "$1" == "--no-python" ]; then
+	echo "Skipping python tests"
+	shift
+	PYTHON_EXIT=0
+else
+	# Run Python tests with coverage
+	coverage run -m pytest $* 
+	PYTHON_EXIT=$?
+	# Always show coverage report
+	coverage report -m && coverage html
+fi
 
 # Run JavaScript tests with coverage
 npm run test:coverage -- --run
