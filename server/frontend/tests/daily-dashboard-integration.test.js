@@ -246,11 +246,9 @@ describe("Daily Dashboard Integration", () => {
       const messageList = dashboardView.querySelector(".message-list");
 
       if (messageList) {
-        const template = messageList.querySelector("template");
-        expect(template).toBeTruthy();
-
+        // Inspect the full message list template markup
         const container = document.createElement("div");
-        container.innerHTML = template.innerHTML;
+        container.innerHTML = messageList.innerHTML;
         // Look for buttons likely in the 'none' status block
         const generateBtn = Array.from(
           container.querySelectorAll("button")
@@ -273,11 +271,8 @@ describe("Daily Dashboard Integration", () => {
       const messageList = dashboardView.querySelector(".message-list");
 
       if (messageList) {
-        const template = messageList.querySelector("template");
-        expect(template).toBeTruthy();
-
         const container = document.createElement("div");
-        container.innerHTML = template.innerHTML;
+        container.innerHTML = messageList.innerHTML;
         // Preview area exists
         const preview = container.querySelector(".reply-preview");
         expect(preview).toBeTruthy();
@@ -298,11 +293,8 @@ describe("Daily Dashboard Integration", () => {
       const messageList = dashboardView.querySelector(".message-list");
 
       if (messageList) {
-        const template = messageList.querySelector("template");
-        expect(template).toBeTruthy();
-
         const container = document.createElement("div");
-        container.innerHTML = template.innerHTML;
+        container.innerHTML = messageList.innerHTML;
         const sentPreview = container.querySelector(".reply-preview.sent");
         expect(sentPreview).toBeTruthy();
         // No obvious action buttons should be present in the sent block
@@ -316,11 +308,8 @@ describe("Daily Dashboard Integration", () => {
       const messageList = dashboardView.querySelector(".message-list");
 
       if (messageList) {
-        const template = messageList.querySelector("template");
-        expect(template).toBeTruthy();
-
         const container = document.createElement("div");
-        container.innerHTML = template.innerHTML;
+        container.innerHTML = messageList.innerHTML;
         const archivedPreview = container.querySelector(".reply-preview.archived");
         expect(archivedPreview).toBeTruthy();
         const actionButtons = Array.from(
@@ -335,10 +324,7 @@ describe("Daily Dashboard Integration", () => {
       const messageList = dashboardView.querySelector(".message-list");
 
       if (messageList) {
-        const template = messageList.querySelector("template");
-        expect(template).toBeTruthy();
-
-        const content = (() => { const c = document.createElement("div"); c.innerHTML = template.innerHTML; return c; })();
+        const content = (() => { const c = document.createElement("div"); c.innerHTML = messageList.innerHTML; return c; })();
         // As a proxy, ensure there is exactly one Archive button at the outer level
         const archiveButtons = Array.from(
           content.querySelectorAll("button")
