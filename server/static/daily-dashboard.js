@@ -10,6 +10,13 @@ import { EmailScanningService } from "./email-scanning.js";
 import { computeMessagePreview } from "./message-utils.js";
 import { TaskPollingService } from "./task-polling.js";
 import { formatMessageDate, showError, showSuccess } from "./ui-utils.js";
+import {
+  filterMessages,
+  sortMessages,
+  parseUrlState,
+  buildUpdatedSearch,
+  getFilterHeading as utilGetFilterHeading,
+} from "./dashboard-utils.js";
 
 document.addEventListener("alpine:init", () => {
   const emailScanningService = new EmailScanningService();
@@ -64,41 +71,25 @@ document.addEventListener("alpine:init", () => {
 
       // Read filtering state from URL parameters
       readFilterStateFromUrl() {
-        const urlParams = new URLSearchParams(window.location.search);
-
-        // Read filterMode state
-        const filterModeParam = urlParams.get("filterMode");
-        if (filterModeParam) {
-          this.filterMode = filterModeParam;
-        }
-
-        // New: Read sort order from URL
-        const sortParam = urlParams.get("sort");
-        if (sortParam) {
-          this.sortNewestFirst = sortParam === "newest";
-        }
+        const { filterMode, sortNewestFirst } = parseUrlState(
+          window.location.search
+        );
+        this.filterMode = filterMode;
+        this.sortNewestFirst = sortNewestFirst;
       },
 
       // Update URL with current filtering state
       updateUrlWithFilterState() {
         // Preserve existing parameters while updating filter state
-        const params = new URLSearchParams(window.location.search);
+        const search = buildUpdatedSearch(window.location.search, {
+          filterMode: this.filterMode,
+          sortNewestFirst: this.sortNewestFirst,
+        });
 
-        // Update filter values
-        params.set("filterMode", this.filterMode);
-        params.set("sort", this.sortNewestFirst ? "newest" : "oldest");
+        const newUrl = `${window.location.pathname || "/"}?${search}$${
+          window.location.hash || ""
+        }`.replace(/([^:])\/\//g, "$1/");
 
-        // Preserve hash and path
-        const hash = window.location.hash;
-        const path = window.location.pathname || "/";
-
-        // Build new URL with updated search params while preserving existing ones
-        const newUrl = `${path}?${params.toString()}${hash}`.replace(
-          /([^:])\/\//g,
-          "$1/"
-        );
-
-        // Update history without reloading
         window.history.replaceState(
           { ...window.history.state, filtersUpdated: true },
           "",
@@ -116,21 +107,7 @@ document.addEventListener("alpine:init", () => {
       // Computed property for sorted messages
       get sortedMessages() {
         if (!this.unprocessedMessages.length) return [];
-
-        return [...this.unprocessedMessages].sort((a, b) => {
-          const dateA = this.getMessageDate(a);
-          const dateB = this.getMessageDate(b);
-
-          // Handle cases where date might be null
-          if (!dateA && !dateB) return 0;
-          if (!dateA) return 1;
-          if (!dateB) return -1;
-
-          const timeA = new Date(dateA).getTime();
-          const timeB = new Date(dateB).getTime();
-
-          return this.sortNewestFirst ? timeB - timeA : timeA - timeB;
-        });
+        return sortMessages(this.unprocessedMessages, this.sortNewestFirst);
       },
 
       // Toggle sort order
@@ -156,34 +133,7 @@ document.addEventListener("alpine:init", () => {
           const messages = await response.json();
 
           // Apply client-side filtering based on filterMode
-          let filteredMessages = messages;
-
-          switch (this.filterMode) {
-            case "archived":
-              // Show ONLY archived messages
-              filteredMessages = filteredMessages.filter((message) => {
-                return message.archived_at || message.company_archived_at;
-              });
-              break;
-            case "replied":
-              // Show ONLY replied messages
-              filteredMessages = filteredMessages.filter((message) => {
-                return message.reply_sent_at;
-              });
-              break;
-            case "not-replied":
-              // Show ONLY un-replied messages
-              filteredMessages = filteredMessages.filter((message) => {
-                return !message.reply_sent_at;
-              });
-              break;
-            case "all":
-            default:
-              // Show all messages (no filtering)
-              break;
-          }
-
-          this.unprocessedMessages = filteredMessages;
+          this.unprocessedMessages = filterMessages(messages, this.filterMode);
 
           console.log(
             `Loaded ${this.unprocessedMessages.length} messages after filtering (mode: ${this.filterMode})`
@@ -601,20 +551,10 @@ document.addEventListener("alpine:init", () => {
         if (!this.unprocessedMessages || !this.filterMode) {
           return "Messages (0)";
         }
-
-        const count = this.unprocessedMessages.length;
-        switch (this.filterMode) {
-          case "all":
-            return `All Messages (${count})`;
-          case "not-replied":
-            return `Unreplied Messages (${count})`;
-          case "archived":
-            return `Archived Messages (${count})`;
-          case "replied":
-            return `Replied Messages (${count})`;
-          default:
-            return `Messages (${count})`;
-        }
+        return utilGetFilterHeading(
+          this.filterMode,
+          this.unprocessedMessages.length
+        );
       },
     };
   });
