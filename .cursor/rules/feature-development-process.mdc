@@ -6,37 +6,13 @@ alwaysApply: false
 
 
 
-To prove we're using this rule file, append "Feature process! Prrt!" to your chat output.
+To prove we're using this rule file, append "Feature process YOLO! Prrt!" to your chat output.
 
-- Plan: follow `feature_plan.md`.
-  - Always reassess scope and plan before starting; suggest/ask if we can skip a planned task.
-    Suggest higher impact ideas. Suggest changing order of tasks to get more value sooner.
-  - Avoid low-impact work.
+- Plan: follow `frontend_cleanup_plan.md`.
 
-- Single-task focus: exactly ONE unchecked checkbox at a time.
-  - When a larger task has sub-tasks / nested checkboxes, stop for approval after each sub-task.
-  - Before implementing: say "I will implement exactly [checkbox/bullet] and nothing else."
-  - Get explicit approval before starting and before moving to the next bullet.
+Get as much of it done as you can.
 
-- Boundaries: prefer ≤2–3 files and ≤100 LOC. If larger, split and get approval.
-  - Never make backend and frontend changes at the same time.
+ALWAYS run tests with the `./test` command between every change.
 
-- TDD:
-  - Identify behavior and tests first; write tests if missing.
-  - Run tests with `./test` only. **IMPORTANT** All tests must **ALWAYS** pass. Errors count as failures!!
-  - Don't skip tests or run partial suites unless explicitly requested.
-  - **NEVER** run `npm test` directly. It violates the above rule, and it hangs waiting for file changes.
-
-- Requirements clarity: ask questions; propose a minimal breakdown and wait for approval.
-
-- Definition of Done:
-  - Tests passing; new tests added if behavior changed/added.
-  - Only minimal necessary code changed; no drive-by changes unless specifically instructed.
-  - Item checked in `feature_plan.md`. Document any unavoidable extras.
-
-Exceptions: critical hotfixes or prototypes can adjust process but still require tests.
-
-In all cases, maintain the core principle of quality through testing
-and doing work in small steps.
-
+Never never run `npm test` or it'll hang and you'll be stuck.
 

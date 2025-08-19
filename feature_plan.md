@@ -74,6 +74,11 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 - [x] Frontend unit: conditional rendering, loading states, state transitions per `message_id`
 - [x] Frontend integration: end-to-end dashboard flows (generate → edit → save; regenerate confirmation; send & archive with implicit save)
 
+
+5.5 Frontent test overhaul
+
+See `frontend_cleanup_plan.md`
+
 6. Cleanup and deprecation (future work, not in this feature)
 
 - [x] Mark issue 7 as complete on github 
