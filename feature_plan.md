@@ -61,7 +61,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 
 4. Error handling, edge cases, and UX polish
 
-- [ ] Archived or sent messages render as non-editable; actions hidden/disabled
+- [x] Archived or sent messages render as non-editable; actions hidden/disabled
 - [ ] API failures show toasts; user edits remain in textarea
 - [ ] Multiple messages per company: for now, we assume one active reply per company; dashboard remains message-centric, but edits/generation effectively target the company draft; document this in UI copy/tooltip
 - [ ] Unknown company on a message: show with `company_name = "Unknown Company"`; disable reply editing/generation

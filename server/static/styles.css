@@ -720,3 +720,25 @@ button.secondary:focus {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* Archived reply styling */
+.reply-preview.archived {
+  background-color: #f8f9fa;
+  border-left-color: #6c757d;
+}
+
+.reply-preview.archived .reply-label {
+  color: #6c757d;
+}
+
+.archived-badge {
+  background-color: #6c757d;
+  color: white;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

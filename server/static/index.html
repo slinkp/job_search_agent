@@ -349,7 +349,7 @@
                 </div>
                 
                 <!-- Reply actions based on reply_status -->
-                <template x-if="message.reply_status === 'none'">
+                <template x-if="message.reply_status === 'none' && !message.archived_at">
                   <div class="reply-actions">
                     <button 
                       @click="generateReply(message)" 
@@ -372,7 +372,7 @@
                   </div>
                 </template>
                 
-                <template x-if="message.reply_status === 'generated'">
+                <template x-if="message.reply_status === 'generated' && !message.archived_at">
                   <div class="reply-actions">
                     <div class="reply-preview">
                       <div class="reply-preview-content">
@@ -443,6 +443,30 @@
                       </div>
                     </div>
                     <!-- No action buttons for sent replies - editing is disabled -->
+                  </div>
+                </template>
+
+                <template x-if="message.archived_at && message.reply_message">
+                  <div class="reply-actions">
+                    <div class="reply-preview archived">
+                      <div class="reply-preview-content">
+                        <div class="reply-label">
+                          Archived Reply:
+                          <span class="archived-badge">Archived</span>
+                        </div>
+                        <p x-text="message.reply_message?.substring(0, 200) + (message.reply_message?.length > 200 ? '...' : '')"></p>
+                        <button 
+                          x-show="message.reply_message?.length > 200"
+                          @click="toggleReplyExpansion(message.message_id)" 
+                          class="expand-button outline"
+                          x-text="getReplyExpandButtonText(message.message_id)"
+                        ></button>
+                      </div>
+                      <div class="reply-preview-full" x-show="expandedReplies.has(message.message_id)">
+                        <p x-text="message.reply_message"></p>
+                      </div>
+                    </div>
+                    <!-- No action buttons for archived replies - editing is disabled -->
                   </div>
                 </template>
                 

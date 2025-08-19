@@ -276,8 +276,10 @@ describe("Daily Dashboard Integration", () => {
 
         const html = template.innerHTML;
 
-        // Block guarded by x-if for reply_status === 'none'
-        expect(html).toContain("x-if=\"message.reply_status === 'none'\"");
+        // Block guarded by x-if for reply_status === 'none' (and not archived)
+        expect(html).toContain(
+          "x-if=\"message.reply_status === 'none' &amp;&amp; !message.archived_at\""
+        );
 
         // Within that block, Generate Reply and Edit buttons should exist and be wired
         expect(html).toContain("Generate Reply");
@@ -296,8 +298,10 @@ describe("Daily Dashboard Integration", () => {
 
         const html = template.innerHTML;
 
-        // Block guarded by x-if for reply_status === 'generated'
-        expect(html).toContain("x-if=\"message.reply_status === 'generated'\"");
+        // Block guarded by x-if for reply_status === 'generated' (and not archived)
+        expect(html).toContain(
+          "x-if=\"message.reply_status === 'generated' &amp;&amp; !message.archived_at\""
+        );
 
         // Preview content and expand button
         expect(html).toContain("reply-preview");
@@ -327,6 +331,52 @@ describe("Daily Dashboard Integration", () => {
         // Template comment indicates no action buttons for sent replies
         expect(html).toContain(
           "<!-- No action buttons for sent replies - editing is disabled -->"
+        );
+      }
+    });
+
+    it("shows archived reply preview block without action buttons when message is archived", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      const messageList = dashboardView.querySelector(".message-list");
+
+      if (messageList) {
+        const template = messageList.querySelector("template");
+        expect(template).toBeTruthy();
+
+        const html = template.innerHTML;
+
+        // Block guarded by x-if for archived messages with reply
+        expect(html).toContain(
+          'x-if="message.archived_at &amp;&amp; message.reply_message"'
+        );
+
+        // Archived preview is rendered
+        expect(html).toContain("reply-preview archived");
+        // Template comment indicates no action buttons for archived replies
+        expect(html).toContain(
+          "<!-- No action buttons for archived replies - editing is disabled -->"
+        );
+      }
+    });
+
+    it("hides reply actions for archived messages regardless of reply_status", () => {
+      const dashboardView = document.getElementById("daily-dashboard-view");
+      const messageList = dashboardView.querySelector(".message-list");
+
+      if (messageList) {
+        const template = messageList.querySelector("template");
+        expect(template).toBeTruthy();
+
+        const html = template.innerHTML;
+
+        // Reply actions for 'none' status should be hidden for archived messages
+        expect(html).toContain(
+          "x-if=\"message.reply_status === 'none' &amp;&amp; !message.archived_at\""
+        );
+
+        // Reply actions for 'generated' status should be hidden for archived messages
+        expect(html).toContain(
+          "x-if=\"message.reply_status === 'generated' &amp;&amp; !message.archived_at\""
         );
       }
     });
