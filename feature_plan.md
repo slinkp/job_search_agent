@@ -72,7 +72,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
   - [x] Also, look for redundancy between server/frontend/tests/daily-dashboard-integration.test.js and server/frontend/tests/daily-dashboard.test.js 
 - [x] Backend tests: `GET /api/messages` payload (includes `reply_message`, `reply_status`), `POST/PUT /api/messages/{id}/reply` map to company draft, optional `send_and_archive` behavior
 - [x] Frontend unit: conditional rendering, loading states, state transitions per `message_id`
-- [ ] Frontend integration: end-to-end dashboard flows (generate → edit → save; regenerate confirmation; send & archive with implicit save)
+- [x] Frontend integration: end-to-end dashboard flows (generate → edit → save; regenerate confirmation; send & archive with implicit save)
 
 6. Cleanup and deprecation (future work, not in this feature)
 

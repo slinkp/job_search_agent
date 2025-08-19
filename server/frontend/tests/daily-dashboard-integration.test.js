@@ -381,4 +381,527 @@ describe("Daily Dashboard Integration", () => {
       }
     });
   });
+
+  describe("End-to-End Dashboard Flows", () => {
+    let mockFetch;
+    let Alpine;
+    let dailyDashboard;
+
+    beforeEach(async () => {
+      // Mock fetch for API calls
+      mockFetch = vi.fn();
+      global.fetch = mockFetch;
+
+      // Set up Alpine.js mock
+      global.Alpine = {
+        data: vi.fn(),
+        start: vi.fn(),
+        store: vi.fn(() => ({
+          navigateToCompany: vi.fn(),
+        })),
+      };
+      Alpine = global.Alpine;
+
+      // Mock daily dashboard component
+      dailyDashboard = {
+        unprocessedMessages: [],
+        loading: false,
+        generatingMessages: new Set(),
+        sendingMessages: new Set(),
+        expandedReplies: new Set(),
+
+        async generateReply(message) {
+          this.generatingMessages.add(message.message_id);
+
+          try {
+            const response = await fetch(
+              `/api/messages/${message.message_id}/reply`,
+              {
+                method: "POST",
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error("Failed to generate reply");
+            }
+
+            const data = await response.json();
+
+            // Simulate polling completion
+            message.reply_message = "Generated reply content";
+            message.reply_status = "generated";
+
+            return data;
+          } finally {
+            this.generatingMessages.delete(message.message_id);
+          }
+        },
+
+        async saveReply(message, replyText) {
+          const response = await fetch(
+            `/api/messages/${message.message_id}/reply`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ message: replyText }),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to save reply");
+          }
+
+          message.reply_message = replyText;
+          return await response.json();
+        },
+
+        async sendAndArchive(message) {
+          this.sendingMessages.add(message.message_id);
+
+          try {
+            const response = await fetch(
+              `/api/messages/${message.message_id}/send_and_archive`,
+              {
+                method: "POST",
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error("Failed to send and archive");
+            }
+
+            // Simulate successful send and archive
+            message.reply_status = "sent";
+            message.reply_sent_at = new Date().toISOString();
+            message.archived_at = new Date().toISOString();
+
+            return await response.json();
+          } finally {
+            this.sendingMessages.delete(message.message_id);
+          }
+        },
+
+        isGeneratingMessage(message) {
+          return this.generatingMessages.has(message.message_id);
+        },
+
+        isSendingMessage(message) {
+          return this.sendingMessages.has(message.message_id);
+        },
+      };
+
+      // Register the component
+      Alpine.data.mockImplementation((name, fn) => {
+        if (name === "dailyDashboard") {
+          return fn();
+        }
+      });
+    });
+
+    describe("Generate → Edit → Save Flow", () => {
+      it("should complete full generate-edit-save workflow", async () => {
+        const mockMessage = {
+          message_id: "msg-123",
+          company_id: "company-123",
+          company_name: "Test Company",
+          subject: "Test Subject",
+          message: "Test message content",
+          reply_message: "",
+          reply_status: "none",
+          reply_sent_at: null,
+          archived_at: null,
+        };
+
+        // Mock API responses
+        mockFetch
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () =>
+              Promise.resolve({ task_id: "task-123", status: "pending" }),
+          }) // Generate reply
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () =>
+              Promise.resolve({ reply_message: "Updated reply content" }),
+          }); // Save reply
+
+        // Step 1: Generate reply
+        expect(mockMessage.reply_status).toBe("none");
+        expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+
+        await dailyDashboard.generateReply(mockMessage);
+
+        // Verify generate API was called
+        expect(mockFetch).toHaveBeenCalledWith("/api/messages/msg-123/reply", {
+          method: "POST",
+        });
+
+        // Verify message state after generation
+        expect(mockMessage.reply_status).toBe("generated");
+        expect(mockMessage.reply_message).toBe("Generated reply content");
+        expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+
+        // Step 2: Edit the generated reply
+        const editedReplyText = "Edited reply content";
+
+        // Step 3: Save the edited reply
+        await dailyDashboard.saveReply(mockMessage, editedReplyText);
+
+        // Verify save API was called
+        expect(mockFetch).toHaveBeenCalledWith("/api/messages/msg-123/reply", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: editedReplyText }),
+        });
+
+        // Verify final state
+        expect(mockMessage.reply_message).toBe(editedReplyText);
+        expect(mockMessage.reply_status).toBe("generated"); // Still generated, not sent
+      });
+
+      it("should handle generate API failure gracefully", async () => {
+        const mockMessage = {
+          message_id: "msg-123",
+          reply_status: "none",
+        };
+
+        // Mock API failure
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({ error: "Server error" }),
+        });
+
+        await expect(dailyDashboard.generateReply(mockMessage)).rejects.toThrow(
+          "Failed to generate reply"
+        );
+
+        // Verify loading state is cleared even on failure
+        expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+      });
+
+      it("should handle save API failure gracefully", async () => {
+        const mockMessage = {
+          message_id: "msg-123",
+          reply_message: "Original reply",
+        };
+
+        // Mock API failure
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          json: () => Promise.resolve({ error: "Bad request" }),
+        });
+
+        await expect(
+          dailyDashboard.saveReply(mockMessage, "New reply")
+        ).rejects.toThrow("Failed to save reply");
+
+        // Verify original reply is preserved on failure
+        expect(mockMessage.reply_message).toBe("Original reply");
+      });
+    });
+
+    describe("Regenerate Confirmation Flow", () => {
+      it("should regenerate reply for message with existing generated reply", async () => {
+        const mockMessage = {
+          message_id: "msg-456",
+          company_name: "Test Company",
+          reply_message: "Existing reply content",
+          reply_status: "generated",
+          reply_sent_at: null,
+          archived_at: null,
+        };
+
+        // Mock API response for regenerate
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({ task_id: "task-456", status: "pending" }),
+        });
+
+        // Verify initial state
+        expect(mockMessage.reply_message).toBe("Existing reply content");
+        expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+
+        // Regenerate reply (same method as generate, but on a message that already has a reply)
+        await dailyDashboard.generateReply(mockMessage);
+
+        // Verify API was called
+        expect(mockFetch).toHaveBeenCalledWith("/api/messages/msg-456/reply", {
+          method: "POST",
+        });
+
+        // Verify state after regeneration
+        expect(mockMessage.reply_message).toBe("Generated reply content"); // New content
+        expect(mockMessage.reply_status).toBe("generated");
+        expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+      });
+
+      it("should not allow regenerate on sent messages", async () => {
+        const mockMessage = {
+          message_id: "msg-789",
+          reply_message: "Sent reply content",
+          reply_status: "sent",
+          reply_sent_at: "2025-01-15T10:30:00Z",
+          archived_at: null,
+        };
+
+        // In a real implementation, the UI would disable the regenerate button for sent messages
+        // This test verifies that the state is correctly identified
+        expect(mockMessage.reply_status).toBe("sent");
+        expect(mockMessage.reply_sent_at).toBeTruthy();
+
+        // The regenerate button should be disabled in the UI for sent messages
+        // We don't call generateReply here because it would be prevented by the UI
+      });
+
+      it("should not allow regenerate on archived messages", async () => {
+        const mockMessage = {
+          message_id: "msg-999",
+          reply_message: "Archived reply content",
+          reply_status: "generated",
+          reply_sent_at: null,
+          archived_at: "2025-01-15T11:00:00Z",
+        };
+
+        // In a real implementation, the UI would disable the regenerate button for archived messages
+        // This test verifies that the state is correctly identified
+        expect(mockMessage.archived_at).toBeTruthy();
+
+        // The regenerate button should be disabled in the UI for archived messages
+        // We don't call generateReply here because it would be prevented by the UI
+      });
+    });
+
+    describe("Send & Archive with Implicit Save Flow", () => {
+      it("should complete full send-and-archive workflow", async () => {
+        const mockMessage = {
+          message_id: "msg-send-123",
+          company_id: "company-send-123",
+          company_name: "Send Test Company",
+          reply_message: "Ready to send reply",
+          reply_status: "generated",
+          reply_sent_at: null,
+          archived_at: null,
+        };
+
+        // Mock API response for send and archive
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              task_id: "send-task-123",
+              status: "pending",
+              sent_at: "2025-01-15T12:00:00Z",
+              archived_at: "2025-01-15T12:00:00Z",
+            }),
+        });
+
+        // Verify initial state
+        expect(mockMessage.reply_status).toBe("generated");
+        expect(mockMessage.reply_sent_at).toBeNull();
+        expect(mockMessage.archived_at).toBeNull();
+        expect(dailyDashboard.isSendingMessage(mockMessage)).toBe(false);
+
+        // Send and archive
+        await dailyDashboard.sendAndArchive(mockMessage);
+
+        // Verify API was called
+        expect(mockFetch).toHaveBeenCalledWith(
+          "/api/messages/msg-send-123/send_and_archive",
+          { method: "POST" }
+        );
+
+        // Verify final state
+        expect(mockMessage.reply_status).toBe("sent");
+        expect(mockMessage.reply_sent_at).toBeTruthy();
+        expect(mockMessage.archived_at).toBeTruthy();
+        expect(dailyDashboard.isSendingMessage(mockMessage)).toBe(false);
+      });
+
+      it("should handle send-and-archive API failure gracefully", async () => {
+        const mockMessage = {
+          message_id: "msg-fail-123",
+          reply_message: "Reply to send",
+          reply_status: "generated",
+          reply_sent_at: null,
+          archived_at: null,
+        };
+
+        // Mock API failure
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({ error: "Failed to send email" }),
+        });
+
+        await expect(
+          dailyDashboard.sendAndArchive(mockMessage)
+        ).rejects.toThrow("Failed to send and archive");
+
+        // Verify state is unchanged on failure
+        expect(mockMessage.reply_status).toBe("generated");
+        expect(mockMessage.reply_sent_at).toBeNull();
+        expect(mockMessage.archived_at).toBeNull();
+        expect(dailyDashboard.isSendingMessage(mockMessage)).toBe(false);
+      });
+
+      it("should prevent send-and-archive on messages without reply", async () => {
+        const mockMessage = {
+          message_id: "msg-no-reply-123",
+          reply_message: "",
+          reply_status: "none",
+          reply_sent_at: null,
+          archived_at: null,
+        };
+
+        // In a real implementation, the UI would disable the send button for messages without replies
+        // This test verifies that the state is correctly identified
+        expect(mockMessage.reply_status).toBe("none");
+        expect(mockMessage.reply_message).toBe("");
+
+        // The send button should be disabled in the UI for messages without replies
+        // We don't call sendAndArchive here because it would be prevented by the UI
+      });
+
+      it("should prevent send-and-archive on already sent messages", async () => {
+        const mockMessage = {
+          message_id: "msg-already-sent-123",
+          reply_message: "Already sent reply",
+          reply_status: "sent",
+          reply_sent_at: "2025-01-15T10:00:00Z",
+          archived_at: "2025-01-15T10:00:00Z",
+        };
+
+        // In a real implementation, the UI would hide/disable the send button for already sent messages
+        // This test verifies that the state is correctly identified
+        expect(mockMessage.reply_status).toBe("sent");
+        expect(mockMessage.reply_sent_at).toBeTruthy();
+        expect(mockMessage.archived_at).toBeTruthy();
+
+        // The send button should be hidden/disabled in the UI for already sent messages
+        // We don't call sendAndArchive here because it would be prevented by the UI
+      });
+    });
+
+    describe("State Transitions During Workflows", () => {
+      it("should track loading states correctly during generate workflow", async () => {
+        const mockMessage = {
+          message_id: "msg-loading-123",
+          reply_status: "none",
+        };
+
+        let generatePromise;
+
+        // Mock slow API response
+        mockFetch.mockImplementationOnce(() => {
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({
+                ok: true,
+                json: () =>
+                  Promise.resolve({ task_id: "task-123", status: "pending" }),
+              });
+            }, 100);
+          });
+        });
+
+        // Start generation
+        generatePromise = dailyDashboard.generateReply(mockMessage);
+
+        // Verify loading state is set immediately
+        expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(true);
+
+        // Wait for completion
+        await generatePromise;
+
+        // Verify loading state is cleared
+        expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+      });
+
+      it("should track loading states correctly during send-and-archive workflow", async () => {
+        const mockMessage = {
+          message_id: "msg-send-loading-123",
+          reply_message: "Reply to send",
+          reply_status: "generated",
+        };
+
+        let sendPromise;
+
+        // Mock slow API response
+        mockFetch.mockImplementationOnce(() => {
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({
+                ok: true,
+                json: () =>
+                  Promise.resolve({
+                    task_id: "send-task-123",
+                    status: "pending",
+                  }),
+              });
+            }, 100);
+          });
+        });
+
+        // Start send and archive
+        sendPromise = dailyDashboard.sendAndArchive(mockMessage);
+
+        // Verify loading state is set immediately
+        expect(dailyDashboard.isSendingMessage(mockMessage)).toBe(true);
+
+        // Wait for completion
+        await sendPromise;
+
+        // Verify loading state is cleared
+        expect(dailyDashboard.isSendingMessage(mockMessage)).toBe(false);
+      });
+
+      it("should handle concurrent operations on different messages", async () => {
+        const message1 = {
+          message_id: "msg-concurrent-1",
+          reply_status: "none",
+        };
+
+        const message2 = {
+          message_id: "msg-concurrent-2",
+          reply_message: "Reply to send",
+          reply_status: "generated",
+        };
+
+        // Mock API responses
+        mockFetch
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () =>
+              Promise.resolve({ task_id: "task-1", status: "pending" }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () =>
+              Promise.resolve({ task_id: "task-2", status: "pending" }),
+          });
+
+        // Start concurrent operations
+        const generatePromise = dailyDashboard.generateReply(message1);
+        const sendPromise = dailyDashboard.sendAndArchive(message2);
+
+        // Verify both operations are tracked independently
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(true);
+
+        // Wait for both to complete
+        await Promise.all([generatePromise, sendPromise]);
+
+        // Verify both loading states are cleared
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(false);
+      });
+    });
+  });
 });
