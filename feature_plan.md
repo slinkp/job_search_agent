@@ -63,7 +63,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 
 - [x] Archived or sent messages render as non-editable; actions hidden/disabled
 - [x] API failures show toasts; user edits remain in textarea
-- [ ] Multiple messages per company: for now, we assume one active reply per company; dashboard remains message-centric, but edits/generation effectively target the company draft
+- [x] Multiple messages per company: for now, we assume one active reply per company; dashboard remains message-centric, but edits/generation effectively target the company draft
 - [ ] Tests: edge cases (no draft + sent, archived, unknown company)
 
 5. Test inventory and coverage

@@ -128,7 +128,13 @@ def get_companies(request) -> list[dict]:
 
 @view_config(route_name="messages", renderer="json", request_method="GET")
 def get_messages(request) -> list[dict]:
-    """Get all recruiter messages with company info."""
+    """Get all recruiter messages with company info.
+
+    Note: Reply messages are currently stored at the company level (Company.reply_message).
+    If a company has multiple messages, all messages from that company will show
+    the same reply_message content. The reply_status is calculated per message
+    based on the message's reply_sent_at field and the company's reply_message.
+    """
     repo = models.company_repository()
     messages = repo.get_all_messages()
 
@@ -171,7 +177,13 @@ def create_stub_message(company_name: str) -> str:
 
 @view_config(route_name="message_reply", renderer="json", request_method="POST")
 def generate_message_by_id(request):
-    """Generate a reply for a specific message by message_id."""
+    """Generate a reply for a specific message by message_id.
+
+    Note: Currently, reply drafts are stored at the company level (Company.reply_message).
+    If a company has multiple messages, generating a reply for one message will
+    update the company's shared reply draft. This is a temporary limitation until
+    per-message draft storage is implemented.
+    """
     message_id = request.matchdict["message_id"]
 
     if not message_id:
@@ -204,7 +216,13 @@ def generate_message_by_id(request):
 
 @view_config(route_name="message_reply", renderer="json", request_method="PUT")
 def update_message_by_id(request):
-    """Update a reply message for a specific message by message_id."""
+    """Update a reply message for a specific message by message_id.
+
+    Note: Currently, reply drafts are stored at the company level (Company.reply_message).
+    If a company has multiple messages, updating a reply for one message will
+    update the company's shared reply draft. This is a temporary limitation until
+    per-message draft storage is implemented.
+    """
     message_id = request.matchdict["message_id"]
 
     if not message_id:

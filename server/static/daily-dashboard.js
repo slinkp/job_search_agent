@@ -1,5 +1,10 @@
 // Daily Dashboard Component
 // Handles the display and interaction with unprocessed recruiter messages
+//
+// Note: Reply drafts are currently stored at the company level (Company.reply_message).
+// If a company has multiple messages, editing/generating a reply for one message
+// will update the company's shared reply draft. This is a temporary limitation
+// until per-message draft storage is implemented.
 
 import { EmailScanningService } from "./email-scanning.js";
 import { computeMessagePreview } from "./message-utils.js";
