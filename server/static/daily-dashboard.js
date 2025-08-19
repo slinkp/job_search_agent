@@ -185,7 +185,9 @@ document.addEventListener("alpine:init", () => {
           );
         } catch (error) {
           console.error("Failed to load messages:", error);
-          // Could add user notification here
+          showError(
+            "Failed to load messages. Please refresh the page to try again."
+          );
         } finally {
           this.loading = false;
         }
@@ -229,7 +231,9 @@ document.addEventListener("alpine:init", () => {
           showSuccess("Company research completed!");
         } catch (err) {
           console.error("Failed to research company:", err);
-          // Could add user notification here
+          showError(
+            err.message || "Failed to research company. Please try again."
+          );
         } finally {
           this.researchingCompanies.delete(message.company_name);
           taskPollingService.removeResearching(message);
