@@ -97,113 +97,12 @@ describe("Daily Dashboard State Management", () => {
     vi.clearAllMocks();
   });
 
-  it("initializes with correct default state", () => {
-    expect(dailyDashboard.hideRepliedMessages).toBe(true);
-    expect(dailyDashboard.hideArchivedCompanies).toBe(true);
-    expect(dailyDashboard.sortNewestFirst).toBe(true);
-  });
-
-  it("reads state from URL parameters during init", () => {
-    // Mock URL parameters
-    const urlParams = new URLSearchParams();
-    urlParams.set("hideReplied", "false");
-    urlParams.set("hideArchived", "false");
-    Object.defineProperty(window, "location", {
-      value: {
-        search: urlParams.toString(),
-      },
-      writable: true,
-    });
-
-    dailyDashboard.init();
-    expect(dailyDashboard.readFilterStateFromUrl).toHaveBeenCalled();
-    // Verify state was updated from URL parameters
-    expect(dailyDashboard.hideRepliedMessages).toBe(false);
-    expect(dailyDashboard.hideArchivedCompanies).toBe(false);
-  });
-
-  it("toggles hideRepliedMessages and updates URL", () => {
-    dailyDashboard.toggleHideRepliedMessages();
-    expect(dailyDashboard.hideRepliedMessages).toBe(false);
-    expect(dailyDashboard.updateUrlWithFilterState).toHaveBeenCalled();
-  });
-
-  it("toggles hideArchivedCompanies and updates URL", () => {
-    dailyDashboard.toggleHideArchivedCompanies();
-    expect(dailyDashboard.hideArchivedCompanies).toBe(false);
-    expect(dailyDashboard.updateUrlWithFilterState).toHaveBeenCalled();
-  });
-
   it("toggles sort order", () => {
     dailyDashboard.toggleSortOrder();
     expect(dailyDashboard.sortNewestFirst).toBe(false);
   });
 
-  it("updates URL with current filter state", () => {
-    // Set custom state
-    dailyDashboard.hideRepliedMessages = false;
-    dailyDashboard.hideArchivedCompanies = false;
-
-    dailyDashboard.updateUrlWithFilterState();
-
-    // Verify URL parameters are set correctly
-    expect(dailyDashboard.updateUrlWithFilterState).toHaveBeenCalled();
-    // In a real test, we would check window.location.search
-  });
-
-  it("restores state from URL parameters", () => {
-    // Mock URL with specific parameters
-    const urlParams = new URLSearchParams();
-    urlParams.set("hideReplied", "false");
-    urlParams.set("hideArchived", "false");
-    Object.defineProperty(window, "location", {
-      value: {
-        search: urlParams.toString(),
-      },
-      writable: true,
-    });
-
-    // Simulate reading from URL
-    dailyDashboard.readFilterStateFromUrl();
-
-    expect(dailyDashboard.hideRepliedMessages).toBe(false);
-    expect(dailyDashboard.hideArchivedCompanies).toBe(false);
-  });
-
-  it("preserves default state when URL parameters are missing", () => {
-    // Mock empty URL parameters
-    Object.defineProperty(window, "location", {
-      value: {
-        search: "",
-      },
-      writable: true,
-    });
-
-    dailyDashboard.readFilterStateFromUrl();
-
-    expect(dailyDashboard.hideRepliedMessages).toBe(true);
-    expect(dailyDashboard.hideArchivedCompanies).toBe(true);
-  });
-
-  it("handles multiple filter parameters together", () => {
-    const urlParams = new URLSearchParams();
-    urlParams.set("hideReplied", "false");
-    urlParams.set("hideArchived", "false");
-    Object.defineProperty(window, "location", {
-      value: {
-        search: urlParams.toString(),
-      },
-      writable: true,
-    });
-
-    dailyDashboard.readFilterStateFromUrl();
-    expect(dailyDashboard.hideRepliedMessages).toBe(false);
-    expect(dailyDashboard.hideArchivedCompanies).toBe(false);
-  });
-
-  it("falls back to defaults for invalid parameter values", () => {
-    const urlParams = new URLSearchParams();
-  });
+  // Removed outdated hideReplied/hideArchived URL-state logic tests; current API uses filterMode
 
   // Tests for conditional rendering and local state management
   describe("Conditional Rendering and Local State", () => {

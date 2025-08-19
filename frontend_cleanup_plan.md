@@ -35,7 +35,7 @@
 [ ] server/frontend/tests/email-scanning.service.test.js: status text/class; polling completes → triggers refresh hook (mock)
 
 ### Refactor/trim existing tests
-[ ] Remove duplicated suites and outdated URL-state logic in daily-dashboard.test.js
+[x] Remove duplicated suites and outdated URL-state logic in daily-dashboard.test.js
 [ ] Convert template-innerHTML assertions in daily-dashboard-integration.test.js into user-visible behavior assertions (or delete if redundant with component tests)
 [ ] Stop using _x_dataStack directly; prefer DOM interactions
 
@@ -43,9 +43,9 @@
 [ ] Consider 1–2 Playwright flows (generate reply → poll → UI update; send & archive disabled/enabled states) when backend is stable. Do not auto-start server (manual step).
 
 ### Coverage and CI signals
-[ ] Ensure coverage includes server/static/*.js but excludes HTML and setup
+[x] Ensure coverage includes server/static/*.js but excludes HTML and setup
 [ ] Keep tests deterministic with fake timers and controlled fetch mocks
 
 ### Cleanup
-[ ] Remove/rename old test files to avoid confusion; update docs
+[x] Remove/rename old test files to avoid confusion; update docs
 [ ] Keep a tiny smoke test to catch catastrophic template load issues

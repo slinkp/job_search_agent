@@ -15,7 +15,15 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
-      exclude: ["node_modules/", "vitest.setup.js"],
+      exclude: [
+        "node_modules/",
+        "vitest.setup.js",
+        "server/static/index.html",
+      ],
+      include: [
+        "server/static/*.js",
+        "server/frontend/**/*.js",
+      ],
     },
 
     // Include source files for tests
