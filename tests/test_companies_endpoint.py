@@ -996,3 +996,169 @@ def test_send_and_archive_message_empty_message_id():
 
     assert response["error"] == "Message ID is required"
     assert request.response.status == "400 Bad Request"
+
+
+def test_multiple_messages_share_company_draft(clean_test_db):
+    """Test that multiple messages from the same company share the company-level reply draft."""
+    repo = clean_test_db
+
+    # Create a company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Create two messages for the same company
+    message1 = RecruiterMessage(
+        message_id="msg1",
+        company_id="test-company",
+        subject="First Message",
+        sender="recruiter1@test.com",
+        date=datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="First message content",
+        email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread1",
+        thread_id="thread1",
+    )
+    message2 = RecruiterMessage(
+        message_id="msg2",
+        company_id="test-company",
+        subject="Second Message",
+        sender="recruiter2@test.com",
+        date=datetime.datetime(2024, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="Second message content",
+        email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread2",
+        thread_id="thread2",
+    )
+
+    repo.create_recruiter_message(message1)
+    repo.create_recruiter_message(message2)
+
+    # Test GET /api/messages - both messages should have no reply initially
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        response = server.app.get_messages(request)
+
+    assert len(response) == 2
+    msg1_data = next(msg for msg in response if msg["message_id"] == "msg1")
+    msg2_data = next(msg for msg in response if msg["message_id"] == "msg2")
+
+    assert msg1_data["reply_message"] == ""
+    assert msg1_data["reply_status"] == "none"
+    assert msg2_data["reply_message"] == ""
+    assert msg2_data["reply_status"] == "none"
+
+    # Update reply for message1 - should affect both messages
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"message": "Shared reply for company"})
+        request.matchdict = {"message_id": "msg1"}
+        response = server.app.update_message_by_id(request)
+
+    assert response["reply_message"] == "Shared reply for company"
+
+    # Verify both messages now show the same reply_message
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        response = server.app.get_messages(request)
+
+    msg1_data = next(msg for msg in response if msg["message_id"] == "msg1")
+    msg2_data = next(msg for msg in response if msg["message_id"] == "msg2")
+
+    assert msg1_data["reply_message"] == "Shared reply for company"
+    assert msg1_data["reply_status"] == "generated"
+    assert msg2_data["reply_message"] == "Shared reply for company"
+    assert msg2_data["reply_status"] == "generated"
+
+    # Update reply for message2 - should update the shared draft
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"message": "Updated shared reply"})
+        request.matchdict = {"message_id": "msg2"}
+        response = server.app.update_message_by_id(request)
+
+    assert response["reply_message"] == "Updated shared reply"
+
+    # Verify both messages show the updated reply
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        response = server.app.get_messages(request)
+
+    msg1_data = next(msg for msg in response if msg["message_id"] == "msg1")
+    msg2_data = next(msg for msg in response if msg["message_id"] == "msg2")
+
+    assert msg1_data["reply_message"] == "Updated shared reply"
+    assert msg1_data["reply_status"] == "generated"
+    assert msg2_data["reply_message"] == "Updated shared reply"
+    assert msg2_data["reply_status"] == "generated"
+
+
+def test_message_reply_generation_affects_company_draft(clean_test_db, mock_task_manager):
+    """Test that generating a reply for one message affects all messages from the same company."""
+    repo = clean_test_db
+
+    # Create a company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Create two messages for the same company
+    message1 = RecruiterMessage(
+        message_id="msg1",
+        company_id="test-company",
+        subject="First Message",
+        sender="recruiter1@test.com",
+        date=datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="First message content",
+        email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread1",
+        thread_id="thread1",
+    )
+    message2 = RecruiterMessage(
+        message_id="msg2",
+        company_id="test-company",
+        subject="Second Message",
+        sender="recruiter2@test.com",
+        date=datetime.datetime(2024, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="Second message content",
+        email_thread_link="https://mail.google.com/mail/u/0/#inbox/thread2",
+        thread_id="thread2",
+    )
+
+    repo.create_recruiter_message(message1)
+    repo.create_recruiter_message(message2)
+
+    # Generate reply for message1
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"message_id": "msg1"}
+        response = server.app.generate_message_by_id(request)
+
+    assert "task_id" in response
+    assert response["status"] == tasks.TaskStatus.PENDING.value
+
+    # Verify task was created for the company (not message-specific)
+    mock_task_manager.create_task.assert_called_once_with(
+        tasks.TaskType.GENERATE_REPLY,
+        {"company_id": "test-company"},
+    )
+
+    # Simulate task completion by updating company reply_message
+    company.reply_message = "Generated reply for company"
+    repo.update(company)
+
+    # Verify both messages now show the generated reply
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        response = server.app.get_messages(request)
+
+    msg1_data = next(msg for msg in response if msg["message_id"] == "msg1")
+    msg2_data = next(msg for msg in response if msg["message_id"] == "msg2")
+
+    assert msg1_data["reply_message"] == "Generated reply for company"
+    assert msg1_data["reply_status"] == "generated"
+    assert msg2_data["reply_message"] == "Generated reply for company"
+    assert msg2_data["reply_status"] == "generated"
