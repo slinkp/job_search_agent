@@ -6,17 +6,17 @@
 // will update the company's shared reply draft. This is a temporary limitation
 // until per-message draft storage is implemented.
 
+import {
+  buildUpdatedSearch,
+  filterMessages,
+  parseUrlState,
+  sortMessages,
+  getFilterHeading as utilGetFilterHeading,
+} from "./dashboard-utils.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { computeMessagePreview } from "./message-utils.js";
 import { TaskPollingService } from "./task-polling.js";
 import { formatMessageDate, showError, showSuccess } from "./ui-utils.js";
-import {
-  filterMessages,
-  sortMessages,
-  parseUrlState,
-  buildUpdatedSearch,
-  getFilterHeading as utilGetFilterHeading,
-} from "./dashboard-utils.js";
 
 document.addEventListener("alpine:init", () => {
   const emailScanningService = new EmailScanningService();
