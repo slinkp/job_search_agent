@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Important: do NOT mock the module here; we want real coverage
 import { CompanyResearchService } from "../../static/company-research.js";
@@ -38,5 +38,3 @@ describe("CompanyResearchService (real) smoke", () => {
     expect(res).toEqual({ status: "completed" });
   });
 });
-
-

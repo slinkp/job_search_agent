@@ -10,6 +10,7 @@ Acceptance criteria:
 [ ] Real component tests validate key user flows without asserting brittle template internals
 [ ] Remove duplicate/brittle tests; align with current filterMode/sort API
 [ ] Task/email services have minimal contract tests with fetch/timer control
+    - Note: Added minimal real (unmocked) smoke for `CompanyResearchService` to raise coverage
 
 ### Extract pure utilities from daily-dashboard.js
 [x] Create server/static/dashboard-utils.js exporting:
@@ -51,6 +52,13 @@ Acceptance criteria:
 [x] Remove/rename old test files to avoid confusion; update docs
 [x] Keep a tiny smoke test to catch catastrophic template load issues
 
+### Coverage improvements (smoke)
+[x] Identify 0% coverage root causes: stripped `<script src>` in tests and full module mocks prevent execution
+[x] Add import smoke test for `server/static/app.js` to execute top-level side-effects (style injection) safely
+[x] Add import smoke test for `server/static/daily-dashboard.js` and trigger `alpine:init` to register component
+[x] Add thin real service smoke test for `server/static/company-research.js` (without vi.mock), stubbing `fetch`
+[x] Verify coverage now non-zero for previously 0% files via `./test --no-python`
+
 ## Current Issues Identified
 
 ### Environment and Configuration Issues
@@ -68,6 +76,10 @@ Acceptance criteria:
 [ ] **Extract URL sync logic**: Move `updateUrlWithFilterState` and `readFilterStateFromUrl` from daily-dashboard.js into url-utils.js module
 [ ] **Add accessible selectors**: Add `aria-label` attributes to key buttons in index.html for stable test queries
 [ ] **Add data-testid attributes**: Add `data-testid` to hard-to-reach nodes that can't use accessible selectors
+
+Notes from investigation:
+- Stripping `<script src>` in tests prevents module execution; import smoke tests address coverage without re-enabling external fetches.
+- Prefer raising coverage by extracting pure logic into `*-utils.js` and testing directly; use smoke tests only to ensure top-level registration side-effects run.
 
 ### Test Content Improvements
 [ ] **Replace template-internal assertions**: Convert @click attribute checks to behavior assertions in daily-dashboard-integration.test.js
