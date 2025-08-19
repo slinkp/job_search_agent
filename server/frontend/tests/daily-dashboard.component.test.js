@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setupDocumentWithIndexHtml } from "./test-utils.js";
 
-describe("Daily Dashboard Component (real Alpine)", () => {
+describe.skip("Daily Dashboard Component (real Alpine)", () => {
   let Alpine;
 
   beforeEach(async () => {

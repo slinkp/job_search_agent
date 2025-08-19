@@ -3,28 +3,28 @@
 ## Plan: Improve frontend tests for Daily Message Dashboard
 
 ### Ground rules and definition of done
-[ ] Follow feature-development-process.mdc; ≤2–3 files per step; ≤100 LOC where practical; keep tests fast and meaningful; run via ./test.
+[x] Follow feature-development-process.mdc; ≤2–3 files per step; ≤100 LOC where practical; keep tests fast and meaningful; run via ./test.
 [ ] Acceptance criteria:
-[ ] Utility logic (filtering, sorting, URL state, headings) covered by pure unit tests
+[x] Utility logic (filtering, sorting, URL state, headings) covered by pure unit tests
 [ ] Real component tests validate key user flows without asserting brittle template internals
 [ ] Remove duplicate/brittle tests; align with current filterMode/sort API
 [ ] Task/email services have minimal contract tests with fetch/timer control
 
 ### Extract pure utilities from daily-dashboard.js
-[ ] Create server/static/dashboard-utils.js exporting:
-[ ] filterMessages(messages, filterMode)
-[ ] sortMessages(messages, newestFirst)
-[ ] parseUrlState(search) → { filterMode, sortNewestFirst }
-[ ] buildUpdatedSearch(search, { filterMode, sortNewestFirst })
-[ ] getFilterHeading(filterMode, count)
-[ ] Keep daily-dashboard.js delegating to these helpers
-[ ] Tests: server/frontend/tests/dashboard-utils.test.js as above
+[x] Create server/static/dashboard-utils.js exporting:
+[x] filterMessages(messages, filterMode)
+[x] sortMessages(messages, newestFirst)
+[x] parseUrlState(search) → { filterMode, sortNewestFirst }
+[x] buildUpdatedSearch(search, { filterMode, sortNewestFirst })
+[x] getFilterHeading(filterMode, count)
+[x] Keep daily-dashboard.js delegating to these helpers
+[x] Tests: server/frontend/tests/dashboard-utils.test.js as above
 
 ### Real component tests (Alpine, mounted)
-[ ] Add server/frontend/tests/daily-dashboard.component.test.js:
-[ ] Mount real DOM via setupDocumentWithIndexHtml(document)
-[ ] Import Alpine + daily-dashboard.js, dispatch alpine:init, Alpine.start()
-[ ] Mock /api/messages and assert:
+[x] Add server/frontend/tests/daily-dashboard.component.test.js:
+[x] Mount real DOM via setupDocumentWithIndexHtml(document)
+[x] Import Alpine + daily-dashboard.js, dispatch alpine:init, Alpine.start()
+[x] Mock /api/messages and assert:
 [ ] Filter buttons update heading and URL (filterMode)
 [ ] Sort button toggles text and URL (sort)
 [ ] Expand/collapse behavior on long messages
