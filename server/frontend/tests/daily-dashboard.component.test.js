@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { setupDocumentWithIndexHtml } from "./test-utils.js";
 
-describe.skip("Daily Dashboard Component (real Alpine)", () => {
+describe("Daily Dashboard Component (real Alpine)", () => {
   let Alpine;
 
-  beforeEach(async () => {
-    // Fresh DOM
+  beforeAll(async () => {
+    // Fresh DOM once
     setupDocumentWithIndexHtml(document);
 
     // Provide a MutationObserver stub compatible with Alpine in happy-dom
@@ -57,6 +57,13 @@ describe.skip("Daily Dashboard Component (real Alpine)", () => {
     await Alpine.start();
   });
 
+  afterAll(() => {
+    // best-effort cleanup
+    if (window && window.Alpine) {
+      delete window.Alpine;
+    }
+  });
+
   function getDashboardRoot() {
     return document.getElementById("daily-dashboard-view");
   }
@@ -73,47 +80,38 @@ describe.skip("Daily Dashboard Component (real Alpine)", () => {
     throw new Error("Heading not rendered");
   }
 
-  it("loads messages and shows correct default heading", async () => {
+  it("performs core UI flows: load, filter, sort, expansion markers", async () => {
+    // Load
     const h3 = await waitForHeading();
     expect(h3.textContent).toMatch(/All Messages \(2\)/);
-  });
 
-  it("filter buttons update heading and URL", async () => {
-    await waitForHeading();
+    // Filter -> Not Replied
     const root = getDashboardRoot();
     const notRepliedBtn = root.querySelector(
       ".filter-controls button:nth-child(2)"
     );
     notRepliedBtn.click();
-
-    // After filtering, only 1 not-replied message remains
-    const h3 = await waitForHeading();
-    expect(h3.textContent).toMatch(/Unreplied Messages \(1\)/);
-
-    // URL updated
+    const h3After = await waitForHeading();
+    expect(h3After.textContent).toMatch(/Unreplied Messages \(1\)/);
     expect(window.location.search).toContain("filterMode=not-replied");
-  });
 
-  it("sort button toggles label and URL", async () => {
-    await waitForHeading();
-    const root = getDashboardRoot();
-    const allButtons = Array.from(root.querySelectorAll(".dashboard-actions button"));
-    const sortBtn = allButtons.find((b) => /Newest First|Oldest First/.test(b.textContent || ""));
-    // First click -> oldest
+    // Sort toggle
+    const allButtons = Array.from(
+      root.querySelectorAll(".dashboard-actions button")
+    );
+    const sortBtn = allButtons.find((b) =>
+      /Newest First|Oldest First/.test(b.textContent || "")
+    );
     sortBtn.click();
     expect(window.location.search).toContain("sort=oldest");
-    // Second click -> newest
     sortBtn.click();
     expect(window.location.search).toContain("sort=newest");
-  });
 
-  it("expand/collapse works for long messages", async () => {
-    await waitForHeading();
-    const root = getDashboardRoot();
-    const expandBtn = root.querySelector(
-      ".message-list template"
-    ).innerHTML.includes("toggleMessageExpansion");
-    expect(expandBtn).toBe(true);
+    // Expansion control present in template for long message
+    const hasExpand = root
+      .querySelector(".message-list template")
+      .innerHTML.includes("toggleMessageExpansion");
+    expect(hasExpand).toBe(true);
   });
 });
 
