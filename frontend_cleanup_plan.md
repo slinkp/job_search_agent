@@ -22,6 +22,32 @@ Acceptance criteria:
 [x] Keep daily-dashboard.js delegating to these helpers
 [x] Tests: server/frontend/tests/dashboard-utils.test.js as above
 
+### Extract pure utilities from app.js
+[ ] Create `server/static/company-utils.js` exporting:
+[ ] normalizeCompany(company) and normalizeCompanies(list)
+[ ] filterCompanies(companies, filterMode)
+[ ] sortCompanies(companies, sortField, sortAsc)
+[ ] formatResearchErrors(company) (move from app.js)
+
+[ ] Extend `server/static/url-utils.js` (or create) with app helpers:
+[ ] parseViewFromUrl(search)
+[ ] buildUrlWithParams(currentUrl, params)
+[ ] setIncludeAllParam(url, includeAll)
+[ ] buildHashForCompany(companyId)
+
+[ ] Create thin `server/static/companies-service.js` wrapping fetch calls:
+[ ] getCompanies({ includeAll })
+[ ] getCompany(companyId)
+[ ] getMessages()
+[ ] saveReply(messageId, text)
+[ ] sendAndArchive(messageId)
+[ ] archiveMessage(messageId)
+[ ] updateCompanyDetails(companyId, payload)
+
+[ ] Deduplicate polling: remove app-local pollTaskStatus; rely on `TaskPollingService`
+[ ] Refactor `app.js` to delegate to the above utils/services; keep DOM-only concerns (dialogs, Alpine wiring)
+[ ] Add unit tests for new utils/services; keep import smoke for `app.js`
+
 ### Real component tests (Alpine, mounted)
 [x] Attempted real Alpine-mounted test in `server/frontend/tests/daily-dashboard.component.test.js`
 [x] Mounted DOM via `setupDocumentWithIndexHtml(document)`; imported Alpine and `daily-dashboard.js`
