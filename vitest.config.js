@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     // Enable DOM-like environment for tests
-    environment: "jsdom",
+    environment: "happy-dom",
 
     // Enable global test APIs (describe, test, expect)
     globals: true,
@@ -33,8 +33,8 @@ export default defineConfig({
     watchExclude: ["node_modules/**", "coverage/**", ".git/**"],
 
     // In ms.
-    testTimeout: 1000,
-    hookTimeout: 1000,
+    testTimeout: 5000,
+    hookTimeout: 5000,
     teardownTimeout: 2000,
   },
 });

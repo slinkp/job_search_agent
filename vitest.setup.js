@@ -1,28 +1,17 @@
-import { Window } from "happy-dom";
-import { afterAll, afterEach, beforeAll } from "vitest";
-import { setupDocumentWithIndexHtml } from "./server/frontend/tests/test-utils.js";
+import { afterEach } from "vitest";
 
-// Set up global window object
-const window = new Window();
-global.window = window;
-global.document = window.document;
-global.navigator = window.navigator;
-global.HTMLElement = window.HTMLElement;
+// Centralize fetch mocking for all tests; suites can override per-need
+if (!global.fetch) {
+  // eslint-disable-next-line no-undef
+  global.fetch = vi.fn();
+}
 
-// Set up document before each test
-beforeAll(() => {
-  setupDocumentWithIndexHtml(document);
-});
-
-// Clean up after each test
+// Ensure DOM starts empty for each test file and isolate mutations
 afterEach(() => {
-  document.body.innerHTML = "";
-});
-
-// Clean up after all tests
-afterAll(() => {
-  delete global.window;
-  delete global.document;
-  delete global.navigator;
-  delete global.HTMLElement;
+  if (global.document && global.document.body) {
+    global.document.body.innerHTML = "";
+  }
+  // Restore any spies/stubs between tests
+  // eslint-disable-next-line no-undef
+  vi.restoreAllMocks();
 });

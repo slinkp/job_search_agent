@@ -54,9 +54,9 @@ Acceptance criteria:
 ## Current Issues Identified
 
 ### Environment and Configuration Issues
-[ ] **Fix DOM environment mismatch**: Change vitest.config.js to use `environment: "happy-dom"` and remove manual Window injection from vitest.setup.js
-[ ] **Increase test timeouts**: Update vitest.config.js timeouts from 1000ms to 5000ms for test/hook timeouts
-[ ] **Centralize fetch mocking**: Add `vi.stubGlobal('fetch', vi.fn())` to vitest.setup.js and `vi.restoreAllMocks()` to afterEach
+[x] **Fix DOM environment mismatch**: Change vitest.config.js to use `environment: "happy-dom"` and remove manual Window injection from vitest.setup.js
+[x] **Increase test timeouts**: Update vitest.config.js timeouts from 1000ms to 5000ms for test/hook timeouts
+[x] **Centralize fetch mocking**: Add `vi.stubGlobal('fetch', vi.fn())` to vitest.setup.js and `vi.restoreAllMocks()` to afterEach
 
 ### Test Structure and Organization
 [ ] **Split daily-dashboard.test.js**: Create separate files for state management, reply expansion, and URL persistence tests
@@ -73,7 +73,7 @@ Acceptance criteria:
 [ ] **Replace template-internal assertions**: Convert @click attribute checks to behavior assertions in daily-dashboard-integration.test.js
 [ ] **Remove x-for text checks**: Replace Alpine directive text assertions with actual DOM content checks
 [ ] **Stop checking exact class names**: Use semantic queries instead of brittle CSS class assertions
-[ ] **Right-size timers**: Move `vi.useFakeTimers()` from global setup to specific test suites that need it
+[x] **Right-size timers**: Move `vi.useFakeTimers()` from global setup to specific test suites that need it
 
 ### Mock and State Management
 [ ] **Standardize dialog mocking**: Create shared dialog mock helper in test-utils.js for showModal/close
