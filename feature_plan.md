@@ -76,7 +76,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 
 6. Cleanup and deprecation (future work, not in this feature)
 
-- [ ] Mark issue 7 as complete on github
+- [x] Mark issue 7 as complete on github 
 - [ ] Migrate backend from `Company.reply_message` to per-message drafts
 - [ ] Migrate reply generation task and task polling response to be message-centric, not company-centric. Probably do this by making a new task type and deprecating the old one.
 - [ ] Remove message flow from company page? Don't really need same UX in two places?
