@@ -63,8 +63,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 
 - [x] Archived or sent messages render as non-editable; actions hidden/disabled
 - [ ] API failures show toasts; user edits remain in textarea
-- [ ] Multiple messages per company: for now, we assume one active reply per company; dashboard remains message-centric, but edits/generation effectively target the company draft; document this in UI copy/tooltip
-- [ ] Unknown company on a message: show with `company_name = "Unknown Company"`; disable reply editing/generation
+- [ ] Multiple messages per company: for now, we assume one active reply per company; dashboard remains message-centric, but edits/generation effectively target the company draft
 - [ ] Tests: edge cases (no draft + sent, archived, unknown company)
 
 5. Test inventory and coverage
@@ -72,6 +71,7 @@ We will enable viewing, editing, regenerating, and sending unsent (generated) re
 - [ ] Backend tests: `GET /api/messages` payload (includes `reply_message`, `reply_status`), `POST/PUT /api/messages/{id}/reply` map to company draft, optional `send_and_archive` behavior
 - [ ] Frontend unit: conditional rendering, loading states, state transitions per `message_id`
 - [ ] Frontend integration: end-to-end dashboard flows (generate → edit → save; regenerate confirmation; send & archive with implicit save)
+- [ ] Frontend: think hard about what value the test strategy brings. Tests that simply exercise mocks aren't very useful; mocks that re-implement much of the behavior of the mocked code are a bad code smell. Can we do better?
 
 6. Cleanup and deprecation (future work, not in this feature)
 
