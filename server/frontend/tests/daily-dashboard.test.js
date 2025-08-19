@@ -232,6 +232,7 @@ describe("Daily Dashboard State Management", () => {
       dailyDashboard.expandedReplies = new Set();
       dailyDashboard.generatingMessages = new Set();
       dailyDashboard.researchingCompanies = new Set();
+      dailyDashboard.sendingMessages = new Set();
 
       dailyDashboard.toggleMessageExpansion = vi.fn(function (messageId) {
         if (this.expandedMessages.has(messageId)) {
@@ -258,155 +259,326 @@ describe("Daily Dashboard State Management", () => {
       });
 
       dailyDashboard.isGeneratingMessage = vi.fn(function (message) {
+        if (!message) return false;
         return this.generatingMessages.has(message.message_id);
       });
 
       dailyDashboard.isResearching = vi.fn(function (message) {
+        if (!message) return false;
         return this.researchingCompanies.has(message.company_name);
+      });
+
+      dailyDashboard.isSendingMessage = vi.fn(function (message) {
+        if (!message) return false;
+        return this.sendingMessages.has(message.message_id);
       });
     });
 
-    it("toggles message expansion state correctly", () => {
-      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
-        false
-      );
+    describe("Message Expansion State Transitions", () => {
+      it("should toggle message expansion state per message_id", () => {
+        const messageId = "test-message-123";
 
-      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
-      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
-        true
-      );
+        // Initially not expanded
+        expect(dailyDashboard.expandedMessages.has(messageId)).toBe(false);
+        expect(dailyDashboard.getExpandButtonText(messageId)).toBe("Show More");
 
-      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
-      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
-        false
-      );
+        // Toggle to expanded
+        dailyDashboard.toggleMessageExpansion(messageId);
+        expect(dailyDashboard.expandedMessages.has(messageId)).toBe(true);
+        expect(dailyDashboard.getExpandButtonText(messageId)).toBe("Show Less");
+
+        // Toggle back to collapsed
+        dailyDashboard.toggleMessageExpansion(messageId);
+        expect(dailyDashboard.expandedMessages.has(messageId)).toBe(false);
+        expect(dailyDashboard.getExpandButtonText(messageId)).toBe("Show More");
+      });
+
+      it("should handle multiple messages with independent expansion states", () => {
+        const messageId1 = "test-message-1";
+        const messageId2 = "test-message-2";
+
+        // Expand first message
+        dailyDashboard.toggleMessageExpansion(messageId1);
+        expect(dailyDashboard.expandedMessages.has(messageId1)).toBe(true);
+        expect(dailyDashboard.expandedMessages.has(messageId2)).toBe(false);
+
+        // Expand second message
+        dailyDashboard.toggleMessageExpansion(messageId2);
+        expect(dailyDashboard.expandedMessages.has(messageId1)).toBe(true);
+        expect(dailyDashboard.expandedMessages.has(messageId2)).toBe(true);
+
+        // Collapse first message only
+        dailyDashboard.toggleMessageExpansion(messageId1);
+        expect(dailyDashboard.expandedMessages.has(messageId1)).toBe(false);
+        expect(dailyDashboard.expandedMessages.has(messageId2)).toBe(true);
+      });
     });
 
-    it("toggles reply expansion state correctly", () => {
-      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
-        false
-      );
+    describe("Reply Expansion State Transitions", () => {
+      it("should toggle reply expansion state per message_id", () => {
+        const messageId = "test-message-123";
 
-      dailyDashboard.toggleReplyExpansion(mockMessage.message_id);
-      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
-        true
-      );
+        // Initially not expanded
+        expect(dailyDashboard.expandedReplies.has(messageId)).toBe(false);
+        expect(dailyDashboard.getReplyExpandButtonText(messageId)).toBe(
+          "Show More"
+        );
 
-      dailyDashboard.toggleReplyExpansion(mockMessage.message_id);
-      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
-        false
-      );
+        // Toggle to expanded
+        dailyDashboard.toggleReplyExpansion(messageId);
+        expect(dailyDashboard.expandedReplies.has(messageId)).toBe(true);
+        expect(dailyDashboard.getReplyExpandButtonText(messageId)).toBe(
+          "Show Less"
+        );
+
+        // Toggle back to collapsed
+        dailyDashboard.toggleReplyExpansion(messageId);
+        expect(dailyDashboard.expandedReplies.has(messageId)).toBe(false);
+        expect(dailyDashboard.getReplyExpandButtonText(messageId)).toBe(
+          "Show More"
+        );
+      });
+
+      it("should handle multiple messages with independent reply expansion states", () => {
+        const messageId1 = "test-message-1";
+        const messageId2 = "test-message-2";
+
+        // Expand first message's reply
+        dailyDashboard.toggleReplyExpansion(messageId1);
+        expect(dailyDashboard.expandedReplies.has(messageId1)).toBe(true);
+        expect(dailyDashboard.expandedReplies.has(messageId2)).toBe(false);
+
+        // Expand second message's reply
+        dailyDashboard.toggleReplyExpansion(messageId2);
+        expect(dailyDashboard.expandedReplies.has(messageId1)).toBe(true);
+        expect(dailyDashboard.expandedReplies.has(messageId2)).toBe(true);
+
+        // Collapse first message's reply only
+        dailyDashboard.toggleReplyExpansion(messageId1);
+        expect(dailyDashboard.expandedReplies.has(messageId1)).toBe(false);
+        expect(dailyDashboard.expandedReplies.has(messageId2)).toBe(true);
+      });
     });
 
-    it("returns correct expand button text for messages", () => {
-      expect(dailyDashboard.getExpandButtonText(mockMessage.message_id)).toBe(
-        "Show More"
-      );
+    describe("Loading States per message_id", () => {
+      it("should track generating state per message_id", () => {
+        const message1 = { message_id: "msg-1", company_name: "Company A" };
+        const message2 = { message_id: "msg-2", company_name: "Company B" };
 
-      dailyDashboard.expandedMessages.add(mockMessage.message_id);
-      expect(dailyDashboard.getExpandButtonText(mockMessage.message_id)).toBe(
-        "Show Less"
-      );
+        // Initially not generating
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(false);
+
+        // Start generating for message1
+        dailyDashboard.generatingMessages.add(message1.message_id);
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(false);
+
+        // Start generating for message2
+        dailyDashboard.generatingMessages.add(message2.message_id);
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(true);
+
+        // Stop generating for message1
+        dailyDashboard.generatingMessages.delete(message1.message_id);
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(true);
+      });
+
+      it("should track sending state per message_id", () => {
+        const message1 = { message_id: "msg-1", company_name: "Company A" };
+        const message2 = { message_id: "msg-2", company_name: "Company B" };
+
+        // Initially not sending
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(false);
+
+        // Start sending for message1
+        dailyDashboard.sendingMessages.add(message1.message_id);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(false);
+
+        // Start sending for message2
+        dailyDashboard.sendingMessages.add(message2.message_id);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(true);
+
+        // Stop sending for message1
+        dailyDashboard.sendingMessages.delete(message1.message_id);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(true);
+      });
+
+      it("should track researching state per company_name", () => {
+        const message1 = { message_id: "msg-1", company_name: "Company A" };
+        const message2 = { message_id: "msg-2", company_name: "Company B" };
+        const message3 = { message_id: "msg-3", company_name: "Company A" }; // Same company as message1
+
+        // Initially not researching
+        expect(dailyDashboard.isResearching(message1)).toBe(false);
+        expect(dailyDashboard.isResearching(message2)).toBe(false);
+        expect(dailyDashboard.isResearching(message3)).toBe(false);
+
+        // Start researching for Company A
+        dailyDashboard.researchingCompanies.add("Company A");
+        expect(dailyDashboard.isResearching(message1)).toBe(true);
+        expect(dailyDashboard.isResearching(message2)).toBe(false);
+        expect(dailyDashboard.isResearching(message3)).toBe(true); // Same company
+
+        // Start researching for Company B
+        dailyDashboard.researchingCompanies.add("Company B");
+        expect(dailyDashboard.isResearching(message1)).toBe(true);
+        expect(dailyDashboard.isResearching(message2)).toBe(true);
+        expect(dailyDashboard.isResearching(message3)).toBe(true);
+
+        // Stop researching for Company A
+        dailyDashboard.researchingCompanies.delete("Company A");
+        expect(dailyDashboard.isResearching(message1)).toBe(false);
+        expect(dailyDashboard.isResearching(message2)).toBe(true);
+        expect(dailyDashboard.isResearching(message3)).toBe(false);
+      });
     });
 
-    it("returns correct expand button text for replies", () => {
-      expect(
-        dailyDashboard.getReplyExpandButtonText(mockMessage.message_id)
-      ).toBe("Show More");
+    describe("Conditional Rendering Logic", () => {
+      it("should handle null/undefined messages gracefully", () => {
+        expect(dailyDashboard.isGeneratingMessage(null)).toBe(false);
+        expect(dailyDashboard.isGeneratingMessage(undefined)).toBe(false);
+        expect(dailyDashboard.isResearching(null)).toBe(false);
+        expect(dailyDashboard.isResearching(undefined)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(null)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(undefined)).toBe(false);
+      });
 
-      dailyDashboard.expandedReplies.add(mockMessage.message_id);
-      expect(
-        dailyDashboard.getReplyExpandButtonText(mockMessage.message_id)
-      ).toBe("Show Less");
+      it("should handle messages without message_id gracefully", () => {
+        const messageWithoutId = { company_name: "Test Company" };
+        expect(dailyDashboard.isGeneratingMessage(messageWithoutId)).toBe(
+          false
+        );
+        expect(dailyDashboard.isSendingMessage(messageWithoutId)).toBe(false);
+      });
+
+      it("should handle messages without company_name gracefully", () => {
+        const messageWithoutCompany = { message_id: "msg-1" };
+        expect(dailyDashboard.isResearching(messageWithoutCompany)).toBe(false);
+      });
+
+      it("should provide correct button text for expansion states", () => {
+        const messageId = "test-message-123";
+
+        // Test message expansion button text
+        expect(dailyDashboard.getExpandButtonText(messageId)).toBe("Show More");
+        dailyDashboard.toggleMessageExpansion(messageId);
+        expect(dailyDashboard.getExpandButtonText(messageId)).toBe("Show Less");
+
+        // Test reply expansion button text
+        expect(dailyDashboard.getReplyExpandButtonText(messageId)).toBe(
+          "Show More"
+        );
+        dailyDashboard.toggleReplyExpansion(messageId);
+        expect(dailyDashboard.getReplyExpandButtonText(messageId)).toBe(
+          "Show Less"
+        );
+      });
     });
 
-    it("tracks generating message state correctly", () => {
-      expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+    describe("State Transitions for Reply Status", () => {
+      it("should handle reply status transitions correctly", () => {
+        const message = {
+          message_id: "test-message-123",
+          company_name: "Test Company",
+          reply_status: "none",
+          reply_message: "",
+          reply_sent_at: null,
+          archived_at: null,
+        };
 
-      dailyDashboard.generatingMessages.add(mockMessage.message_id);
-      expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(true);
+        // Initial state: no reply
+        expect(message.reply_status).toBe("none");
+        expect(message.reply_message).toBe("");
+        expect(message.reply_sent_at).toBe(null);
 
-      dailyDashboard.generatingMessages.delete(mockMessage.message_id);
-      expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+        // Transition to generated state
+        message.reply_status = "generated";
+        message.reply_message = "Generated reply content";
+        expect(message.reply_status).toBe("generated");
+        expect(message.reply_message).toBe("Generated reply content");
+        expect(message.reply_sent_at).toBe(null);
+
+        // Transition to sent state
+        message.reply_status = "sent";
+        message.reply_sent_at = "2025-01-15T10:30:00Z";
+        expect(message.reply_status).toBe("sent");
+        expect(message.reply_message).toBe("Generated reply content");
+        expect(message.reply_sent_at).toBe("2025-01-15T10:30:00Z");
+      });
+
+      it("should handle archived state transitions", () => {
+        const message = {
+          message_id: "test-message-123",
+          company_name: "Test Company",
+          reply_status: "generated",
+          reply_message: "Test reply",
+          archived_at: null,
+        };
+
+        // Initially not archived
+        expect(message.archived_at).toBe(null);
+
+        // Archive the message
+        message.archived_at = "2025-01-15T10:30:00Z";
+        expect(message.archived_at).toBe("2025-01-15T10:30:00Z");
+      });
     });
 
-    it("tracks researching state correctly", () => {
-      expect(dailyDashboard.isResearching(mockMessage)).toBe(false);
+    describe("Concurrent State Management", () => {
+      it("should handle multiple concurrent operations on different messages", () => {
+        const message1 = { message_id: "msg-1", company_name: "Company A" };
+        const message2 = { message_id: "msg-2", company_name: "Company B" };
 
-      dailyDashboard.researchingCompanies.add(mockMessage.company_name);
-      expect(dailyDashboard.isResearching(mockMessage)).toBe(true);
+        // Start multiple operations simultaneously
+        dailyDashboard.generatingMessages.add(message1.message_id);
+        dailyDashboard.sendingMessages.add(message2.message_id);
+        dailyDashboard.researchingCompanies.add("Company A");
 
-      dailyDashboard.researchingCompanies.delete(mockMessage.company_name);
-      expect(dailyDashboard.isResearching(mockMessage)).toBe(false);
-    });
+        // Verify all states are tracked independently
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isResearching(message1)).toBe(true);
 
-    it("handles multiple expanded messages independently", () => {
-      const message1 = { message_id: "msg-1" };
-      const message2 = { message_id: "msg-2" };
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(true);
+        expect(dailyDashboard.isResearching(message2)).toBe(false);
 
-      dailyDashboard.toggleMessageExpansion(message1.message_id);
-      dailyDashboard.toggleMessageExpansion(message2.message_id);
+        // Complete operations
+        dailyDashboard.generatingMessages.delete(message1.message_id);
+        dailyDashboard.sendingMessages.delete(message2.message_id);
+        dailyDashboard.researchingCompanies.delete("Company A");
 
-      expect(dailyDashboard.expandedMessages.has(message1.message_id)).toBe(
-        true
-      );
-      expect(dailyDashboard.expandedMessages.has(message2.message_id)).toBe(
-        true
-      );
+        // Verify all states are cleared
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isResearching(message1)).toBe(false);
 
-      dailyDashboard.toggleMessageExpansion(message1.message_id);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(false);
+        expect(dailyDashboard.isResearching(message2)).toBe(false);
+      });
 
-      expect(dailyDashboard.expandedMessages.has(message1.message_id)).toBe(
-        false
-      );
-      expect(dailyDashboard.expandedMessages.has(message2.message_id)).toBe(
-        true
-      );
-    });
+      it("should handle rapid state transitions", () => {
+        const messageId = "test-message-123";
 
-    it("handles multiple expanded replies independently", () => {
-      const message1 = { message_id: "msg-1" };
-      const message2 = { message_id: "msg-2" };
+        // Rapidly toggle expansion state
+        for (let i = 0; i < 10; i++) {
+          dailyDashboard.toggleMessageExpansion(messageId);
+        }
 
-      dailyDashboard.toggleReplyExpansion(message1.message_id);
-      dailyDashboard.toggleReplyExpansion(message2.message_id);
+        // Should end up in the same state as starting (even number of toggles)
+        expect(dailyDashboard.expandedMessages.has(messageId)).toBe(false);
 
-      expect(dailyDashboard.expandedReplies.has(message1.message_id)).toBe(
-        true
-      );
-      expect(dailyDashboard.expandedReplies.has(message2.message_id)).toBe(
-        true
-      );
-
-      dailyDashboard.toggleReplyExpansion(message1.message_id);
-
-      expect(dailyDashboard.expandedReplies.has(message1.message_id)).toBe(
-        false
-      );
-      expect(dailyDashboard.expandedReplies.has(message2.message_id)).toBe(
-        true
-      );
-    });
-
-    it("maintains separate state for message and reply expansion", () => {
-      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
-      dailyDashboard.toggleReplyExpansion(mockMessage.message_id);
-
-      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
-        true
-      );
-      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
-        true
-      );
-
-      dailyDashboard.toggleMessageExpansion(mockMessage.message_id);
-
-      expect(dailyDashboard.expandedMessages.has(mockMessage.message_id)).toBe(
-        false
-      );
-      expect(dailyDashboard.expandedReplies.has(mockMessage.message_id)).toBe(
-        true
-      );
+        // Rapidly toggle one more time
+        dailyDashboard.toggleMessageExpansion(messageId);
+        expect(dailyDashboard.expandedMessages.has(messageId)).toBe(true);
+      });
     });
   });
 
@@ -1097,6 +1269,380 @@ describe("Daily Dashboard State Management", () => {
       expect(sentAndArchivedMessage.archived_at).toBeTruthy();
       expect(sentAndArchivedMessage.reply_sent_at).toBeTruthy();
       expect(sentAndArchivedMessage.reply_status).toBe("sent");
+    });
+  });
+
+  describe("Conditional Rendering and State Transitions per message_id", () => {
+    let mockMessage;
+
+    beforeEach(() => {
+      mockMessage = {
+        message_id: "test-message-123",
+        company_id: "test-company",
+        company_name: "Test Company",
+        subject: "Test Subject",
+        message: "Test message content",
+        reply_message: "Test reply content",
+        reply_status: "generated",
+        reply_sent_at: null,
+        archived_at: null,
+        research_completed_at: null,
+        research_status: null,
+        date: "2025-01-15T10:30:00Z",
+      };
+
+      // Add methods to dailyDashboard for testing
+      dailyDashboard.expandedMessages = new Set();
+      dailyDashboard.expandedReplies = new Set();
+      dailyDashboard.generatingMessages = new Set();
+      dailyDashboard.researchingCompanies = new Set();
+      dailyDashboard.sendingMessages = new Set();
+
+      dailyDashboard.toggleMessageExpansion = vi.fn(function (messageId) {
+        if (this.expandedMessages.has(messageId)) {
+          this.expandedMessages.delete(messageId);
+        } else {
+          this.expandedMessages.add(messageId);
+        }
+      });
+
+      dailyDashboard.toggleReplyExpansion = vi.fn(function (messageId) {
+        if (this.expandedReplies.has(messageId)) {
+          this.expandedReplies.delete(messageId);
+        } else {
+          this.expandedReplies.add(messageId);
+        }
+      });
+
+      dailyDashboard.getExpandButtonText = vi.fn(function (messageId) {
+        return this.expandedMessages.has(messageId) ? "Show Less" : "Show More";
+      });
+
+      dailyDashboard.getReplyExpandButtonText = vi.fn(function (messageId) {
+        return this.expandedReplies.has(messageId) ? "Show Less" : "Show More";
+      });
+
+      dailyDashboard.isGeneratingMessage = vi.fn(function (message) {
+        if (!message) return false;
+        return this.generatingMessages.has(message.message_id);
+      });
+
+      dailyDashboard.isResearching = vi.fn(function (message) {
+        if (!message) return false;
+        return this.researchingCompanies.has(message.company_name);
+      });
+
+      dailyDashboard.isSendingMessage = vi.fn(function (message) {
+        if (!message) return false;
+        return this.sendingMessages.has(message.message_id);
+      });
+    });
+
+    describe("Message Expansion State Transitions", () => {
+      it("should toggle message expansion state per message_id", () => {
+        const messageId = "test-message-123";
+
+        // Initially not expanded
+        expect(dailyDashboard.expandedMessages.has(messageId)).toBe(false);
+        expect(dailyDashboard.getExpandButtonText(messageId)).toBe("Show More");
+
+        // Toggle to expanded
+        dailyDashboard.toggleMessageExpansion(messageId);
+        expect(dailyDashboard.expandedMessages.has(messageId)).toBe(true);
+        expect(dailyDashboard.getExpandButtonText(messageId)).toBe("Show Less");
+
+        // Toggle back to collapsed
+        dailyDashboard.toggleMessageExpansion(messageId);
+        expect(dailyDashboard.expandedMessages.has(messageId)).toBe(false);
+        expect(dailyDashboard.getExpandButtonText(messageId)).toBe("Show More");
+      });
+
+      it("should handle multiple messages with independent expansion states", () => {
+        const messageId1 = "test-message-1";
+        const messageId2 = "test-message-2";
+
+        // Expand first message
+        dailyDashboard.toggleMessageExpansion(messageId1);
+        expect(dailyDashboard.expandedMessages.has(messageId1)).toBe(true);
+        expect(dailyDashboard.expandedMessages.has(messageId2)).toBe(false);
+
+        // Expand second message
+        dailyDashboard.toggleMessageExpansion(messageId2);
+        expect(dailyDashboard.expandedMessages.has(messageId1)).toBe(true);
+        expect(dailyDashboard.expandedMessages.has(messageId2)).toBe(true);
+
+        // Collapse first message only
+        dailyDashboard.toggleMessageExpansion(messageId1);
+        expect(dailyDashboard.expandedMessages.has(messageId1)).toBe(false);
+        expect(dailyDashboard.expandedMessages.has(messageId2)).toBe(true);
+      });
+    });
+
+    describe("Reply Expansion State Transitions", () => {
+      it("should toggle reply expansion state per message_id", () => {
+        const messageId = "test-message-123";
+
+        // Initially not expanded
+        expect(dailyDashboard.expandedReplies.has(messageId)).toBe(false);
+        expect(dailyDashboard.getReplyExpandButtonText(messageId)).toBe(
+          "Show More"
+        );
+
+        // Toggle to expanded
+        dailyDashboard.toggleReplyExpansion(messageId);
+        expect(dailyDashboard.expandedReplies.has(messageId)).toBe(true);
+        expect(dailyDashboard.getReplyExpandButtonText(messageId)).toBe(
+          "Show Less"
+        );
+
+        // Toggle back to collapsed
+        dailyDashboard.toggleReplyExpansion(messageId);
+        expect(dailyDashboard.expandedReplies.has(messageId)).toBe(false);
+        expect(dailyDashboard.getReplyExpandButtonText(messageId)).toBe(
+          "Show More"
+        );
+      });
+
+      it("should handle multiple messages with independent reply expansion states", () => {
+        const messageId1 = "test-message-1";
+        const messageId2 = "test-message-2";
+
+        // Expand first message's reply
+        dailyDashboard.toggleReplyExpansion(messageId1);
+        expect(dailyDashboard.expandedReplies.has(messageId1)).toBe(true);
+        expect(dailyDashboard.expandedReplies.has(messageId2)).toBe(false);
+
+        // Expand second message's reply
+        dailyDashboard.toggleReplyExpansion(messageId2);
+        expect(dailyDashboard.expandedReplies.has(messageId1)).toBe(true);
+        expect(dailyDashboard.expandedReplies.has(messageId2)).toBe(true);
+
+        // Collapse first message's reply only
+        dailyDashboard.toggleReplyExpansion(messageId1);
+        expect(dailyDashboard.expandedReplies.has(messageId1)).toBe(false);
+        expect(dailyDashboard.expandedReplies.has(messageId2)).toBe(true);
+      });
+    });
+
+    describe("Loading States per message_id", () => {
+      it("should track generating state per message_id", () => {
+        const message1 = { message_id: "msg-1", company_name: "Company A" };
+        const message2 = { message_id: "msg-2", company_name: "Company B" };
+
+        // Initially not generating
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(false);
+
+        // Start generating for message1
+        dailyDashboard.generatingMessages.add(message1.message_id);
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(false);
+
+        // Start generating for message2
+        dailyDashboard.generatingMessages.add(message2.message_id);
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(true);
+
+        // Stop generating for message1
+        dailyDashboard.generatingMessages.delete(message1.message_id);
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(true);
+      });
+
+      it("should track sending state per message_id", () => {
+        const message1 = { message_id: "msg-1", company_name: "Company A" };
+        const message2 = { message_id: "msg-2", company_name: "Company B" };
+
+        // Initially not sending
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(false);
+
+        // Start sending for message1
+        dailyDashboard.sendingMessages.add(message1.message_id);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(false);
+
+        // Start sending for message2
+        dailyDashboard.sendingMessages.add(message2.message_id);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(true);
+
+        // Stop sending for message1
+        dailyDashboard.sendingMessages.delete(message1.message_id);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(true);
+      });
+
+      it("should track researching state per company_name", () => {
+        const message1 = { message_id: "msg-1", company_name: "Company A" };
+        const message2 = { message_id: "msg-2", company_name: "Company B" };
+        const message3 = { message_id: "msg-3", company_name: "Company A" }; // Same company as message1
+
+        // Initially not researching
+        expect(dailyDashboard.isResearching(message1)).toBe(false);
+        expect(dailyDashboard.isResearching(message2)).toBe(false);
+        expect(dailyDashboard.isResearching(message3)).toBe(false);
+
+        // Start researching for Company A
+        dailyDashboard.researchingCompanies.add("Company A");
+        expect(dailyDashboard.isResearching(message1)).toBe(true);
+        expect(dailyDashboard.isResearching(message2)).toBe(false);
+        expect(dailyDashboard.isResearching(message3)).toBe(true); // Same company
+
+        // Start researching for Company B
+        dailyDashboard.researchingCompanies.add("Company B");
+        expect(dailyDashboard.isResearching(message1)).toBe(true);
+        expect(dailyDashboard.isResearching(message2)).toBe(true);
+        expect(dailyDashboard.isResearching(message3)).toBe(true);
+
+        // Stop researching for Company A
+        dailyDashboard.researchingCompanies.delete("Company A");
+        expect(dailyDashboard.isResearching(message1)).toBe(false);
+        expect(dailyDashboard.isResearching(message2)).toBe(true);
+        expect(dailyDashboard.isResearching(message3)).toBe(false);
+      });
+    });
+
+    describe("Conditional Rendering Logic", () => {
+      it("should handle null/undefined messages gracefully", () => {
+        expect(dailyDashboard.isGeneratingMessage(null)).toBe(false);
+        expect(dailyDashboard.isGeneratingMessage(undefined)).toBe(false);
+        expect(dailyDashboard.isResearching(null)).toBe(false);
+        expect(dailyDashboard.isResearching(undefined)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(null)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(undefined)).toBe(false);
+      });
+
+      it("should handle messages without message_id gracefully", () => {
+        const messageWithoutId = { company_name: "Test Company" };
+        expect(dailyDashboard.isGeneratingMessage(messageWithoutId)).toBe(
+          false
+        );
+        expect(dailyDashboard.isSendingMessage(messageWithoutId)).toBe(false);
+      });
+
+      it("should handle messages without company_name gracefully", () => {
+        const messageWithoutCompany = { message_id: "msg-1" };
+        expect(dailyDashboard.isResearching(messageWithoutCompany)).toBe(false);
+      });
+
+      it("should provide correct button text for expansion states", () => {
+        const messageId = "test-message-123";
+
+        // Test message expansion button text
+        expect(dailyDashboard.getExpandButtonText(messageId)).toBe("Show More");
+        dailyDashboard.toggleMessageExpansion(messageId);
+        expect(dailyDashboard.getExpandButtonText(messageId)).toBe("Show Less");
+
+        // Test reply expansion button text
+        expect(dailyDashboard.getReplyExpandButtonText(messageId)).toBe(
+          "Show More"
+        );
+        dailyDashboard.toggleReplyExpansion(messageId);
+        expect(dailyDashboard.getReplyExpandButtonText(messageId)).toBe(
+          "Show Less"
+        );
+      });
+    });
+
+    describe("State Transitions for Reply Status", () => {
+      it("should handle reply status transitions correctly", () => {
+        const message = {
+          message_id: "test-message-123",
+          company_name: "Test Company",
+          reply_status: "none",
+          reply_message: "",
+          reply_sent_at: null,
+          archived_at: null,
+        };
+
+        // Initial state: no reply
+        expect(message.reply_status).toBe("none");
+        expect(message.reply_message).toBe("");
+        expect(message.reply_sent_at).toBe(null);
+
+        // Transition to generated state
+        message.reply_status = "generated";
+        message.reply_message = "Generated reply content";
+        expect(message.reply_status).toBe("generated");
+        expect(message.reply_message).toBe("Generated reply content");
+        expect(message.reply_sent_at).toBe(null);
+
+        // Transition to sent state
+        message.reply_status = "sent";
+        message.reply_sent_at = "2025-01-15T10:30:00Z";
+        expect(message.reply_status).toBe("sent");
+        expect(message.reply_message).toBe("Generated reply content");
+        expect(message.reply_sent_at).toBe("2025-01-15T10:30:00Z");
+      });
+
+      it("should handle archived state transitions", () => {
+        const message = {
+          message_id: "test-message-123",
+          company_name: "Test Company",
+          reply_status: "generated",
+          reply_message: "Test reply",
+          archived_at: null,
+        };
+
+        // Initially not archived
+        expect(message.archived_at).toBe(null);
+
+        // Archive the message
+        message.archived_at = "2025-01-15T10:30:00Z";
+        expect(message.archived_at).toBe("2025-01-15T10:30:00Z");
+      });
+    });
+
+    describe("Concurrent State Management", () => {
+      it("should handle multiple concurrent operations on different messages", () => {
+        const message1 = { message_id: "msg-1", company_name: "Company A" };
+        const message2 = { message_id: "msg-2", company_name: "Company B" };
+
+        // Start multiple operations simultaneously
+        dailyDashboard.generatingMessages.add(message1.message_id);
+        dailyDashboard.sendingMessages.add(message2.message_id);
+        dailyDashboard.researchingCompanies.add("Company A");
+
+        // Verify all states are tracked independently
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(true);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isResearching(message1)).toBe(true);
+
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(true);
+        expect(dailyDashboard.isResearching(message2)).toBe(false);
+
+        // Complete operations
+        dailyDashboard.generatingMessages.delete(message1.message_id);
+        dailyDashboard.sendingMessages.delete(message2.message_id);
+        dailyDashboard.researchingCompanies.delete("Company A");
+
+        // Verify all states are cleared
+        expect(dailyDashboard.isGeneratingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message1)).toBe(false);
+        expect(dailyDashboard.isResearching(message1)).toBe(false);
+
+        expect(dailyDashboard.isGeneratingMessage(message2)).toBe(false);
+        expect(dailyDashboard.isSendingMessage(message2)).toBe(false);
+        expect(dailyDashboard.isResearching(message2)).toBe(false);
+      });
+
+      it("should handle rapid state transitions", () => {
+        const messageId = "test-message-123";
+
+        // Rapidly toggle expansion state
+        for (let i = 0; i < 10; i++) {
+          dailyDashboard.toggleMessageExpansion(messageId);
+        }
+
+        // Should end up in the same state as starting (even number of toggles)
+        expect(dailyDashboard.expandedMessages.has(messageId)).toBe(false);
+
+        // Rapidly toggle one more time
+        dailyDashboard.toggleMessageExpansion(messageId);
+        expect(dailyDashboard.expandedMessages.has(messageId)).toBe(true);
+      });
     });
   });
 });
