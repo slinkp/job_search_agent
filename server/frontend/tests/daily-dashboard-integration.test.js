@@ -249,12 +249,13 @@ describe("Daily Dashboard Integration", () => {
         const template = messageList.querySelector("template");
         expect(template).toBeTruthy();
 
-        const content = template.content || template;
+        const container = document.createElement("div");
+        container.innerHTML = template.innerHTML;
         // Look for buttons likely in the 'none' status block
         const generateBtn = Array.from(
-          content.querySelectorAll("button")
+          container.querySelectorAll("button")
         ).find((b) => (b.textContent || "").match(/Generate Reply|Generate/i));
-        const editBtn = Array.from(content.querySelectorAll("button")).find(
+        const editBtn = Array.from(container.querySelectorAll("button")).find(
           (b) => (b.textContent || "").match(/^Edit$/i)
         );
         expect(generateBtn).toBeTruthy();
@@ -275,15 +276,16 @@ describe("Daily Dashboard Integration", () => {
         const template = messageList.querySelector("template");
         expect(template).toBeTruthy();
 
-        const content = template.content || template;
+        const container = document.createElement("div");
+        container.innerHTML = template.innerHTML;
         // Preview area exists
-        const preview = content.querySelector(".reply-preview");
+        const preview = container.querySelector(".reply-preview");
         expect(preview).toBeTruthy();
         // Buttons for edit/regenerate exist
         const regenerateBtn = Array.from(
-          content.querySelectorAll("button")
+          container.querySelectorAll("button")
         ).find((b) => (b.textContent || "").match(/Regenerate/i));
-        const editBtn = Array.from(content.querySelectorAll("button")).find(
+        const editBtn = Array.from(container.querySelectorAll("button")).find(
           (b) => (b.textContent || "").match(/^Edit$/i)
         );
         expect(regenerateBtn).toBeTruthy();
@@ -299,8 +301,9 @@ describe("Daily Dashboard Integration", () => {
         const template = messageList.querySelector("template");
         expect(template).toBeTruthy();
 
-        const content = template.content || template;
-        const sentPreview = content.querySelector(".reply-preview.sent");
+        const container = document.createElement("div");
+        container.innerHTML = template.innerHTML;
+        const sentPreview = container.querySelector(".reply-preview.sent");
         expect(sentPreview).toBeTruthy();
         // No obvious action buttons should be present in the sent block
         const actionButtons = Array.from(sentPreview.querySelectorAll("button"));
@@ -316,8 +319,9 @@ describe("Daily Dashboard Integration", () => {
         const template = messageList.querySelector("template");
         expect(template).toBeTruthy();
 
-        const content = template.content || template;
-        const archivedPreview = content.querySelector(".reply-preview.archived");
+        const container = document.createElement("div");
+        container.innerHTML = template.innerHTML;
+        const archivedPreview = container.querySelector(".reply-preview.archived");
         expect(archivedPreview).toBeTruthy();
         const actionButtons = Array.from(
           archivedPreview.querySelectorAll("button")
@@ -334,7 +338,7 @@ describe("Daily Dashboard Integration", () => {
         const template = messageList.querySelector("template");
         expect(template).toBeTruthy();
 
-        const content = template.content || template;
+        const content = (() => { const c = document.createElement("div"); c.innerHTML = template.innerHTML; return c; })();
         // As a proxy, ensure there is exactly one Archive button at the outer level
         const archiveButtons = Array.from(
           content.querySelectorAll("button")
