@@ -8,6 +8,16 @@ describe("Daily Dashboard Component (real Alpine)", () => {
     // Fresh DOM
     setupDocumentWithIndexHtml(document);
 
+    // Provide a MutationObserver stub compatible with Alpine in happy-dom
+    global.MutationObserver = class {
+      constructor(callback) {
+        this.callback = callback;
+      }
+      observe() {}
+      disconnect() {}
+      takeRecords() { return []; }
+    };
+
     // Mock fetch with deterministic dataset
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -87,9 +97,8 @@ describe("Daily Dashboard Component (real Alpine)", () => {
   it("sort button toggles label and URL", async () => {
     await waitForHeading();
     const root = getDashboardRoot();
-    const sortBtn = root.querySelector(
-      ".dashboard-actions button:nth-of-type(7)"
-    );
+    const allButtons = Array.from(root.querySelectorAll(".dashboard-actions button"));
+    const sortBtn = allButtons.find((b) => /Newest First|Oldest First/.test(b.textContent || ""));
     // First click -> oldest
     sortBtn.click();
     expect(window.location.search).toContain("sort=oldest");
