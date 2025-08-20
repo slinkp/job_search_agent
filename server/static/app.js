@@ -925,15 +925,7 @@ document.addEventListener("alpine:init", () => {
       // New method to fetch and update a single company
       async fetchAndUpdateCompany(companyId) {
         try {
-          const response = await fetch(
-            `/api/companies/${encodeURIComponent(companyId)}`
-          );
-          if (!response.ok) {
-            console.error(`Failed to fetch company data for ${companyId}`);
-            return;
-          }
-
-          const updatedCompany = await response.json();
+          const updatedCompany = await companiesService.getCompany(companyId);
           console.log(`Fetched fresh data for ${companyId}:`, updatedCompany);
 
           // Find and replace the company in our array
