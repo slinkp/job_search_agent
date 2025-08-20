@@ -24,6 +24,12 @@ export default defineConfig({
         "server/static/*.js",
         "server/frontend/**/*.js",
       ],
+      thresholds: {
+        perFile: {
+          "server/static/app.js": { lines: 30 },
+          "server/static/daily-dashboard.js": { lines: 35 },
+        },
+      },
     },
 
     // Include source files for tests
