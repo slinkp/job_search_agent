@@ -9,8 +9,11 @@ import {
 import { EmailScanningService } from "./email-scanning.js";
 import { TaskPollingService } from "./task-polling.js";
 import {
+  confirmDialogs,
+  errorLogger,
   formatRecruiterMessageDate,
   isUrl,
+  modalUtils,
   showError,
   showSuccess,
 } from "./ui-utils.js";
@@ -190,7 +193,7 @@ document.addEventListener("alpine:init", () => {
             }
           }
         } catch (err) {
-          console.error("Failed to load companies:", err);
+          errorLogger.logFailedTo("load companies", err);
           this.showError("Failed to load company data");
         } finally {
           this.loading = false;
@@ -270,7 +273,7 @@ document.addEventListener("alpine:init", () => {
           const company = await companiesService.loadCompany(companyId);
           this.companies = [company];
         } catch (err) {
-          console.error("Failed to load company:", err);
+          errorLogger.logFailedTo("load company", err);
           this.showError("Failed to load company data");
         } finally {
           this.loading = false;
@@ -280,18 +283,19 @@ document.addEventListener("alpine:init", () => {
       async loadMessageAndCompany(messageId) {
         this.loading = true;
         try {
-          const { company, message } = await companiesService.loadMessageAndCompany(messageId);
-          
+          const { company, message } =
+            await companiesService.loadMessageAndCompany(messageId);
+
           this.companies = [company];
           this.editingCompany = company;
           this.editingReply = company.reply_message || "";
 
           // Show edit modal for the message
           setTimeout(() => {
-            document.getElementById("editModal").showModal();
+            modalUtils.showModal(modalUtils.modalIds.EDIT);
           }, 100);
         } catch (err) {
-          console.error("Failed to load message and company:", err);
+          errorLogger.logFailedTo("load message and company", err);
           this.showError("Failed to load message and company data");
         } finally {
           this.loading = false;
@@ -317,7 +321,9 @@ document.addEventListener("alpine:init", () => {
           // Also add to service for polling
           taskPollingService.addGeneratingMessage(company);
 
-          const data = await companiesService.generateReply(company.recruiter_message?.message_id);
+          const data = await companiesService.generateReply(
+            company.recruiter_message?.message_id
+          );
           company.message_task_id = data.task_id;
           company.message_status = data.status;
 
@@ -343,7 +349,7 @@ document.addEventListener("alpine:init", () => {
 
           this.showSuccess("Reply generated successfully!");
         } catch (err) {
-          console.error("Failed to generate reply:", err);
+          errorLogger.logFailedTo("generate reply", err);
           this.showError(
             err.message || "Failed to generate reply. Please try again."
           );
@@ -357,14 +363,14 @@ document.addEventListener("alpine:init", () => {
         console.log("editReply called with company:", company);
         this.editingCompany = company;
         this.editingReply = company.reply_message;
-        document.getElementById("editModal").showModal();
+        modalUtils.showModal(modalUtils.modalIds.EDIT);
       },
 
       cancelEdit() {
         console.log("cancelEdit called, clearing editingCompany");
         this.editingCompany = null;
         this.editingReply = "";
-        document.getElementById("editModal").close();
+        modalUtils.closeModal(modalUtils.modalIds.EDIT);
 
         // Update URL to remove message parameter
         const url = new URL(window.location);
@@ -379,7 +385,7 @@ document.addEventListener("alpine:init", () => {
               this.editingCompany.recruiter_message?.message_id,
               this.editingReply
             );
-            
+
             // Update the local company object
             Object.assign(this.editingCompany, data);
 
@@ -400,7 +406,7 @@ document.addEventListener("alpine:init", () => {
 
             this.cancelEdit();
           } catch (err) {
-            console.error("Failed to save reply:", err);
+            errorLogger.logFailedTo("save reply", err);
             this.showError(
               err.message || "Failed to save reply. Please try again."
             );
@@ -435,7 +441,9 @@ document.addEventListener("alpine:init", () => {
             company.recruiter_message.message_id
           ) {
             // Use the message-centric endpoint via service
-            await companiesService.sendAndArchive(company.recruiter_message.message_id);
+            await companiesService.sendAndArchive(
+              company.recruiter_message.message_id
+            );
           } else {
             // Fallback to company-centric endpoint for backward compatibility
             const response = await fetch(
@@ -461,7 +469,7 @@ document.addEventListener("alpine:init", () => {
           this.showSuccess("Reply sent and message archived");
           this.cancelEdit();
         } catch (err) {
-          console.error("Failed to send and archive:", err);
+          errorLogger.logFailedTo("send and archive", err);
           this.showError(
             err.message || "Failed to send and archive. Please try again."
           );
@@ -484,7 +492,7 @@ document.addEventListener("alpine:init", () => {
           await this.fetchAndUpdateCompany(company.company_id);
           this.showSuccess("Company research completed!");
         } catch (err) {
-          console.error("Failed to research company:", err);
+          errorLogger.logFailedTo("research company", err);
           this.showError(
             err.message || "Failed to start research. Please try again."
           );
@@ -717,8 +725,9 @@ document.addEventListener("alpine:init", () => {
                       // Reset importStatus since we're done and only using alert
                       this.importStatus = null;
                     } else {
-                      console.error(
-                        "Import task completed but no result data available!"
+                      errorLogger.logError(
+                        "Import task completed but no result data available!",
+                        null
                       );
                       this.showError(
                         "Import completed but no statistics available"
@@ -737,7 +746,7 @@ document.addEventListener("alpine:init", () => {
 
             await new Promise((resolve) => setTimeout(resolve, 1000));
           } catch (err) {
-            console.error(`Failed to poll ${taskType} status:`, err);
+            errorLogger.logFailedTo(`poll ${taskType} status`, err);
             if (company) {
               // Do nothing, keep polling
             } else if (isImportingCompanies) {
@@ -756,7 +765,7 @@ document.addEventListener("alpine:init", () => {
           await emailScanningService.scanRecruiterEmails(false); // Default to no research
           await this.pollEmailScanStatus();
         } catch (err) {
-          console.error("Failed to scan recruiter emails:", err);
+          errorLogger.logFailedTo("scan recruiter emails", err);
           this.showError(
             err.message || "Failed to scan emails. Please try again."
           );
@@ -837,7 +846,7 @@ document.addEventListener("alpine:init", () => {
           // Start polling for task status
           this.pollTaskStatus(null, "import_companies");
         } catch (error) {
-          console.error("Error starting import:", error);
+          errorLogger.logError("Error starting import:", error);
           this.importingCompanies = false;
           this.importError = error.message;
           this.showError(`Failed to start import: ${error.message}`);
@@ -894,7 +903,7 @@ document.addEventListener("alpine:init", () => {
             }
           }
         } catch (err) {
-          console.error("Error fetching individual company:", err);
+          errorLogger.logError("Error fetching individual company:", err);
         }
       },
 
@@ -906,7 +915,7 @@ document.addEventListener("alpine:init", () => {
           this.companies = normalizeCompanies(data);
           return data;
         } catch (err) {
-          console.error("Failed to refresh companies:", err);
+          errorLogger.logFailedTo("refresh companies", err);
           return [];
         }
       },
@@ -931,11 +940,7 @@ document.addEventListener("alpine:init", () => {
         }
 
         // Confirm with the user before proceeding
-        if (
-          !confirm(
-            "Are you sure you want to archive this message without replying?"
-          )
-        ) {
+        if (!confirmDialogs.archiveWithoutReply()) {
           return;
         }
 
@@ -957,7 +962,7 @@ document.addEventListener("alpine:init", () => {
           this.showSuccess("Message archived without reply");
           this.cancelEdit();
         } catch (err) {
-          console.error("Failed to archive message:", err);
+          errorLogger.logFailedTo("archive message", err);
           this.showError(
             err.message || "Failed to archive message. Please try again."
           );
@@ -976,9 +981,11 @@ document.addEventListener("alpine:init", () => {
         company.promising = value;
 
         try {
-          await companiesService.updateCompanyDetails(company.company_id, { promising: value });
+          await companiesService.updateCompanyDetails(company.company_id, {
+            promising: value,
+          });
         } catch (err) {
-          console.error("Failed to update promising status:", err);
+          errorLogger.logFailedTo("update promising status", err);
           // Revert the local change if the server update failed
           company.promising = originalValue;
         }
@@ -986,7 +993,7 @@ document.addEventListener("alpine:init", () => {
 
       showResearchCompanyModal() {
         console.log("showResearchCompanyModal called");
-        document.getElementById("research-company-modal").showModal();
+        modalUtils.showModal(modalUtils.modalIds.RESEARCH_COMPANY);
         this.researchCompanyForm = {
           url: "",
           name: "",
@@ -995,17 +1002,17 @@ document.addEventListener("alpine:init", () => {
       },
 
       closeResearchCompanyModal() {
-        document.getElementById("research-company-modal").close();
+        modalUtils.closeModal(modalUtils.modalIds.RESEARCH_COMPANY);
       },
 
       showImportCompaniesModal() {
         // Show the import companies modal dialog
-        document.getElementById("import-companies-modal").showModal();
+        modalUtils.showModal(modalUtils.modalIds.IMPORT_COMPANIES);
       },
 
       closeImportCompaniesModal() {
         // Close the import companies modal dialog
-        document.getElementById("import-companies-modal").close();
+        modalUtils.closeModal(modalUtils.modalIds.IMPORT_COMPANIES);
       },
 
       confirmImportCompanies() {
@@ -1045,7 +1052,7 @@ document.addEventListener("alpine:init", () => {
           console.log("Starting to poll task:", this.researchCompanyTaskId);
           this.pollResearchCompanyTask();
         } catch (err) {
-          console.error("Failed to research company:", err);
+          errorLogger.logFailedTo("research company", err);
           this.showError(
             err.message || "Failed to start research. Please try again."
           );
@@ -1075,7 +1082,7 @@ document.addEventListener("alpine:init", () => {
             setTimeout(() => this.pollResearchCompanyTask(), 5000);
           }
         } catch (err) {
-          console.error("Error polling research task:", err);
+          errorLogger.logError("Error polling research task", err);
           this.showError(
             "Failed to check research status. Please refresh the page."
           );

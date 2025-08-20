@@ -17,7 +17,13 @@ import {
 import { EmailScanningService } from "./email-scanning.js";
 import { computeMessagePreview } from "./message-utils.js";
 import { TaskPollingService } from "./task-polling.js";
-import { formatMessageDate, showError, showSuccess } from "./ui-utils.js";
+import {
+  confirmDialogs,
+  errorLogger,
+  formatMessageDate,
+  showError,
+  showSuccess,
+} from "./ui-utils.js";
 
 document.addEventListener("alpine:init", () => {
   const emailScanningService = new EmailScanningService();
@@ -136,7 +142,7 @@ document.addEventListener("alpine:init", () => {
             `Loaded ${this.unprocessedMessages.length} messages after filtering (mode: ${this.filterMode})`
           );
         } catch (error) {
-          console.error("Failed to load messages:", error);
+          errorLogger.logFailedTo("load messages", error);
           showError(
             "Failed to load messages. Please refresh the page to try again."
           );
@@ -168,7 +174,7 @@ document.addEventListener("alpine:init", () => {
           await this.loadMessages();
           showSuccess("Company research completed!");
         } catch (err) {
-          console.error("Failed to research company:", err);
+          errorLogger.logFailedTo("research company", err);
           showError(
             err.message || "Failed to research company. Please try again."
           );
@@ -222,7 +228,7 @@ document.addEventListener("alpine:init", () => {
           await this.loadMessages();
           showSuccess("Reply generated successfully!");
         } catch (err) {
-          console.error("Failed to generate reply:", err);
+          errorLogger.logFailedTo("generate reply", err);
           showError(
             err.message || "Failed to generate reply. Please try again."
           );
@@ -240,11 +246,7 @@ document.addEventListener("alpine:init", () => {
         }
 
         // Confirm with the user before proceeding
-        if (
-          !confirm(
-            "Are you sure you want to archive this message without replying?"
-          )
-        ) {
+        if (!confirmDialogs.archiveWithoutReply()) {
           return;
         }
 
@@ -257,7 +259,7 @@ document.addEventListener("alpine:init", () => {
 
           showSuccess("Message archived successfully");
         } catch (err) {
-          console.error("Failed to archive message:", err);
+          errorLogger.logFailedTo("archive message", err);
           showError(
             err.message || "Failed to archive message. Please try again."
           );
@@ -280,11 +282,7 @@ document.addEventListener("alpine:init", () => {
 
         // Confirm with the user before proceeding
         console.log("About to show confirmation dialog");
-        if (
-          !confirm(
-            "Are you sure you want to send this reply and archive the message?"
-          )
-        ) {
+        if (!confirmDialogs.sendAndArchive()) {
           console.log("User cancelled confirmation");
           return;
         }
@@ -321,7 +319,9 @@ document.addEventListener("alpine:init", () => {
           }
 
           // Call the message-centric send and archive endpoint via service
-          const data = await companiesService.sendAndArchive(message.message_id);
+          const data = await companiesService.sendAndArchive(
+            message.message_id
+          );
           console.log("Send and archive response:", data);
 
           // Poll for task completion before showing success/failure
@@ -347,13 +347,13 @@ document.addEventListener("alpine:init", () => {
               );
             }
           } catch (pollError) {
-            console.error("Failed to poll task status:", pollError);
+            errorLogger.logFailedTo("poll task status", pollError);
             showError(
               "Failed to check task status. Please refresh to see current state."
             );
           }
         } catch (err) {
-          console.error("Failed to send and archive message:", err);
+          errorLogger.logFailedTo("send and archive message", err);
           showError(
             err.message ||
               "Failed to send and archive message. Please try again."
@@ -413,7 +413,7 @@ document.addEventListener("alpine:init", () => {
           await emailScanningService.scanRecruiterEmails(this.doResearch);
           await this.pollEmailScanStatus();
         } catch (err) {
-          console.error("Failed to scan recruiter emails:", err);
+          errorLogger.logFailedTo("scan recruiter emails", err);
           // Error is already handled by the service
         }
       },
