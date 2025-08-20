@@ -918,7 +918,7 @@ document.addEventListener("alpine:init", () => {
         await this.refreshAllCompanies(this.showArchived);
 
         // Update URL to reflect the change
-        const url = new URL(window.location);
+        const url = urlUtils.createUrl();
         setIncludeAllParam(url, this.showArchived);
         window.history.replaceState({}, "", url);
       },
