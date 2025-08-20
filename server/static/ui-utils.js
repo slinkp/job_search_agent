@@ -91,3 +91,22 @@ export function showSuccess(message) {
 export function isUrl(value) {
   return typeof value === "string" && value.startsWith("http");
 }
+
+/**
+ * Common confirmation dialogs used throughout the application
+ */
+export const confirmDialogs = {
+  /**
+   * Confirm archiving a message without replying
+   */
+  archiveWithoutReply() {
+    return confirm("Are you sure you want to archive this message without replying?");
+  },
+
+  /**
+   * Confirm sending and archiving a message
+   */
+  sendAndArchive() {
+    return confirm("Are you sure you want to send this reply and archive the message?");
+  }
+};

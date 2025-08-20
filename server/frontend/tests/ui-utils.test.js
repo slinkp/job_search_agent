@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatDate, formatMessageDate, formatRecruiterMessageDate, isUrl, showError, showSuccess } from '../../static/ui-utils.js';
+import { formatDate, formatMessageDate, formatRecruiterMessageDate, isUrl, showError, showSuccess, confirmDialogs } from '../../static/ui-utils.js';
 
-// Mock alert for testing
+// Mock alert and confirm for testing
 global.alert = vi.fn();
+global.confirm = vi.fn();
 
 describe('UI Utils', () => {
   beforeEach(() => {
@@ -111,6 +112,22 @@ describe('UI Utils', () => {
 
     it("handles invalid dates in detailed format", () => {
       expect(formatDate("invalid-date", "detailed")).toBe("");
+    });
+  });
+
+  describe('confirmDialogs', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should call confirm with archive without reply message', () => {
+      confirmDialogs.archiveWithoutReply();
+      expect(confirm).toHaveBeenCalledWith('Are you sure you want to archive this message without replying?');
+    });
+
+    it('should call confirm with send and archive message', () => {
+      confirmDialogs.sendAndArchive();
+      expect(confirm).toHaveBeenCalledWith('Are you sure you want to send this reply and archive the message?');
     });
   });
 }); 
