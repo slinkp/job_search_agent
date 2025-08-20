@@ -157,6 +157,21 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async submitResearch(researchData) {
+    const response = await fetch("/api/companies", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(researchData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to submit research: ${response.status}`);
+    }
+    return response.json();
+  }
 }
 
 

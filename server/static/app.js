@@ -1030,7 +1030,7 @@ document.addEventListener("alpine:init", () => {
           this.researchingCompany = true;
           console.log("Set researchingCompany to true");
 
-          const data = await researchService.submitResearch(
+          const data = await companiesService.submitResearch(
             this.researchCompanyForm
           );
           console.log("API success response:", data);

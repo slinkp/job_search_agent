@@ -380,6 +380,40 @@ describe("CompaniesService", () => {
       );
     });
   });
+
+  describe("submitResearch", () => {
+    it("submits research data", async () => {
+      const mockResponse = { task_id: "task-123" };
+      const researchData = { url: "http://example.com", name: "Test Company" };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.submitResearch(researchData);
+      expect(fetch).toHaveBeenCalledWith("/api/companies", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(researchData),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("throws error on failed request", async () => {
+      const researchData = { url: "http://example.com" };
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ error: "Invalid URL" }),
+      });
+
+      await expect(service.submitResearch(researchData)).rejects.toThrow(
+        "Invalid URL"
+      );
+    });
+  });
 });
 
 
