@@ -21,6 +21,7 @@ import {
   buildHashForCompany,
   parseViewFromUrl,
   setIncludeAllParam,
+  urlUtils,
 } from "./url-utils.js";
 
 // Add CSS for message date styling and status icons
@@ -207,15 +208,14 @@ document.addEventListener("alpine:init", () => {
             ? "daily_dashboard"
             : "company_management";
         // Update URL without reloading
-        const url = new URL(window.location);
-        url.searchParams.delete("company");
-        url.searchParams.delete("message");
-        if (this.viewMode === "daily_dashboard") {
-          url.searchParams.set("view", "daily");
-        } else {
-          url.searchParams.delete("view");
-        }
-        window.history.replaceState({}, "", url);
+        urlUtils.updateUrlParams(
+          {
+            company: null,
+            message: null,
+            view: this.viewMode === "daily_dashboard" ? "daily" : null,
+          },
+          true
+        );
       },
 
       isCompanyManagementView() {
@@ -232,14 +232,11 @@ document.addEventListener("alpine:init", () => {
         this.viewMode = "company_management";
 
         // Update URL with anchor and preserve include_all parameter
-        const url = new URL(window.location);
+        const url = urlUtils.createUrl();
         url.hash = encodeURIComponent(companyId);
         url.searchParams.delete("message");
         url.searchParams.delete("view");
-
-        // Preserve include_all parameter if currently active
         setIncludeAllParam(url, this.showArchived);
-
         window.history.pushState({}, "", url);
 
         // Ensure companies are loaded with current include_all setting
@@ -258,10 +255,7 @@ document.addEventListener("alpine:init", () => {
 
       navigateToMessage(messageId) {
         // Update URL
-        const url = new URL(window.location);
-        url.searchParams.set("message", messageId);
-        url.searchParams.delete("company");
-        window.history.pushState({}, "", url);
+        urlUtils.updateUrlParams({ message: messageId, company: null }, false);
 
         // Load message and associated company
         this.loadMessageAndCompany(messageId);
@@ -373,9 +367,7 @@ document.addEventListener("alpine:init", () => {
         modalUtils.closeModal(modalUtils.modalIds.EDIT);
 
         // Update URL to remove message parameter
-        const url = new URL(window.location);
-        url.searchParams.delete("message");
-        window.history.replaceState({}, "", url);
+        urlUtils.removeUrlParams(["message"]);
       },
 
       async saveReply() {
