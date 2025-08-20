@@ -8,7 +8,7 @@
 Acceptance criteria:
 [x] Utility logic (filtering, sorting, URL state, headings) covered by pure unit tests
 [ ] Real component tests validate key user flows without asserting brittle template internals
-[ ] Remove duplicate/brittle tests; align with current filterMode/sort API
+[x] Remove duplicate/brittle tests; align with current filterMode/sort API
 [ ] Task/email services have minimal contract tests with fetch/timer control
     - Note: Added minimal real (unmocked) smoke for `CompanyResearchService` to raise coverage
 
@@ -44,7 +44,7 @@ Acceptance criteria:
 [x] archiveMessage(messageId)
 [x] updateCompanyDetails(companyId, payload)
 
-[ ] Deduplicate polling: remove app-local `pollTaskStatus` in `app.js`; rely entirely on `TaskPollingService` (largest remaining duplication and source of untested lines)
+[x] Deduplicate polling: remove app-local `pollTaskStatus` in `app.js`; rely entirely on `TaskPollingService` (largest remaining duplication and source of untested lines)
 [x] Refactor `app.js` to delegate to the above utils/services; keep DOM-only concerns (dialogs, Alpine wiring)
 [x] Add unit tests for new utils/services; keep import smoke for `app.js`
 
@@ -93,16 +93,16 @@ Acceptance criteria:
 [x] **Centralize fetch mocking**: Add `vi.stubGlobal('fetch', vi.fn())` to vitest.setup.js and `vi.restoreAllMocks()` to afterEach
 
 ### Test Structure and Organization
-[ ] **Trim and rename**: Rename `server/frontend/tests/daily-dashboard.test.js` to `daily-dashboard.state.test.js` and trim duplicated suites (keep only state/logic tests; move any DOM bits to integration)
-[ ] **Consolidate smoke tests**: Merge `app.import.test.js` and `daily-dashboard.import.test.js` into `smoke.test.js` as two short cases; keep just enough to execute import-time side effects
-[ ] **Remove redundant DOM checks**: Delete duplicate presence assertions across `daily-dashboard-integration.test.js` and other files; prefer behavior over template attribute inspections
+[x] **Trim and rename**: Rename `server/frontend/tests/daily-dashboard.test.js` to `daily-dashboard.state.test.js` and trim duplicated suites (keep only state/logic tests; move any DOM bits to integration)
+[x] **Consolidate smoke tests**: Merge `app.import.test.js` and `daily-dashboard.import.test.js` into `smoke.test.js` as two short cases; keep just enough to execute import-time side effects
+[x] **Remove redundant DOM checks**: Delete duplicate presence assertions across `daily-dashboard-integration.test.js` and other files; prefer behavior over template attribute inspections
 
 ### Component Testing Strategy
 [x] **Create unified Alpine helper**: Build a single helper in `test-utils.js` to initialize Alpine, trigger `alpine:init`, and capture registered factories
 [x] **Factory-capture tests for components**: Add `daily-dashboard.factory.test.js` that captures the factory, instantiates the component, and exercises core methods with services mocked. This executes real component code without full DOM mounting and raises coverage for `daily-dashboard.js`.
-[ ] **Extract URL sync logic**: Move `updateUrlWithFilterState` and `readFilterStateFromUrl` from `daily-dashboard.js` into `url-utils.js` (use `urlUtils.updateUrlParams` and `dashboard-utils.buildUpdatedSearch`) and add focused unit tests
-[ ] **Add accessible selectors**: Add `aria-label` attributes to key buttons in `index.html` for stable test queries
-[ ] **Add data-testid attributes**: Add `data-testid` to hard-to-reach nodes that can't use accessible selectors
+[x] **Extract URL sync logic**: Move `updateUrlWithFilterState` and `readFilterStateFromUrl` from `daily-dashboard.js` into `url-utils.js` (use `urlUtils.updateUrlParams` and `dashboard-utils.buildUpdatedSearch`) and add focused unit tests
+[x] **Add accessible selectors**: Add `aria-label` attributes to key buttons in `index.html` for stable test queries
+[x] **Add data-testid attributes**: Add `data-testid` to hard-to-reach nodes that can't use accessible selectors
 
 Notes from investigation:
 - Stripping `<script src>` in tests prevents module execution; import smoke tests address coverage without re-enabling external fetches.
@@ -115,7 +115,7 @@ Notes from investigation:
 [x] **Right-size timers**: Move `vi.useFakeTimers()` from global setup to specific test suites that need it
 
 ### Mock and State Management
-[ ] **Standardize dialog mocking**: Create shared dialog mock helper in `test-utils.js` for `showModal`/`close` and `confirmDialogs`
+[x] **Standardize dialog mocking**: Create shared dialog mock helper in `test-utils.js` for `showModal`/`close` and `confirmDialogs`
 [ ] **Remove component logic duplication**: Replace re-implemented production logic in `daily-dashboard.test.js` with factory-captured component tests that call real methods
 [ ] **Use dependency injection**: Allow `TaskPollingService` to accept an optional delay (ms) and/or a `sleep` function for test control; remove `app.js` local polling in favor of the shared service
 [x] **Test real functions**: Pure utilities now tested directly (`dashboard-utils`, `url-utils`, `company-utils`)
@@ -143,7 +143,7 @@ Maybe **Monitor Alpine community patterns**: Stay updated on testing best practi
 [x] Remove `app.js` local `pollTaskStatus` and route all polling via `TaskPollingService` only
     - Add tests in `task-polling.test.js` with injectable delay/sleep to keep loops deterministic
 
-[ ] Extract `daily-dashboard.js` URL sync helpers into `url-utils.js`
+[x] Extract `daily-dashboard.js` URL sync helpers into `url-utils.js`
     - Move `readFilterStateFromUrl` and `updateUrlWithFilterState` to `url-utils.js`
     - Add focused unit tests and refactor component to call the shared helpers
 
