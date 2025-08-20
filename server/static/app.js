@@ -1003,19 +1003,8 @@ document.addEventListener("alpine:init", () => {
             return;
           }
 
-          // Call the new message-centric archive endpoint
-          const response = await fetch(`/api/messages/${messageId}/archive`, {
-            method: "POST",
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to archive message: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
+          // Call the archive endpoint via service
+          await companiesService.archiveMessage(messageId);
 
           // Fetch fresh company data
           await this.fetchAndUpdateCompany(company.company_id);

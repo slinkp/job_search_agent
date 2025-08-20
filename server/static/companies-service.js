@@ -99,6 +99,17 @@ export class CompaniesService {
 
     return { company, message };
   }
+
+  async archiveMessage(messageId) {
+    const response = await fetch(`/api/messages/${messageId}/archive`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to archive message: ${response.status}`);
+    }
+    return response.json();
+  }
 }
 
 

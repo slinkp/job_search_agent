@@ -237,6 +237,34 @@ describe("CompaniesService", () => {
       );
     });
   });
+
+  describe("archiveMessage", () => {
+    it("archives a message", async () => {
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.archiveMessage("message-id");
+      expect(fetch).toHaveBeenCalledWith("/api/messages/message-id/archive", {
+        method: "POST",
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("throws error on failed request", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ error: "Message not found" }),
+      });
+
+      await expect(service.archiveMessage("message-id")).rejects.toThrow(
+        "Message not found"
+      );
+    });
+  });
 });
 
 
