@@ -211,21 +211,7 @@ document.addEventListener("alpine:init", () => {
           // Also add to service for polling
           taskPollingService.addGeneratingMessage(message);
 
-          const response = await fetch(
-            `/api/messages/${message.message_id}/reply`,
-            {
-              method: "POST",
-            }
-          );
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to generate reply: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
+          const data = await companiesService.generateReply(message.message_id);
           message.message_task_id = data.task_id;
           message.message_status = data.status;
 
