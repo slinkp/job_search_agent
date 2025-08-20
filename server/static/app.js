@@ -1,4 +1,5 @@
 import { CompanyResearchService } from "./company-research.js";
+import { formatResearchErrors as utilFormatResearchErrors } from "./company-utils.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { TaskPollingService } from "./task-polling.js";
 import {
@@ -7,6 +8,11 @@ import {
   showError,
   showSuccess,
 } from "./ui-utils.js";
+import {
+  buildHashForCompany,
+  parseViewFromUrl,
+  setIncludeAllParam,
+} from "./url-utils.js";
 
 // Add CSS for message date styling and status icons
 const style = document.createElement("style");
@@ -146,13 +152,12 @@ document.addEventListener("alpine:init", () => {
         this.loading = true;
         try {
           // Check URL for view parameter first
+          const viewMode = parseViewFromUrl(window.location.search);
           const urlParams = new URLSearchParams(window.location.search);
-          const viewParam = urlParams.get("view");
           const includeAllParam = urlParams.get("include_all") === "true";
 
           // Set view mode based on URL parameter
-          this.viewMode =
-            viewParam === "daily" ? "daily_dashboard" : "company_management";
+          this.viewMode = viewMode;
 
           // Track show archived state
           this.showArchived = includeAllParam;
@@ -169,7 +174,7 @@ document.addEventListener("alpine:init", () => {
             if (companyId) {
               setTimeout(() => {
                 const element = document.getElementById(
-                  encodeURIComponent(companyId)
+                  buildHashForCompany(companyId)
                 );
                 if (element) {
                   element.scrollIntoView({ behavior: "smooth" });
@@ -223,9 +228,7 @@ document.addEventListener("alpine:init", () => {
         url.searchParams.delete("view");
 
         // Preserve include_all parameter if currently active
-        if (this.showArchived) {
-          url.searchParams.set("include_all", "true");
-        }
+        setIncludeAllParam(url, this.showArchived);
 
         window.history.pushState({}, "", url);
 
@@ -1066,37 +1069,11 @@ document.addEventListener("alpine:init", () => {
 
         // Update URL to reflect the change
         const url = new URL(window.location);
-        if (this.showArchived) {
-          url.searchParams.set("include_all", "true");
-        } else {
-          url.searchParams.delete("include_all");
-        }
+        setIncludeAllParam(url, this.showArchived);
         window.history.replaceState({}, "", url);
       },
 
-      formatResearchErrors(company) {
-        if (!company || !company.research_errors) return "";
-
-        // If it's already a formatted string, just return it
-        if (typeof company.research_errors === "string") {
-          return company.research_errors;
-        }
-
-        // If it's an array of objects, try to format it
-        if (Array.isArray(company.research_errors)) {
-          return company.research_errors
-            .map((err) => {
-              if (typeof err === "string") return err;
-              if (err && err.step && err.error)
-                return `${err.step}: ${err.error}`;
-              return JSON.stringify(err);
-            })
-            .join("; ");
-        }
-
-        // Fallback for unknown formats
-        return JSON.stringify(company.research_errors);
-      },
+      formatResearchErrors: utilFormatResearchErrors,
 
       async ignoreAndArchive(company) {
         if (!company) {
