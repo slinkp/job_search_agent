@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   buildHashForCompany,
   parseViewFromUrl,
-  setIncludeAllParam,
-  urlUtils,
   readDailyDashboardStateFromUrl,
+  setIncludeAllParam,
   updateDailyDashboardUrlWithState,
+  urlUtils,
 } from "../../static/url-utils.js";
 
 // Mock window.location and history

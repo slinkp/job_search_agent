@@ -80,7 +80,7 @@ export const urlUtils = {
 };
 
 // Dashboard URL sync helpers (extracted from daily-dashboard.js)
-import { parseUrlState, buildUpdatedSearch } from "./dashboard-utils.js";
+import { buildUpdatedSearch, parseUrlState } from "./dashboard-utils.js";
 
 export function readDailyDashboardStateFromUrl(search) {
   return parseUrlState(search || window.location.search || "");
