@@ -133,7 +133,7 @@ Do not auto-start server (manual step).
 
 ### Low coverage action checklist for app.js and daily-dashboard.js
 
-[ ] Add factory-capture component tests that instantiate real component objects (no DOM mount):
+[x] Add factory-capture component tests that instantiate real component objects (no DOM mount):
     - Capture factories by stubbing `global.Alpine.data = vi.fn((name, fn) => { captured[name] = fn; })`
     - Import modules, dispatch `document.dispatchEvent(new Event('alpine:init'))`
     - Instantiate `captured.companyList()` and `captured.dailyDashboard()` and execute methods:
