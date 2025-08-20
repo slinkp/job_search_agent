@@ -22,6 +22,10 @@ describe("app.js import smoke", () => {
     // app.js adds a <style> block to the document head at import-time
     const styleEl = document.head.querySelector("style");
     expect(styleEl).toBeTruthy();
+
+    // Trigger Alpine registration and confirm factory was registered
+    document.dispatchEvent(new Event("alpine:init"));
+    expect(Alpine.data).toHaveBeenCalled();
   });
 });
 
