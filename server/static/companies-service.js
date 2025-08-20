@@ -172,6 +172,14 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async pollResearchTask(taskId) {
+    const response = await fetch(`/api/tasks/${taskId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to poll research task: ${response.status}`);
+    }
+    return response.json();
+  }
 }
 
 

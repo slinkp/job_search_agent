@@ -1060,7 +1060,7 @@ document.addEventListener("alpine:init", () => {
         if (!this.researchCompanyTaskId) return;
 
         try {
-          const data = await researchService.pollResearchTask(
+          const data = await companiesService.pollResearchTask(
             this.researchCompanyTaskId
           );
 
