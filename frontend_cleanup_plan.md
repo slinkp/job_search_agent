@@ -121,10 +121,9 @@ Notes from investigation:
 [x] **Test real functions**: Pure utilities now tested directly (`dashboard-utils`, `url-utils`, `company-utils`)
 
 ### Future Considerations
-[ ] **Consider Playwright for true E2E**: 1-2 flows for generate reply → poll → UI update when backend stabilizes
+Maybe **Consider Playwright for true E2E**: 1-2 flows for generate reply → poll → UI update when backend stabilizes
 Do not auto-start server (manual step).
-[ ] **Monitor Alpine community patterns**: Stay updated on testing best practices as Alpine ecosystem evolves
-[ ] **Document testing patterns**: Create guide for team on when to use unit vs integration vs E2E tests
+Maybe **Monitor Alpine community patterns**: Stay updated on testing best practices as Alpine ecosystem evolves
 
 
 ### Service tests (thin)
