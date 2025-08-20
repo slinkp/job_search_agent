@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatMessageDate, formatRecruiterMessageDate, isUrl, showError, showSuccess } from '../../static/ui-utils.js';
+import { formatDate, formatMessageDate, formatRecruiterMessageDate, isUrl, showError, showSuccess } from '../../static/ui-utils.js';
 
 // Mock alert for testing
 global.alert = vi.fn();
@@ -44,7 +44,7 @@ describe('UI Utils', () => {
     });
 
     it('should handle invalid dates', () => {
-      expect(formatMessageDate('invalid-date')).toBe('Invalid Date Invalid Date');
+      expect(formatMessageDate('invalid-date')).toBe('Invalid date');
     });
   });
 
@@ -76,6 +76,41 @@ describe('UI Utils', () => {
       expect(isUrl(null)).toBe(false);
       expect(isUrl(undefined)).toBe(false);
       expect(isUrl(123)).toBe(false);
+    });
+  });
+
+  describe("formatDate", () => {
+    it("formats date in simple format by default", () => {
+      const result = formatDate("2023-12-01T10:30:00Z");
+      expect(result).toMatch(/12\/1\/2023/); // Locale format may vary
+      expect(result).toMatch(/\d{1,2}:\d{2}/); // Time should be included (any time format)
+    });
+
+    it("formats date in detailed format when specified", () => {
+      const result = formatDate("2023-12-01T10:30:00Z", "detailed");
+      expect(result).toMatch(/2023\/12\/01/);
+      expect(result).toMatch(/\d{1,2}:\d{2}/); // Time should be included (any time format)
+      expect(result).toMatch(/days ago/);
+    });
+
+    it("handles null/undefined dates in simple format", () => {
+      expect(formatDate(null)).toBe("Unknown date");
+      expect(formatDate(undefined)).toBe("Unknown date");
+      expect(formatDate("")).toBe("Unknown date");
+    });
+
+    it("handles null/undefined dates in detailed format", () => {
+      expect(formatDate(null, "detailed")).toBe("");
+      expect(formatDate(undefined, "detailed")).toBe("");
+      expect(formatDate("", "detailed")).toBe("");
+    });
+
+    it("handles invalid dates in simple format", () => {
+      expect(formatDate("invalid-date")).toBe("Invalid date");
+    });
+
+    it("handles invalid dates in detailed format", () => {
+      expect(formatDate("invalid-date", "detailed")).toBe("");
     });
   });
 }); 
