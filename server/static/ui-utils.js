@@ -110,3 +110,22 @@ export const confirmDialogs = {
     return confirm("Are you sure you want to send this reply and archive the message?");
   }
 };
+
+/**
+ * Common error logging utilities for consistent error handling
+ */
+export const errorLogger = {
+  /**
+   * Log a "Failed to" error with consistent formatting
+   */
+  logFailedTo(action, error) {
+    console.error(`Failed to ${action}:`, error);
+  },
+
+  /**
+   * Log a generic error with consistent formatting
+   */
+  logError(message, error) {
+    console.error(message, error);
+  }
+};

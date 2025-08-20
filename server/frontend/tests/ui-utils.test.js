@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatDate, formatMessageDate, formatRecruiterMessageDate, isUrl, showError, showSuccess, confirmDialogs } from '../../static/ui-utils.js';
+import { formatDate, formatMessageDate, formatRecruiterMessageDate, isUrl, showError, showSuccess, confirmDialogs, errorLogger } from '../../static/ui-utils.js';
 
-// Mock alert and confirm for testing
+// Mock alert, confirm, and console for testing
 global.alert = vi.fn();
 global.confirm = vi.fn();
+global.console = {
+  ...console,
+  error: vi.fn(),
+  log: vi.fn()
+};
 
 describe('UI Utils', () => {
   beforeEach(() => {
@@ -128,6 +133,24 @@ describe('UI Utils', () => {
     it('should call confirm with send and archive message', () => {
       confirmDialogs.sendAndArchive();
       expect(confirm).toHaveBeenCalledWith('Are you sure you want to send this reply and archive the message?');
+    });
+  });
+
+  describe('errorLogger', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should log failed to error with consistent formatting', () => {
+      const error = new Error('Test error');
+      errorLogger.logFailedTo('load messages', error);
+      expect(console.error).toHaveBeenCalledWith('Failed to load messages:', error);
+    });
+
+    it('should log generic error with consistent formatting', () => {
+      const error = new Error('Test error');
+      errorLogger.logError('Custom error message', error);
+      expect(console.error).toHaveBeenCalledWith('Custom error message', error);
     });
   });
 }); 
