@@ -6,6 +6,7 @@
 // will update the company's shared reply draft. This is a temporary limitation
 // until per-message draft storage is implemented.
 
+import { CompaniesService } from "./companies-service.js";
 import {
   buildUpdatedSearch,
   filterMessages,
@@ -13,7 +14,6 @@ import {
   sortMessages,
   getFilterHeading as utilGetFilterHeading,
 } from "./dashboard-utils.js";
-import { CompaniesService } from "./companies-service.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { computeMessagePreview } from "./message-utils.js";
 import { TaskPollingService } from "./task-polling.js";
@@ -159,21 +159,7 @@ document.addEventListener("alpine:init", () => {
         try {
           this.researchingCompanies.add(message.company_name);
           taskPollingService.addResearching(message);
-          const response = await fetch(
-            `/api/companies/${message.company_id}/research`,
-            {
-              method: "POST",
-            }
-          );
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to start research: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
+          const data = await companiesService.research(message.company_id);
           message.research_task_id = data.task_id;
           message.research_status = data.status;
 
