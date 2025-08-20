@@ -1030,7 +1030,7 @@ document.addEventListener("alpine:init", () => {
         }
       },
 
-      togglePromising(company, value) {
+      async togglePromising(company, value) {
         if (!company) return;
 
         // If clicking the same value that's already set, clear it
@@ -1038,30 +1038,16 @@ document.addEventListener("alpine:init", () => {
           value = null;
         }
 
+        const originalValue = company.promising;
         company.promising = value;
 
-        // Save to backend
-        fetch(
-          `/api/companies/${encodeURIComponent(company.company_id)}/details`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ promising: value }),
-          }
-        )
-          .then((response) => {
-            if (!response.ok) {
-              // Revert the local change if the server update failed
-              company.promising = null;
-            }
-          })
-          .catch((err) => {
-            console.error("Failed to update promising status:", err);
-            // Revert the local change if the server update failed
-            company.promising = null;
-          });
+        try {
+          await companiesService.updateCompanyDetails(company.company_id, { promising: value });
+        } catch (err) {
+          console.error("Failed to update promising status:", err);
+          // Revert the local change if the server update failed
+          company.promising = originalValue;
+        }
       },
 
       showResearchCompanyModal() {
