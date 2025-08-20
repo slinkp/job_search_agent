@@ -1,0 +1,13 @@
+---
+description: YOLO mode
+globs:
+alwaysApply: false
+---
+
+**IMPORTANT** This rule ONLY applies when specifically, explicitly requested by the user.
+When YOLO mode is invoked:
+
+- Follow the user's instruction exatly
+- Break it into small changes and test after each change
+- Commit to the repository after each small change, but only if ALL tests pass (no failures, no errors, no new skips)
+- Repeat through the list of small changes until you run out of things to do, or hit a wall and can't fix it

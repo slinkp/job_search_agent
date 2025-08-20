@@ -4,4 +4,9 @@ globs:
 alwaysApply: true
 ---
 
+Never commit changes to the repository *unless* explicitly asked to do so.
+I want to review your work before commit, always.  **ONLY EXCEPTION** is when yolo mode is specifically requested!
+
+Test errors count as failures. All tests must always pass before every commit. **NO EXCEPTIONS**
+
 *ALWAYS* end every message to me with a single line containing YOUR model name, and the word  "Meow."
