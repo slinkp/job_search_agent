@@ -464,6 +464,56 @@ describe("CompaniesService", () => {
       );
     });
   });
+
+  describe("scanEmails", () => {
+    it("scans emails with default max messages", async () => {
+      const mockResponse = { task_id: "task-123", status: "pending" };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.scanEmails();
+      expect(fetch).toHaveBeenCalledWith("/api/scan_emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ max_messages: 10 }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("scans emails with custom max messages", async () => {
+      const mockResponse = { task_id: "task-123", status: "pending" };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.scanEmails(20);
+      expect(fetch).toHaveBeenCalledWith("/api/scan_emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ max_messages: 20 }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("throws error on failed request", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ error: "Scan failed" }),
+      });
+
+      await expect(service.scanEmails()).rejects.toThrow(
+        "Scan failed"
+      );
+    });
+  });
 });
 
 

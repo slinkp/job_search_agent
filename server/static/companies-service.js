@@ -188,6 +188,21 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async scanEmails(maxMessages = 10) {
+    const response = await fetch("/api/scan_emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ max_messages: maxMessages }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to scan emails: ${response.status}`);
+    }
+    return response.json();
+  }
 }
 
 
