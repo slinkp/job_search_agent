@@ -8,9 +8,9 @@
 
 import { CompaniesService } from "./companies-service.js";
 import {
-  buildUpdatedSearch,
+  // buildUpdatedSearch,
   filterMessages,
-  parseUrlState,
+  // parseUrlState,
   sortMessages,
   getFilterHeading as utilGetFilterHeading,
 } from "./dashboard-utils.js";
@@ -24,6 +24,7 @@ import {
   showError,
   showSuccess,
 } from "./ui-utils.js";
+import { readDailyDashboardStateFromUrl, updateDailyDashboardUrlWithState } from "./url-utils.js";
 
 document.addEventListener("alpine:init", () => {
   const emailScanningService = new EmailScanningService();
@@ -79,7 +80,7 @@ document.addEventListener("alpine:init", () => {
 
       // Read filtering state from URL parameters
       readFilterStateFromUrl() {
-        const { filterMode, sortNewestFirst } = parseUrlState(
+        const { filterMode, sortNewestFirst } = readDailyDashboardStateFromUrl(
           window.location.search
         );
         this.filterMode = filterMode;
@@ -88,20 +89,9 @@ document.addEventListener("alpine:init", () => {
 
       // Update URL with current filtering state
       updateUrlWithFilterState() {
-        // Preserve existing parameters while updating filter state
-        const search = buildUpdatedSearch(window.location.search, {
-          filterMode: this.filterMode,
-          sortNewestFirst: this.sortNewestFirst,
-        });
-
-        const newUrl = `${window.location.pathname || "/"}?${search}$${
-          window.location.hash || ""
-        }`.replace(/([^:])\/\//g, "$1/");
-
-        window.history.replaceState(
-          { ...window.history.state, filtersUpdated: true },
-          "",
-          newUrl
+        updateDailyDashboardUrlWithState(
+          this.filterMode,
+          this.sortNewestFirst
         );
       },
 

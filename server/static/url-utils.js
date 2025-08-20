@@ -78,3 +78,21 @@ export const urlUtils = {
     return url;
   }
 };
+
+// Dashboard URL sync helpers (extracted from daily-dashboard.js)
+import { parseUrlState, buildUpdatedSearch } from "./dashboard-utils.js";
+
+export function readDailyDashboardStateFromUrl(search) {
+  return parseUrlState(search || window.location.search || "");
+}
+
+export function updateDailyDashboardUrlWithState(filterMode, sortNewestFirst) {
+  const currentSearch = window.location.search || "";
+  const search = buildUpdatedSearch(currentSearch, { filterMode, sortNewestFirst });
+  const newUrl = `${window.location.pathname || "/"}?${search}${window.location.hash || ""}`.replace(
+    /([^:])\/\//g,
+    "$1/"
+  );
+  window.history.replaceState({ ...window.history.state, filtersUpdated: true }, "", newUrl);
+  return newUrl;
+}

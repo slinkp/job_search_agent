@@ -4,6 +4,8 @@ import {
   parseViewFromUrl,
   setIncludeAllParam,
   urlUtils,
+  readDailyDashboardStateFromUrl,
+  updateDailyDashboardUrlWithState,
 } from "../../static/url-utils.js";
 
 // Mock window.location and history
@@ -134,6 +136,27 @@ describe('URL Utils', () => {
         expect(mockHistory.replaceState).toHaveBeenCalledWith({}, '', url);
         expect(url.hash).toBe('#new-hash');
       });
+    });
+  });
+
+  describe('daily dashboard URL helpers', () => {
+    it('readDailyDashboardStateFromUrl parses filter and sort', () => {
+      const { filterMode, sortNewestFirst } = readDailyDashboardStateFromUrl('?filterMode=replied&sort=oldest');
+      expect(filterMode).toBe('replied');
+      expect(sortNewestFirst).toBe(false);
+    });
+
+    it('updateDailyDashboardUrlWithState writes params to history', () => {
+      const orig = window.history.replaceState;
+      let lastUrl = '';
+      window.history.replaceState = (state, title, url) => {
+        lastUrl = typeof url === 'string' ? url : url.toString();
+        orig.call(window.history, state, title, url);
+      };
+      const newUrl = updateDailyDashboardUrlWithState('archived', true);
+      expect(newUrl.includes('filterMode=archived')).toBe(true);
+      expect(newUrl.includes('sort=newest')).toBe(true);
+      window.history.replaceState = orig;
     });
   });
 });
