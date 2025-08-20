@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { vi } from "vitest";
 
 /**
  * Loads the HTML content from index.html
@@ -33,4 +34,20 @@ export function setupDocumentWithIndexHtml(document) {
   const rawHtml = loadIndexHtml();
   const sanitizedHtml = stripExternalScripts(rawHtml);
   document.body.innerHTML = sanitizedHtml;
+}
+
+/**
+ * Capture Alpine component factories by stubbing Alpine.data and dispatching alpine:init
+ * Returns a map of name->factory function.
+ */
+export function captureAlpineFactories() {
+  const captured = {};
+  global.Alpine = {
+    data: vi.fn((name, factory) => {
+      captured[name] = factory;
+    }),
+    start: vi.fn(),
+    store: vi.fn(() => ({})),
+  };
+  return captured;
 }

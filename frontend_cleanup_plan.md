@@ -98,8 +98,8 @@ Acceptance criteria:
 [ ] **Remove redundant DOM checks**: Delete duplicate presence assertions across `daily-dashboard-integration.test.js` and other files; prefer behavior over template attribute inspections
 
 ### Component Testing Strategy
-[ ] **Create unified Alpine helper**: Build a single helper in `test-utils.js` to initialize Alpine, trigger `alpine:init`, and capture registered factories
-[ ] **Factory-capture tests for components**: In new `app.component.test.js` and `daily-dashboard.component.test.js`, import the modules with `global.Alpine.data = vi.fn((name, fn) => { captured[name] = fn; })`, trigger `alpine:init`, instantiate factories, and unit-test component methods with services mocked. This directly executes real component code without full DOM mounting and will materially raise coverage for `app.js` and `daily-dashboard.js`
+[x] **Create unified Alpine helper**: Build a single helper in `test-utils.js` to initialize Alpine, trigger `alpine:init`, and capture registered factories
+[x] **Factory-capture tests for components**: Add `daily-dashboard.factory.test.js` that captures the factory, instantiates the component, and exercises core methods with services mocked. This executes real component code without full DOM mounting and raises coverage for `daily-dashboard.js`.
 [ ] **Extract URL sync logic**: Move `updateUrlWithFilterState` and `readFilterStateFromUrl` from `daily-dashboard.js` into `url-utils.js` (use `urlUtils.updateUrlParams` and `dashboard-utils.buildUpdatedSearch`) and add focused unit tests
 [ ] **Add accessible selectors**: Add `aria-label` attributes to key buttons in `index.html` for stable test queries
 [ ] **Add data-testid attributes**: Add `data-testid` to hard-to-reach nodes that can't use accessible selectors
