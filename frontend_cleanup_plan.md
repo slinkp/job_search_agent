@@ -148,7 +148,7 @@ Do not auto-start server (manual step).
     - Move `readFilterStateFromUrl` and `updateUrlWithFilterState` to `url-utils.js`
     - Add focused unit tests and refactor component to call the shared helpers
 
-[ ] Create a unified Alpine factory helper in `server/frontend/tests/test-utils.js`
+[x] Create a unified Alpine factory helper in `server/frontend/tests/test-utils.js`
     - Utility to capture factories, dispatch `alpine:init`, and return instantiated component objects
 
 [x] Expand app import smoke to also dispatch `alpine:init` and assert registration
