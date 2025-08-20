@@ -569,8 +569,7 @@ document.addEventListener("alpine:init", () => {
 
         while (trackingSet.has(trackingKey)) {
           try {
-            const response = await fetch(`/api/tasks/${taskId}`);
-            const task = await response.json();
+            const task = await companiesService.pollTask(taskId);
 
             console.log(`Poll response for ${trackingKey}:`, task);
 

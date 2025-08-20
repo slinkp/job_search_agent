@@ -180,6 +180,14 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async pollTask(taskId) {
+    const response = await fetch(`/api/tasks/${taskId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to poll task: ${response.status}`);
+    }
+    return response.json();
+  }
 }
 
 

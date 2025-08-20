@@ -439,6 +439,31 @@ describe("CompaniesService", () => {
       );
     });
   });
+
+  describe("pollTask", () => {
+    it("polls task status", async () => {
+      const mockResponse = { status: "completed", result: { success: true } };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.pollTask("task-123");
+      expect(fetch).toHaveBeenCalledWith("/api/tasks/task-123");
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("throws error on failed request", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      });
+
+      await expect(service.pollTask("task-123")).rejects.toThrow(
+        "Failed to poll task: 404"
+      );
+    });
+  });
 });
 
 
