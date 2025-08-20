@@ -13,6 +13,7 @@ import {
   sortMessages,
   getFilterHeading as utilGetFilterHeading,
 } from "./dashboard-utils.js";
+import { CompaniesService } from "./companies-service.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { computeMessagePreview } from "./message-utils.js";
 import { TaskPollingService } from "./task-polling.js";
@@ -26,6 +27,7 @@ document.addEventListener("alpine:init", () => {
   window.emailScanningService = emailScanningService;
 
   Alpine.data("dailyDashboard", () => {
+    const companiesService = new CompaniesService();
     return {
       // Message list data
       unprocessedMessages: [],
@@ -125,12 +127,7 @@ document.addEventListener("alpine:init", () => {
       async loadMessages() {
         this.loading = true;
         try {
-          const response = await fetch("/api/messages");
-          if (!response.ok) {
-            throw new Error(`Failed to load messages: ${response.status}`);
-          }
-
-          const messages = await response.json();
+          const messages = await companiesService.getMessages();
 
           // Apply client-side filtering based on filterMode
           this.unprocessedMessages = filterMessages(messages, this.filterMode);

@@ -203,6 +203,14 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async getMessages() {
+    const response = await fetch("/api/messages");
+    if (!response.ok) {
+      throw new Error(`Failed to load messages: ${response.status}`);
+    }
+    return response.json();
+  }
 }
 
 

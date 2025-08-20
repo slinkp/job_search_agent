@@ -514,6 +514,34 @@ describe("CompaniesService", () => {
       );
     });
   });
+
+  describe("getMessages", () => {
+    it("fetches messages", async () => {
+      const mockMessages = [
+        { message_id: "msg-1", company_id: "company-1", content: "Message 1" },
+        { message_id: "msg-2", company_id: "company-2", content: "Message 2" },
+      ];
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockMessages),
+      });
+
+      const result = await service.getMessages();
+      expect(fetch).toHaveBeenCalledWith("/api/messages");
+      expect(result).toEqual(mockMessages);
+    });
+
+    it("throws error on failed request", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      });
+
+      await expect(service.getMessages()).rejects.toThrow(
+        "Failed to load messages: 500"
+      );
+    });
+  });
 });
 
 
