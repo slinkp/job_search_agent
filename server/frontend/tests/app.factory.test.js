@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { captureAlpineFactories } from "./test-utils.js";
 
 describe("app/companyList factory-capture", () => {
@@ -42,9 +42,15 @@ describe("app/companyList factory-capture", () => {
         removeSendingMessage() {}
         pollResearchStatus = vi.fn(async () => ({}));
         pollMessageStatus = vi.fn(async () => ({}));
-        getResearchStatusText() { return ""; }
-        getResearchStatusClass() { return {}; }
-        getMessageStatusText() { return ""; }
+        getResearchStatusText() {
+          return "";
+        }
+        getResearchStatusClass() {
+          return {};
+        }
+        getMessageStatusText() {
+          return "";
+        }
       },
     }));
 
@@ -52,10 +58,18 @@ describe("app/companyList factory-capture", () => {
       EmailScanningService: class {
         scanningEmails = false;
         emailScanStatus = null;
-        async scanRecruiterEmails() { return {}; }
-        async pollEmailScanStatus() { return { status: "completed" }; }
-        getEmailScanStatusText() { return ""; }
-        getEmailScanStatusClass() { return ""; }
+        async scanRecruiterEmails() {
+          return {};
+        }
+        async pollEmailScanStatus() {
+          return { status: "completed" };
+        }
+        getEmailScanStatusText() {
+          return "";
+        }
+        getEmailScanStatusClass() {
+          return "";
+        }
       },
     }));
 
@@ -65,21 +79,48 @@ describe("app/companyList factory-capture", () => {
 
     vi.mock("../../static/companies-service.js", () => ({
       CompaniesService: class {
-        async getCompanies() { return []; }
-        async getCompany(id) { return { company_id: id, name: "Test Co" }; }
-        async loadCompany(id) { return { company_id: id, name: "Test Co" }; }
-        async loadMessageAndCompany(messageId) {
-          return { company: { company_id: "c1", name: "Test Co" }, message: { message_id: messageId } };
+        async getCompanies() {
+          return [];
         }
-        async saveReply() { return { reply_message: "Saved" }; }
-        async sendAndArchive() { return { task_id: "t1", status: "pending" }; }
-        async archiveMessage() { return {}; }
-        async generateReply() { return { task_id: "t2", status: "pending" }; }
-        async research() { return { task_id: "t3", status: "pending" }; }
-        async importCompanies() { return { task_id: "imp1" }; }
-        async pollTask() { return { status: "completed" }; }
-        async updateCompanyDetails() { return {}; }
-        async getMessages() { return []; }
+        async getCompany(id) {
+          return { company_id: id, name: "Test Co" };
+        }
+        async loadCompany(id) {
+          return { company_id: id, name: "Test Co" };
+        }
+        async loadMessageAndCompany(messageId) {
+          return {
+            company: { company_id: "c1", name: "Test Co" },
+            message: { message_id: messageId },
+          };
+        }
+        async saveReply() {
+          return { reply_message: "Saved" };
+        }
+        async sendAndArchive() {
+          return { task_id: "t1", status: "pending" };
+        }
+        async archiveMessage() {
+          return {};
+        }
+        async generateReply() {
+          return { task_id: "t2", status: "pending" };
+        }
+        async research() {
+          return { task_id: "t3", status: "pending" };
+        }
+        async importCompanies() {
+          return { task_id: "imp1" };
+        }
+        async pollTask() {
+          return { status: "completed" };
+        }
+        async updateCompanyDetails() {
+          return {};
+        }
+        async getMessages() {
+          return [];
+        }
       },
     }));
 
@@ -96,7 +137,11 @@ describe("app/companyList factory-capture", () => {
       modalUtils: {
         showModal: () => {},
         closeModal: () => {},
-        modalIds: { EDIT: "editModal", RESEARCH_COMPANY: "research-company-modal", IMPORT_COMPANIES: "import-companies-modal" },
+        modalIds: {
+          EDIT: "editModal",
+          RESEARCH_COMPANY: "research-company-modal",
+          IMPORT_COMPANIES: "import-companies-modal",
+        },
       },
     }));
 
@@ -155,8 +200,8 @@ describe("app/companyList factory-capture", () => {
 
     // Toggle view mode and ensure URL update is invoked without throwing
     instance.toggleViewMode();
-    expect(["company_management", "daily_dashboard"]).toContain(instance.viewMode);
+    expect(["company_management", "daily_dashboard"]).toContain(
+      instance.viewMode
+    );
   });
 });
-
-
