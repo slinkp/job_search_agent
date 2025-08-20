@@ -1,8 +1,9 @@
 export class TaskPollingService {
-  constructor() {
+  constructor({ sleep } = {}) {
     this.researchingCompanies = new Set();
     this.generatingMessages = new Set();
     this.sendingMessages = new Set();
+    this._sleep = typeof sleep === "function" ? sleep : (ms) => new Promise((r) => setTimeout(r, ms));
   }
 
   // Poll for research task status
@@ -30,7 +31,7 @@ export class TaskPollingService {
           return task;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await this._sleep(1000);
       } catch (err) {
         console.error(`Failed to poll send and archive status:`, err);
         throw err;
@@ -193,7 +194,7 @@ export class TaskPollingService {
           break;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await this._sleep(1000);
       } catch (err) {
         console.error(`Failed to poll ${taskType} status:`, err);
         trackingSet.delete(trackingKey);
@@ -277,7 +278,7 @@ export class TaskPollingService {
           break;
         }
 
-        await new Promise((r) => setTimeout(r, 1000));
+        await this._sleep(1000);
       }
     } catch (err) {
       this.sendingMessages.delete(trackingKey);

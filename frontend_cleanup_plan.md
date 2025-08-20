@@ -7,7 +7,7 @@
 
 Acceptance criteria:
 [x] Utility logic (filtering, sorting, URL state, headings) covered by pure unit tests
-[ ] Real component tests validate key user flows without asserting brittle template internals
+[x] Real component tests validate key user flows without asserting brittle template internals
 [x] Remove duplicate/brittle tests; align with current filterMode/sort API
 [ ] Task/email services have minimal contract tests with fetch/timer control
     - Note: Added minimal real (unmocked) smoke for `CompanyResearchService` to raise coverage
@@ -109,15 +109,15 @@ Notes from investigation:
 - Prefer raising coverage by extracting pure logic into `*-utils.js` and testing directly; use smoke tests only to ensure top-level registration side-effects run.
 
 ### Test Content Improvements
-[ ] **Replace template-internal assertions**: Convert `@click`/`x-for` attribute checks into behavior assertions in `daily-dashboard-integration.test.js`
-[ ] **Remove x-for text checks**: Replace Alpine directive text assertions with actual DOM content checks
-[ ] **Stop checking exact class names**: Use semantic queries instead of brittle CSS class assertions
+[x] **Replace template-internal assertions**: Convert `@click`/`x-for` attribute checks into behavior assertions in `daily-dashboard-integration.test.js`
+[x] **Remove x-for text checks**: Replace Alpine directive text assertions with actual DOM content checks
+[x] **Stop checking exact class names**: Use semantic queries instead of brittle CSS class assertions
 [x] **Right-size timers**: Move `vi.useFakeTimers()` from global setup to specific test suites that need it
 
 ### Mock and State Management
 [x] **Standardize dialog mocking**: Create shared dialog mock helper in `test-utils.js` for `showModal`/`close` and `confirmDialogs`
-[ ] **Remove component logic duplication**: Replace re-implemented production logic in `daily-dashboard.test.js` with factory-captured component tests that call real methods
-[ ] **Use dependency injection**: Allow `TaskPollingService` to accept an optional delay (ms) and/or a `sleep` function for test control; remove `app.js` local polling in favor of the shared service
+[x] **Remove component logic duplication**: Replace re-implemented production logic in `daily-dashboard.test.js` with factory-captured component tests that call real methods
+[x] **Use dependency injection**: Allow `TaskPollingService` to accept an optional delay (ms) and/or a `sleep` function for test control; remove `app.js` local polling in favor of the shared service
 [x] **Test real functions**: Pure utilities now tested directly (`dashboard-utils`, `url-utils`, `company-utils`)
 
 ### Future Considerations
@@ -153,5 +153,5 @@ Maybe **Monitor Alpine community patterns**: Stay updated on testing best practi
 [x] Expand app import smoke to also dispatch `alpine:init` and assert registration
     - Keeps test minimal but executes additional import-time lines
 
-[ ] Add per-file coverage thresholds for `app.js` and `daily-dashboard.js` (start modestly, raise over time)
+[x] Add per-file coverage thresholds for `app.js` and `daily-dashboard.js` (start modestly, raise over time)
     - Prevent regressions while iteratively increasing executed lines
