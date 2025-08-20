@@ -72,6 +72,33 @@ export class CompaniesService {
     
     return company;
   }
+
+  async loadMessageAndCompany(messageId) {
+    // Get message details
+    const messagesResponse = await fetch(`/api/messages`);
+    if (!messagesResponse.ok) {
+      throw new Error(
+        `Failed to load messages: ${messagesResponse.status}`
+      );
+    }
+
+    const allMessages = await messagesResponse.json();
+    const message = allMessages.find(
+      (msg) => msg.message_id === messageId
+    );
+
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    // Get associated company
+    const company = await this.getCompany(message.company_id);
+    company.associated_messages = allMessages.filter(
+      (msg) => msg.company_id === message.company_id
+    );
+
+    return { company, message };
+  }
 }
 
 

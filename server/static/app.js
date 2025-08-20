@@ -1,3 +1,4 @@
+import { CompaniesService } from "./companies-service.js";
 import { CompanyResearchService } from "./company-research.js";
 import {
   filterCompanies,
@@ -5,7 +6,6 @@ import {
   sortCompanies,
   formatResearchErrors as utilFormatResearchErrors,
 } from "./company-utils.js";
-import { CompaniesService } from "./companies-service.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { TaskPollingService } from "./task-polling.js";
 import {
@@ -280,38 +280,8 @@ document.addEventListener("alpine:init", () => {
       async loadMessageAndCompany(messageId) {
         this.loading = true;
         try {
-          // Get message details
-          const messagesResponse = await fetch(`/api/messages`);
-          if (!messagesResponse.ok) {
-            throw new Error(
-              `Failed to load messages: ${messagesResponse.status}`
-            );
-          }
-
-          const allMessages = await messagesResponse.json();
-          const message = allMessages.find(
-            (msg) => msg.message_id === messageId
-          );
-
-          if (!message) {
-            throw new Error("Message not found");
-          }
-
-          // Get associated company
-          const companyResponse = await fetch(
-            `/api/companies/${encodeURIComponent(message.company_id)}`
-          );
-          if (!companyResponse.ok) {
-            throw new Error(
-              `Failed to load company: ${companyResponse.status}`
-            );
-          }
-
-          const company = await companyResponse.json();
-          company.associated_messages = allMessages.filter(
-            (msg) => msg.company_id === message.company_id
-          );
-
+          const { company, message } = await companiesService.loadMessageAndCompany(messageId);
+          
           this.companies = [company];
           this.editingCompany = company;
           this.editingReply = company.reply_message || "";

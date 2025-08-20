@@ -180,6 +180,63 @@ describe("CompaniesService", () => {
       });
     });
   });
+
+  describe("loadMessageAndCompany", () => {
+    it("loads message and associated company", async () => {
+      const mockMessages = [
+        { message_id: "msg-1", company_id: "company-1", content: "Message 1" },
+        { message_id: "msg-2", company_id: "company-2", content: "Message 2" },
+      ];
+      const mockCompany = { id: "company-1", name: "Test Company" };
+
+      fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockMessages),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockCompany),
+        });
+
+      const result = await service.loadMessageAndCompany("msg-1");
+      expect(fetch).toHaveBeenCalledWith("/api/messages");
+      expect(fetch).toHaveBeenCalledWith("/api/companies/company-1");
+      expect(result).toEqual({
+        company: {
+          ...mockCompany,
+          associated_messages: [mockMessages[0]],
+        },
+        message: mockMessages[0],
+      });
+    });
+
+    it("throws error when messages request fails", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      });
+
+      await expect(service.loadMessageAndCompany("msg-1")).rejects.toThrow(
+        "Failed to load messages: 500"
+      );
+    });
+
+    it("throws error when message not found", async () => {
+      const mockMessages = [
+        { message_id: "msg-2", company_id: "company-2", content: "Message 2" },
+      ];
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockMessages),
+      });
+
+      await expect(service.loadMessageAndCompany("msg-1")).rejects.toThrow(
+        "Message not found"
+      );
+    });
+  });
 });
 
 
