@@ -831,16 +831,7 @@ document.addEventListener("alpine:init", () => {
         );
 
         try {
-          const response = await fetch("/api/import_companies", {
-            method: "POST",
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || response.statusText);
-          }
-
-          const data = await response.json();
+          const data = await companiesService.importCompanies();
           this.importTaskId = data.task_id;
           console.log("Import task created with ID:", this.importTaskId);
 

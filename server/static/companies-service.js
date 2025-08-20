@@ -146,6 +146,17 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async importCompanies() {
+    const response = await fetch("/api/import_companies", {
+      method: "POST",
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || response.statusText);
+    }
+    return response.json();
+  }
 }
 
 

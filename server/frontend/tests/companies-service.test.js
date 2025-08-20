@@ -352,6 +352,34 @@ describe("CompaniesService", () => {
       );
     });
   });
+
+  describe("importCompanies", () => {
+    it("starts import companies process", async () => {
+      const mockResponse = { task_id: "task-123" };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.importCompanies();
+      expect(fetch).toHaveBeenCalledWith("/api/import_companies", {
+        method: "POST",
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("throws error on failed request", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        statusText: "Bad Request",
+        json: () => Promise.resolve({ error: "Import failed" }),
+      });
+
+      await expect(service.importCompanies()).rejects.toThrow(
+        "Import failed"
+      );
+    });
+  });
 });
 
 
