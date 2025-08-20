@@ -1,6 +1,7 @@
 import { CompanyResearchService } from "./company-research.js";
 import {
   filterCompanies,
+  normalizeCompanies,
   sortCompanies,
   formatResearchErrors as utilFormatResearchErrors,
 } from "./company-utils.js";
@@ -1033,10 +1034,7 @@ document.addEventListener("alpine:init", () => {
           const response = await fetch(url);
           const data = await response.json();
           console.log("Got companies json response");
-          this.companies = data.map((company) => ({
-            ...company,
-            details: company.details || {},
-          }));
+          this.companies = normalizeCompanies(data);
           return data;
         } catch (err) {
           console.error("Failed to refresh companies:", err);

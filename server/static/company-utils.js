@@ -77,3 +77,22 @@ export function sortCompanies(companies, sortField, sortAsc = true) {
     return sortAsc ? cmp : -cmp;
   });
 }
+
+/**
+ * Ensure a company object has normalized structure (e.g., details is an object).
+ */
+export function normalizeCompany(company) {
+  if (!company || typeof company !== "object") return { details: {} };
+  return {
+    ...company,
+    details: company.details || {},
+  };
+}
+
+/**
+ * Normalize an array of companies.
+ */
+export function normalizeCompanies(companies) {
+  const list = Array.isArray(companies) ? companies : [];
+  return list.map((c) => normalizeCompany(c));
+}

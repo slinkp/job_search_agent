@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   filterCompanies,
   formatResearchErrors,
+  normalizeCompanies,
+  normalizeCompany,
   sortCompanies,
 } from "../../static/company-utils.js";
 
@@ -93,5 +95,16 @@ describe("company-utils: filterCompanies & sortCompanies", () => {
       (c) => c.name
     );
     expect(byNameDesc).toEqual(["C", "B", "A"]);
+  });
+
+  it("normalizes details field on company/companies", () => {
+    const c = normalizeCompany({ name: "Z" });
+    expect(c.details).toEqual({});
+    const list = normalizeCompanies([
+      { name: "Z" },
+      { name: "Y", details: { a: 1 } },
+    ]);
+    expect(list[0].details).toEqual({});
+    expect(list[1].details).toEqual({ a: 1 });
   });
 });
