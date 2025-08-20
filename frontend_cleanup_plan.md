@@ -9,7 +9,7 @@ Acceptance criteria:
 [x] Utility logic (filtering, sorting, URL state, headings) covered by pure unit tests
 [x] Real component tests validate key user flows without asserting brittle template internals
 [x] Remove duplicate/brittle tests; align with current filterMode/sort API
-[ ] Task/email services have minimal contract tests with fetch/timer control
+[x] Task/email services have minimal contract tests with fetch/timer control
     - Note: Added minimal real (unmocked) smoke for `CompanyResearchService` to raise coverage
 
 ### Extract pure utilities from daily-dashboard.js
