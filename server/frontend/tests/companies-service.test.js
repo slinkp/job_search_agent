@@ -296,6 +296,34 @@ describe("CompaniesService", () => {
       );
     });
   });
+
+  describe("generateReply", () => {
+    it("generates a reply for a message", async () => {
+      const mockResponse = { task_id: "task-123", status: "pending" };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.generateReply("message-id");
+      expect(fetch).toHaveBeenCalledWith("/api/messages/message-id/reply", {
+        method: "POST",
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("throws error on failed request", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ error: "Invalid message" }),
+      });
+
+      await expect(service.generateReply("message-id")).rejects.toThrow(
+        "Invalid message"
+      );
+    });
+  });
 });
 
 

@@ -124,6 +124,17 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async generateReply(messageId) {
+    const response = await fetch(`/api/messages/${messageId}/reply`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to generate reply: ${response.status}`);
+    }
+    return response.json();
+  }
 }
 
 
