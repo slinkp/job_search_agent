@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { setIncludeAllParam, buildHashForCompany, parseViewFromUrl, urlUtils } from '../../static/url-utils.js';
+import {
+  buildHashForCompany,
+  parseViewFromUrl,
+  setIncludeAllParam,
+  urlUtils,
+} from "../../static/url-utils.js";
 
 // Mock window.location and history
 const mockLocation = {

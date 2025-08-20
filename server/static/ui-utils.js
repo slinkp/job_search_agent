@@ -129,3 +129,41 @@ export const errorLogger = {
     console.error(message, error);
   }
 };
+
+/**
+ * Common modal utilities for consistent modal handling
+ */
+export const modalUtils = {
+  /**
+   * Show a modal by ID
+   */
+  showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.showModal();
+    } else {
+      console.error(`Modal with ID '${modalId}' not found`);
+    }
+  },
+
+  /**
+   * Close a modal by ID
+   */
+  closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.close();
+    } else {
+      console.error(`Modal with ID '${modalId}' not found`);
+    }
+  },
+
+  /**
+   * Common modal IDs used throughout the application
+   */
+  modalIds: {
+    EDIT: 'editModal',
+    RESEARCH_COMPANY: 'research-company-modal',
+    IMPORT_COMPANIES: 'import-companies-modal'
+  }
+};

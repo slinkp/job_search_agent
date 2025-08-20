@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatDate, formatMessageDate, formatRecruiterMessageDate, isUrl, showError, showSuccess, confirmDialogs, errorLogger } from '../../static/ui-utils.js';
+import { formatDate, formatMessageDate, formatRecruiterMessageDate, isUrl, showError, showSuccess, confirmDialogs, errorLogger, modalUtils } from '../../static/ui-utils.js';
 
 // Mock alert, confirm, and console for testing
 global.alert = vi.fn();
@@ -151,6 +151,50 @@ describe('UI Utils', () => {
       const error = new Error('Test error');
       errorLogger.logError('Custom error message', error);
       expect(console.error).toHaveBeenCalledWith('Custom error message', error);
+    });
+  });
+
+  describe('modalUtils', () => {
+    let mockModal;
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockModal = {
+        showModal: vi.fn(),
+        close: vi.fn()
+      };
+    });
+
+    it('should show modal when element exists', () => {
+      document.getElementById = vi.fn().mockReturnValue(mockModal);
+      modalUtils.showModal('test-modal');
+      expect(document.getElementById).toHaveBeenCalledWith('test-modal');
+      expect(mockModal.showModal).toHaveBeenCalled();
+    });
+
+    it('should log error when modal element does not exist', () => {
+      document.getElementById = vi.fn().mockReturnValue(null);
+      modalUtils.showModal('non-existent-modal');
+      expect(console.error).toHaveBeenCalledWith("Modal with ID 'non-existent-modal' not found");
+    });
+
+    it('should close modal when element exists', () => {
+      document.getElementById = vi.fn().mockReturnValue(mockModal);
+      modalUtils.closeModal('test-modal');
+      expect(document.getElementById).toHaveBeenCalledWith('test-modal');
+      expect(mockModal.close).toHaveBeenCalled();
+    });
+
+    it('should log error when modal element does not exist for close', () => {
+      document.getElementById = vi.fn().mockReturnValue(null);
+      modalUtils.closeModal('non-existent-modal');
+      expect(console.error).toHaveBeenCalledWith("Modal with ID 'non-existent-modal' not found");
+    });
+
+    it('should have common modal IDs defined', () => {
+      expect(modalUtils.modalIds.EDIT).toBe('editModal');
+      expect(modalUtils.modalIds.RESEARCH_COMPANY).toBe('research-company-modal');
+      expect(modalUtils.modalIds.IMPORT_COMPANIES).toBe('import-companies-modal');
     });
   });
 }); 
