@@ -35,22 +35,19 @@ export async function setupAlpine() {
     Alpine = (await import("alpinejs")).default;
     window.Alpine = Alpine;
 
-    // Register core components that exist in the real application
-    Alpine.data("companyList", () => createMockCompanyList());
-    Alpine.data("dailyDashboard", () => createMockDailyDashboard());
+    // Register minimal component stubs required by index.html so Alpine init doesn't error
+    Alpine.data("companyList", () => createMinimalCompanyList());
+    Alpine.data("dailyDashboard", () => createMinimalDailyDashboard());
   }
 
   // Disable Alpine's warning system to prevent unhandled errors
   Alpine.onWarning = () => {};
 
+  // Start Alpine (initialize), but swallow init failures since tests don't need full app boot
   try {
-    // Start Alpine (initialize)
     Alpine.start();
   } catch (err) {
-    console.warn(
-      "Alpine initialization warning (safe to ignore):",
-      err.message
-    );
+    // Intentionally ignore init errors caused by app templates referencing real app data
   }
 
   return Alpine;
@@ -91,27 +88,106 @@ function createMockMutationObserver() {
 }
 
 /**
- * Create a basic mock of the dailyDashboard component
+ * Setup additional DOM mocks for testing
  */
-function createMockDailyDashboard() {
+function setupDomMocks() {
+  // Mock showModal and close methods on dialog element
+  if (!HTMLDialogElement.prototype.showModal) {
+    HTMLDialogElement.prototype.showModal = function () {};
+  }
+  if (!HTMLDialogElement.prototype.close) {
+    HTMLDialogElement.prototype.close = function () {};
+  }
+}
+
+// Minimal stubs to satisfy x-data/x-init and x-bind expressions in index.html
+function createMinimalCompanyList() {
   return {
-    unprocessedMessages: [],
     loading: false,
-    sortNewestFirst: true,
+    filterMode: "all",
+    sortField: "name",
+    sortAsc: true,
+    companies: [],
+    showArchived: false,
+    editingCompany: null,
+    editingReply: "",
+    researchCompanyForm: { url: "", name: "" },
+    importingCompanies: false,
+    importStatus: null,
+    researchingCompany: false,
+    init() {},
+    toggleViewMode() {},
+    isCompanyManagementView() {
+      return true;
+    },
+    isDailyDashboardView() {
+      return false;
+    },
+    toggleShowArchived() {
+      this.showArchived = !this.showArchived;
+    },
+    toggleSort(field) {
+      this.sortField = field;
+    },
+    formatRecruiterMessageDate() {
+      return "";
+    },
+    formatResearchErrors() {
+      return "";
+    },
+    navigateToCompany() {},
+    navigateToMessage() {},
+    showResearchCompanyModal() {},
+    closeResearchCompanyModal() {},
+    submitResearchCompany() {},
+    showImportCompaniesModal() {},
+    closeImportCompaniesModal() {},
+    confirmImportCompanies() {},
+    importCompaniesFromSpreadsheet() {},
+    editReply() {},
+    cancelEdit() {},
+    saveReply() {},
+    generateReply() {},
+    ignoreAndArchive() {},
+    isGeneratingMessage() {
+      return false;
+    },
+    isSendingMessage() {
+      return false;
+    },
+    research() {},
+    togglePromising() {},
+    get sortedAndFilteredCompanies() {
+      return [];
+    },
+  };
+}
+
+function createMinimalDailyDashboard() {
+  return {
     doResearch: false,
-    hideRepliedMessages: true,
-    hideArchivedCompanies: true,
-    init() {
-      console.log("Mock dailyDashboard initialized");
+    scanningEmails: false,
+    emailScanStatus: null,
+    loading: false,
+    unprocessedMessages: [],
+    init() {},
+    getSortButtonText() {
+      return "Sort Oldest First";
     },
-    loadUnprocessedMessages() {
-      // Stub method
-    },
-    formatMessageDate() {
+    toggleSortOrder() {},
+    refresh() {},
+    scanRecruiterEmails() {},
+    getEmailScanStatusText() {
       return "";
     },
-    getCompanyName() {
+    getEmailScanStatusClass() {
       return "";
+    },
+    getFilterHeading() {
+      return "Messages (0)";
+    },
+    get sortedMessages() {
+      return [];
     },
     getMessageSender() {
       return "";
@@ -122,49 +198,17 @@ function createMockDailyDashboard() {
     getMessageDate() {
       return null;
     },
-    refresh() {
-      // Stub method
+    getCompanyName() {
+      return "";
     },
-    toggleSortOrder() {
-      this.sortNewestFirst = !this.sortNewestFirst;
+    getMessagePreview() {
+      return "";
     },
-    getSortButtonText() {
-      return this.sortNewestFirst ? "Sort Oldest First" : "Sort Newest First";
-    },
-    scanRecruiterEmails() {
-      // Stub method
-    },
-    toggleHideRepliedMessages() {
-      this.hideRepliedMessages = !this.hideRepliedMessages;
-    },
-    toggleHideArchivedCompanies() {
-      this.hideArchivedCompanies = !this.hideArchivedCompanies;
-    },
-    getRepliedToggleText() {
-      return this.hideRepliedMessages ? "Show Replied Messages" : "Hide Replied Messages";
-    },
-    getArchivedToggleText() {
-      return this.hideArchivedCompanies ? "Show Archived Companies" : "Hide Archived Companies";
-    },
-    getEmailScanStatusText() {
-      return this.emailScanStatus || "";
-    },
-    getEmailScanStatusClass() {
-      return "email-scan-status";
-    },
-    research() {
-      // Stub method
-    },
-    generateReply() {
-      // Stub method
-    },
-    archive() {
-      // Stub method
+    toggleMessageExpansion() {},
+    getExpandButtonText() {
+      return "Show More";
     },
     isResearching() {
-      return false;
-    },
-    isGeneratingMessage() {
       return false;
     },
     getResearchStatusText() {
@@ -173,80 +217,10 @@ function createMockDailyDashboard() {
     getResearchStatusClass() {
       return "";
     },
-    getMessagePreview() {
-      return "";
-    },
-    toggleMessageExpansion() {
-      // Stub method
-    },
-    getExpandButtonText() {
-      return "Expand";
-    },
-    get sortedMessages() {
-      return this.unprocessedMessages; // Return the messages for the template
-    },
-  };
-}
-
-/**
- * Create a basic mock of the companyList component
- */
-function createMockCompanyList() {
-  return {
-    companies: [],
-    loading: false,
-    editingCompany: null,
-    editingReply: "",
-    researchingCompanies: new Set(),
-    generatingMessages: new Set(),
-    scanningEmails: false,
-    emailScanTaskId: null,
-    emailScanStatus: null,
-    emailScanError: null,
-    importingCompanies: false,
-    importTaskId: null,
-    importStatus: null,
-    importError: null,
-    sortField: "name",
-    sortAsc: true,
-    filterMode: "all",
-    researchCompanyModalOpen: false,
-    researchingCompany: false,
-    researchCompanyForm: {
-      url: "",
-      name: "",
-    },
-    researchCompanyTaskId: null,
-    // View mode toggle functionality
-    viewMode: "company_management",
-    // Show archived toggle functionality
-    showArchived: false,
-    init() {
-      console.log("Mock companyList initialized");
-    },
-    showError() {},
-    showSuccess() {},
-    // View mode methods
-    toggleViewMode() {
-      this.viewMode =
-        this.viewMode === "company_management"
-          ? "daily_dashboard"
-          : "company_management";
-    },
-    isCompanyManagementView() {
-      return this.viewMode === "company_management";
-    },
-    isDailyDashboardView() {
-      return this.viewMode === "daily_dashboard";
-    },
-    toggleShowArchived() {
-      this.showArchived = !this.showArchived;
-    },
-    refreshAllCompanies() {
-      // Stub method
-    },
-    isResearching() {
-      return false;
+    generateReply() {},
+    toggleReplyExpansion() {},
+    getReplyExpandButtonText() {
+      return "Show More";
     },
     isGeneratingMessage() {
       return false;
@@ -254,136 +228,9 @@ function createMockCompanyList() {
     isSendingMessage() {
       return false;
     },
-    formatRecruiterMessageDate() {
-      return "";
-    },
-    formatResearchErrors() {
-      return "";
-    },
-    getResearchStatusText() {
-      return "";
-    },
-    getResearchStatusClass() {
-      return {};
-    },
-    getMessageStatusText() {
-      return "";
-    },
-    getEmailScanStatusText() {
-      return "";
-    },
-    getEmailScanStatusClass() {
-      return {};
-    },
-    importCompaniesFromSpreadsheet() {
-      // Stub method
-      console.log("Import companies stub called");
-    },
-    // Navigation methods to handle the click handlers added to index.html
-    navigateToCompany(companyId) {
-      // This handles the navigation event dispatching in the HTML
-      console.log("Navigating to company:", companyId);
-    },
-    navigateToMessage(messageId) {
-      // This handles the navigation event dispatching in the HTML
-      console.log("Navigating to message:", messageId);
-    },
-    // Research company modal methods
-    showResearchCompanyModal() {
-      this.researchCompanyModalOpen = true;
-    },
-    closeResearchCompanyModal() {
-      this.researchCompanyModalOpen = false;
-      this.researchCompanyForm = { url: "", name: "" };
-    },
-    submitResearchCompany() {
-      this.researchingCompany = true;
-      // Simulate async operation
-      setTimeout(() => {
-        this.researchingCompany = false;
-        this.closeResearchCompanyModal();
-      }, 100);
-    },
-    // Import companies modal methods
-    showImportCompaniesModal() {
-      // Stub method
-    },
-    closeImportCompaniesModal() {
-      // Stub method
-    },
-    confirmImportCompanies() {
-      // Stub method
-    },
-    // Research methods
-    research() {
-      // Stub method
-    },
-    generateReply() {
-      // Stub method
-    },
-    editReply() {
-      // Stub method
-    },
-    saveReply() {
-      // Stub method
-    },
-    cancelEdit() {
-      // Stub method
-    },
-    togglePromising() {
-      // Stub method
-    },
-    toggleSort() {
-      // Stub method
-    },
-    isUrl() {
-      return false;
-    },
-    get filteredCompanies() {
-      return [];
-    },
-    get sortedAndFilteredCompanies() {
-      return [];
-    },
-    // Any other methods that might be accessed in the HTML
+    sendAndArchive() {},
+    archive() {},
   };
-}
-
-/**
- * Setup additional DOM mocks for testing
- */
-function setupDomMocks() {
-  // Mock showModal and close methods on dialog element
-  if (!HTMLDialogElement.prototype.showModal) {
-    HTMLDialogElement.prototype.showModal = function () {};
-  }
-
-  if (!HTMLDialogElement.prototype.close) {
-    HTMLDialogElement.prototype.close = function () {};
-  }
-
-  // Mock HTML element methods that Alpine.js might use
-  if (!HTMLElement.prototype._x_forceModelUpdate) {
-    HTMLElement.prototype._x_forceModelUpdate = () => {};
-  }
-
-  // Add any missing element methods used by Alpine
-  ["selectionStart", "selectionEnd", "setSelectionRange"].forEach((prop) => {
-    if (!(prop in HTMLTextAreaElement.prototype)) {
-      Object.defineProperty(HTMLTextAreaElement.prototype, prop, {
-        configurable: true,
-        get() {
-          return 0;
-        },
-        set() {},
-      });
-    }
-  });
-
-  // Mock element.scrollIntoView()
-  if (!HTMLElement.prototype.scrollIntoView) {
-    HTMLElement.prototype.scrollIntoView = () => {};
-  }
 }
 
 /**
