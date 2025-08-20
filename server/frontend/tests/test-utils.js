@@ -51,18 +51,3 @@ export function captureAlpineFactories() {
   };
   return captured;
 }
-
-/**
- * Create standardized dialog mocks for showModal/close and confirmDialogs
- */
-export function createDialogMocks() {
-  const dialog = document.createElement("dialog");
-  document.body.appendChild(dialog);
-  const showModal = vi.spyOn(dialog, "showModal").mockImplementation(() => {});
-  const close = vi.spyOn(dialog, "close").mockImplementation(() => {});
-  const confirmDialogs = {
-    archiveWithoutReply: vi.fn(() => true),
-    sendAndArchive: vi.fn(() => true),
-  };
-  return { dialog, showModal, close, confirmDialogs };
-}
