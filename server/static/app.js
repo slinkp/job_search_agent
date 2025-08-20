@@ -475,21 +475,7 @@ document.addEventListener("alpine:init", () => {
         try {
           this.researchingCompanies.add(company.name);
           taskPollingService.addResearching(company);
-          const response = await fetch(
-            `/api/companies/${company.company_id}/research`,
-            {
-              method: "POST",
-            }
-          );
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to start research: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
+          const data = await companiesService.research(company.company_id);
           company.research_task_id = data.task_id;
           company.research_status = data.status;
 

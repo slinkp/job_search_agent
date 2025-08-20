@@ -324,6 +324,34 @@ describe("CompaniesService", () => {
       );
     });
   });
+
+  describe("research", () => {
+    it("starts research for a company", async () => {
+      const mockResponse = { task_id: "task-123", status: "pending" };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.research("company-id");
+      expect(fetch).toHaveBeenCalledWith("/api/companies/company-id/research", {
+        method: "POST",
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("throws error on failed request", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ error: "Company not found" }),
+      });
+
+      await expect(service.research("company-id")).rejects.toThrow(
+        "Company not found"
+      );
+    });
+  });
 });
 
 

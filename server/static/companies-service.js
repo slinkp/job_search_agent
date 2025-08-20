@@ -135,6 +135,17 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async research(companyId) {
+    const response = await fetch(`/api/companies/${companyId}/research`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to start research: ${response.status}`);
+    }
+    return response.json();
+  }
 }
 
 
