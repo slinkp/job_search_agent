@@ -249,20 +249,8 @@ document.addEventListener("alpine:init", () => {
         }
 
         try {
-          // Call the message-centric archive endpoint
-          const response = await fetch(`/api/messages/${message_id}/archive`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to archive message: ${response.status}`
-            );
-          }
+          // Call the message-centric archive endpoint via service
+          await companiesService.archiveMessage(message_id);
 
           // Refresh the message list to remove the archived message
           await this.loadMessages();
