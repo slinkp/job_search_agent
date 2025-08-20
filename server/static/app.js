@@ -978,15 +978,7 @@ document.addEventListener("alpine:init", () => {
       async refreshAllCompanies(includeAll = false) {
         console.log("Refreshing all companies");
         try {
-          const params = new URLSearchParams();
-          if (includeAll) {
-            params.append("include_all", "true");
-          }
-          const url = `/api/companies${
-            params.toString() ? "?" + params.toString() : ""
-          }`;
-          const response = await fetch(url);
-          const data = await response.json();
+          const data = await companiesService.getCompanies(includeAll);
           console.log("Got companies json response");
           this.companies = normalizeCompanies(data);
           return data;
