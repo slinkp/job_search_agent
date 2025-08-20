@@ -389,25 +389,11 @@ document.addEventListener("alpine:init", () => {
       async saveReply() {
         if (this.editingCompany) {
           try {
-            const response = await fetch(
-              `/api/messages/${this.editingCompany.recruiter_message?.message_id}/reply`,
-              {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ message: this.editingReply }),
-              }
+            const data = await companiesService.saveReply(
+              this.editingCompany.recruiter_message?.message_id,
+              this.editingReply
             );
-
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(
-                error.error || `Failed to save reply: ${response.status}`
-              );
-            }
-
-            const data = await response.json();
+            
             // Update the local company object
             Object.assign(this.editingCompany, data);
 
