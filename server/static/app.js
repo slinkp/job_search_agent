@@ -5,6 +5,7 @@ import {
   sortCompanies,
   formatResearchErrors as utilFormatResearchErrors,
 } from "./company-utils.js";
+import { CompaniesService } from "./companies-service.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { TaskPollingService } from "./task-polling.js";
 import {
@@ -120,6 +121,7 @@ document.addEventListener("alpine:init", () => {
 
   Alpine.data("companyList", () => {
     const researchService = new CompanyResearchService();
+    const companiesService = new CompaniesService();
     const emailScanningService = new EmailScanningService();
     const taskPollingService = new TaskPollingService();
     return {
@@ -265,25 +267,7 @@ document.addEventListener("alpine:init", () => {
       async loadCompany(companyId) {
         this.loading = true;
         try {
-          const response = await fetch(
-            `/api/companies/${encodeURIComponent(companyId)}`
-          );
-          if (!response.ok) {
-            throw new Error(`Failed to load company: ${response.status}`);
-          }
-
-          const company = await response.json();
-          // Get associated messages
-          const messagesResponse = await fetch(`/api/messages`);
-          if (messagesResponse.ok) {
-            const allMessages = await messagesResponse.json();
-            company.associated_messages = allMessages.filter(
-              (msg) => msg.company_id === companyId
-            );
-          } else {
-            company.associated_messages = [];
-          }
-
+          const company = await companiesService.loadCompany(companyId);
           this.companies = [company];
         } catch (err) {
           console.error("Failed to load company:", err);

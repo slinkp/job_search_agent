@@ -3,7 +3,7 @@
 ## Plan: Improve frontend tests for Daily Message Dashboard
 
 ### Ground rules and definition of done
-[x] Follow feature-development-process.mdc; ≤2–3 files per step; ≤100 LOC where practical; keep tests fast and meaningful; run via ./test.
+
 
 Acceptance criteria:
 [x] Utility logic (filtering, sorting, URL state, headings) covered by pure unit tests
