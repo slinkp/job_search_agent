@@ -835,8 +835,8 @@ document.addEventListener("alpine:init", () => {
           this.importTaskId = data.task_id;
           console.log("Import task created with ID:", this.importTaskId);
 
-          // Start polling for task status
-          this.pollTaskStatus(null, "import_companies");
+          // Start polling for task status via shared polling service
+          taskPollingService.pollImportCompaniesStatus(this);
         } catch (error) {
           errorLogger.logError("Error starting import:", error);
           this.importingCompanies = false;

@@ -141,7 +141,7 @@ Do not auto-start server (manual step).
       `generateReply`, `sendAndArchive`, `archive`, `research`, URL sync methods
     - Mock `CompaniesService`, `TaskPollingService`, `EmailScanningService`, and `ui-utils`
 
-[ ] Remove `app.js` local `pollTaskStatus` and route all polling via `TaskPollingService` only
+[x] Remove `app.js` local `pollTaskStatus` and route all polling via `TaskPollingService` only
     - Add tests in `task-polling.test.js` with injectable delay/sleep to keep loops deterministic
 
 [ ] Extract `daily-dashboard.js` URL sync helpers into `url-utils.js`
