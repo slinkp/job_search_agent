@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setupDocumentWithIndexHtml } from "./test-utils";
 
-describe("Daily Dashboard State Management", () => {
+describe("Daily Dashboard State Management (state only)", () => {
   let Alpine;
   let dailyDashboard;
 
