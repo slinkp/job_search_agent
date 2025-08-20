@@ -3,7 +3,10 @@ export class TaskPollingService {
     this.researchingCompanies = new Set();
     this.generatingMessages = new Set();
     this.sendingMessages = new Set();
-    this._sleep = typeof sleep === "function" ? sleep : (ms) => new Promise((r) => setTimeout(r, ms));
+    this._sleep =
+      typeof sleep === "function"
+        ? sleep
+        : (ms) => new Promise((r) => setTimeout(r, ms));
   }
 
   // Poll for research task status
@@ -215,7 +218,10 @@ export class TaskPollingService {
     if (!hostComponent || !hostComponent.importTaskId) return;
 
     // Ensure initial status exists
-    if (!hostComponent.importStatus || typeof hostComponent.importStatus !== "object") {
+    if (
+      !hostComponent.importStatus ||
+      typeof hostComponent.importStatus !== "object"
+    ) {
       hostComponent.importStatus = {
         percent_complete: 0,
         current_company: "",
@@ -233,7 +239,9 @@ export class TaskPollingService {
     this.sendingMessages.add(trackingKey); // reuse a set for loop control
     try {
       while (this.sendingMessages.has(trackingKey)) {
-        const response = await fetch(`/api/tasks/${hostComponent.importTaskId}`);
+        const response = await fetch(
+          `/api/tasks/${hostComponent.importTaskId}`
+        );
         const task = await response.json();
 
         // Update status snapshot
@@ -244,7 +252,8 @@ export class TaskPollingService {
           hostComponent.importStatus = {
             ...current,
             ...task.result,
-            current_company: task.result.current_company || current.current_company || "",
+            current_company:
+              task.result.current_company || current.current_company || "",
             percent_complete:
               task.result.total_found > 0
                 ? (task.result.processed / task.result.total_found) * 100
@@ -263,12 +272,17 @@ export class TaskPollingService {
 
           if (task.status === "completed") {
             const stats = hostComponent.importStatus || {};
-            const msg = `Import completed! Created: ${stats.created || 0}, Updated: ${stats.updated || 0}, Skipped: ${stats.skipped || 0}, Errors: ${stats.errors || 0}`;
+            const msg = `Import completed! Created: ${
+              stats.created || 0
+            }, Updated: ${stats.updated || 0}, Skipped: ${
+              stats.skipped || 0
+            }, Errors: ${stats.errors || 0}`;
             if (typeof hostComponent.showSuccess === "function") {
               hostComponent.showSuccess(msg);
             }
           } else {
-            hostComponent.importError = task.error || "Failed to check task status";
+            hostComponent.importError =
+              task.error || "Failed to check task status";
             if (typeof hostComponent.showError === "function") {
               hostComponent.showError(hostComponent.importError);
             }
