@@ -448,25 +448,8 @@ document.addEventListener("alpine:init", () => {
             company.recruiter_message &&
             company.recruiter_message.message_id
           ) {
-            // Use the message-centric endpoint
-            const response = await fetch(
-              `/api/messages/${company.recruiter_message.message_id}/send_and_archive`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(
-                error.error || `Failed to send and archive: ${response.status}`
-              );
-            }
-
-            const data = await response.json();
+            // Use the message-centric endpoint via service
+            await companiesService.sendAndArchive(company.recruiter_message.message_id);
           } else {
             // Fallback to company-centric endpoint for backward compatibility
             const response = await fetch(

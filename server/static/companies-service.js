@@ -110,6 +110,20 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async sendAndArchive(messageId) {
+    const response = await fetch(`/api/messages/${messageId}/send_and_archive`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to send and archive: ${response.status}`);
+    }
+    return response.json();
+  }
 }
 
 

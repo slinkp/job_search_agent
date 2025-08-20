@@ -265,6 +265,37 @@ describe("CompaniesService", () => {
       );
     });
   });
+
+  describe("sendAndArchive", () => {
+    it("sends and archives a message", async () => {
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.sendAndArchive("message-id");
+      expect(fetch).toHaveBeenCalledWith("/api/messages/message-id/send_and_archive", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("throws error on failed request", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ error: "Invalid message" }),
+      });
+
+      await expect(service.sendAndArchive("message-id")).rejects.toThrow(
+        "Invalid message"
+      );
+    });
+  });
 });
 
 
