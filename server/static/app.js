@@ -1,5 +1,9 @@
 import { CompanyResearchService } from "./company-research.js";
-import { formatResearchErrors as utilFormatResearchErrors } from "./company-utils.js";
+import {
+  filterCompanies,
+  sortCompanies,
+  formatResearchErrors as utilFormatResearchErrors,
+} from "./company-utils.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { TaskPollingService } from "./task-polling.js";
 import {
@@ -955,37 +959,15 @@ document.addEventListener("alpine:init", () => {
       },
 
       get filteredCompanies() {
-        const filtered = this.companies.filter((company) => {
-          switch (this.filterMode) {
-            case "reply-sent":
-              return company.sent_at;
-            case "reply-not-sent":
-              return !company.sent_at;
-            case "researched":
-              return company.research_completed_at;
-            case "not-researched":
-              return !company.research_completed_at;
-            default:
-              return true;
-          }
-        });
-        return filtered;
+        return filterCompanies(this.companies, this.filterMode);
       },
 
       get sortedAndFilteredCompanies() {
-        return [...this.filteredCompanies].sort((a, b) => {
-          const aVal =
-            this.sortField === "updated_at"
-              ? new Date(a.updated_at).getTime()
-              : a[this.sortField];
-          const bVal =
-            this.sortField === "updated_at"
-              ? new Date(b.updated_at).getTime()
-              : b[this.sortField];
-
-          const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-          return this.sortAsc ? comparison : -comparison;
-        });
+        return sortCompanies(
+          this.filteredCompanies,
+          this.sortField,
+          this.sortAsc
+        );
       },
 
       toggleSort(field) {
