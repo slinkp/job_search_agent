@@ -320,26 +320,8 @@ document.addEventListener("alpine:init", () => {
             }
           }
 
-          // Call the message-centric send and archive endpoint
-          const response = await fetch(
-            `/api/messages/${message.message_id}/send_and_archive`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error ||
-                `Failed to send and archive message: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
+          // Call the message-centric send and archive endpoint via service
+          const data = await companiesService.sendAndArchive(message.message_id);
           console.log("Send and archive response:", data);
 
           // Poll for task completion before showing success/failure
