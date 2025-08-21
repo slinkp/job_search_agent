@@ -412,6 +412,21 @@ def send_and_archive(request):
     company.status.reply_sent_at = current_time
     models.company_repository().update(company)
 
+    # Also set reply_sent_at and archived_at on the most recent message for this company
+    # This keeps the messages dashboard in sync even when using the company-centric endpoint
+    try:
+        repo = models.company_repository()
+        latest_message = repo.get_recruiter_message(company.company_id)
+        if latest_message is not None:
+            latest_message.reply_sent_at = current_time
+            latest_message.archived_at = current_time
+            repo.create_recruiter_message(latest_message)  # upsert to persist fields
+    except Exception:
+        # Do not fail the request if this auxiliary update fails
+        logger.exception(
+            "Failed to update latest recruiter message during send_and_archive"
+        )
+
     logger.info(f"Send and archive requested for {company.name}, task_id: {task_id}")
 
     return {
