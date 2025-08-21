@@ -445,6 +445,10 @@ class Company(BaseModel):
     updated_at: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
+    # Tracks last meaningful business activity timestamp (separate from updated_at)
+    activity_at: Optional[datetime.datetime] = None
+    # Human-readable description of the last meaningful activity (e.g. "message received", "reply sent")
+    last_activity: Optional[str] = None
     details: CompaniesSheetRow
     status: CompanyStatus = Field(default_factory=CompanyStatus)
     reply_message: str = ""
@@ -551,8 +555,6 @@ class CompanyRepository:
                         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                         details TEXT NOT NULL DEFAULT '{}',
                         status TEXT NOT NULL DEFAULT '{}',  -- New status column with default empty JSON
-                        activity_at TEXT DEFAULT NULL,
-                        last_activity TEXT DEFAULT NULL,
                         reply_message TEXT
                     )
                 """
