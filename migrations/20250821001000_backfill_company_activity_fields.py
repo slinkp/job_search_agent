@@ -16,7 +16,9 @@ def _parse_dt(value: str | None) -> datetime | None:
         return None
 
 
-def _max_candidate(current: tuple[datetime | None, str | None], candidate_dt: datetime | None, label: str):
+def _max_candidate(
+    current: tuple[datetime | None, str | None], candidate_dt: datetime | None, label: str
+):
     current_dt, _ = current
     if candidate_dt and (current_dt is None or candidate_dt > current_dt):
         return candidate_dt, label
@@ -40,11 +42,16 @@ def migrate(conn: sqlite3.Connection):
     # Ensure columns exist; if not, do nothing
     cols = {row[1] for row in conn.execute("PRAGMA table_info(companies)")}
     if "activity_at" not in cols or "last_activity" not in cols:
-        print("activity_at/last_activity columns not found on companies; skipping backfill")
+        print(
+            "activity_at/last_activity columns not found on companies; skipping backfill"
+        )
         return
 
     # Check whether events table exists
-    tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    tables = {
+        row[0]
+        for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
     has_events = "events" in tables
 
     company_rows = conn.execute(
@@ -83,8 +90,12 @@ def migrate(conn: sqlite3.Connection):
         except json.JSONDecodeError:
             status = {}
 
-        latest = _max_candidate(latest, _parse_dt(status.get("reply_sent_at")), "reply sent")
-        latest = _max_candidate(latest, _parse_dt(status.get("archived_at")), "company archived")
+        latest = _max_candidate(
+            latest, _parse_dt(status.get("reply_sent_at")), "reply sent"
+        )
+        latest = _max_candidate(
+            latest, _parse_dt(status.get("archived_at")), "company archived"
+        )
 
         # From events if present
         if has_events:
@@ -102,7 +113,9 @@ def migrate(conn: sqlite3.Connection):
                 "SELECT updated_at FROM companies WHERE company_id = ?",
                 (company_id,),
             ).fetchone()
-            latest = _max_candidate(latest, _parse_dt(row[0] if row else None), "reply generated")
+            latest = _max_candidate(
+                latest, _parse_dt(row[0] if row else None), "reply generated"
+            )
 
         if latest[0] is not None and latest[1] is not None:
             conn.execute(
@@ -118,9 +131,9 @@ def rollback(conn: sqlite3.Connection):
     # Non-destructive rollback: clear the backfilled fields
     try:
         conn.execute("UPDATE companies SET activity_at = NULL, last_activity = NULL")
-        print(f"{datetime.now()} - Cleared activity_at and last_activity for all companies")
+        print(
+            f"{datetime.now()} - Cleared activity_at and last_activity for all companies"
+        )
     except sqlite3.Error as e:
         print(f"Error during rollback: {str(e)}")
         raise
-
-

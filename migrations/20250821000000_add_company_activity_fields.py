@@ -43,9 +43,9 @@ def rollback(conn: sqlite3.Connection):
             ALTER TABLE companies_backup RENAME TO companies
             """
         )
-        print(f"{datetime.now()} - Removed activity_at and last_activity columns from companies")
+        print(
+            f"{datetime.now()} - Removed activity_at and last_activity columns from companies"
+        )
     except sqlite3.Error as e:
         print(f"Error during rollback: {str(e)}")
         raise
-
-

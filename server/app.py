@@ -281,7 +281,11 @@ def update_message_by_id(request):
     repo.update(company)
     # Record activity: reply edited
     try:
-        repo.update_activity(company.company_id, datetime.datetime.now(datetime.timezone.utc), "reply edited")
+        repo.update_activity(
+            company.company_id,
+            datetime.datetime.now(datetime.timezone.utc),
+            "reply edited",
+        )
     except Exception:
         logger.exception("Failed to update activity for reply edited")
 
@@ -444,7 +448,9 @@ def send_and_archive(request):
     models.company_repository().update(company)
     # Activity: reply sent
     try:
-        models.company_repository().update_activity(company.company_id, current_time, "reply sent")
+        models.company_repository().update_activity(
+            company.company_id, current_time, "reply sent"
+        )
     except Exception:
         logger.exception("Failed to update activity for reply sent (company endpoint)")
 

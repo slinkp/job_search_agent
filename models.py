@@ -882,11 +882,17 @@ class CompanyRepository:
         # Update activity fields based on message state
         # Prefer reply_sent_at > archived_at > date
         if message.reply_sent_at:
-            self._update_activity(conn, message.company_id, message.reply_sent_at, "reply sent")
+            self._update_activity(
+                conn, message.company_id, message.reply_sent_at, "reply sent"
+            )
         elif message.archived_at:
-            self._update_activity(conn, message.company_id, message.archived_at, "message archived")
+            self._update_activity(
+                conn, message.company_id, message.archived_at, "message archived"
+            )
         elif message.date:
-            self._update_activity(conn, message.company_id, message.date, "message received")
+            self._update_activity(
+                conn, message.company_id, message.date, "message received"
+            )
 
     def get_all(self, include_messages=False) -> List[Company]:
         # Reads can happen without the lock
@@ -1072,7 +1078,16 @@ class CompanyRepository:
             activity_at_str = None
             last_activity_str = None
         else:
-            company_id, name, updated_at, details_json, status_json, activity_at_str, last_activity_str, reply_message = row
+            (
+                company_id,
+                name,
+                updated_at,
+                details_json,
+                status_json,
+                activity_at_str,
+                last_activity_str,
+                reply_message,
+            ) = row
         details_dict = json.loads(details_json)
 
         # Parse the status JSON or use empty dict if NULL
