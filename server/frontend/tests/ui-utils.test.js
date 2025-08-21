@@ -1,8 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatMessageDate, formatRecruiterMessageDate, isUrl, showError, showSuccess } from '../../static/ui-utils.js';
+import { formatDate, formatMessageDate, formatRecruiterMessageDate, isUrl, showError, showSuccess, confirmDialogs, errorLogger, modalUtils } from '../../static/ui-utils.js';
 
-// Mock alert for testing
+// Mock alert, confirm, and console for testing
 global.alert = vi.fn();
+global.confirm = vi.fn();
+global.console = {
+  ...console,
+  error: vi.fn(),
+  log: vi.fn()
+};
 
 describe('UI Utils', () => {
   beforeEach(() => {
@@ -44,7 +50,7 @@ describe('UI Utils', () => {
     });
 
     it('should handle invalid dates', () => {
-      expect(formatMessageDate('invalid-date')).toBe('Invalid Date Invalid Date');
+      expect(formatMessageDate('invalid-date')).toBe('Invalid date');
     });
   });
 
@@ -76,6 +82,119 @@ describe('UI Utils', () => {
       expect(isUrl(null)).toBe(false);
       expect(isUrl(undefined)).toBe(false);
       expect(isUrl(123)).toBe(false);
+    });
+  });
+
+  describe("formatDate", () => {
+    it("formats date in simple format by default", () => {
+      const result = formatDate("2023-12-01T10:30:00Z");
+      expect(result).toMatch(/12\/1\/2023/); // Locale format may vary
+      expect(result).toMatch(/\d{1,2}:\d{2}/); // Time should be included (any time format)
+    });
+
+    it("formats date in detailed format when specified", () => {
+      const result = formatDate("2023-12-01T10:30:00Z", "detailed");
+      expect(result).toMatch(/2023\/12\/01/);
+      expect(result).toMatch(/\d{1,2}:\d{2}/); // Time should be included (any time format)
+      expect(result).toMatch(/days ago/);
+    });
+
+    it("handles null/undefined dates in simple format", () => {
+      expect(formatDate(null)).toBe("Unknown date");
+      expect(formatDate(undefined)).toBe("Unknown date");
+      expect(formatDate("")).toBe("Unknown date");
+    });
+
+    it("handles null/undefined dates in detailed format", () => {
+      expect(formatDate(null, "detailed")).toBe("");
+      expect(formatDate(undefined, "detailed")).toBe("");
+      expect(formatDate("", "detailed")).toBe("");
+    });
+
+    it("handles invalid dates in simple format", () => {
+      expect(formatDate("invalid-date")).toBe("Invalid date");
+    });
+
+    it("handles invalid dates in detailed format", () => {
+      expect(formatDate("invalid-date", "detailed")).toBe("");
+    });
+  });
+
+  describe('confirmDialogs', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should call confirm with archive without reply message', () => {
+      confirmDialogs.archiveWithoutReply();
+      expect(confirm).toHaveBeenCalledWith('Are you sure you want to archive this message without replying?');
+    });
+
+    it('should call confirm with send and archive message', () => {
+      confirmDialogs.sendAndArchive();
+      expect(confirm).toHaveBeenCalledWith('Are you sure you want to send this reply and archive the message?');
+    });
+  });
+
+  describe('errorLogger', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should log failed to error with consistent formatting', () => {
+      const error = new Error('Test error');
+      errorLogger.logFailedTo('load messages', error);
+      expect(console.error).toHaveBeenCalledWith('Failed to load messages:', error);
+    });
+
+    it('should log generic error with consistent formatting', () => {
+      const error = new Error('Test error');
+      errorLogger.logError('Custom error message', error);
+      expect(console.error).toHaveBeenCalledWith('Custom error message', error);
+    });
+  });
+
+  describe('modalUtils', () => {
+    let mockModal;
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockModal = {
+        showModal: vi.fn(),
+        close: vi.fn()
+      };
+    });
+
+    it('should show modal when element exists', () => {
+      document.getElementById = vi.fn().mockReturnValue(mockModal);
+      modalUtils.showModal('test-modal');
+      expect(document.getElementById).toHaveBeenCalledWith('test-modal');
+      expect(mockModal.showModal).toHaveBeenCalled();
+    });
+
+    it('should log error when modal element does not exist', () => {
+      document.getElementById = vi.fn().mockReturnValue(null);
+      modalUtils.showModal('non-existent-modal');
+      expect(console.error).toHaveBeenCalledWith("Modal with ID 'non-existent-modal' not found");
+    });
+
+    it('should close modal when element exists', () => {
+      document.getElementById = vi.fn().mockReturnValue(mockModal);
+      modalUtils.closeModal('test-modal');
+      expect(document.getElementById).toHaveBeenCalledWith('test-modal');
+      expect(mockModal.close).toHaveBeenCalled();
+    });
+
+    it('should log error when modal element does not exist for close', () => {
+      document.getElementById = vi.fn().mockReturnValue(null);
+      modalUtils.closeModal('non-existent-modal');
+      expect(console.error).toHaveBeenCalledWith("Modal with ID 'non-existent-modal' not found");
+    });
+
+    it('should have common modal IDs defined', () => {
+      expect(modalUtils.modalIds.EDIT).toBe('editModal');
+      expect(modalUtils.modalIds.RESEARCH_COMPANY).toBe('research-company-modal');
+      expect(modalUtils.modalIds.IMPORT_COMPANIES).toBe('import-companies-modal');
     });
   });
 }); 

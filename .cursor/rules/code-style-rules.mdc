@@ -14,3 +14,4 @@ alwaysApply: true
   - Revise existing comments only to improve accuracy / clarity; don't reword superficially.
 
 - Python formatting: follow Black; respect `pyproject.toml` settings.
+- Javascript formatting: use Pretter; respect `.prettierrc` settings.

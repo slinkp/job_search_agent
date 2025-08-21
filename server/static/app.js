@@ -1,12 +1,28 @@
+import { CompaniesService } from "./companies-service.js";
 import { CompanyResearchService } from "./company-research.js";
+import {
+  filterCompanies,
+  normalizeCompanies,
+  sortCompanies,
+  formatResearchErrors as utilFormatResearchErrors,
+} from "./company-utils.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { TaskPollingService } from "./task-polling.js";
 import {
+  confirmDialogs,
+  errorLogger,
   formatRecruiterMessageDate,
   isUrl,
+  modalUtils,
   showError,
   showSuccess,
 } from "./ui-utils.js";
+import {
+  buildHashForCompany,
+  parseViewFromUrl,
+  setIncludeAllParam,
+  urlUtils,
+} from "./url-utils.js";
 
 // Add CSS for message date styling and status icons
 const style = document.createElement("style");
@@ -109,6 +125,7 @@ document.addEventListener("alpine:init", () => {
 
   Alpine.data("companyList", () => {
     const researchService = new CompanyResearchService();
+    const companiesService = new CompaniesService();
     const emailScanningService = new EmailScanningService();
     const taskPollingService = new TaskPollingService();
     return {
@@ -146,13 +163,12 @@ document.addEventListener("alpine:init", () => {
         this.loading = true;
         try {
           // Check URL for view parameter first
+          const viewMode = parseViewFromUrl(window.location.search);
           const urlParams = new URLSearchParams(window.location.search);
-          const viewParam = urlParams.get("view");
           const includeAllParam = urlParams.get("include_all") === "true";
 
           // Set view mode based on URL parameter
-          this.viewMode =
-            viewParam === "daily" ? "daily_dashboard" : "company_management";
+          this.viewMode = viewMode;
 
           // Track show archived state
           this.showArchived = includeAllParam;
@@ -169,7 +185,7 @@ document.addEventListener("alpine:init", () => {
             if (companyId) {
               setTimeout(() => {
                 const element = document.getElementById(
-                  encodeURIComponent(companyId)
+                  buildHashForCompany(companyId)
                 );
                 if (element) {
                   element.scrollIntoView({ behavior: "smooth" });
@@ -178,7 +194,7 @@ document.addEventListener("alpine:init", () => {
             }
           }
         } catch (err) {
-          console.error("Failed to load companies:", err);
+          errorLogger.logFailedTo("load companies", err);
           this.showError("Failed to load company data");
         } finally {
           this.loading = false;
@@ -192,15 +208,14 @@ document.addEventListener("alpine:init", () => {
             ? "daily_dashboard"
             : "company_management";
         // Update URL without reloading
-        const url = new URL(window.location);
-        url.searchParams.delete("company");
-        url.searchParams.delete("message");
-        if (this.viewMode === "daily_dashboard") {
-          url.searchParams.set("view", "daily");
-        } else {
-          url.searchParams.delete("view");
-        }
-        window.history.replaceState({}, "", url);
+        urlUtils.updateUrlParams(
+          {
+            company: null,
+            message: null,
+            view: this.viewMode === "daily_dashboard" ? "daily" : null,
+          },
+          true
+        );
       },
 
       isCompanyManagementView() {
@@ -217,16 +232,11 @@ document.addEventListener("alpine:init", () => {
         this.viewMode = "company_management";
 
         // Update URL with anchor and preserve include_all parameter
-        const url = new URL(window.location);
+        const url = urlUtils.createUrl();
         url.hash = encodeURIComponent(companyId);
         url.searchParams.delete("message");
         url.searchParams.delete("view");
-
-        // Preserve include_all parameter if currently active
-        if (this.showArchived) {
-          url.searchParams.set("include_all", "true");
-        }
-
+        setIncludeAllParam(url, this.showArchived);
         window.history.pushState({}, "", url);
 
         // Ensure companies are loaded with current include_all setting
@@ -245,10 +255,7 @@ document.addEventListener("alpine:init", () => {
 
       navigateToMessage(messageId) {
         // Update URL
-        const url = new URL(window.location);
-        url.searchParams.set("message", messageId);
-        url.searchParams.delete("company");
-        window.history.pushState({}, "", url);
+        urlUtils.updateUrlParams({ message: messageId, company: null }, false);
 
         // Load message and associated company
         this.loadMessageAndCompany(messageId);
@@ -257,28 +264,10 @@ document.addEventListener("alpine:init", () => {
       async loadCompany(companyId) {
         this.loading = true;
         try {
-          const response = await fetch(
-            `/api/companies/${encodeURIComponent(companyId)}`
-          );
-          if (!response.ok) {
-            throw new Error(`Failed to load company: ${response.status}`);
-          }
-
-          const company = await response.json();
-          // Get associated messages
-          const messagesResponse = await fetch(`/api/messages`);
-          if (messagesResponse.ok) {
-            const allMessages = await messagesResponse.json();
-            company.associated_messages = allMessages.filter(
-              (msg) => msg.company_id === companyId
-            );
-          } else {
-            company.associated_messages = [];
-          }
-
+          const company = await companiesService.loadCompany(companyId);
           this.companies = [company];
         } catch (err) {
-          console.error("Failed to load company:", err);
+          errorLogger.logFailedTo("load company", err);
           this.showError("Failed to load company data");
         } finally {
           this.loading = false;
@@ -288,37 +277,8 @@ document.addEventListener("alpine:init", () => {
       async loadMessageAndCompany(messageId) {
         this.loading = true;
         try {
-          // Get message details
-          const messagesResponse = await fetch(`/api/messages`);
-          if (!messagesResponse.ok) {
-            throw new Error(
-              `Failed to load messages: ${messagesResponse.status}`
-            );
-          }
-
-          const allMessages = await messagesResponse.json();
-          const message = allMessages.find(
-            (msg) => msg.message_id === messageId
-          );
-
-          if (!message) {
-            throw new Error("Message not found");
-          }
-
-          // Get associated company
-          const companyResponse = await fetch(
-            `/api/companies/${encodeURIComponent(message.company_id)}`
-          );
-          if (!companyResponse.ok) {
-            throw new Error(
-              `Failed to load company: ${companyResponse.status}`
-            );
-          }
-
-          const company = await companyResponse.json();
-          company.associated_messages = allMessages.filter(
-            (msg) => msg.company_id === message.company_id
-          );
+          const { company, message } =
+            await companiesService.loadMessageAndCompany(messageId);
 
           this.companies = [company];
           this.editingCompany = company;
@@ -326,10 +286,10 @@ document.addEventListener("alpine:init", () => {
 
           // Show edit modal for the message
           setTimeout(() => {
-            document.getElementById("editModal").showModal();
+            modalUtils.showModal(modalUtils.modalIds.EDIT);
           }, 100);
         } catch (err) {
-          console.error("Failed to load message and company:", err);
+          errorLogger.logFailedTo("load message and company", err);
           this.showError("Failed to load message and company data");
         } finally {
           this.loading = false;
@@ -355,21 +315,9 @@ document.addEventListener("alpine:init", () => {
           // Also add to service for polling
           taskPollingService.addGeneratingMessage(company);
 
-          const response = await fetch(
-            `/api/messages/${company.recruiter_message?.message_id}/reply`,
-            {
-              method: "POST",
-            }
+          const data = await companiesService.generateReply(
+            company.recruiter_message?.message_id
           );
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to generate reply: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
           company.message_task_id = data.task_id;
           company.message_status = data.status;
 
@@ -395,7 +343,7 @@ document.addEventListener("alpine:init", () => {
 
           this.showSuccess("Reply generated successfully!");
         } catch (err) {
-          console.error("Failed to generate reply:", err);
+          errorLogger.logFailedTo("generate reply", err);
           this.showError(
             err.message || "Failed to generate reply. Please try again."
           );
@@ -409,43 +357,27 @@ document.addEventListener("alpine:init", () => {
         console.log("editReply called with company:", company);
         this.editingCompany = company;
         this.editingReply = company.reply_message;
-        document.getElementById("editModal").showModal();
+        modalUtils.showModal(modalUtils.modalIds.EDIT);
       },
 
       cancelEdit() {
         console.log("cancelEdit called, clearing editingCompany");
         this.editingCompany = null;
         this.editingReply = "";
-        document.getElementById("editModal").close();
+        modalUtils.closeModal(modalUtils.modalIds.EDIT);
 
         // Update URL to remove message parameter
-        const url = new URL(window.location);
-        url.searchParams.delete("message");
-        window.history.replaceState({}, "", url);
+        urlUtils.removeUrlParams(["message"]);
       },
 
       async saveReply() {
         if (this.editingCompany) {
           try {
-            const response = await fetch(
-              `/api/messages/${this.editingCompany.recruiter_message?.message_id}/reply`,
-              {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ message: this.editingReply }),
-              }
+            const data = await companiesService.saveReply(
+              this.editingCompany.recruiter_message?.message_id,
+              this.editingReply
             );
 
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(
-                error.error || `Failed to save reply: ${response.status}`
-              );
-            }
-
-            const data = await response.json();
             // Update the local company object
             Object.assign(this.editingCompany, data);
 
@@ -466,7 +398,7 @@ document.addEventListener("alpine:init", () => {
 
             this.cancelEdit();
           } catch (err) {
-            console.error("Failed to save reply:", err);
+            errorLogger.logFailedTo("save reply", err);
             this.showError(
               err.message || "Failed to save reply. Please try again."
             );
@@ -500,25 +432,10 @@ document.addEventListener("alpine:init", () => {
             company.recruiter_message &&
             company.recruiter_message.message_id
           ) {
-            // Use the message-centric endpoint
-            const response = await fetch(
-              `/api/messages/${company.recruiter_message.message_id}/send_and_archive`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
+            // Use the message-centric endpoint via service
+            await companiesService.sendAndArchive(
+              company.recruiter_message.message_id
             );
-
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(
-                error.error || `Failed to send and archive: ${response.status}`
-              );
-            }
-
-            const data = await response.json();
           } else {
             // Fallback to company-centric endpoint for backward compatibility
             const response = await fetch(
@@ -544,7 +461,7 @@ document.addEventListener("alpine:init", () => {
           this.showSuccess("Reply sent and message archived");
           this.cancelEdit();
         } catch (err) {
-          console.error("Failed to send and archive:", err);
+          errorLogger.logFailedTo("send and archive", err);
           this.showError(
             err.message || "Failed to send and archive. Please try again."
           );
@@ -558,21 +475,7 @@ document.addEventListener("alpine:init", () => {
         try {
           this.researchingCompanies.add(company.name);
           taskPollingService.addResearching(company);
-          const response = await fetch(
-            `/api/companies/${company.company_id}/research`,
-            {
-              method: "POST",
-            }
-          );
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to start research: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
+          const data = await companiesService.research(company.company_id);
           company.research_task_id = data.task_id;
           company.research_status = data.status;
 
@@ -581,7 +484,7 @@ document.addEventListener("alpine:init", () => {
           await this.fetchAndUpdateCompany(company.company_id);
           this.showSuccess("Company research completed!");
         } catch (err) {
-          console.error("Failed to research company:", err);
+          errorLogger.logFailedTo("research company", err);
           this.showError(
             err.message || "Failed to start research. Please try again."
           );
@@ -618,235 +521,7 @@ document.addEventListener("alpine:init", () => {
         return this.sendingMessages.has(company.name);
       },
 
-      async pollTaskStatus(company, taskType) {
-        const isMessage = taskType === "message";
-        const isImportingCompanies = taskType === "import_companies";
-        const trackingSet = isMessage
-          ? this.generatingMessages
-          : isImportingCompanies
-          ? new Set(["import_companies"]) // Single-item set for import task
-          : this.researchingCompanies;
-        const taskIdField = isMessage ? "message_task_id" : "research_task_id";
-        const statusField = isMessage ? "message_status" : "research_status";
-        const errorField = isMessage ? "message_error" : "research_error";
-
-        const taskId = company
-          ? company[taskIdField]
-          : isImportingCompanies
-          ? this.importTaskId
-          : null;
-        const trackingKey = company
-          ? company.name
-          : isImportingCompanies
-          ? "import_companies"
-          : "";
-
-        console.log(`Starting poll for ${taskType}`, {
-          companyName: company?.name,
-          taskId,
-        });
-
-        // Initialize importStatus if needed before polling starts
-        if (
-          isImportingCompanies &&
-          (!this.importStatus || typeof this.importStatus !== "object")
-        ) {
-          this.importStatus = {
-            percent_complete: 0,
-            current_company: "",
-            processed: 0,
-            total_found: 0,
-            created: 0,
-            updated: 0,
-            skipped: 0,
-            errors: 0,
-            status: "pending",
-          };
-        }
-
-        while (trackingSet.has(trackingKey)) {
-          try {
-            const response = await fetch(`/api/tasks/${taskId}`);
-            const task = await response.json();
-
-            console.log(`Poll response for ${trackingKey}:`, task);
-
-            // Update the status based on task type
-            if (company) {
-              company[statusField] = task.status;
-            } else if (isImportingCompanies) {
-              console.log("Poll response for import task:", task);
-              console.log(
-                "Current importStatus before update:",
-                JSON.stringify(this.importStatus)
-              );
-
-              this.importStatus = task.status;
-
-              // Update the progress information if available in the task result
-              if (task.result) {
-                console.log(
-                  "Raw task result received:",
-                  JSON.stringify(task.result)
-                );
-
-                // Save current values to preserve them if they're not in the new result
-                const currentCreated =
-                  this.importStatus && this.importStatus.created
-                    ? this.importStatus.created
-                    : 0;
-                const currentUpdated =
-                  this.importStatus && this.importStatus.updated
-                    ? this.importStatus.updated
-                    : 0;
-                const currentSkipped =
-                  this.importStatus && this.importStatus.skipped
-                    ? this.importStatus.skipped
-                    : 0;
-                const currentErrors =
-                  this.importStatus && this.importStatus.errors
-                    ? this.importStatus.errors
-                    : 0;
-
-                this.importStatus = {
-                  ...this.importStatus,
-                  ...task.result,
-                  current_company:
-                    task.result.current_company ||
-                    (this.importStatus && this.importStatus.current_company
-                      ? this.importStatus.current_company
-                      : ""),
-                  percent_complete:
-                    task.result.total_found > 0
-                      ? (task.result.processed / task.result.total_found) * 100
-                      : 0,
-                  // Use task.result values if present, otherwise keep current values
-                  created:
-                    task.result.created !== undefined
-                      ? task.result.created
-                      : currentCreated,
-                  updated:
-                    task.result.updated !== undefined
-                      ? task.result.updated
-                      : currentUpdated,
-                  skipped:
-                    task.result.skipped !== undefined
-                      ? task.result.skipped
-                      : currentSkipped,
-                  errors:
-                    task.result.errors !== undefined
-                      ? task.result.errors
-                      : currentErrors,
-                };
-
-                console.log(
-                  "Updated importStatus after merge:",
-                  JSON.stringify(this.importStatus)
-                );
-
-                // Log completed import results for debugging
-                if (task.status === "completed") {
-                  console.log(
-                    "Import completed with results:",
-                    JSON.stringify(this.importStatus)
-                  );
-                }
-              } else {
-                console.warn("No result data in the task:", task);
-              }
-            }
-
-            if (task.status === "completed" || task.status === "failed") {
-              // For both completion and failure, fetch fresh data
-
-              if (task.status === "failed") {
-                console.log(`Task failed for ${trackingKey}:`, task.error);
-                if (company) {
-                  company[errorField] = task.error;
-                } else if (isImportingCompanies) {
-                  this.importError = task.error;
-                  this.importingCompanies = false;
-                }
-              }
-
-              if (company) {
-                // Get fresh data for this company
-                await this.fetchAndUpdateCompany(company.company_id);
-              } else {
-                // For import tasks, update entire companies list
-                await this.refreshAllCompanies();
-                if (isImportingCompanies) {
-                  this.importingCompanies = false;
-
-                  // Show result message for import
-                  if (task.status === "completed") {
-                    console.log("Import task completed. Full task data:", task);
-
-                    // Even if there's no result in the final task response,
-                    // we may have collected statistics during the polling process
-                    if (!task.result && this.importStatus) {
-                      console.log(
-                        "No result in completed task, using collected importStatus:",
-                        this.importStatus
-                      );
-
-                      // Show success message with the stats we've collected
-                      const created = this.importStatus.created || 0;
-                      const updated = this.importStatus.updated || 0;
-                      const skipped = this.importStatus.skipped || 0;
-                      const errors = this.importStatus.errors || 0;
-
-                      const msg = `Import completed! Created: ${created}, Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}`;
-                      this.showSuccess(msg);
-
-                      // Reset importStatus since we're done and only using alert
-                      this.importStatus = null;
-                    } else if (task.result) {
-                      const result = task.result;
-                      console.log("Import result data is present:", result);
-
-                      const msg = `Import completed! Created: ${
-                        result.created || 0
-                      }, Updated: ${result.updated || 0}, Skipped: ${
-                        result.skipped || 0
-                      }, Errors: ${result.errors || 0}`;
-                      this.showSuccess(msg);
-
-                      // Reset importStatus since we're done and only using alert
-                      this.importStatus = null;
-                    } else {
-                      console.error(
-                        "Import task completed but no result data available!"
-                      );
-                      this.showError(
-                        "Import completed but no statistics available"
-                      );
-
-                      // Reset importStatus
-                      this.importStatus = null;
-                    }
-                  }
-                }
-              }
-
-              trackingSet.delete(trackingKey);
-              break;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          } catch (err) {
-            console.error(`Failed to poll ${taskType} status:`, err);
-            if (company) {
-              // Do nothing, keep polling
-            } else if (isImportingCompanies) {
-              this.importError = "Failed to check task status";
-              this.importingCompanies = false;
-            }
-            trackingSet.delete(trackingKey);
-            break;
-          }
-        }
-      },
+      
 
       async scanEmails(maxMessages = 10) {
         try {
@@ -854,7 +529,7 @@ document.addEventListener("alpine:init", () => {
           await emailScanningService.scanRecruiterEmails(false); // Default to no research
           await this.pollEmailScanStatus();
         } catch (err) {
-          console.error("Failed to scan recruiter emails:", err);
+          errorLogger.logFailedTo("scan recruiter emails", err);
           this.showError(
             err.message || "Failed to scan emails. Please try again."
           );
@@ -928,23 +603,14 @@ document.addEventListener("alpine:init", () => {
         );
 
         try {
-          const response = await fetch("/api/import_companies", {
-            method: "POST",
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || response.statusText);
-          }
-
-          const data = await response.json();
+          const data = await companiesService.importCompanies();
           this.importTaskId = data.task_id;
           console.log("Import task created with ID:", this.importTaskId);
 
-          // Start polling for task status
-          this.pollTaskStatus(null, "import_companies");
+          // Start polling for task status via shared polling service
+          taskPollingService.pollImportCompaniesStatus(this);
         } catch (error) {
-          console.error("Error starting import:", error);
+          errorLogger.logError("Error starting import:", error);
           this.importingCompanies = false;
           this.importError = error.message;
           this.showError(`Failed to start import: ${error.message}`);
@@ -952,37 +618,15 @@ document.addEventListener("alpine:init", () => {
       },
 
       get filteredCompanies() {
-        const filtered = this.companies.filter((company) => {
-          switch (this.filterMode) {
-            case "reply-sent":
-              return company.sent_at;
-            case "reply-not-sent":
-              return !company.sent_at;
-            case "researched":
-              return company.research_completed_at;
-            case "not-researched":
-              return !company.research_completed_at;
-            default:
-              return true;
-          }
-        });
-        return filtered;
+        return filterCompanies(this.companies, this.filterMode);
       },
 
       get sortedAndFilteredCompanies() {
-        return [...this.filteredCompanies].sort((a, b) => {
-          const aVal =
-            this.sortField === "updated_at"
-              ? new Date(a.updated_at).getTime()
-              : a[this.sortField];
-          const bVal =
-            this.sortField === "updated_at"
-              ? new Date(b.updated_at).getTime()
-              : b[this.sortField];
-
-          const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-          return this.sortAsc ? comparison : -comparison;
-        });
+        return sortCompanies(
+          this.filteredCompanies,
+          this.sortField,
+          this.sortAsc
+        );
       },
 
       toggleSort(field) {
@@ -999,15 +643,7 @@ document.addEventListener("alpine:init", () => {
       // New method to fetch and update a single company
       async fetchAndUpdateCompany(companyId) {
         try {
-          const response = await fetch(
-            `/api/companies/${encodeURIComponent(companyId)}`
-          );
-          if (!response.ok) {
-            console.error(`Failed to fetch company data for ${companyId}`);
-            return;
-          }
-
-          const updatedCompany = await response.json();
+          const updatedCompany = await companiesService.getCompany(companyId);
           console.log(`Fetched fresh data for ${companyId}:`, updatedCompany);
 
           // Find and replace the company in our array
@@ -1031,30 +667,19 @@ document.addEventListener("alpine:init", () => {
             }
           }
         } catch (err) {
-          console.error("Error fetching individual company:", err);
+          errorLogger.logError("Error fetching individual company:", err);
         }
       },
 
       async refreshAllCompanies(includeAll = false) {
         console.log("Refreshing all companies");
         try {
-          const params = new URLSearchParams();
-          if (includeAll) {
-            params.append("include_all", "true");
-          }
-          const url = `/api/companies${
-            params.toString() ? "?" + params.toString() : ""
-          }`;
-          const response = await fetch(url);
-          const data = await response.json();
+          const data = await companiesService.getCompanies(includeAll);
           console.log("Got companies json response");
-          this.companies = data.map((company) => ({
-            ...company,
-            details: company.details || {},
-          }));
+          this.companies = normalizeCompanies(data);
           return data;
         } catch (err) {
-          console.error("Failed to refresh companies:", err);
+          errorLogger.logFailedTo("refresh companies", err);
           return [];
         }
       },
@@ -1065,38 +690,12 @@ document.addEventListener("alpine:init", () => {
         await this.refreshAllCompanies(this.showArchived);
 
         // Update URL to reflect the change
-        const url = new URL(window.location);
-        if (this.showArchived) {
-          url.searchParams.set("include_all", "true");
-        } else {
-          url.searchParams.delete("include_all");
-        }
+        const url = urlUtils.createUrl();
+        setIncludeAllParam(url, this.showArchived);
         window.history.replaceState({}, "", url);
       },
 
-      formatResearchErrors(company) {
-        if (!company || !company.research_errors) return "";
-
-        // If it's already a formatted string, just return it
-        if (typeof company.research_errors === "string") {
-          return company.research_errors;
-        }
-
-        // If it's an array of objects, try to format it
-        if (Array.isArray(company.research_errors)) {
-          return company.research_errors
-            .map((err) => {
-              if (typeof err === "string") return err;
-              if (err && err.step && err.error)
-                return `${err.step}: ${err.error}`;
-              return JSON.stringify(err);
-            })
-            .join("; ");
-        }
-
-        // Fallback for unknown formats
-        return JSON.stringify(company.research_errors);
-      },
+      formatResearchErrors: utilFormatResearchErrors,
 
       async ignoreAndArchive(company) {
         if (!company) {
@@ -1105,11 +704,7 @@ document.addEventListener("alpine:init", () => {
         }
 
         // Confirm with the user before proceeding
-        if (
-          !confirm(
-            "Are you sure you want to archive this message without replying?"
-          )
-        ) {
+        if (!confirmDialogs.archiveWithoutReply()) {
           return;
         }
 
@@ -1122,19 +717,8 @@ document.addEventListener("alpine:init", () => {
             return;
           }
 
-          // Call the new message-centric archive endpoint
-          const response = await fetch(`/api/messages/${messageId}/archive`, {
-            method: "POST",
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to archive message: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
+          // Call the archive endpoint via service
+          await companiesService.archiveMessage(messageId);
 
           // Fetch fresh company data
           await this.fetchAndUpdateCompany(company.company_id);
@@ -1142,14 +726,14 @@ document.addEventListener("alpine:init", () => {
           this.showSuccess("Message archived without reply");
           this.cancelEdit();
         } catch (err) {
-          console.error("Failed to archive message:", err);
+          errorLogger.logFailedTo("archive message", err);
           this.showError(
             err.message || "Failed to archive message. Please try again."
           );
         }
       },
 
-      togglePromising(company, value) {
+      async togglePromising(company, value) {
         if (!company) return;
 
         // If clicking the same value that's already set, clear it
@@ -1157,35 +741,23 @@ document.addEventListener("alpine:init", () => {
           value = null;
         }
 
+        const originalValue = company.promising;
         company.promising = value;
 
-        // Save to backend
-        fetch(
-          `/api/companies/${encodeURIComponent(company.company_id)}/details`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ promising: value }),
-          }
-        )
-          .then((response) => {
-            if (!response.ok) {
-              // Revert the local change if the server update failed
-              company.promising = null;
-            }
-          })
-          .catch((err) => {
-            console.error("Failed to update promising status:", err);
-            // Revert the local change if the server update failed
-            company.promising = null;
+        try {
+          await companiesService.updateCompanyDetails(company.company_id, {
+            promising: value,
           });
+        } catch (err) {
+          errorLogger.logFailedTo("update promising status", err);
+          // Revert the local change if the server update failed
+          company.promising = originalValue;
+        }
       },
 
       showResearchCompanyModal() {
         console.log("showResearchCompanyModal called");
-        document.getElementById("research-company-modal").showModal();
+        modalUtils.showModal(modalUtils.modalIds.RESEARCH_COMPANY);
         this.researchCompanyForm = {
           url: "",
           name: "",
@@ -1194,17 +766,17 @@ document.addEventListener("alpine:init", () => {
       },
 
       closeResearchCompanyModal() {
-        document.getElementById("research-company-modal").close();
+        modalUtils.closeModal(modalUtils.modalIds.RESEARCH_COMPANY);
       },
 
       showImportCompaniesModal() {
         // Show the import companies modal dialog
-        document.getElementById("import-companies-modal").showModal();
+        modalUtils.showModal(modalUtils.modalIds.IMPORT_COMPANIES);
       },
 
       closeImportCompaniesModal() {
         // Close the import companies modal dialog
-        document.getElementById("import-companies-modal").close();
+        modalUtils.closeModal(modalUtils.modalIds.IMPORT_COMPANIES);
       },
 
       confirmImportCompanies() {
@@ -1228,7 +800,7 @@ document.addEventListener("alpine:init", () => {
           this.researchingCompany = true;
           console.log("Set researchingCompany to true");
 
-          const data = await researchService.submitResearch(
+          const data = await companiesService.submitResearch(
             this.researchCompanyForm
           );
           console.log("API success response:", data);
@@ -1244,7 +816,7 @@ document.addEventListener("alpine:init", () => {
           console.log("Starting to poll task:", this.researchCompanyTaskId);
           this.pollResearchCompanyTask();
         } catch (err) {
-          console.error("Failed to research company:", err);
+          errorLogger.logFailedTo("research company", err);
           this.showError(
             err.message || "Failed to start research. Please try again."
           );
@@ -1258,7 +830,7 @@ document.addEventListener("alpine:init", () => {
         if (!this.researchCompanyTaskId) return;
 
         try {
-          const data = await researchService.pollResearchTask(
+          const data = await companiesService.pollResearchTask(
             this.researchCompanyTaskId
           );
 
@@ -1274,7 +846,7 @@ document.addEventListener("alpine:init", () => {
             setTimeout(() => this.pollResearchCompanyTask(), 5000);
           }
         } catch (err) {
-          console.error("Error polling research task:", err);
+          errorLogger.logError("Error polling research task", err);
           this.showError(
             "Failed to check research status. Please refresh the page."
           );

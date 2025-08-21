@@ -21,10 +21,10 @@
         
         <!-- View Mode Toggle -->
         <div class="view-mode-toggle">
-          <button @click="toggleViewMode()" :class="isCompanyManagementView() ? 'active' : 'outline'">
+          <button aria-label="toggle-company-management" data-testid="toggle-company-management" @click="toggleViewMode()" :class="isCompanyManagementView() ? 'active' : 'outline'">
             Company Management
           </button>
-          <button @click="toggleViewMode()" :class="isDailyDashboardView() ? 'active' : 'outline'">
+          <button aria-label="toggle-daily-dashboard" data-testid="toggle-daily-dashboard" @click="toggleViewMode()" :class="isDailyDashboardView() ? 'active' : 'outline'">
             Messages Dashboard
           </button>
         </div>
@@ -59,33 +59,33 @@
 
         <div class="list-controls">
           <div class="filter-controls">
-            <button @click="filterMode = 'all'" class="filter-button outline" :class="{ 'active': filterMode === 'all' }">
+            <button @click="filterMode = 'all'" class="filter-button outline" :class="{ 'active': filterMode === 'all' }" aria-label="filter-all" data-testid="filter-all">
               All
             </button>
-            <button @click="filterMode = 'reply-sent'" class="filter-button outline" :class="{ 'active': filterMode === 'reply-sent' }">
+            <button @click="filterMode = 'reply-sent'" class="filter-button outline" :class="{ 'active': filterMode === 'reply-sent' }" aria-label="filter-reply-sent" data-testid="filter-reply-sent">
               Reply Sent
             </button>
-            <button @click="filterMode = 'reply-not-sent'" class="filter-button outline" :class="{ 'active': filterMode === 'reply-not-sent' }">
+            <button @click="filterMode = 'reply-not-sent'" class="filter-button outline" :class="{ 'active': filterMode === 'reply-not-sent' }" aria-label="filter-reply-not-sent" data-testid="filter-reply-not-sent">
               No Reply
             </button>
-            <button @click="filterMode = 'researched'" class="filter-button outline" :class="{ 'active': filterMode === 'researched' }">
+            <button @click="filterMode = 'researched'" class="filter-button outline" :class="{ 'active': filterMode === 'researched' }" aria-label="filter-researched" data-testid="filter-researched">
               Researched
             </button>
-            <button @click="filterMode = 'not-researched'" class="filter-button outline" :class="{ 'active': filterMode === 'not-researched' }">
+            <button @click="filterMode = 'not-researched'" class="filter-button outline" :class="{ 'active': filterMode === 'not-researched' }" aria-label="filter-not-researched" data-testid="filter-not-researched">
               Not Researched
             </button>
           </div>
 
           <div class="sort-controls">
-            <button @click="toggleSort('name')" class="sort-button outline" :class="{ 'active': sortField === 'name' }">
+            <button @click="toggleSort('name')" class="sort-button outline" :class="{ 'active': sortField === 'name' }" aria-label="sort-name" data-testid="sort-name">
               Name <span x-text="sortField === 'name' ? (sortAsc ? '↑' : '↓') : ''"></span>
             </button>
-            <button @click="toggleSort('updated_at')" class="sort-button outline" :class="{ 'active': sortField === 'updated_at' }">
+            <button @click="toggleSort('updated_at')" class="sort-button outline" :class="{ 'active': sortField === 'updated_at' }" aria-label="sort-updated" data-testid="sort-updated">
               Updated <span x-text="sortField === 'updated_at' ? (sortAsc ? '↑' : '↓') : ''"></span>
             </button>
           </div>
 
-          <button @click="toggleShowArchived()" class="outline" x-text="showArchived ? 'Hide archived' : 'Show archived'"></button>
+          <button @click="toggleShowArchived()" class="outline" x-text="showArchived ? 'Hide archived' : 'Show archived'" aria-label="toggle-archived" data-testid="toggle-archived"></button>
 
           <span class="list-stats" x-text="`${sortedAndFilteredCompanies.length}/${companies.length}`"></span>
         </div>
@@ -253,16 +253,16 @@
           <div class="dashboard-actions">
             <!-- Filter buttons -->
             <div class="filter-controls">
-              <button @click="setFilterMode('all')" class="filter-button outline" :class="{ 'active': filterMode === 'all' }">
+              <button @click="setFilterMode('all')" class="filter-button outline" :class="{ 'active': filterMode === 'all' }" aria-label="dd-filter-all" data-testid="dd-filter-all">
                 All
               </button>
-              <button @click="setFilterMode('not-replied')" class="filter-button outline" :class="{ 'active': filterMode === 'not-replied' }">
+              <button @click="setFilterMode('not-replied')" class="filter-button outline" :class="{ 'active': filterMode === 'not-replied' }" aria-label="dd-filter-not-replied" data-testid="dd-filter-not-replied">
                 Not Replied
               </button>
-              <button @click="setFilterMode('replied')" class="filter-button outline" :class="{ 'active': filterMode === 'replied' }">
+              <button @click="setFilterMode('replied')" class="filter-button outline" :class="{ 'active': filterMode === 'replied' }" aria-label="dd-filter-replied" data-testid="dd-filter-replied">
                 Replied
               </button>
-              <button @click="setFilterMode('archived')" class="filter-button outline" :class="{ 'active': filterMode === 'archived' }">
+              <button @click="setFilterMode('archived')" class="filter-button outline" :class="{ 'active': filterMode === 'archived' }" aria-label="dd-filter-archived" data-testid="dd-filter-archived">
                 Archived
               </button>
             </div>
@@ -273,15 +273,15 @@
                 <span>Include research during scan</span>
               </label>
             </div>
-            <button @click="scanRecruiterEmails()" :disabled="scanningEmails" class="outline">
+            <button @click="scanRecruiterEmails()" :disabled="scanningEmails" class="outline" aria-label="dd-scan-emails" data-testid="dd-scan-emails">
               <span x-show="scanningEmails" class="loading-spinner"></span>
               Scan Emails
             </button>
-            <button @click="refresh()" :disabled="loading" class="outline">
+            <button @click="refresh()" :disabled="loading" class="outline" aria-label="dd-refresh" data-testid="dd-refresh">
               <span x-show="loading" class="loading-spinner"></span>
               Refresh
             </button>
-            <button @click="toggleSortOrder()" class="outline">
+            <button @click="toggleSortOrder()" class="outline" aria-label="dd-toggle-sort" data-testid="dd-toggle-sort">
               <span x-text="getSortButtonText()"></span>
             </button>
           </div>
@@ -328,6 +328,8 @@
                   @click="toggleMessageExpansion(message.message_id)" 
                   class="expand-button outline"
                   x-text="getExpandButtonText(message.message_id)"
+                  aria-label="dd-expand-message"
+                  data-testid="dd-expand-message"
                 ></button>
               </div>
               
@@ -337,6 +339,8 @@
                     @click="research(message)" 
                     :disabled="isResearching(message) || isSendingMessage(message) || message.archived_at"
                     class="outline"
+                    aria-label="dd-research"
+                    data-testid="dd-research"
                   >
                     <span x-text="isResearching(message) ? 'Researching...' : (message.research_completed_at ? 'Redo research' : 'Research!')"></span>
                     <span x-show="isResearching(message)" class="loading-spinner"></span>
@@ -355,6 +359,8 @@
                       @click="generateReply(message)" 
                       :disabled="isGeneratingMessage(message) || isSendingMessage(message)"
                       class="outline"
+                      aria-label="dd-generate-reply"
+                      data-testid="dd-generate-reply"
                     >
                       <span x-show="!isGeneratingMessage(message)">Generate Reply</span>
                       <span x-show="isGeneratingMessage(message)">
@@ -366,6 +372,8 @@
                       @click="$dispatch('edit-reply', message)" 
                       :disabled="isGeneratingMessage(message) || isSendingMessage(message)"
                       class="outline"
+                      aria-label="dd-edit-reply"
+                      data-testid="dd-edit-reply"
                     >
                       Edit
                     </button>
@@ -382,6 +390,8 @@
                           @click="toggleReplyExpansion(message.message_id)" 
                           class="expand-button outline"
                           x-text="getReplyExpandButtonText(message.message_id)"
+                          aria-label="dd-expand-reply"
+                          data-testid="dd-expand-reply"
                         ></button>
                       </div>
                       <div class="reply-preview-full" x-show="expandedReplies.has(message.message_id)">
@@ -393,6 +403,8 @@
                         @click="$dispatch('edit-reply', message)" 
                         :disabled="isGeneratingMessage(message) || isSendingMessage(message)"
                         class="outline"
+                        aria-label="dd-edit-reply-2"
+                        data-testid="dd-edit-reply-2"
                       >
                         Edit
                       </button>
@@ -400,6 +412,8 @@
                         @click="generateReply(message)" 
                         :disabled="isGeneratingMessage(message) || isSendingMessage(message)"
                         class="outline"
+                        aria-label="dd-regenerate"
+                        data-testid="dd-regenerate"
                       >
                         <span x-show="!isGeneratingMessage(message)">Regenerate</span>
                         <span x-show="isGeneratingMessage(message)">
@@ -411,6 +425,8 @@
                         @click="sendAndArchive(message)" 
                         :disabled="isGeneratingMessage(message) || isSendingMessage(message)"
                         class="primary"
+                        aria-label="dd-send-archive"
+                        data-testid="dd-send-archive"
                       >
                         <span x-show="!isSendingMessage(message)">Send &amp; Archive</span>
                         <span x-show="isSendingMessage(message)">
@@ -436,6 +452,8 @@
                           @click="toggleReplyExpansion(message.message_id)" 
                           class="expand-button outline"
                           x-text="getReplyExpandButtonText(message.message_id)"
+                          aria-label="dd-expand-reply-sent"
+                          data-testid="dd-expand-reply-sent"
                         ></button>
                       </div>
                       <div class="reply-preview-full" x-show="expandedReplies.has(message.message_id)">
@@ -460,6 +478,8 @@
                           @click="toggleReplyExpansion(message.message_id)" 
                           class="expand-button outline"
                           x-text="getReplyExpandButtonText(message.message_id)"
+                          aria-label="dd-expand-reply-archived"
+                          data-testid="dd-expand-reply-archived"
                         ></button>
                       </div>
                       <div class="reply-preview-full" x-show="expandedReplies.has(message.message_id)">
@@ -470,7 +490,7 @@
                   </div>
                 </template>
                 
-                <button @click="archive(message.message_id)" :disabled="isSendingMessage(message) || message.archived_at" class="outline">
+                <button @click="archive(message.message_id)" :disabled="isSendingMessage(message) || message.archived_at" class="outline" aria-label="dd-archive" data-testid="dd-archive">
                   Archive
                 </button>
               </div>

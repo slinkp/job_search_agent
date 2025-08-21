@@ -6,10 +6,25 @@
 // will update the company's shared reply draft. This is a temporary limitation
 // until per-message draft storage is implemented.
 
+import { CompaniesService } from "./companies-service.js";
+import {
+  // buildUpdatedSearch,
+  filterMessages,
+  // parseUrlState,
+  sortMessages,
+  getFilterHeading as utilGetFilterHeading,
+} from "./dashboard-utils.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { computeMessagePreview } from "./message-utils.js";
 import { TaskPollingService } from "./task-polling.js";
-import { formatMessageDate, showError, showSuccess } from "./ui-utils.js";
+import {
+  confirmDialogs,
+  errorLogger,
+  formatMessageDate,
+  showError,
+  showSuccess,
+} from "./ui-utils.js";
+import { readDailyDashboardStateFromUrl, updateDailyDashboardUrlWithState } from "./url-utils.js";
 
 document.addEventListener("alpine:init", () => {
   const emailScanningService = new EmailScanningService();
@@ -19,6 +34,7 @@ document.addEventListener("alpine:init", () => {
   window.emailScanningService = emailScanningService;
 
   Alpine.data("dailyDashboard", () => {
+    const companiesService = new CompaniesService();
     return {
       // Message list data
       unprocessedMessages: [],
@@ -64,45 +80,18 @@ document.addEventListener("alpine:init", () => {
 
       // Read filtering state from URL parameters
       readFilterStateFromUrl() {
-        const urlParams = new URLSearchParams(window.location.search);
-
-        // Read filterMode state
-        const filterModeParam = urlParams.get("filterMode");
-        if (filterModeParam) {
-          this.filterMode = filterModeParam;
-        }
-
-        // New: Read sort order from URL
-        const sortParam = urlParams.get("sort");
-        if (sortParam) {
-          this.sortNewestFirst = sortParam === "newest";
-        }
+        const { filterMode, sortNewestFirst } = readDailyDashboardStateFromUrl(
+          window.location.search
+        );
+        this.filterMode = filterMode;
+        this.sortNewestFirst = sortNewestFirst;
       },
 
       // Update URL with current filtering state
       updateUrlWithFilterState() {
-        // Preserve existing parameters while updating filter state
-        const params = new URLSearchParams(window.location.search);
-
-        // Update filter values
-        params.set("filterMode", this.filterMode);
-        params.set("sort", this.sortNewestFirst ? "newest" : "oldest");
-
-        // Preserve hash and path
-        const hash = window.location.hash;
-        const path = window.location.pathname || "/";
-
-        // Build new URL with updated search params while preserving existing ones
-        const newUrl = `${path}?${params.toString()}${hash}`.replace(
-          /([^:])\/\//g,
-          "$1/"
-        );
-
-        // Update history without reloading
-        window.history.replaceState(
-          { ...window.history.state, filtersUpdated: true },
-          "",
-          newUrl
+        updateDailyDashboardUrlWithState(
+          this.filterMode,
+          this.sortNewestFirst
         );
       },
 
@@ -116,21 +105,7 @@ document.addEventListener("alpine:init", () => {
       // Computed property for sorted messages
       get sortedMessages() {
         if (!this.unprocessedMessages.length) return [];
-
-        return [...this.unprocessedMessages].sort((a, b) => {
-          const dateA = this.getMessageDate(a);
-          const dateB = this.getMessageDate(b);
-
-          // Handle cases where date might be null
-          if (!dateA && !dateB) return 0;
-          if (!dateA) return 1;
-          if (!dateB) return -1;
-
-          const timeA = new Date(dateA).getTime();
-          const timeB = new Date(dateB).getTime();
-
-          return this.sortNewestFirst ? timeB - timeA : timeA - timeB;
-        });
+        return sortMessages(this.unprocessedMessages, this.sortNewestFirst);
       },
 
       // Toggle sort order
@@ -148,48 +123,16 @@ document.addEventListener("alpine:init", () => {
       async loadMessages() {
         this.loading = true;
         try {
-          const response = await fetch("/api/messages");
-          if (!response.ok) {
-            throw new Error(`Failed to load messages: ${response.status}`);
-          }
-
-          const messages = await response.json();
+          const messages = await companiesService.getMessages();
 
           // Apply client-side filtering based on filterMode
-          let filteredMessages = messages;
-
-          switch (this.filterMode) {
-            case "archived":
-              // Show ONLY archived messages
-              filteredMessages = filteredMessages.filter((message) => {
-                return message.archived_at || message.company_archived_at;
-              });
-              break;
-            case "replied":
-              // Show ONLY replied messages
-              filteredMessages = filteredMessages.filter((message) => {
-                return message.reply_sent_at;
-              });
-              break;
-            case "not-replied":
-              // Show ONLY un-replied messages
-              filteredMessages = filteredMessages.filter((message) => {
-                return !message.reply_sent_at;
-              });
-              break;
-            case "all":
-            default:
-              // Show all messages (no filtering)
-              break;
-          }
-
-          this.unprocessedMessages = filteredMessages;
+          this.unprocessedMessages = filterMessages(messages, this.filterMode);
 
           console.log(
             `Loaded ${this.unprocessedMessages.length} messages after filtering (mode: ${this.filterMode})`
           );
         } catch (error) {
-          console.error("Failed to load messages:", error);
+          errorLogger.logFailedTo("load messages", error);
           showError(
             "Failed to load messages. Please refresh the page to try again."
           );
@@ -212,21 +155,7 @@ document.addEventListener("alpine:init", () => {
         try {
           this.researchingCompanies.add(message.company_name);
           taskPollingService.addResearching(message);
-          const response = await fetch(
-            `/api/companies/${message.company_id}/research`,
-            {
-              method: "POST",
-            }
-          );
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to start research: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
+          const data = await companiesService.research(message.company_id);
           message.research_task_id = data.task_id;
           message.research_status = data.status;
 
@@ -235,7 +164,7 @@ document.addEventListener("alpine:init", () => {
           await this.loadMessages();
           showSuccess("Company research completed!");
         } catch (err) {
-          console.error("Failed to research company:", err);
+          errorLogger.logFailedTo("research company", err);
           showError(
             err.message || "Failed to research company. Please try again."
           );
@@ -278,21 +207,7 @@ document.addEventListener("alpine:init", () => {
           // Also add to service for polling
           taskPollingService.addGeneratingMessage(message);
 
-          const response = await fetch(
-            `/api/messages/${message.message_id}/reply`,
-            {
-              method: "POST",
-            }
-          );
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to generate reply: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
+          const data = await companiesService.generateReply(message.message_id);
           message.message_task_id = data.task_id;
           message.message_status = data.status;
 
@@ -303,7 +218,7 @@ document.addEventListener("alpine:init", () => {
           await this.loadMessages();
           showSuccess("Reply generated successfully!");
         } catch (err) {
-          console.error("Failed to generate reply:", err);
+          errorLogger.logFailedTo("generate reply", err);
           showError(
             err.message || "Failed to generate reply. Please try again."
           );
@@ -321,36 +236,20 @@ document.addEventListener("alpine:init", () => {
         }
 
         // Confirm with the user before proceeding
-        if (
-          !confirm(
-            "Are you sure you want to archive this message without replying?"
-          )
-        ) {
+        if (!confirmDialogs.archiveWithoutReply()) {
           return;
         }
 
         try {
-          // Call the message-centric archive endpoint
-          const response = await fetch(`/api/messages/${message_id}/archive`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error || `Failed to archive message: ${response.status}`
-            );
-          }
+          // Call the message-centric archive endpoint via service
+          await companiesService.archiveMessage(message_id);
 
           // Refresh the message list to remove the archived message
           await this.loadMessages();
 
           showSuccess("Message archived successfully");
         } catch (err) {
-          console.error("Failed to archive message:", err);
+          errorLogger.logFailedTo("archive message", err);
           showError(
             err.message || "Failed to archive message. Please try again."
           );
@@ -373,11 +272,7 @@ document.addEventListener("alpine:init", () => {
 
         // Confirm with the user before proceeding
         console.log("About to show confirmation dialog");
-        if (
-          !confirm(
-            "Are you sure you want to send this reply and archive the message?"
-          )
-        ) {
+        if (!confirmDialogs.sendAndArchive()) {
           console.log("User cancelled confirmation");
           return;
         }
@@ -413,26 +308,10 @@ document.addEventListener("alpine:init", () => {
             }
           }
 
-          // Call the message-centric send and archive endpoint
-          const response = await fetch(
-            `/api/messages/${message.message_id}/send_and_archive`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
+          // Call the message-centric send and archive endpoint via service
+          const data = await companiesService.sendAndArchive(
+            message.message_id
           );
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(
-              error.error ||
-                `Failed to send and archive message: ${response.status}`
-            );
-          }
-
-          const data = await response.json();
           console.log("Send and archive response:", data);
 
           // Poll for task completion before showing success/failure
@@ -458,13 +337,13 @@ document.addEventListener("alpine:init", () => {
               );
             }
           } catch (pollError) {
-            console.error("Failed to poll task status:", pollError);
+            errorLogger.logFailedTo("poll task status", pollError);
             showError(
               "Failed to check task status. Please refresh to see current state."
             );
           }
         } catch (err) {
-          console.error("Failed to send and archive message:", err);
+          errorLogger.logFailedTo("send and archive message", err);
           showError(
             err.message ||
               "Failed to send and archive message. Please try again."
@@ -524,7 +403,7 @@ document.addEventListener("alpine:init", () => {
           await emailScanningService.scanRecruiterEmails(this.doResearch);
           await this.pollEmailScanStatus();
         } catch (err) {
-          console.error("Failed to scan recruiter emails:", err);
+          errorLogger.logFailedTo("scan recruiter emails", err);
           // Error is already handled by the service
         }
       },
@@ -601,20 +480,10 @@ document.addEventListener("alpine:init", () => {
         if (!this.unprocessedMessages || !this.filterMode) {
           return "Messages (0)";
         }
-
-        const count = this.unprocessedMessages.length;
-        switch (this.filterMode) {
-          case "all":
-            return `All Messages (${count})`;
-          case "not-replied":
-            return `Unreplied Messages (${count})`;
-          case "archived":
-            return `Archived Messages (${count})`;
-          case "replied":
-            return `Replied Messages (${count})`;
-          default:
-            return `Messages (${count})`;
-        }
+        return utilGetFilterHeading(
+          this.filterMode,
+          this.unprocessedMessages.length
+        );
       },
     };
   });

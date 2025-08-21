@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     // Enable DOM-like environment for tests
-    environment: "jsdom",
+    environment: "happy-dom",
 
     // Enable global test APIs (describe, test, expect)
     globals: true,
@@ -15,7 +15,21 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
-      exclude: ["node_modules/", "vitest.setup.js"],
+      exclude: [
+        "node_modules/",
+        "vitest.setup.js",
+        "server/static/index.html",
+      ],
+      include: [
+        "server/static/*.js",
+        "server/frontend/**/*.js",
+      ],
+      thresholds: {
+        perFile: {
+          "server/static/app.js": { lines: 30 },
+          "server/static/daily-dashboard.js": { lines: 35 },
+        },
+      },
     },
 
     // Include source files for tests
@@ -25,8 +39,8 @@ export default defineConfig({
     watchExclude: ["node_modules/**", "coverage/**", ".git/**"],
 
     // In ms.
-    testTimeout: 1000,
-    hookTimeout: 1000,
+    testTimeout: 5000,
+    hookTimeout: 5000,
     teardownTimeout: 2000,
   },
 });

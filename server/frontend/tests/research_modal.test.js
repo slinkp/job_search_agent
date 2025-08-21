@@ -8,11 +8,10 @@ import {
   it,
   vi,
 } from "vitest";
-import { CompanyResearchService } from "../../static/company-research.js";
 import { cleanupAlpine, setupAlpine } from "./alpine-setup.js";
 import { setupDocumentWithIndexHtml } from "./test-utils.js";
 
-// Mock the CompanyResearchService
+// Mock the CompanyResearchService BEFORE importing it
 vi.mock("../../static/company-research.js", () => {
   return {
     CompanyResearchService: vi.fn().mockImplementation(() => ({
@@ -22,6 +21,8 @@ vi.mock("../../static/company-research.js", () => {
     })),
   };
 });
+
+import { CompanyResearchService } from "../../static/company-research.js";
 
 describe("Research Company Modal", () => {
   let Alpine;
@@ -132,6 +133,13 @@ describe("Research Company Modal", () => {
 
     // Create a fresh instance of the service
     researchService = new CompanyResearchService();
+    // Ensure instance has mockable methods even if constructor didn't attach them
+    if (!researchService.submitResearch) {
+      researchService.submitResearch = vi.fn();
+    }
+    if (!researchService.pollResearchTask) {
+      researchService.pollResearchTask = vi.fn();
+    }
   });
 
   // Clean up after each test
