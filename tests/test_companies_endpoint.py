@@ -800,6 +800,145 @@ def test_get_messages_endpoint_includes_reply_fields(clean_test_db):
     assert no_reply_msg_data["reply_status"] == "none"
 
 
+def test_get_companies_sort_by_activity(clean_test_db):
+    """Test sorting companies by activity via API (sort=activity)."""
+    repo = clean_test_db
+
+    # Create companies
+    company_old = Company(
+        company_id="company-old",
+        name="Old Co",
+        details=CompaniesSheetRow(name="Old Co"),
+        status=CompanyStatus(),
+    )
+    company_new = Company(
+        company_id="company-new",
+        name="New Co",
+        details=CompaniesSheetRow(name="New Co"),
+        status=CompanyStatus(),
+    )
+    company_none = Company(
+        company_id="company-none",
+        name="No Activity Co",
+        details=CompaniesSheetRow(name="No Activity Co"),
+        status=CompanyStatus(),
+    )
+    repo.create(company_old)
+    repo.create(company_new)
+    repo.create(company_none)
+
+    # Set activity: old earlier than new
+    older = datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    newer = datetime.datetime(2024, 2, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    repo.update_activity("company-old", older, "message received")
+    repo.update_activity("company-new", newer, "reply sent")
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.params = {"include_all": "true", "sort": "activity"}
+        response = server.app.get_companies(request)
+
+    names = [c["name"] for c in response]
+    # Expect New Co (newer activity), then Old Co, then No Activity
+    assert names[0] == "New Co"
+    assert names[1] == "Old Co"
+    assert names[-1] == "No Activity Co"
+
+
+def test_update_message_by_id_updates_activity_fields(clean_test_db):
+    """Updating a reply should set activity_at and last_activity to 'reply edited'."""
+    repo = clean_test_db
+
+    company = Company(
+        company_id="activity-edit",
+        name="Activity Edit Co",
+        details=CompaniesSheetRow(name="Activity Edit Co"),
+        status=CompanyStatus(),
+        reply_message="Old",
+    )
+    message = RecruiterMessage(
+        message_id="msg-edit",
+        company_id="activity-edit",
+        subject="Subj",
+        message="Body",
+        thread_id="t1",
+    )
+    repo.create(company)
+    repo.create_recruiter_message(message)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"message": "New body"})
+        request.matchdict = {"message_id": "msg-edit"}
+        response = server.app.update_message_by_id(request)
+
+    # Response should include activity fields
+    assert "activity_at" in response
+    assert response.get("last_activity") == "reply edited"
+
+    # DB should be updated as well
+    updated = repo.get("activity-edit")
+    assert updated is not None
+    assert updated.activity_at is not None
+    assert updated.last_activity == "reply edited"
+
+
+def test_send_and_archive_message_updates_activity_fields(mock_task_manager, mock_company_repo, test_company):
+    """Sending and archiving should set activity to 'reply sent'."""
+    test_message = RecruiterMessage(
+        message_id="msg-send-arch",
+        company_id=test_company.company_id,
+        subject="Subj",
+        message="Body",
+        thread_id="t1",
+        date=datetime.datetime.now(datetime.timezone.utc),
+    )
+    test_company.reply_message = "Hello"
+
+    mock_company_repo.get_recruiter_message_by_id.return_value = test_message
+    mock_company_repo.get.return_value = test_company
+    mock_task_manager.create_task.return_value = "tid"
+
+    request = DummyRequest()
+    request.matchdict = {"message_id": "msg-send-arch"}
+    resp = server.app.send_and_archive_message(request)
+
+    assert "sent_at" in resp and "archived_at" in resp
+    # Ensure activity update was attempted on repo
+    mock_company_repo.update_activity.assert_called()
+
+
+def test_archive_message_by_id_updates_activity_fields(clean_test_db):
+    """Archiving a message should set activity to 'message archived'."""
+    repo = clean_test_db
+
+    company = Company(
+        company_id="activity-archive",
+        name="Activity Archive Co",
+        details=CompaniesSheetRow(name="Activity Archive Co"),
+        status=CompanyStatus(),
+    )
+    message = RecruiterMessage(
+        message_id="msg-arch",
+        company_id="activity-archive",
+        subject="Subj",
+        message="Body",
+        thread_id="t1",
+    )
+    repo.create(company)
+    repo.create_recruiter_message(message)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"message_id": "msg-arch"}
+        _ = server.app.archive_message_by_id(request)
+
+    # Verify DB activity fields
+    updated = repo.get("activity-archive")
+    assert updated is not None
+    assert updated.activity_at is not None
+    assert updated.last_activity == "message archived"
+
+
 def test_get_companies_filters_replied_and_archived(clean_test_db):
     """Test that replied and archived companies are filtered out via the API endpoint."""
     repo = clean_test_db

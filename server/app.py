@@ -134,8 +134,19 @@ def get_companies(request) -> list[dict]:
 
     # Apply sorting as requested
     if sort_key == "activity":
+        def to_epoch_seconds(val):
+            if not val:
+                return 0.0
+            try:
+                dt = datetime.datetime.fromisoformat(val.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=datetime.timezone.utc)
+                return dt.timestamp()
+            except Exception:
+                return 0.0
+
         company_data.sort(
-            key=lambda c: c.get("activity_at") or "",
+            key=lambda c: to_epoch_seconds(c.get("activity_at")),
             reverse=True,
         )
     else:
@@ -281,17 +292,15 @@ def update_message_by_id(request):
     repo.update(company)
     # Record activity: reply edited
     try:
-        repo.update_activity(
-            company.company_id,
-            datetime.datetime.now(datetime.timezone.utc),
-            "reply edited",
-        )
+        now = datetime.datetime.now(datetime.timezone.utc)
+        repo.update_activity(company.company_id, now, "reply edited")
     except Exception:
         logger.exception("Failed to update activity for reply edited")
 
     logger.info(
         f"Updated reply message for message {message_id} (company: {company.name}): {message}"
     )
+    company = repo.get(company.company_id)
     return models.serialize_company(company)
 
 

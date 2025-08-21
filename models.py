@@ -950,6 +950,7 @@ class CompanyRepository:
         with self.lock:
             with self._get_connection() as conn:
                 self._update_activity(conn, company_id, when, label)
+                conn.commit()
 
     def get_all_messages(self) -> List[RecruiterMessage]:
         """Get all recruiter messages with basic company info."""
