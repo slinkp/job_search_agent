@@ -555,6 +555,8 @@ class CompanyRepository:
                         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                         details TEXT NOT NULL DEFAULT '{}',
                         status TEXT NOT NULL DEFAULT '{}',  -- New status column with default empty JSON
+                        activity_at TEXT DEFAULT NULL,
+                        last_activity TEXT DEFAULT NULL,
                         reply_message TEXT
                     )
                 """
@@ -605,7 +607,7 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT company_id, name, updated_at, details, status, reply_message FROM companies WHERE company_id = ?",
+                "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies WHERE company_id = ?",
                 (company_id,),
             )
             row = cursor.fetchone()
@@ -755,7 +757,7 @@ class CompanyRepository:
         with self._get_connection() as conn:
             # Query for companies where the normalized version of the name matches
             cursor = conn.execute(
-                "SELECT company_id, name, updated_at, details, status, reply_message FROM companies"
+                "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies"
             )
             for row in cursor.fetchall():
                 # We normalize each company name from the database and compare.
@@ -881,7 +883,7 @@ class CompanyRepository:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
-                "SELECT company_id, name, updated_at, details, status, reply_message FROM companies"
+                "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies"
             )
             companies = [self._deserialize_company(row) for row in cursor.fetchall()]
             if include_messages:
@@ -1012,7 +1014,13 @@ class CompanyRepository:
     def _deserialize_company(self, row: tuple) -> Company:
         """Convert a database row into a Company object."""
         assert row is not None
-        company_id, name, updated_at, details_json, status_json, reply_message = row
+        # Support both old 6-column and new 8-column shape
+        if len(row) == 6:
+            company_id, name, updated_at, details_json, status_json, reply_message = row
+            activity_at_str = None
+            last_activity_str = None
+        else:
+            company_id, name, updated_at, details_json, status_json, activity_at_str, last_activity_str, reply_message = row
         details_dict = json.loads(details_json)
 
         # Parse the status JSON or use empty dict if NULL
@@ -1046,10 +1054,21 @@ class CompanyRepository:
             if "research_errors" not in status_dict:
                 status_dict["research_errors"] = details_dict.pop("research_errors")
 
+        activity_at_dt = None
+        if activity_at_str:
+            try:
+                activity_at_dt = dateutil.parser.parse(activity_at_str).replace(
+                    tzinfo=datetime.timezone.utc
+                )
+            except (ValueError, TypeError):
+                activity_at_dt = None
+
         return Company(
             company_id=company_id,
             name=name,
             updated_at=updated_at_dt,
+            activity_at=activity_at_dt,
+            last_activity=last_activity_str if last_activity_str else None,
             details=CompaniesSheetRow(**details_dict),
             status=CompanyStatus(**status_dict),
             reply_message=reply_message,

@@ -102,6 +102,12 @@ def get_company_dict_with_status(
     company_dict["archived_at"] = company.status.archived_at
     company_dict["promising"] = company.details.promising
 
+    # Include activity fields
+    company_dict["activity_at"] = (
+        company.activity_at.isoformat() if company.activity_at else None
+    )
+    company_dict["last_activity"] = company.last_activity
+
     return company_dict
 
 
@@ -113,6 +119,9 @@ def get_companies(request) -> list[dict]:
     # Check if we should include all companies or filter out replied/archived
     include_all = request.params.get("include_all", "").lower() == "true"
 
+    # Optional sort parameter: sort=activity|updated
+    sort_key = request.params.get("sort", "updated").lower()
+
     company_data = []
     for company in companies:
         # Filter out companies that have been replied to or archived
@@ -122,6 +131,18 @@ def get_companies(request) -> list[dict]:
 
         company_dict = get_company_dict_with_status(company, repo)
         company_data.append(company_dict)
+
+    # Apply sorting as requested
+    if sort_key == "activity":
+        company_data.sort(
+            key=lambda c: c.get("activity_at") or "",
+            reverse=True,
+        )
+    else:
+        company_data.sort(
+            key=lambda c: c.get("updated_at") or "",
+            reverse=True,
+        )
 
     return company_data
 
