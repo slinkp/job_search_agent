@@ -879,6 +879,15 @@ class CompanyRepository:
                 ),
             )
 
+        # Update activity fields based on message state
+        # Prefer reply_sent_at > archived_at > date
+        if message.reply_sent_at:
+            self._update_activity(conn, message.company_id, message.reply_sent_at, "reply sent")
+        elif message.archived_at:
+            self._update_activity(conn, message.company_id, message.archived_at, "message archived")
+        elif message.date:
+            self._update_activity(conn, message.company_id, message.date, "message received")
+
     def get_all(self, include_messages=False) -> List[Company]:
         # Reads can happen without the lock
         with self._get_connection() as conn:
@@ -892,6 +901,49 @@ class CompanyRepository:
                     message = self._get_recruiter_message(comp.company_id, conn)
                     comp.recruiter_message = message
             return companies
+
+    def _update_activity(
+        self,
+        conn: sqlite3.Connection,
+        company_id: str,
+        when: datetime.datetime,
+        label: str,
+    ) -> None:
+        """Update a company's activity fields if the provided timestamp is newer.
+
+        This is an internal helper that expects the caller to manage connection/transactions.
+        """
+        # Read current activity_at
+        row = conn.execute(
+            "SELECT activity_at FROM companies WHERE company_id = ?",
+            (company_id,),
+        ).fetchone()
+        if row is None:
+            return
+        current_str = row[0]
+        current_dt: Optional[datetime.datetime] = None
+        if current_str:
+            try:
+                current_dt = dateutil.parser.parse(current_str)
+            except Exception:
+                current_dt = None
+
+        if current_dt is None or when > current_dt:
+            conn.execute(
+                "UPDATE companies SET activity_at = ?, last_activity = ? WHERE company_id = ?",
+                (when.isoformat(), label, company_id),
+            )
+
+    def update_activity(
+        self,
+        company_id: str,
+        when: datetime.datetime,
+        label: str,
+    ) -> None:
+        """Public method to update activity with locking and its own connection."""
+        with self.lock:
+            with self._get_connection() as conn:
+                self._update_activity(conn, company_id, when, label)
 
     def get_all_messages(self) -> List[RecruiterMessage]:
         """Get all recruiter messages with basic company info."""

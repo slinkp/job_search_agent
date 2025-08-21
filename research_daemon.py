@@ -320,6 +320,15 @@ class ResearchDaemon:
         reply = self.jobsearch.generate_reply(company.initial_message)
         company.reply_message = reply
         self.company_repo.update(company)
+        # Record activity: reply generated
+        try:
+            self.company_repo.update_activity(
+                company.company_id,
+                datetime.datetime.now(datetime.timezone.utc),
+                "reply generated",
+            )
+        except Exception:
+            logger.exception("Failed to update activity for reply generated")
         logger.info(f"Updated reply for {company.company_id}")
 
     def do_find_companies_in_recruiter_messages(self, args: dict):

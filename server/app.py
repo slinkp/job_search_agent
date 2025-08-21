@@ -279,6 +279,11 @@ def update_message_by_id(request):
     # Update the company's reply message
     company.reply_message = message
     repo.update(company)
+    # Record activity: reply edited
+    try:
+        repo.update_activity(company.company_id, datetime.datetime.now(datetime.timezone.utc), "reply edited")
+    except Exception:
+        logger.exception("Failed to update activity for reply edited")
 
     logger.info(
         f"Updated reply message for message {message_id} (company: {company.name}): {message}"
@@ -394,6 +399,11 @@ def send_and_archive_message(request):
     message.reply_sent_at = current_time
     message.archived_at = current_time
     repo.create_recruiter_message(message)  # This will update via upsert
+    # Activity update handled by upsert; also ensure company-level label set to reply sent
+    try:
+        repo.update_activity(company.company_id, current_time, "reply sent")
+    except Exception:
+        logger.exception("Failed to update activity for reply sent")
 
     logger.info(
         f"Send and archive requested for message {message_id} (company: {company.name}), task_id: {task_id}"
@@ -432,6 +442,11 @@ def send_and_archive(request):
     company.status.archived_at = current_time
     company.status.reply_sent_at = current_time
     models.company_repository().update(company)
+    # Activity: reply sent
+    try:
+        models.company_repository().update_activity(company.company_id, current_time, "reply sent")
+    except Exception:
+        logger.exception("Failed to update activity for reply sent (company endpoint)")
 
     # Also set reply_sent_at and archived_at on the most recent message for this company
     # This keeps the messages dashboard in sync even when using the company-centric endpoint
@@ -483,6 +498,11 @@ def archive_message_by_id(request):
     # Set archived_at on the specific message
     message.archived_at = current_time
     repo.create_recruiter_message(message)  # This will update via upsert
+    # Activity: message archived
+    try:
+        repo.update_activity(message.company_id, current_time, "message archived")
+    except Exception:
+        logger.exception("Failed to update activity for message archived")
 
     logger.info(f"Message {message_id} archived via direct endpoint")
 
