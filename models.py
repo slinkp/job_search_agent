@@ -551,6 +551,8 @@ class CompanyRepository:
                         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                         details TEXT NOT NULL DEFAULT '{}',
                         status TEXT NOT NULL DEFAULT '{}',  -- New status column with default empty JSON
+                        activity_at TEXT DEFAULT NULL,
+                        last_activity TEXT DEFAULT NULL,
                         reply_message TEXT
                     )
                 """
