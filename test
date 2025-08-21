@@ -32,8 +32,8 @@ else
 	coverage report -m && coverage html
 fi
 
-# Run JavaScript tests with coverage
-npm run test:coverage -- --run
+# Run JavaScript tests with coverage in UTC timezone
+TZ=UTC npm run test:coverage -- --run
 JS_EXIT=$?
 
 EXIT_CODE=0

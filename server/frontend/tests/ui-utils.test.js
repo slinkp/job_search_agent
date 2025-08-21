@@ -197,4 +197,4 @@ describe('UI Utils', () => {
       expect(modalUtils.modalIds.IMPORT_COMPANIES).toBe('import-companies-modal');
     });
   });
-}); 
+});
