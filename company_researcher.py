@@ -6,7 +6,6 @@ import datetime
 import json
 import logging
 import os
-
 from typing import Optional
 
 import requests
@@ -260,6 +259,10 @@ class TavilyRAGResearchAgent:
         return context
 
     def _plaintext_from_url(self, url: str) -> str:
+        url = url.strip()
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url.lstrip("/")
+
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
             "Referer": "https://www.linkedin.com/",
