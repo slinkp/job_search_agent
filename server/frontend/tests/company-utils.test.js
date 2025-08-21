@@ -97,6 +97,24 @@ describe("company-utils: filterCompanies & sortCompanies", () => {
     expect(byNameDesc).toEqual(["C", "B", "A"]);
   });
 
+  it("sorts by activity_at when requested", () => {
+    const withActivity = [
+      { name: "A", activity_at: "2025-01-05T12:00:00Z" },
+      { name: "B", activity_at: "2025-01-03T12:00:00Z" },
+      { name: "C", activity_at: null },
+    ];
+
+    const asc = sortCompanies(withActivity, "activity_at", true).map(
+      (c) => c.name
+    );
+    expect(asc).toEqual(["C", "B", "A"]);
+
+    const desc = sortCompanies(withActivity, "activity_at", false).map(
+      (c) => c.name
+    );
+    expect(desc).toEqual(["A", "B", "C"]);
+  });
+
   it("normalizes details field on company/companies", () => {
     const c = normalizeCompany({ name: "Z" });
     expect(c.details).toEqual({});

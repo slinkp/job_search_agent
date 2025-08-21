@@ -83,6 +83,9 @@
             <button @click="toggleSort('updated_at')" class="sort-button outline" :class="{ 'active': sortField === 'updated_at' }" aria-label="sort-updated" data-testid="sort-updated">
               Updated <span x-text="sortField === 'updated_at' ? (sortAsc ? '↑' : '↓') : ''"></span>
             </button>
+            <button @click="toggleSort('activity_at')" class="sort-button outline" :class="{ 'active': sortField === 'activity_at' }" aria-label="sort-activity" data-testid="sort-activity">
+              Activity <span x-text="sortField === 'activity_at' ? (sortAsc ? '↑' : '↓') : ''"></span>
+            </button>
           </div>
 
           <button @click="toggleShowArchived()" class="outline" x-text="showArchived ? 'Hide archived' : 'Show archived'" aria-label="toggle-archived" data-testid="toggle-archived"></button>
@@ -106,7 +109,17 @@
                 <span class="status-icon promising-negative" x-show="company.promising === false" title="Not promising">👎</span>
               </div>
               <a :href="'#' + encodeURIComponent(company.company_id)" @click="navigateToCompany(company.company_id)" x-text="company.name" :id="encodeURIComponent(company.company_id)"></a>
-              updated <span x-text="company.updated_at"></span>
+              <span class="message-date">
+                <template x-if="company.activity_at">
+                  <span>
+                    • Last activity: <span x-text="company.last_activity || 'activity'"></span>
+                    on <span x-text="new Date(company.activity_at).toLocaleString()"></span>
+                  </span>
+                </template>
+                <template x-if="!company.activity_at">
+                  <span>updated <span x-text="company.updated_at"></span></span>
+                </template>
+              </span>
             </header>
             <div class="research-status">
               <button

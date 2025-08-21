@@ -65,14 +65,13 @@ export function sortCompanies(companies, sortField, sortAsc = true) {
   const list = Array.isArray(companies) ? companies.slice() : [];
   if (!sortField) return list;
   return list.sort((a, b) => {
-    const aVal =
-      sortField === "updated_at"
-        ? new Date(a.updated_at || 0).getTime()
-        : a?.[sortField];
-    const bVal =
-      sortField === "updated_at"
-        ? new Date(b.updated_at || 0).getTime()
-        : b?.[sortField];
+    const isDateField = sortField === "updated_at" || sortField === "activity_at";
+    const aVal = isDateField
+      ? new Date(a?.[sortField] || 0).getTime()
+      : a?.[sortField];
+    const bVal = isDateField
+      ? new Date(b?.[sortField] || 0).getTime()
+      : b?.[sortField];
     const cmp = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
     return sortAsc ? cmp : -cmp;
   });
