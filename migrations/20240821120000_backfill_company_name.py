@@ -2,7 +2,6 @@
 Migration to backfill placeholder company names from details.name if available and not a placeholder.
 """
 
-import json
 import sqlite3
 
 
@@ -23,7 +22,7 @@ def is_placeholder(name: str | None) -> bool:
 
 
 def migrate(conn: sqlite3.Connection):
-    from models import company_repository, Company, CompaniesSheetRow
+    from models import company_repository
 
     # Initialize the repository with the same database path
     repo = company_repository(db_path="data/companies.db")

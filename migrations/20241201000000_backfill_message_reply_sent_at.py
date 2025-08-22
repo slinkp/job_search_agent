@@ -8,8 +8,8 @@ def migrate(conn: sqlite3.Connection):
     # Get all messages where reply_sent_at is not set
     cursor = conn.execute(
         """
-        SELECT message_id, company_id 
-        FROM recruiter_messages 
+        SELECT message_id, company_id
+        FROM recruiter_messages
         WHERE reply_sent_at IS NULL
     """
     )
@@ -26,8 +26,8 @@ def migrate(conn: sqlite3.Connection):
         # Get the company's status.reply_sent_at
         cursor = conn.execute(
             """
-            SELECT status 
-            FROM companies 
+            SELECT status
+            FROM companies
             WHERE company_id = ?
         """,
             (company_id,),
@@ -45,8 +45,8 @@ def migrate(conn: sqlite3.Connection):
                     # Update the message's reply_sent_at
                     conn.execute(
                         """
-                        UPDATE recruiter_messages 
-                        SET reply_sent_at = ? 
+                        UPDATE recruiter_messages
+                        SET reply_sent_at = ?
                         WHERE message_id = ?
                     """,
                         (company_reply_sent_at, message_id),
