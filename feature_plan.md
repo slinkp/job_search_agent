@@ -14,38 +14,38 @@ We will add a first-class, many-to-one alias model to support arbitrary company 
 
 1. Data model: first-class aliases
 
-- [ ] Migration: create table `company_aliases`:
+- [x] Migration: create table `company_aliases`:
   - id (PK), company_id (FK -> companies.company_id)
   - alias TEXT NOT NULL
   - normalized_alias TEXT NOT NULL (via current `normalize_company_name`)
   - source TEXT NOT NULL DEFAULT "auto" (enum-like: "manual" | "auto" | "seed" | "levels")
   - is_active INTEGER NOT NULL DEFAULT 1
   - created_at, updated_at
-- [ ] Indexes/constraints:
-  - [ ] UNIQUE(company_id, normalized_alias) WHERE is_active=1
-  - [ ] INDEX on normalized_alias for fast lookups
-- [ ] Backfill:
-  - [ ] Add each company's current `name` as an alias (`source="seed"`).
-  - [ ] Seed known mappings (e.g., "amazon web services", "aws" → company for "Amazon")
+- [x] Indexes/constraints:
+  - [x] UNIQUE(company_id, normalized_alias) WHERE is_active=1
+  - [x] INDEX on normalized_alias for fast lookups
+- [x] Backfill:
+  - [x] Add each company's current `name` as an alias (`source="seed"`).
+  - [x] Seed known mappings (e.g., "amazon web services", "aws" → company for "Amazon")
 
 2. Normalization and matching semantics
 
-- [ ] New helpers:
-  - [ ] `resolve_alias(name: str) -> company_id | None`:
+- [x] New helpers:
+  - [x] `resolve_alias(name: str) -> company_id | None`:
         lookup by `normalized_alias` in `company_aliases`.
-- [ ] Repository changes:
-  - [ ] Update `CompanyRepository.get_by_normalized_name` to use `resolve_alias` and return the matching company.
-- [ ] Tests: multi-alias per company, inactive alias ignored, uniqueness errors.
+- [x] Repository changes:
+  - [x] Update `CompanyRepository.get_by_normalized_name` to use `resolve_alias` and return the matching company.
+- [x] Tests: multi-alias per company, inactive alias ignored, uniqueness errors.
 
 3. API: alias management and payload shape
 
-- [ ] `GET /api/companies/:id` and list endpoints include:
-  - [ ] `aliases`: [{ alias, source, is_active }]
-- [ ] `POST /api/companies/:id/aliases` (create), `PUT /api/companies/:id/aliases/:alias_id` (update), `DELETE` or `PATCH is_active=false` (deactivate).
-  - [ ] POST will create an alias with source `manual`.
-  - [ ] Payload should also allow a flag to set the alias as canonical, in which case `company.name` and `company.details.name` are also updated.  But their old value(s) should be preserved in the alias table, if not already there.
-- [ ] Payload validation: normalize server-side; prevent duplicates.
-- [ ] Tests: CRUD alias lifecycle, response shapes, validation.
+- [x] `GET /api/companies/:id` and list endpoints include:
+  - [x] `aliases`: [{ alias, source, is_active }]
+- [x] `POST /api/companies/:id/aliases` (create), `PUT /api/companies/:id/aliases/:alias_id` (update), `DELETE` or `PATCH is_active=false` (deactivate).
+  - [x] POST will create an alias with source `manual`.
+  - [x] Payload should also allow a flag to set the alias as canonical, in which case `company.name` and `company.details.name` are also updated.  But their old value(s) should be preserved in the alias table, if not already there.
+- [x] Payload validation: normalize server-side; prevent duplicates.
+- [x] Tests: API CRUD alias lifecycle, response shapes, validation.
 
 4. Researcher and ingestion: Notion-hosted guardrails
 
@@ -62,10 +62,10 @@ We will add a first-class, many-to-one alias model to support arbitrary company 
 
 6. Migration and backfill scripts
 
-- [ ] Add migration file `20250822051100_add_company_aliases.py` creating table, indexes.
-- [ ] Seed script/migration step:
-  - [ ] Insert canonical name aliases for all companies (global).
-- [ ] Logging: counts of inserted/updated/duplicates.
+- [x] Add migration file `20250822051100_add_company_aliases.py` creating table, indexes.
+- [x] Seed script/migration step:
+  - [x] Insert canonical name aliases for all companies (global).
+- [x] Logging: counts of inserted/updated/duplicates.
 
 7. Minimal frontend surface (optional but recommended)
 
