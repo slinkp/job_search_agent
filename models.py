@@ -605,6 +605,37 @@ class CompanyRepository:
                     )
                 """
                 )
+                # Aliases table (first-class model for name variations)
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS company_aliases (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        company_id TEXT NOT NULL,
+                        alias TEXT NOT NULL,
+                        normalized_alias TEXT NOT NULL,
+                        source TEXT NOT NULL DEFAULT 'auto',
+                        is_active INTEGER NOT NULL DEFAULT 1,
+                        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                        FOREIGN KEY (company_id) REFERENCES companies (company_id)
+                    )
+                    """
+                )
+                # Indexes to enforce uniqueness for active aliases and support lookups
+                conn.execute(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_company_aliases_company_norm_active
+                    ON company_aliases(company_id, normalized_alias)
+                    WHERE is_active = 1
+                    """
+                )
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_company_aliases_normalized_alias
+                    ON company_aliases(normalized_alias)
+                    WHERE is_active = 1
+                    """
+                )
         if load_sample_data:
             for company in SAMPLE_COMPANIES:
                 self.create(company)
