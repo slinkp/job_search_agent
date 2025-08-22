@@ -17,7 +17,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 from tavily import TavilyClient  # type: ignore[import-untyped]
 
-from models import CompaniesSheetRow
+from models import CompaniesSheetRow, is_placeholder
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
@@ -353,6 +353,7 @@ class TavilyRAGResearchAgent:
 
                 # Map the API response fields to CompaniesSheetRow fields
                 self.update_company_info_from_dict(company_info, json_content)
+
                 if not got_jobs_url and company_info.url:
                     got_jobs_url = True
                     # Redo basic company info extraction with the new jobs URL,
@@ -485,21 +486,6 @@ def main(
         return researcher.main(url=url_or_message)
     else:
         return researcher.main(message=url_or_message)
-
-
-def is_placeholder(name: str | None) -> bool:
-    if name is None:
-        return True
-    name = name.strip().lower()
-    if not name:
-        return True
-    if name.startswith("company from"):
-        return True
-    if name.startswith("<unknown"):
-        return True
-    if name in ("unknown", "placeholder"):
-        return True
-    return False
 
 
 if __name__ == "__main__":

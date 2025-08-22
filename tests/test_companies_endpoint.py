@@ -479,8 +479,8 @@ def test_update_message_by_id_success(clean_test_db):
     # Create a company with a message
     company = Company(
         company_id="test-company",
-        name="Test Company",
-        details=CompaniesSheetRow(name="Test Company"),
+        name="Company from Blech <blech@blech.com>",
+        details=CompaniesSheetRow(name="Company from Ugh"),
         reply_message="Old reply",
     )
     message = RecruiterMessage(
@@ -503,7 +503,7 @@ def test_update_message_by_id_success(clean_test_db):
 
         # Check response contains updated company data
         assert response["reply_message"] == "New reply message"
-        assert response["name"] == "Test Company"
+        assert response["name"] == "Company from Blech <blech@blech.com>"
 
         # Verify the company was updated in the database
         updated_company = repo.get("test-company")
@@ -882,7 +882,9 @@ def test_update_message_by_id_updates_activity_fields(clean_test_db):
     assert updated.last_activity == "reply edited"
 
 
-def test_send_and_archive_message_updates_activity_fields(mock_task_manager, mock_company_repo, test_company):
+def test_send_and_archive_message_updates_activity_fields(
+    mock_task_manager, mock_company_repo, test_company
+):
     """Sending and archiving should set activity to 'reply sent'."""
     test_message = RecruiterMessage(
         message_id="msg-send-arch",

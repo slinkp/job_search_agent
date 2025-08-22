@@ -134,6 +134,7 @@ def get_companies(request) -> list[dict]:
 
     # Apply sorting as requested
     if sort_key == "activity":
+
         def to_epoch_seconds(val):
             if not val:
                 return 0.0

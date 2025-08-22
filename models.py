@@ -2,7 +2,6 @@ import argparse
 import datetime
 import decimal
 import enum
-import importlib
 import json
 import logging
 import multiprocessing
@@ -35,6 +34,22 @@ def normalize_company_name(name: str) -> str:
     """
     replacements = [["&", "and"]]
     return slugify(name.strip(), replacements=replacements)
+
+
+def is_placeholder(name: str | None) -> bool:
+    """Return True if name should be replaced with pretty much any other name"""
+    if name is None:
+        return True
+    name = name.strip().lower()
+    if not name:
+        return True
+    if name.startswith("company from"):
+        return True
+    if name.startswith("<unknown"):
+        return True
+    if name in ("unknown", "placeholder"):
+        return True
+    return False
 
 
 class EventType(enum.Enum):
@@ -1026,18 +1041,46 @@ class CompanyRepository:
                     raise ValueError(f"Company {company.company_id} already exists")
 
     def update(self, company: Company) -> Company:
+        # Sync top-level name with details.name if details.name is set
+        # WARNING this assumes that company.details is latest and nothing
+        # updates them the other way around :(
+        if company.details and company.details.name:
+            maybe_new_name = company.details.name.strip()
+            old_name = (company.name or "").strip()
+            if not old_name:
+                logger.info(
+                    f"Filling in empty company.name with company.details.name {maybe_new_name}"
+                )
+                company.name = maybe_new_name
+            elif (
+                old_name
+                and not is_placeholder(maybe_new_name)
+                and maybe_new_name != company.name
+            ):
+                company.name = maybe_new_name
+                logger.info(
+                    f"Clobbering company name {old_name} with company.details.name {maybe_new_name}"
+                )
+                company.name = company.details.name.strip()
+            else:
+                logger.info(
+                    f"company.details.name {maybe_new_name} not a good replacement for {old_name}"
+                )
+
         with self.lock:  # Lock for writes
             with self._get_connection() as conn:
                 cursor = conn.execute(
                     """
                     UPDATE companies
-                    SET details = ?,
+                    SET name = ?,
+                        details = ?,
                         status = ?,
                         reply_message = ?,
                         updated_at = datetime('now')
                     WHERE company_id = ?
                     """,
                     (
+                        company.name,
                         json.dumps(company.details.model_dump(), cls=CustomJSONEncoder),
                         json.dumps(company.status.model_dump(), cls=CustomJSONEncoder),
                         company.reply_message,
@@ -1405,6 +1448,7 @@ if __name__ == "__main__":
             sys.exit(0)
 
         print(f"Running {len(migration_files)} migrations from {migration_dir}")
+        from importlib.util import spec_from_file_location, module_from_spec
 
         conn = sqlite3.connect("data/companies.db")
         try:
@@ -1412,8 +1456,13 @@ if __name__ == "__main__":
                 print(f"Running migration {idx}/{len(migration_files)}: {path.name}")
                 try:
                     module_name = path.stem
-                    spec = importlib.util.spec_from_file_location(module_name, str(path))
-                    module = importlib.util.module_from_spec(spec)
+                    assert module_name is not None
+
+                    spec = spec_from_file_location(module_name, str(path))
+                    assert spec is not None
+                    module = module_from_spec(spec)
+                    assert module is not None
+                    assert spec.loader is not None
                     spec.loader.exec_module(module)
                     module.migrate(conn)
                     conn.commit()
