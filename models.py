@@ -957,13 +957,13 @@ class CompanyRepository:
 
                 if is_active is not None:
                     updates.append("is_active = ?")
-                    params.append(1 if is_active else 0)
+                    params.append("1" if is_active else "0")
 
                 if not updates:
                     return self.get_alias(alias_id)
 
                 updates.append("updated_at = datetime('now')")
-                params.append(alias_id)
+                params.append(str(alias_id))
 
                 conn.execute(
                     f"UPDATE company_aliases SET {', '.join(updates)} WHERE id = ?",
@@ -986,7 +986,7 @@ class CompanyRepository:
             with self._get_connection() as conn:
                 cursor = conn.execute(
                     """
-                    UPDATE company_aliases 
+                    UPDATE company_aliases
                     SET is_active = 0, updated_at = datetime('now')
                     WHERE id = ?
                     """,

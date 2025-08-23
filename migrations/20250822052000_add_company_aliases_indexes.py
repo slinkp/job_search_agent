@@ -25,15 +25,9 @@ def migrate(conn: sqlite3.Connection):
 
 def rollback(conn: sqlite3.Connection):
     try:
-        conn.execute(
-            "DROP INDEX IF EXISTS idx_company_aliases_company_norm_active"
-        )
-        conn.execute(
-            "DROP INDEX IF EXISTS idx_company_aliases_normalized_alias"
-        )
+        conn.execute("DROP INDEX IF EXISTS idx_company_aliases_company_norm_active")
+        conn.execute("DROP INDEX IF EXISTS idx_company_aliases_normalized_alias")
         print(f"{datetime.now()} - Dropped indexes for company_aliases")
     except sqlite3.Error as e:
         print(f"Error during rollback: {str(e)}")
         raise
-
-

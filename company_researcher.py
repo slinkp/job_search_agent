@@ -392,23 +392,43 @@ class TavilyRAGResearchAgent:
         current_name = (company_info.name or "").strip()
 
         if new_name:
-            # Always assign new name if current is blank/None
-            if not current_name:
+            # Check if new name is a generic host name that should be ignored
+            normalized_new_name = new_name.lower().strip()
+            if normalized_new_name == "notion" or normalized_new_name == "linkedin":
                 logger.info(
-                    f"Company name update: No existing name, setting to '{new_name}'"
+                    f"Ignoring generic host name '{new_name}' - not updating company name"
                 )
-                company_info.name = new_name
-            # Only replace existing name if new name is better
-            elif is_placeholder(current_name):
-                if is_placeholder(new_name):
+            else:
+                # Track alternate names discovered during research
+                if (
+                    current_name
+                    and new_name.lower().strip() != current_name.lower().strip()
+                ):
+                    # Store alternate name for later alias creation
+                    if not hasattr(self, "_discovered_alternate_names"):
+                        self._discovered_alternate_names = set()
+                    self._discovered_alternate_names.add(new_name)
                     logger.info(
-                        f"Not replacing '{current_name}' with placeholder '{new_name}'"
+                        f"Discovered alternate name '{new_name}' for company (current: '{current_name}')"
                     )
-                else:
+
+                # Always assign new name if current is blank/None
+                if not current_name:
                     logger.info(
-                        f"Company name update: Replacing '{current_name} with better '{new_name}'"
+                        f"Company name update: No existing name, setting to '{new_name}'"
                     )
                     company_info.name = new_name
+                # Only replace existing name if new name is better
+                elif is_placeholder(current_name):
+                    if is_placeholder(new_name):
+                        logger.info(
+                            f"Not replacing '{current_name}' with placeholder '{new_name}'"
+                        )
+                    else:
+                        logger.info(
+                            f"Company name update: Replacing '{current_name} with better '{new_name}'"
+                        )
+                        company_info.name = new_name
 
         update_field_from_key_if_present("ny_address", "nyc_office_address")
         update_field_from_key_if_present("headquarters", "headquarters_city")
@@ -433,6 +453,10 @@ class TavilyRAGResearchAgent:
         logger.debug(f"  DATA SO FAR:\n{company_info}\n\n")
         return company_info
 
+    def get_discovered_alternate_names(self) -> list[str]:
+        """Get the set of alternate names discovered during research."""
+        return sorted(getattr(self, "_discovered_alternate_names", set()))
+
 
 def main(
     url_or_message: str,
@@ -440,7 +464,7 @@ def main(
     refresh_rag_db: bool = False,  # TODO: Unused
     verbose: bool = False,
     is_url: bool | None = None,
-) -> CompaniesSheetRow:
+) -> tuple[CompaniesSheetRow, list[str]]:
     """
     Research a company based on either a URL or a recruiter message.
 
@@ -483,9 +507,11 @@ def main(
         is_url = url_or_message.startswith(("http://", "https://"))
 
     if is_url:
-        return researcher.main(url=url_or_message)
+        results = researcher.main(url=url_or_message)
     else:
-        return researcher.main(message=url_or_message)
+        results = researcher.main(message=url_or_message)
+
+    return results, researcher.get_discovered_alternate_names()
 
 
 if __name__ == "__main__":

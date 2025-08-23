@@ -460,7 +460,7 @@ class JobSearch:
 
         This does not update the company in the database, but it may create events in the db.
         """
-        company_info: CompaniesSheetRow = self.initial_research_company(
+        (company_info, discovered_names) = self.initial_research_company(
             message, model=model
         )
         if not str(company_info.name or "").strip():
@@ -519,6 +519,23 @@ class JobSearch:
             models.company_repository().create_event(event)
             logger.info(f"Created RESEARCH_COMPLETED event for {company.name}")
 
+        # Create aliases for discovered alternate names
+        if discovered_names:
+            try:
+                repo = models.company_repository()
+                for alternate_name in discovered_names:
+                    try:
+                        repo.create_alias(company_id, alternate_name, "auto")
+                        logger.info(
+                            f"Created auto alias '{alternate_name}' for company {company_id}"
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to create alias '{alternate_name}' for company {company_id}: {e}"
+                        )
+            except Exception as e:
+                logger.warning(f"Failed to create aliases for company {company_id}: {e}")
+
         return company
 
     def _handle_research_error(
@@ -541,7 +558,7 @@ class JobSearch:
     @disk_cache(CacheStep.BASIC_RESEARCH)
     def initial_research_company(
         self, message: str | RecruiterMessage, model: str
-    ) -> CompaniesSheetRow:
+    ) -> tuple[CompaniesSheetRow, list[str]]:
         logger.info("Starting initial research...")
 
         email_thread_link = ""
@@ -552,9 +569,12 @@ class JobSearch:
         # TODO: Implement this:
         # - If there are attachments to the message (eg .doc or .pdf), extract the text from them
         #   and pass that to company_researcher.py too
-        row = company_researcher.main(url_or_message=message, model=model, is_url=False)
+        row, discovered_names = company_researcher.main(
+            url_or_message=message, model=model, is_url=False
+        )
         row.email_thread_link = email_thread_link
-        return row
+
+        return (row, discovered_names)
 
     @disk_cache(CacheStep.LEVELS_RESEARCH)
     def research_levels(self, row: CompaniesSheetRow) -> CompaniesSheetRow:

@@ -49,11 +49,11 @@ We will add a first-class, many-to-one alias model to support arbitrary company 
 
 4. Researcher and ingestion: Notion-hosted guardrails
 
-- [ ] In `TavilyRAGResearchAgent.update_company_info_from_dict`:
-  - [ ] Ignore generic host names ("notion", "linkedin", variations) similarly to placeholders.
-  - [ ] Prefer existing canonical `company.name` **unless it's a placeholder**, in which case, replace it.
-  - [ ] Whenever an alternate name is discovered in research, record it as `source="auto"` alias (active)
-- [ ] Tests in `tests/test_company_researcher.py`: Notion scenarios; verify no "notion" names.
+- [x] In `TavilyRAGResearchAgent.update_company_info_from_dict`:
+  - [x] Ignore generic host names ("notion", "linkedin", variations) similarly to placeholders.
+  - [x] Prefer existing canonical `company.name` **unless it's a placeholder**, in which case, replace it.
+  - [x] Whenever an alternate name is discovered in research, record it as `source="auto"` alias (active)
+- [x] Tests in `tests/test_company_researcher.py`: Notion scenarios; verify no "notion" names.
 
 5. Research integration
 
