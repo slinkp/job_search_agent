@@ -58,7 +58,7 @@ We will add a first-class, many-to-one alias model to support arbitrary company 
 5. Research integration
 
 - [x] In `levels_searcher`: try canonical first; if that doesn't work, then iterate through the others, starting with the `manual` sourced ones first.  Stop on the first name that works and **set it as canonical**. Log an error if none work.
-- [ ] In `linkedin_searcher`: try canonical first; if that doesn't work, then iterate through the others, starting with the `manual` sourced ones first.  Stop on the first name that works and **set it as canonical**. Log an error if none work.
+- [x] In `linkedin_searcher`: try canonical first; if that doesn't work, then iterate through the others, starting with the `manual` sourced ones first.  Stop on the first name that works and **set it as canonical**. Log an error if none work.
 
 6. Migration and backfill scripts
 

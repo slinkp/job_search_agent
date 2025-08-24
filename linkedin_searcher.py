@@ -8,6 +8,8 @@ from typing import Dict, List
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 from playwright.sync_api import sync_playwright
 
+from models import company_repository
+
 
 class LinkedInSearcher:
 
@@ -367,11 +369,48 @@ def main(company: str, debug: bool = False, headless: bool = True) -> list[Dict]
     try:
         searcher.login()
 
-        print(f"\nSearching connections at {company}...")
-        connections = searcher.search_company_connections(company)
+        repo = company_repository()
+        company_row = repo.get_by_normalized_name(company)
 
-        print(f"Found {len(connections)} connections at {company}")
-        return connections
+        # Fallback if unknown
+        if company_row is None:
+            print(f"LinkedIn: company {company} not found in repo; using raw name.")
+            connections = searcher.search_company_connections(company)
+            print(f"Found {len(connections)} connections at {company}")
+            return connections
+
+        # Candidates: canonical, then aliases by priority manual > auto > seed
+        candidates = [company_row.name]
+
+        aliases = repo.list_aliases(company_row.company_id)
+        active_aliases = [a for a in aliases if a["is_active"]]
+        source_priority = {"manual": 0, "auto": 1, "seed": 2}
+        sorted_aliases = sorted(
+            active_aliases, key=lambda a: source_priority.get(a["source"], 3)
+        )
+
+        for alias in sorted_aliases:
+            if alias["alias"] != company_row.name:
+                candidates.append(alias["alias"])
+
+        # Try candidates in order
+        for candidate_name in candidates:
+            connections = searcher.search_company_connections(candidate_name)
+            if connections:
+                if candidate_name != company_row.name:
+                    for alias in active_aliases:
+                        if alias["alias"] == candidate_name:
+                            repo.set_alias_as_canonical(
+                                company_row.company_id, alias["id"]
+                            )
+                            break
+                print(f"Found {len(connections)} connections at {candidate_name}")
+                return connections
+
+        print(
+            f"LinkedIn: no working names for company_id={company_row.company_id} (tried: {candidates})"
+        )
+        return []
     finally:
         searcher.cleanup()
 

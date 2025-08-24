@@ -54,7 +54,7 @@ class TestLevelsSearcherAliasIntegration:
 
         with patch(
             "levels_searcher.LevelsFyiSearcher", return_value=mock_searcher
-        ), patch("models.company_repository", return_value=mock_repo):
+        ), patch("levels_searcher.company_repository", return_value=mock_repo):
 
             # Act
             result = extract_levels("Canonical Inc")
@@ -86,7 +86,7 @@ class TestLevelsSearcherAliasIntegration:
 
         with patch(
             "levels_searcher.LevelsFyiSearcher", return_value=mock_searcher
-        ), patch("models.company_repository", return_value=mock_repo):
+        ), patch("levels_searcher.company_repository", return_value=mock_repo):
 
             # Act
             result = extract_levels("Canonical Inc")
@@ -124,7 +124,7 @@ class TestLevelsSearcherAliasIntegration:
 
         with patch(
             "levels_searcher.LevelsFyiSearcher", return_value=mock_searcher
-        ), patch("models.company_repository", return_value=mock_repo):
+        ), patch("levels_searcher.company_repository", return_value=mock_repo):
 
             # Act
             result = extract_levels("Canonical Inc")
@@ -160,7 +160,7 @@ class TestLevelsSearcherAliasIntegration:
 
         with patch(
             "levels_searcher.LevelsFyiSearcher", return_value=mock_searcher
-        ), patch("models.company_repository", return_value=mock_repo):
+        ), patch("levels_searcher.company_repository", return_value=mock_repo):
 
             # Act
             result = extract_levels("Canonical Inc")
@@ -189,7 +189,7 @@ class TestLevelsSearcherAliasIntegration:
 
         with patch(
             "levels_searcher.LevelsFyiSearcher", return_value=mock_searcher
-        ), patch("models.company_repository", return_value=mock_repo):
+        ), patch("levels_searcher.company_repository", return_value=mock_repo):
 
             # Act
             result = extract_levels("Unknown Company")
@@ -217,7 +217,7 @@ class TestLevelsSearcherAliasIntegration:
 
         with patch(
             "levels_searcher.LevelsFyiSearcher", return_value=mock_searcher
-        ), patch("models.company_repository", return_value=mock_repo):
+        ), patch("levels_searcher.company_repository", return_value=mock_repo):
 
             # Act
             result = extract_levels("Canonical Inc")
@@ -242,7 +242,7 @@ class TestLevelsSearcherAliasIntegration:
 
         with patch(
             "levels_searcher.LevelsFyiSearcher", return_value=mock_searcher
-        ), patch("models.company_repository", return_value=mock_repo):
+        ), patch("levels_searcher.company_repository", return_value=mock_repo):
 
             # Act
             result = extract_levels("Canonical Inc")
