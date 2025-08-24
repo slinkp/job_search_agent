@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { captureAlpineFactories } from "./test-utils.js";
+import { captureAlpineFactories, loadIndexHtml } from "./test-utils.js";
 
 describe("app/companyList factory-capture", () => {
   let captured;
@@ -203,5 +203,22 @@ describe("app/companyList factory-capture", () => {
     expect(["company_management", "daily_dashboard"]).toContain(
       instance.viewMode
     );
+  });
+
+  it("should have HTML structure for displaying company aliases", () => {
+    // Load the raw HTML content
+    const rawHtml = loadIndexHtml();
+
+    // Check that the aliases section exists in the HTML content
+    expect(rawHtml).toContain('class="company-aliases-details"');
+    expect(rawHtml).toContain(
+      'x-show="company.aliases && company.aliases.length > 0"'
+    );
+    expect(rawHtml).toContain("<strong>Aliases:</strong>");
+    expect(rawHtml).toContain('x-for="alias in company.aliases"');
+    expect(rawHtml).toContain('x-text="alias.alias"');
+    expect(rawHtml).toContain("x-text=\"' (' + alias.source + ')'\"");
+    expect(rawHtml).toContain('x-if="!alias.is_active"');
+    expect(rawHtml).toContain("(Inactive)");
   });
 });

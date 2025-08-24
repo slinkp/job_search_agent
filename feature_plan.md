@@ -70,9 +70,10 @@ We will add a first-class, many-to-one alias model to support arbitrary company 
 7. Minimal frontend surface (optional but recommended)
 
 - [ ] Companies page: show aliases list and allow add/deactivate.
+    - [x] Show aliases list (display only)
     - [ ] "Add" form needs a checkbox option to set this new alias as canonical. **Enabled by default**
 - [ ] Keep UI simple; reuse existing fetch helpers.
-- [ ] Tests: unit for rendering and basic interactions.
+- [x] Tests: unit for rendering and basic interactions.
 
 8. Test inventory
 

@@ -235,6 +235,20 @@
                   </ul>
                 </div>
               </div>
+              <div class="company-aliases-details" x-show="company.aliases && company.aliases.length > 0">
+                <strong>Aliases:</strong>
+                <ul>
+                  <template x-for="alias in company.aliases" :key="alias.alias_id">
+                    <li>
+                      <span x-text="alias.alias"></span>
+                      <span x-text="' (' + alias.source + ')'"></span>
+                      <template x-if="!alias.is_active">
+                        <span>(Inactive)</span>
+                      </template>
+                    </li>
+                  </template>
+                </ul>
+              </div>
               <p>
                 <template
                   x-for="[key, value] in Object.entries(company.details || {})"
