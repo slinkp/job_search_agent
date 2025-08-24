@@ -74,7 +74,7 @@ def setup_colored_logging():
 def get_company(request) -> dict:
     company_id = request.matchdict["company_id"]
     repo = models.company_repository()
-    company = repo.get(company_id)
+    company = repo.get(company_id, include_aliases=True)
 
     if not company:
         request.response.status = 404
@@ -111,10 +111,118 @@ def get_company_dict_with_status(
     return company_dict
 
 
+@view_config(route_name="company_aliases", renderer="json", request_method="POST")
+def create_company_alias(request) -> dict:
+    """Create a new alias for a company."""
+    company_id = request.matchdict["company_id"]
+    repo = models.company_repository()
+
+    # Check if company exists
+    company = repo.get(company_id)
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found"}
+
+    try:
+        # Parse request body
+        body = request.json_body
+        alias = body.get("alias")
+        set_as_canonical = body.get(
+            "set_as_canonical", True
+        )  # Default to True as per plan
+
+        if not alias:
+            request.response.status = 400
+            return {"error": "alias is required"}
+
+        # Create the alias
+        alias_id = repo.create_alias(company_id, alias, "manual")
+
+        # If requested, set as canonical
+        if set_as_canonical:
+            repo.set_alias_as_canonical(company_id, alias_id)
+
+        # Return the created alias
+        created_alias = repo.get_alias(alias_id)
+        return created_alias
+
+    except Exception as e:
+        logger.exception("Error creating company alias")
+        request.response.status = 500
+        return {"error": str(e)}
+
+
+@view_config(route_name="company_alias", renderer="json", request_method="PUT")
+def update_company_alias(request) -> dict:
+    """Update an existing alias for a company."""
+    company_id = request.matchdict["company_id"]
+    alias_id = request.matchdict["alias_id"]
+    repo = models.company_repository()
+
+    # Check if company exists
+    company = repo.get(company_id)
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found"}
+
+    try:
+        # Parse request body
+        body = request.json_body
+        alias = body.get("alias")
+        is_active = body.get("is_active")
+
+        if alias is None and is_active is None:
+            request.response.status = 400
+            return {"error": "At least one field to update is required"}
+
+        # Update the alias
+        updated_alias = repo.update_alias(alias_id, alias=alias, is_active=is_active)
+
+        if not updated_alias:
+            request.response.status = 404
+            return {"error": "Alias not found"}
+
+        return updated_alias
+
+    except Exception as e:
+        logger.exception("Error updating company alias")
+        request.response.status = 500
+        return {"error": str(e)}
+
+
+@view_config(route_name="company_alias", renderer="json", request_method="DELETE")
+def delete_company_alias(request) -> dict:
+    """Delete (deactivate) an alias for a company."""
+    company_id = request.matchdict["company_id"]
+    alias_id = request.matchdict["alias_id"]
+    repo = models.company_repository()
+
+    # Check if company exists
+    company = repo.get(company_id)
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found"}
+
+    try:
+        # Deactivate the alias
+        success = repo.deactivate_alias(alias_id)
+
+        if not success:
+            request.response.status = 404
+            return {"error": "Alias not found"}
+
+        return {"success": True, "message": "Alias deactivated"}
+
+    except Exception as e:
+        logger.exception("Error deleting company alias")
+        request.response.status = 500
+        return {"error": str(e)}
+
+
 @view_config(route_name="companies", renderer="json", request_method="GET")
 def get_companies(request) -> list[dict]:
     repo = models.company_repository()
-    companies = repo.get_all(include_messages=True)
+    companies = repo.get_all(include_messages=True, include_aliases=True)
 
     # Check if we should include all companies or filter out replied/archived
     include_all = request.params.get("include_all", "").lower() == "true"
@@ -644,6 +752,10 @@ def main(global_config, **settings):
         # Remove the old ignore_and_archive route since frontend now uses message-centric endpoint
         config.add_route("company_details", "/api/companies/{company_id}/details")
         config.add_route("company", "/api/companies/{company_id}")
+        config.add_route("company_aliases", "/api/companies/{company_id}/aliases")
+        config.add_route(
+            "company_alias", "/api/companies/{company_id}/aliases/{alias_id}"
+        )
         config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
         config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_route("import_companies", "/api/import_companies")

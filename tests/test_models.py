@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import sqlite3
 from datetime import date
 
 import pytest
@@ -18,9 +19,9 @@ from models import (
     FitCategory,
     RecruiterMessage,
     company_repository,
+    is_placeholder,
     merge_company_data,
     normalize_company_name,
-    is_placeholder,
 )
 
 TEST_DB_PATH = "data/_test_companies.db"
@@ -477,6 +478,294 @@ class TestCompanyRepository:
         assert all_messages[0].message_id == "archived-msg"
         assert all_messages[0].archived_at is not None
         assert getattr(all_messages[0], "_company_name") == "Test Company"
+
+    def test_alias_resolution_multiple_aliases(self, clean_test_db):
+        """Active aliases resolve to the canonical company via get_by_normalized_name."""
+        repo = clean_test_db
+
+        # Create canonical company
+        company = Company(
+            company_id="amazon",
+            name="Amazon",
+            details=CompaniesSheetRow(name="Amazon"),
+        )
+        repo.create(company)
+
+        # Seed multiple aliases
+        aliases = ["aws", "amazon web services"]
+        with repo._get_connection() as conn:  # type: ignore[attr-defined]
+            for alias in aliases:
+                conn.execute(
+                    """
+                    INSERT INTO company_aliases (company_id, alias, normalized_alias, source, is_active)
+                    VALUES (?, ?, ?, 'manual', 1)
+                    """,
+                    (company.company_id, alias, normalize_company_name(alias)),
+                )
+            conn.commit()
+
+        # Both aliases should resolve
+        found_aws = repo.get_by_normalized_name("AWS")
+        assert found_aws is not None and found_aws.company_id == "amazon"
+        found_long = repo.get_by_normalized_name("Amazon Web Services")
+        assert found_long is not None and found_long.company_id == "amazon"
+
+    def test_alias_inactive_ignored(self, clean_test_db):
+        """Inactive aliases should not resolve."""
+        repo = clean_test_db
+
+        company = Company(
+            company_id="meta",
+            name="Facebook",
+            details=CompaniesSheetRow(name="Facebook"),
+        )
+        repo.create(company)
+
+        with repo._get_connection() as conn:  # type: ignore[attr-defined]
+            conn.execute(
+                """
+                INSERT INTO company_aliases (company_id, alias, normalized_alias, source, is_active)
+                VALUES (?, ?, ?, 'manual', 0)
+                """,
+                (company.company_id, "Meta", normalize_company_name("Meta")),
+            )
+            conn.commit()
+
+        # Should not resolve because alias is inactive
+        assert repo.get_by_normalized_name("meta") is None
+
+    def test_alias_uniqueness_enforced_for_active(self, clean_test_db):
+        """Unique constraint prevents duplicate active aliases for the same company."""
+        repo = clean_test_db
+
+        company = Company(
+            company_id="google",
+            name="Google",
+            details=CompaniesSheetRow(name="Google"),
+        )
+        repo.create(company)
+
+        with repo._get_connection() as conn:  # type: ignore[attr-defined]
+            # First insert should work
+            conn.execute(
+                """
+                INSERT INTO company_aliases (company_id, alias, normalized_alias, source, is_active)
+                VALUES (?, ?, ?, 'manual', 1)
+                """,
+                (company.company_id, "Alphabet", normalize_company_name("Alphabet")),
+            )
+            conn.commit()
+
+            # Second insert with same normalized_alias for same company and active=1 should fail
+            with pytest.raises(sqlite3.IntegrityError):
+                conn.execute(
+                    """
+                    INSERT INTO company_aliases (company_id, alias, normalized_alias, source, is_active)
+                    VALUES (?, ?, ?, 'manual', 1)
+                    """,
+                    (
+                        company.company_id,
+                        "ALPHABET",  # different case, same normalized
+                        normalize_company_name("Alphabet"),
+                    ),
+                )
+
+    def test_create_alias_success(self, clean_test_db):
+        """Test creating a new alias for a company."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create an alias
+        alias_id = repo.create_alias("test-company", "Test Corp", "manual")
+
+        # Verify the alias was created
+        assert alias_id is not None
+        assert isinstance(alias_id, int)
+
+        # Get the alias and verify its data
+        alias = repo.get_alias(alias_id)
+        assert alias is not None
+        assert alias["company_id"] == "test-company"
+        assert alias["alias"] == "Test Corp"
+        assert alias["normalized_alias"] == "test-corp"
+        assert alias["source"] == "manual"
+        assert alias["is_active"] is True
+
+    def test_create_alias_duplicate_fails(self, clean_test_db):
+        """Test that creating a duplicate alias fails."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create first alias
+        repo.create_alias("test-company", "Test Corp", "manual")
+
+        # Try to create duplicate alias
+        with pytest.raises(sqlite3.IntegrityError):
+            repo.create_alias("test-company", "Test Corp", "manual")
+
+    def test_get_alias_not_found(self, clean_test_db):
+        """Test getting a non-existent alias."""
+        repo = clean_test_db
+
+        # Try to get non-existent alias
+        alias = repo.get_alias(999)
+        assert alias is None
+
+    def test_update_alias_success(self, clean_test_db):
+        """Test updating an existing alias."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create an alias
+        alias_id = repo.create_alias("test-company", "Test Corp", "manual")
+
+        # Update the alias
+        updated_alias = repo.update_alias(alias_id, alias="Updated Corp", is_active=False)
+
+        # Verify the alias was updated
+        assert updated_alias is not None
+        assert updated_alias["alias"] == "Updated Corp"
+        assert updated_alias["normalized_alias"] == "updated-corp"
+        assert updated_alias["is_active"] is False
+
+    def test_update_alias_not_found(self, clean_test_db):
+        """Test updating a non-existent alias."""
+        repo = clean_test_db
+
+        # Try to update non-existent alias
+        updated_alias = repo.update_alias(999, alias="New Name")
+        assert updated_alias is None
+
+    def test_deactivate_alias_success(self, clean_test_db):
+        """Test deactivating an alias."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create an alias
+        alias_id = repo.create_alias("test-company", "Test Corp", "manual")
+
+        # Deactivate the alias
+        success = repo.deactivate_alias(alias_id)
+
+        # Verify the alias was deactivated
+        assert success is True
+
+        # Verify the alias is now inactive
+        alias = repo.get_alias(alias_id)
+        assert alias is not None
+        assert alias["is_active"] is False
+
+    def test_deactivate_alias_not_found(self, clean_test_db):
+        """Test deactivating a non-existent alias."""
+        repo = clean_test_db
+
+        # Try to deactivate non-existent alias
+        success = repo.deactivate_alias(999)
+        assert success is False
+
+    def test_set_alias_as_canonical_success(self, clean_test_db):
+        """Test setting an alias as the canonical name."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="Original Name",
+            details=CompaniesSheetRow(name="Original Name"),
+        )
+        repo.create(company)
+
+        # Create an alias
+        alias_id = repo.create_alias("test-company", "New Canonical Name", "manual")
+
+        # Set the alias as canonical
+        success = repo.set_alias_as_canonical("test-company", alias_id)
+
+        # Verify it was successful
+        assert success is True
+
+        # Verify the company name was updated
+        updated_company = repo.get("test-company")
+        assert updated_company is not None
+        assert updated_company.name == "New Canonical Name"
+        assert updated_company.details.name == "New Canonical Name"
+
+        # Verify the old name was preserved as an alias
+        updated_company_with_aliases = repo.get("test-company", include_aliases=True)
+        aliases = getattr(updated_company_with_aliases, "_aliases", [])
+        old_name_aliases = [a for a in aliases if a["alias"] == "Original Name"]
+        assert len(old_name_aliases) == 1
+        assert old_name_aliases[0]["source"] == "seed"
+
+    def test_set_alias_as_canonical_not_found(self, clean_test_db):
+        """Test setting a non-existent alias as canonical."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Try to set non-existent alias as canonical
+        success = repo.set_alias_as_canonical("test-company", 999)
+        assert success is False
+
+    def test_set_alias_as_canonical_wrong_company(self, clean_test_db):
+        """Test setting an alias as canonical for the wrong company."""
+        repo = clean_test_db
+
+        # Create two test companies
+        company1 = Company(
+            company_id="company-1",
+            name="Company 1",
+            details=CompaniesSheetRow(name="Company 1"),
+        )
+        repo.create(company1)
+
+        company2 = Company(
+            company_id="company-2",
+            name="Company 2",
+            details=CompaniesSheetRow(name="Company 2"),
+        )
+        repo.create(company2)
+
+        # Create an alias for company 1
+        alias_id = repo.create_alias("company-1", "Alias for Company 1", "manual")
+
+        # Try to set it as canonical for company 2
+        success = repo.set_alias_as_canonical("company-2", alias_id)
+        assert success is False
 
 
 class TestCompaniesSheetRow:

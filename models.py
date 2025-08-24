@@ -605,6 +605,37 @@ class CompanyRepository:
                     )
                 """
                 )
+                # Aliases table (first-class model for name variations)
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS company_aliases (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        company_id TEXT NOT NULL,
+                        alias TEXT NOT NULL,
+                        normalized_alias TEXT NOT NULL,
+                        source TEXT NOT NULL DEFAULT 'auto',
+                        is_active INTEGER NOT NULL DEFAULT 1,
+                        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                        FOREIGN KEY (company_id) REFERENCES companies (company_id)
+                    )
+                    """
+                )
+                # Indexes to enforce uniqueness for active aliases and support lookups
+                conn.execute(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_company_aliases_company_norm_active
+                    ON company_aliases(company_id, normalized_alias)
+                    WHERE is_active = 1
+                    """
+                )
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_company_aliases_normalized_alias
+                    ON company_aliases(normalized_alias)
+                    WHERE is_active = 1
+                    """
+                )
         if load_sample_data:
             for company in SAMPLE_COMPANIES:
                 self.create(company)
@@ -618,19 +649,44 @@ class CompanyRepository:
         finally:
             connection.close()
 
-    def get(self, company_id: str) -> Optional[Company]:
-        # Reads can happen without the lock
+    def get(self, company_id: str, include_aliases=False) -> Optional[Company]:
         with self._get_connection() as conn:
             cursor = conn.execute(
                 "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies WHERE company_id = ?",
                 (company_id,),
             )
             row = cursor.fetchone()
-            company = self._deserialize_company(row) if row else None  # noqa: B950
-            if company:
-                message = self._get_recruiter_message(company_id, conn)
-                company.recruiter_message = message
-        return company
+            if not row:
+                return None
+
+            company = self._deserialize_company(row)
+
+            # Always fetch recruiter message
+            message = self._get_recruiter_message(company_id, conn)
+            company.recruiter_message = message
+
+            if include_aliases:
+                # Fetch aliases for this company
+                cursor = conn.execute(
+                    """
+                    SELECT alias, source, is_active
+                    FROM company_aliases
+                    WHERE company_id = ?
+                    ORDER BY source, alias
+                    """,
+                    (company_id,),
+                )
+                aliases = [
+                    {
+                        "alias": row[0],
+                        "source": row[1],
+                        "is_active": bool(row[2]),
+                    }
+                    for row in cursor.fetchall()
+                ]
+                object.__setattr__(company, "_aliases", aliases)
+
+            return company
 
     def get_recruiter_message(self, company_id: str) -> Optional[RecruiterMessage]:
         """
@@ -767,6 +823,11 @@ class CompanyRepository:
         Returns:
             The Company if found, None otherwise
         """
+        # First try to resolve via aliases (active only)
+        alias_company_id = self.resolve_alias(name)
+        if alias_company_id:
+            return self.get(alias_company_id)
+
         normalized_name = normalize_company_name(name)
 
         with self._get_connection() as conn:
@@ -785,6 +846,261 @@ class CompanyRepository:
                     return company
 
         return None
+
+    def resolve_alias(self, name: str) -> Optional[str]:
+        """Resolve a name via company_aliases to a company_id if an active alias exists.
+
+        Returns the matching company_id or None if no active alias matches.
+        """
+        normalized = normalize_company_name(name)
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT company_id FROM company_aliases WHERE normalized_alias = ? AND is_active = 1 LIMIT 1",
+                (normalized,),
+            ).fetchone()
+            if row:
+                return row[0]
+        return None
+
+    def create_alias(self, company_id: str, alias: str, source: str = "manual") -> int:
+        """Create a new alias for a company.
+
+        Args:
+            company_id: The company ID
+            alias: The alias name
+            source: The source of the alias ("manual", "auto", "seed", "levels")
+
+        Returns:
+            The ID of the created alias
+
+        Raises:
+            sqlite3.IntegrityError: If the alias already exists for this company
+        """
+        normalized_alias = normalize_company_name(alias)
+        with self.lock:
+            with self._get_connection() as conn:
+                cursor = conn.execute(
+                    """
+                    INSERT INTO company_aliases (company_id, alias, normalized_alias, source, is_active)
+                    VALUES (?, ?, ?, ?, 1)
+                    """,
+                    (company_id, alias, normalized_alias, source),
+                )
+                alias_id = cursor.lastrowid
+                conn.commit()
+                if alias_id is None:
+                    raise RuntimeError("Failed to create alias - no ID returned")
+                return alias_id
+
+    def get_alias(self, alias_id: int) -> Optional[dict]:
+        """Get an alias by its ID.
+
+        Args:
+            alias_id: The alias ID
+
+        Returns:
+            Dictionary with alias data or None if not found
+        """
+        with self._get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT id, company_id, alias, normalized_alias, source, is_active, created_at, updated_at
+                FROM company_aliases
+                WHERE id = ?
+                """,
+                (alias_id,),
+            ).fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "company_id": row[1],
+                    "alias": row[2],
+                    "normalized_alias": row[3],
+                    "source": row[4],
+                    "is_active": bool(row[5]),
+                    "created_at": row[6],
+                    "updated_at": row[7],
+                }
+        return None
+
+    def update_alias(
+        self, alias_id: int, alias: Optional[str] = None, is_active: Optional[bool] = None
+    ) -> Optional[dict]:
+        """Update an alias.
+
+        Args:
+            alias_id: The alias ID
+            alias: New alias name (optional)
+            is_active: New active status (optional)
+
+        Returns:
+            Updated alias data or None if not found
+        """
+        with self.lock:
+            with self._get_connection() as conn:
+                # Check if alias exists
+                existing = conn.execute(
+                    "SELECT id FROM company_aliases WHERE id = ?",
+                    (alias_id,),
+                ).fetchone()
+                if not existing:
+                    return None
+
+                # Build update query
+                updates = []
+                params = []
+
+                if alias is not None:
+                    updates.append("alias = ?")
+                    updates.append("normalized_alias = ?")
+                    params.extend([alias, normalize_company_name(alias)])
+
+                if is_active is not None:
+                    updates.append("is_active = ?")
+                    params.append("1" if is_active else "0")
+
+                if not updates:
+                    return self.get_alias(alias_id)
+
+                updates.append("updated_at = datetime('now')")
+                params.append(str(alias_id))
+
+                conn.execute(
+                    f"UPDATE company_aliases SET {', '.join(updates)} WHERE id = ?",
+                    params,
+                )
+                conn.commit()
+
+                return self.get_alias(alias_id)
+
+    def deactivate_alias(self, alias_id: int) -> bool:
+        """Deactivate an alias by setting is_active to False.
+
+        Args:
+            alias_id: The alias ID
+
+        Returns:
+            True if alias was found and deactivated, False otherwise
+        """
+        with self.lock:
+            with self._get_connection() as conn:
+                cursor = conn.execute(
+                    """
+                    UPDATE company_aliases
+                    SET is_active = 0, updated_at = datetime('now')
+                    WHERE id = ?
+                    """,
+                    (alias_id,),
+                )
+                conn.commit()
+                return cursor.rowcount > 0
+
+    def list_aliases(self, company_id: str) -> list[dict]:
+        """List all aliases for a company.
+
+        Args:
+            company_id: The company ID
+
+        Returns:
+            List of alias dictionaries with keys: id, alias, source, is_active
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, alias, source, is_active
+                FROM company_aliases
+                WHERE company_id = ?
+                ORDER BY source, alias
+                """,
+                (company_id,),
+            )
+            return [
+                {
+                    "id": row[0],
+                    "alias": row[1],
+                    "source": row[2],
+                    "is_active": bool(row[3]),
+                }
+                for row in cursor.fetchall()
+            ]
+
+    def set_alias_as_canonical(self, company_id: str, alias_id: int) -> bool:
+        """Set an alias as the canonical name for a company.
+
+        This updates the company's name and details.name, and preserves the old name
+        as an alias if it's not already there.
+
+        Args:
+            company_id: The company ID
+            alias_id: The alias ID to set as canonical
+
+        Returns:
+            True if successful, False if alias not found
+        """
+        with self.lock:
+            with self._get_connection() as conn:
+                # Get the alias
+                alias_row = conn.execute(
+                    """
+                    SELECT alias, normalized_alias FROM company_aliases WHERE id = ? AND company_id = ?
+                    """,
+                    (alias_id, company_id),
+                ).fetchone()
+                if not alias_row:
+                    return False
+
+                alias_name, normalized_alias = alias_row
+
+                # Get current company name
+                company_row = conn.execute(
+                    "SELECT name FROM companies WHERE company_id = ?",
+                    (company_id,),
+                ).fetchone()
+                if not company_row:
+                    return False
+
+                old_name = company_row[0]
+                old_normalized = normalize_company_name(old_name)
+
+                # Update company name
+                conn.execute(
+                    "UPDATE companies SET name = ?, updated_at = datetime('now') WHERE company_id = ?",
+                    (alias_name, company_id),
+                )
+
+                # Update company details if they exist
+                details_row = conn.execute(
+                    "SELECT details FROM companies WHERE company_id = ?",
+                    (company_id,),
+                ).fetchone()
+                if details_row and details_row[0]:
+                    try:
+                        details = json.loads(details_row[0])
+                        details["name"] = alias_name
+                        conn.execute(
+                            "UPDATE companies SET details = ? WHERE company_id = ?",
+                            (json.dumps(details), company_id),
+                        )
+                    except (json.JSONDecodeError, KeyError):
+                        # If details are malformed, just continue
+                        pass
+
+                # Preserve old name as alias if it's different and not already there
+                if old_normalized != normalized_alias:
+                    try:
+                        conn.execute(
+                            """
+                            INSERT INTO company_aliases (company_id, alias, normalized_alias, source, is_active)
+                            VALUES (?, ?, ?, 'seed', 1)
+                            """,
+                            (company_id, old_name, old_normalized),
+                        )
+                    except sqlite3.IntegrityError:
+                        # Alias already exists, that's fine
+                        pass
+
+                conn.commit()
+                return True
 
     def _get_recruiter_message(
         self, company_id: str, conn: sqlite3.Connection
@@ -909,7 +1225,7 @@ class CompanyRepository:
                 conn, message.company_id, message.date, "message received"
             )
 
-    def get_all(self, include_messages=False) -> List[Company]:
+    def get_all(self, include_messages=False, include_aliases=False) -> List[Company]:
         # Reads can happen without the lock
         with self._get_connection() as conn:
             cursor = conn.execute(
@@ -921,6 +1237,28 @@ class CompanyRepository:
                 for comp in companies:
                     message = self._get_recruiter_message(comp.company_id, conn)
                     comp.recruiter_message = message
+            if include_aliases:
+                # Add aliases to each company
+                for comp in companies:
+                    cursor = conn.execute(
+                        """
+                        SELECT alias, source, is_active
+                        FROM company_aliases
+                        WHERE company_id = ?
+                        ORDER BY source, alias
+                        """,
+                        (comp.company_id,),
+                    )
+                    aliases = [
+                        {
+                            "alias": row[0],
+                            "source": row[1],
+                            "is_active": bool(row[2]),
+                        }
+                        for row in cursor.fetchall()
+                    ]
+                    # Store aliases as a private attribute on the company object
+                    object.__setattr__(comp, "_aliases", aliases)
             return companies
 
     def _update_activity(
@@ -1353,6 +1691,11 @@ def serialize_company(company: Company):
     else:
         data["recruiter_message"] = None
 
+    # Include aliases if present
+    aliases = getattr(company, "_aliases", None)
+    if aliases is not None:
+        data["aliases"] = aliases
+
     return data
 
 
@@ -1448,7 +1791,7 @@ if __name__ == "__main__":
             sys.exit(0)
 
         print(f"Running {len(migration_files)} migrations from {migration_dir}")
-        from importlib.util import spec_from_file_location, module_from_spec
+        from importlib.util import module_from_spec, spec_from_file_location
 
         conn = sqlite3.connect("data/companies.db")
         try:

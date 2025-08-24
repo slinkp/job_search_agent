@@ -152,6 +152,237 @@ class TestUpdateCompanyInfoFromDict:
         agent.update_company_info_from_dict(company, content)
         assert company.ny_address == "existing"
 
+    def test_ignore_notion_host_name(self):
+        """Test that company name is not updated when research returns 'Notion'."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Company from email", company_identifier="test")
+        content = {"company_name": "Notion"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Company from email"  # Should not be changed to "Notion"
+
+    def test_ignore_linkedin_host_name(self):
+        """Test that company name is not updated when research returns 'LinkedIn'."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Tech Startup", company_identifier="test")
+        content = {"company_name": "LinkedIn"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Tech Startup"  # Should not be changed
+
+    def test_ignore_notion_host_name_case_insensitive(self):
+        """Test that company name is not updated when research returns 'notion' (lowercase)."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Real Company", company_identifier="test")
+        content = {"company_name": "notion"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Real Company"  # Should not be changed
+
+    def test_ignore_notion_variations(self):
+        """Test that company name is not updated when research returns Notion variations."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Real Company", company_identifier="test")
+
+        # Test various Notion-like variations
+        notion_variations = [
+            "notion.so",
+            "notion.site",
+            "notion.com",
+            "notion.io",
+            "notion.app",
+            "NOTION",
+            "Notion",
+            "NOTION.SO",
+            "Notion.so",
+        ]
+
+        for variation in notion_variations:
+            content = {"company_name": variation}
+            agent.update_company_info_from_dict(company, content)
+            assert company.name == "Real Company", f"Should not change to '{variation}'"
+
+    def test_ignore_linkedin_variations(self):
+        """Test that company name is not updated when research returns LinkedIn variations."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Real Company", company_identifier="test")
+
+        # Test various LinkedIn-like variations
+        linkedin_variations = [
+            "linkedin.com",
+            "linkedin.co",
+            "linkedin.io",
+            "LINKEDIN",
+            "LinkedIn",
+            "LINKEDIN.COM",
+            "LinkedIn.com",
+        ]
+
+        for variation in linkedin_variations:
+            content = {"company_name": variation}
+            agent.update_company_info_from_dict(company, content)
+            assert company.name == "Real Company", f"Should not change to '{variation}'"
+
+    def test_preserve_existing_name_when_research_returns_notion(self):
+        """Test that existing valid company name is preserved when research returns 'notion'."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Google Inc", company_identifier="test")
+        content = {"company_name": "notion"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Google Inc"  # Should preserve existing valid name
+
+    def test_keep_placeholder_when_research_returns_notion(self):
+        """Test that placeholder name remains when research returns 'notion'."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Company from email", company_identifier="test")
+        content = {"company_name": "notion"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Company from email"  # Should keep placeholder
+
+    def test_accept_legitimate_names_containing_notion(self):
+        """Test that legitimate company names containing 'notion' are accepted."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+
+        # These should be accepted as they're legitimate company names
+        legitimate_names = [
+            "Notion Labs Inc",
+            "Notion Labs",
+            "Notion Corporation",
+            "Notion Technologies",
+            "My Notion Company",
+            "Notion Solutions",
+            "NotionWorks",
+        ]
+
+        for name in legitimate_names:
+            # Create fresh company for each test
+            company = CompaniesSheetRow(
+                name="Company from email", company_identifier="test"
+            )
+            content = {"company_name": name}
+            agent.update_company_info_from_dict(company, content)
+            assert company.name == name, f"Should accept legitimate name '{name}'"
+
+    def test_accept_legitimate_names_containing_linkedin(self):
+        """Test that legitimate company names containing 'linkedin' are accepted."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+
+        # These should be accepted as they're legitimate company names
+        legitimate_names = [
+            "LinkedIn Corporation",
+            "LinkedIn Inc",
+            "LinkedIn Technologies",
+            "My LinkedIn Company",
+            "LinkedIn Solutions",
+            "LinkedInWorks",
+        ]
+
+        for name in legitimate_names:
+            # Create fresh company for each test
+            company = CompaniesSheetRow(
+                name="Company from email", company_identifier="test"
+            )
+            content = {"company_name": name}
+            agent.update_company_info_from_dict(company, content)
+            assert company.name == name, f"Should accept legitimate name '{name}'"
+
+    def test_notion_guardrails_with_other_fields(self):
+        """Test that Notion guardrails work correctly when other fields are also updated."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Real Company", company_identifier="test")
+        content = {
+            "company_name": "notion",
+            "headquarters_city": "San Francisco, CA",
+            "total_employees": 1000,
+        }
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Real Company"  # Should not change
+        assert company.headquarters == "san francisco, ca"  # Other fields should update
+        assert company.total_size == 1000  # Other fields should update
+
+    def test_linkedin_host_name_case_insensitive(self):
+        """Test that company name is not updated when research returns 'linkedin' (lowercase)."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Another Company", company_identifier="test")
+        content = {"company_name": "linkedin"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Another Company"  # Should not be changed
+
+    def test_allow_legitimate_company_with_notion_in_name(self):
+        """Test that legitimate company names containing 'notion' are still allowed."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Company from email", company_identifier="test")
+        content = {"company_name": "Notion Labs Inc"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Notion Labs Inc"  # Should be allowed
+
+    def test_allow_legitimate_company_with_linkedin_in_name(self):
+        """Test that legitimate company names containing 'linkedin' are still allowed."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Company from email", company_identifier="test")
+        content = {"company_name": "LinkedIn Corporation"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "LinkedIn Corporation"  # Should be allowed
+
+    def test_prefer_existing_canonical_name_unless_placeholder(self):
+        """Test that existing canonical names are preferred unless they are placeholders."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+
+        # Test 1: Existing canonical name should not be replaced
+        company = CompaniesSheetRow(name="Google Inc", company_identifier="test")
+        content = {"company_name": "Google"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Google Inc"  # Should keep existing canonical name
+
+        # Test 2: Placeholder should be replaced with better name
+        company = CompaniesSheetRow(name="Company from email", company_identifier="test")
+        content = {"company_name": "Microsoft Corporation"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Microsoft Corporation"  # Should replace placeholder
+
+        # Test 3: Placeholder should not be replaced with another placeholder
+        company = CompaniesSheetRow(name="Company from email", company_identifier="test")
+        content = {"company_name": "unknown"}
+
+        agent.update_company_info_from_dict(company, content)
+        assert company.name == "Company from email"  # Should keep existing placeholder
+
     def test_main_happy_path(self):
         """Test main method with recruiter message successfully."""
         from company_researcher import TavilyRAGResearchAgent
@@ -244,6 +475,33 @@ class TestUpdateCompanyInfoFromDict:
         assert result.remote_policy == "hybrid"
         assert result.current_state == "10. consider applying"
         assert result.updated is not None
+
+    def test_alternate_names_are_discovered_but_not_replace_canonical(self):
+        """Test that alternate names are discovered but don't replace existing canonical names."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Acme Corp")
+        content = {"company_name": "Acme Corporation"}
+
+        agent.update_company_info_from_dict(company, content)
+
+        # Should keep existing canonical name, not replace with alternate
+        assert company.name == "Acme Corp"  # Should keep existing canonical name
+
+    def test_alternate_names_are_tracked_during_research(self):
+        """Test that alternate names are tracked during research process."""
+        from models import CompaniesSheetRow
+
+        agent = TavilyRAGResearchAgent()
+        company = CompaniesSheetRow(name="Acme Corp")
+        content = {"company_name": "Acme Corporation"}
+
+        agent.update_company_info_from_dict(company, content)
+
+        # Should discover alternate name
+        discovered_names = agent.get_discovered_alternate_names()
+        assert "Acme Corporation" in discovered_names
 
     def test_research_updates_company_name(self):
         """Test that research updates the company name."""

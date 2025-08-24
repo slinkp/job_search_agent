@@ -321,7 +321,7 @@ def test_research_company_creates_event():
                     ) as mock_followup:
                         # Configure mocks
                         company_info = CompaniesSheetRow(name="Test Company")
-                        mock_initial.return_value = company_info
+                        mock_initial.return_value = (company_info, [])
                         mock_comp.return_value = company_info
                         mock_followup.return_value = company_info
 
@@ -356,7 +356,7 @@ def test_research_company_with_recruiter_message(
 ):
     """Test creating a company from a recruiter message."""
     # Configure mocks
-    mock_research_methods["company_researcher"].return_value = complete_company_info
+    mock_research_methods["company_researcher"].return_value = (complete_company_info, [])
     mock_research_methods["levels_extract"].return_value = levels_data["levels"]
     mock_research_methods["levels_main"].return_value = levels_data["main_data"]
     mock_research_methods["linkedin_main"].return_value = linkedin_data
@@ -392,7 +392,10 @@ def test_research_company_with_string_message(
 ):
     """Test creating a company from a string message."""
     # Configure mocks
-    mock_research_methods["company_researcher"].return_value = basic_company_info
+    mock_research_methods["company_researcher"].return_value = (
+        basic_company_info,
+        [],
+    )
     mock_research_methods["levels_extract"].return_value = levels_data["levels"]
     mock_research_methods["levels_main"].return_value = levels_data["main_data"]
     mock_research_methods["linkedin_main"].return_value = linkedin_data
@@ -422,10 +425,13 @@ def test_research_company_with_unknown_company(
 ):
     """Test creating a company when the name can't be extracted."""
     # Configure mocks
-    mock_research_methods["company_researcher"].return_value = CompaniesSheetRow(
-        name=None,
-        type="Private",
-        url="https://acme.com",
+    mock_research_methods["company_researcher"].return_value = (
+        CompaniesSheetRow(
+            name=None,
+            type="Private",
+            url="https://acme.com",
+        ),
+        [],
     )
     mock_research_methods["levels_main"].return_value = []
     mock_research_methods["levels_extract"].return_value = []
@@ -461,7 +467,10 @@ def test_research_company_with_advanced_research(
 ):
     """Test creating a company with advanced research enabled."""
     # Configure mocks
-    mock_research_methods["company_researcher"].return_value = complete_company_info
+    mock_research_methods["company_researcher"].return_value = (
+        complete_company_info,
+        [],
+    )
     mock_research_methods["levels_extract"].return_value = levels_data["levels"]
     mock_research_methods["levels_main"].return_value = levels_data["main_data"]
     mock_research_methods["linkedin_main"].return_value = linkedin_data

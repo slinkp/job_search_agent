@@ -1303,3 +1303,427 @@ def test_message_reply_generation_affects_company_draft(clean_test_db, mock_task
     assert msg1_data["reply_status"] == "generated"
     assert msg2_data["reply_message"] == "Generated reply for company"
     assert msg2_data["reply_status"] == "generated"
+
+
+# Alias management endpoint tests
+def test_create_company_alias_success(clean_test_db):
+    """Test creating a new alias for a company."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"alias": "Test Corp"})
+        request.matchdict = {"company_id": "test-company"}
+        response = server.app.create_company_alias(request)
+
+    # Verify the response
+    assert "id" in response
+    assert response["company_id"] == "test-company"
+    assert response["alias"] == "Test Corp"
+    assert response["normalized_alias"] == "test-corp"
+    assert response["source"] == "manual"
+    assert response["is_active"] is True
+
+
+def test_create_company_alias_with_canonical_setting(clean_test_db):
+    """Test creating an alias and setting it as canonical."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Original Name",
+        details=CompaniesSheetRow(name="Original Name"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(
+            json_body={"alias": "New Canonical Name", "set_as_canonical": True}
+        )
+        request.matchdict = {"company_id": "test-company"}
+        response = server.app.create_company_alias(request)
+
+    # Verify the alias was created
+    assert response["alias"] == "New Canonical Name"
+
+    # Verify the company name was updated
+    updated_company = repo.get("test-company")
+    assert updated_company.name == "New Canonical Name"
+    assert updated_company.details.name == "New Canonical Name"
+
+
+def test_create_company_alias_without_canonical_setting(clean_test_db):
+    """Test creating an alias without setting it as canonical."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Original Name",
+        details=CompaniesSheetRow(name="Original Name"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(
+            json_body={"alias": "New Alias", "set_as_canonical": False}
+        )
+        request.matchdict = {"company_id": "test-company"}
+        response = server.app.create_company_alias(request)
+
+    # Verify the alias was created
+    assert response["alias"] == "New Alias"
+
+    # Verify the company name was NOT updated
+    updated_company = repo.get("test-company")
+    assert updated_company.name == "Original Name"
+    assert updated_company.details.name == "Original Name"
+
+
+def test_create_company_alias_missing_alias(clean_test_db):
+    """Test creating an alias with missing alias field."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={})
+        request.matchdict = {"company_id": "test-company"}
+        response = server.app.create_company_alias(request)
+
+    # Verify error response
+    assert response["error"] == "alias is required"
+    assert request.response.status == "400 Bad Request"
+
+
+def test_create_company_alias_company_not_found(clean_test_db):
+    """Test creating an alias for a non-existent company."""
+    repo = clean_test_db
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"alias": "Test Corp"})
+        request.matchdict = {"company_id": "non-existent-company"}
+        response = server.app.create_company_alias(request)
+
+    # Verify error response
+    assert response["error"] == "Company not found"
+    assert request.response.status == "404 Not Found"
+
+
+def test_update_company_alias_success(clean_test_db):
+    """Test updating an existing alias."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Create an alias
+    alias_id = repo.create_alias("test-company", "Original Alias", "manual")
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"alias": "Updated Alias"})
+        request.matchdict = {"company_id": "test-company", "alias_id": alias_id}
+        response = server.app.update_company_alias(request)
+
+    # Verify the response
+    assert response["alias"] == "Updated Alias"
+    assert response["normalized_alias"] == "updated-alias"
+
+
+def test_update_company_alias_is_active(clean_test_db):
+    """Test updating an alias's active status."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Create an alias
+    alias_id = repo.create_alias("test-company", "Test Alias", "manual")
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"is_active": False})
+        request.matchdict = {"company_id": "test-company", "alias_id": alias_id}
+        response = server.app.update_company_alias(request)
+
+    # Verify the response
+    assert response["is_active"] is False
+
+
+def test_update_company_alias_no_fields(clean_test_db):
+    """Test updating an alias with no fields to update."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Create an alias
+    alias_id = repo.create_alias("test-company", "Test Alias", "manual")
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={})
+        request.matchdict = {"company_id": "test-company", "alias_id": alias_id}
+        response = server.app.update_company_alias(request)
+
+    # Verify error response
+    assert response["error"] == "At least one field to update is required"
+    assert request.response.status == "400 Bad Request"
+
+
+def test_update_company_alias_not_found(clean_test_db):
+    """Test updating a non-existent alias."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"alias": "Updated Alias"})
+        request.matchdict = {"company_id": "test-company", "alias_id": 999}
+        response = server.app.update_company_alias(request)
+
+    # Verify error response
+    assert response["error"] == "Alias not found"
+    assert request.response.status == "404 Not Found"
+
+
+def test_update_company_alias_company_not_found(clean_test_db):
+    """Test updating an alias for a non-existent company."""
+    repo = clean_test_db
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"alias": "Updated Alias"})
+        request.matchdict = {"company_id": "non-existent-company", "alias_id": 1}
+        response = server.app.update_company_alias(request)
+
+    # Verify error response
+    assert response["error"] == "Company not found"
+    assert request.response.status == "404 Not Found"
+
+
+def test_delete_company_alias_success(clean_test_db):
+    """Test deactivating an alias."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Create an alias
+    alias_id = repo.create_alias("test-company", "Test Alias", "manual")
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"company_id": "test-company", "alias_id": alias_id}
+        response = server.app.delete_company_alias(request)
+
+    # Verify the response
+    assert response["success"] is True
+    assert response["message"] == "Alias deactivated"
+
+    # Verify the alias is now inactive
+    alias = repo.get_alias(alias_id)
+    assert alias["is_active"] is False
+
+
+def test_delete_company_alias_not_found(clean_test_db):
+    """Test deactivating a non-existent alias."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"company_id": "test-company", "alias_id": 999}
+        response = server.app.delete_company_alias(request)
+
+    # Verify error response
+    assert response["error"] == "Alias not found"
+    assert request.response.status == "404 Not Found"
+
+
+def test_delete_company_alias_company_not_found(clean_test_db):
+    """Test deactivating an alias for a non-existent company."""
+    repo = clean_test_db
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"company_id": "non-existent-company", "alias_id": 1}
+        response = server.app.delete_company_alias(request)
+
+    # Verify error response
+    assert response["error"] == "Company not found"
+    assert request.response.status == "404 Not Found"
+
+
+def test_get_company_includes_aliases(clean_test_db):
+    """Test that GET /api/companies/:id includes aliases field."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Create some aliases
+    repo.create_alias("test-company", "Test Corp", "manual")
+    repo.create_alias("test-company", "TC", "auto")
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"company_id": "test-company"}
+        response = server.app.get_company(request)
+
+    # Verify the response includes aliases
+    assert "aliases" in response
+    aliases = response["aliases"]
+    assert isinstance(aliases, list)
+    assert len(aliases) == 2
+
+    # Verify alias structure
+    for alias in aliases:
+        assert "alias" in alias
+        assert "source" in alias
+        assert "is_active" in alias
+        assert isinstance(alias["alias"], str)
+        assert isinstance(alias["source"], str)
+        assert isinstance(alias["is_active"], bool)
+
+    # Verify specific aliases
+    alias_names = [a["alias"] for a in aliases]
+    assert "Test Corp" in alias_names
+    assert "TC" in alias_names
+
+
+def test_get_companies_includes_aliases(clean_test_db):
+    """Test that GET /api/companies includes aliases field for each company."""
+    repo = clean_test_db
+
+    # Create test companies
+    company1 = Company(
+        company_id="test-company-1",
+        name="Test Company 1",
+        details=CompaniesSheetRow(name="Test Company 1"),
+        status=CompanyStatus(),
+    )
+    company2 = Company(
+        company_id="test-company-2",
+        name="Test Company 2",
+        details=CompaniesSheetRow(name="Test Company 2"),
+        status=CompanyStatus(),
+    )
+    repo.create(company1)
+    repo.create(company2)
+
+    # Create aliases for company1
+    repo.create_alias("test-company-1", "TC1", "manual")
+    repo.create_alias("test-company-1", "Test Corp 1", "auto")
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        response = server.app.get_companies(request)
+
+    # Verify response structure
+    assert isinstance(response, list)
+    assert len(response) == 2
+
+    # Find company1 in response
+    company1_response = next(c for c in response if c["company_id"] == "test-company-1")
+    company2_response = next(c for c in response if c["company_id"] == "test-company-2")
+
+    # Verify company1 has aliases
+    assert "aliases" in company1_response
+    aliases = company1_response["aliases"]
+    assert isinstance(aliases, list)
+    assert len(aliases) == 2
+
+    # Verify alias structure for company1
+    for alias in aliases:
+        assert "alias" in alias
+        assert "source" in alias
+        assert "is_active" in alias
+        assert isinstance(alias["alias"], str)
+        assert isinstance(alias["source"], str)
+        assert isinstance(alias["is_active"], bool)
+
+    # Verify specific aliases for company1
+    alias_names = [a["alias"] for a in aliases]
+    assert "TC1" in alias_names
+    assert "Test Corp 1" in alias_names
+
+    # Verify company2 has aliases (should be empty or just seed alias)
+    assert "aliases" in company2_response
+    company2_aliases = company2_response["aliases"]
+    assert isinstance(company2_aliases, list)
