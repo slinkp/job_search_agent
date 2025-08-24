@@ -995,6 +995,35 @@ class CompanyRepository:
                 conn.commit()
                 return cursor.rowcount > 0
 
+    def list_aliases(self, company_id: str) -> list[dict]:
+        """List all aliases for a company.
+
+        Args:
+            company_id: The company ID
+
+        Returns:
+            List of alias dictionaries with keys: id, alias, source, is_active
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, alias, source, is_active
+                FROM company_aliases
+                WHERE company_id = ?
+                ORDER BY source, alias
+                """,
+                (company_id,),
+            )
+            return [
+                {
+                    "id": row[0],
+                    "alias": row[1],
+                    "source": row[2],
+                    "is_active": bool(row[3]),
+                }
+                for row in cursor.fetchall()
+            ]
+
     def set_alias_as_canonical(self, company_id: str, alias_id: int) -> bool:
         """Set an alias as the canonical name for a company.
 

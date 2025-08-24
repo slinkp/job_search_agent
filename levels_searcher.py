@@ -9,6 +9,8 @@ from typing import Dict, Iterable, List
 
 from playwright.sync_api import sync_playwright
 
+from models import company_repository
+
 logger = logging.getLogger(__name__)
 
 
@@ -976,7 +978,60 @@ def main(company_name: str = "", company_salary_url: str = "", headless: bool = 
 def extract_levels(company_name: str, headless: bool = True):
     searcher = LevelsFyiSearcher(headless=headless)
     try:
-        return searcher.find_and_extract_levels(company_name)
+        # Try to resolve the company via repository to check for aliases
+
+        repo = company_repository()
+        company = repo.get_by_normalized_name(company_name)
+
+        if company is None:
+            logger.warning(
+                f"Company {company_name} not found in repo, falling back to find_and_extract_levels(company_name)"
+            )
+            # Company unknown in repo, use legacy behavior
+            return searcher.find_and_extract_levels(company_name)
+
+        # Build candidates in priority order: canonical first, then aliases by source priority
+        candidates = [company.name]  # Start with canonical name
+
+        # Get active aliases and sort by source priority: manual > auto > seed
+        aliases = repo.list_aliases(company.company_id)
+        active_aliases = [a for a in aliases if a["is_active"]]
+
+        # Sort by source priority
+        source_priority = {"manual": 0, "auto": 1, "seed": 2}
+        sorted_aliases = sorted(
+            active_aliases, key=lambda a: source_priority.get(a["source"], 3)
+        )
+
+        # Add aliases to candidates, avoiding duplicates
+        for alias in sorted_aliases:
+            if alias["alias"] != company.name:  # Avoid duplicate canonical name
+                candidates.append(alias["alias"])
+
+        # Try each candidate in order
+        for candidate_name in candidates:
+            results = searcher.find_and_extract_levels(candidate_name)
+            if results:  # Found working name
+                # If this is not the canonical name, set it as canonical
+                if candidate_name != company.name:
+                    logger.info(
+                        f"Setting {candidate_name} as canonical for company {company.name}; worked on levels.fyi"
+                    )
+                    # Find the alias_id for this candidate
+                    for alias in active_aliases:
+                        if alias["alias"] == candidate_name:
+                            repo.set_alias_as_canonical(company.company_id, alias["id"])
+                            break
+                return results
+
+        # No working names found
+        logger.error(
+            "Levels: no working names found for company_id=%s (tried: %s)",
+            company.company_id,
+            candidates,
+        )
+        return []
+
     finally:
         searcher.cleanup()
 
