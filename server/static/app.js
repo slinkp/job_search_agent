@@ -521,8 +521,6 @@ document.addEventListener("alpine:init", () => {
         return this.sendingMessages.has(company.name);
       },
 
-      
-
       async scanEmails(maxMessages = 10) {
         try {
           // Use the shared email scanning service

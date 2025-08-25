@@ -51,14 +51,16 @@ export class CompaniesService {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || `Failed to save reply: ${response.status}`);
+      throw new Error(
+        error.error || `Failed to save reply: ${response.status}`
+      );
     }
     return response.json();
   }
 
   async loadCompany(companyId) {
     const company = await this.getCompany(companyId);
-    
+
     // Get associated messages
     const messagesResponse = await fetch(`/api/messages`);
     if (messagesResponse.ok) {
@@ -69,7 +71,7 @@ export class CompaniesService {
     } else {
       company.associated_messages = [];
     }
-    
+
     return company;
   }
 
@@ -77,15 +79,11 @@ export class CompaniesService {
     // Get message details
     const messagesResponse = await fetch(`/api/messages`);
     if (!messagesResponse.ok) {
-      throw new Error(
-        `Failed to load messages: ${messagesResponse.status}`
-      );
+      throw new Error(`Failed to load messages: ${messagesResponse.status}`);
     }
 
     const allMessages = await messagesResponse.json();
-    const message = allMessages.find(
-      (msg) => msg.message_id === messageId
-    );
+    const message = allMessages.find((msg) => msg.message_id === messageId);
 
     if (!message) {
       throw new Error("Message not found");
@@ -106,21 +104,28 @@ export class CompaniesService {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || `Failed to archive message: ${response.status}`);
+      throw new Error(
+        error.error || `Failed to archive message: ${response.status}`
+      );
     }
     return response.json();
   }
 
   async sendAndArchive(messageId) {
-    const response = await fetch(`/api/messages/${messageId}/send_and_archive`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await fetch(
+      `/api/messages/${messageId}/send_and_archive`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || `Failed to send and archive: ${response.status}`);
+      throw new Error(
+        error.error || `Failed to send and archive: ${response.status}`
+      );
     }
     return response.json();
   }
@@ -131,7 +136,9 @@ export class CompaniesService {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || `Failed to generate reply: ${response.status}`);
+      throw new Error(
+        error.error || `Failed to generate reply: ${response.status}`
+      );
     }
     return response.json();
   }
@@ -142,7 +149,9 @@ export class CompaniesService {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || `Failed to start research: ${response.status}`);
+      throw new Error(
+        error.error || `Failed to start research: ${response.status}`
+      );
     }
     return response.json();
   }
@@ -168,7 +177,9 @@ export class CompaniesService {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || `Failed to submit research: ${response.status}`);
+      throw new Error(
+        error.error || `Failed to submit research: ${response.status}`
+      );
     }
     return response.json();
   }
@@ -199,7 +210,9 @@ export class CompaniesService {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || `Failed to scan emails: ${response.status}`);
+      throw new Error(
+        error.error || `Failed to scan emails: ${response.status}`
+      );
     }
     return response.json();
   }
