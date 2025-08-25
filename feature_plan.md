@@ -78,11 +78,10 @@ We will add a first-class, many-to-one alias model to support arbitrary company 
 8. Test inventory
 
 - [x] Models/repo: alias CRUD, matching precedence (canonical, manual, auto, seed), inactive handling, uniqueness.
-- [ ] Researcher: Notion guardrails.
-- [ ] Levels: alias usage.
-- [ ] Linkedin: alias usage.
+- [x] Researcher: Notion guardrails.
+- [x] Levels: alias usage.
+- [x] Linkedin: alias usage.
 - [x] API: payload shape and validation.
-- [ ] Backfill: idempotency and counts.
 
 
 Notes
