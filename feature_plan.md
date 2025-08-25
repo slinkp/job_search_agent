@@ -69,25 +69,21 @@ We will add a first-class, many-to-one alias model to support arbitrary company 
 
 7. Minimal frontend surface (optional but recommended)
 
-- [ ] Companies page: show aliases list and allow add/deactivate.
+- [x] Companies page: show aliases list and allow add/deactivate.
     - [x] Show aliases list (display only)
     - [x] "Add" form needs a checkbox option to set this new alias as canonical. **Enabled by default**
-- [ ] Keep UI simple; reuse existing fetch helpers.
+- [x] Keep UI simple; reuse existing fetch helpers.
 - [x] Tests: unit for rendering and basic interactions.
 
 8. Test inventory
 
-- [ ] Models/repo: alias CRUD, matching precedence (canonical, manual, auto, seed), inactive handling, uniqueness.
+- [x] Models/repo: alias CRUD, matching precedence (canonical, manual, auto, seed), inactive handling, uniqueness.
 - [ ] Researcher: Notion guardrails.
 - [ ] Levels: alias usage.
 - [ ] Linkedin: alias usage.
-- [ ] API: payload shape and validation.
+- [x] API: payload shape and validation.
 - [ ] Backfill: idempotency and counts.
 
-9. Docs and cleanup
-
-- [ ] Update README "Company name normalization issues" with new capabilities.
-- [ ] Add examples for common cases (AWS/Amazon, Meta/Facebook, Alphabet/Google).
 
 Notes
 
