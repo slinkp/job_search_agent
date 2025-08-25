@@ -1307,7 +1307,7 @@ def test_message_reply_generation_affects_company_draft(clean_test_db, mock_task
 
 # Alias management endpoint tests
 def test_create_company_alias_success(clean_test_db):
-    """Test creating a new alias for a company."""
+    """Test successful creation of a company alias via POST /api/companies/:id/aliases."""
     repo = clean_test_db
 
     # Create a test company
@@ -1395,7 +1395,7 @@ def test_create_company_alias_without_canonical_setting(clean_test_db):
 
 
 def test_create_company_alias_missing_alias(clean_test_db):
-    """Test creating an alias with missing alias field."""
+    """Test that creating an alias without the alias field returns 400 error."""
     repo = clean_test_db
 
     # Create a test company
@@ -1409,8 +1409,9 @@ def test_create_company_alias_missing_alias(clean_test_db):
 
     # Mock the repository
     with patch("models.company_repository", return_value=repo):
-        request = DummyRequest(json_body={})
+        request = DummyRequest()
         request.matchdict = {"company_id": "test-company"}
+        request.json_body = {"set_as_canonical": True}
         response = server.app.create_company_alias(request)
 
     # Verify error response
@@ -1419,13 +1420,14 @@ def test_create_company_alias_missing_alias(clean_test_db):
 
 
 def test_create_company_alias_company_not_found(clean_test_db):
-    """Test creating an alias for a non-existent company."""
+    """Test that creating an alias for non-existent company returns 404 error."""
     repo = clean_test_db
 
     # Mock the repository
     with patch("models.company_repository", return_value=repo):
-        request = DummyRequest(json_body={"alias": "Test Corp"})
+        request = DummyRequest()
         request.matchdict = {"company_id": "non-existent-company"}
+        request.json_body = {"alias": "Test Corp", "set_as_canonical": True}
         response = server.app.create_company_alias(request)
 
     # Verify error response
@@ -1729,69 +1731,6 @@ def test_get_companies_includes_aliases(clean_test_db):
     assert isinstance(company2_aliases, list)
 
 
-def test_create_company_alias_success(clean_test_db):
-    """Test successful creation of a company alias via POST /api/companies/:id/aliases."""
-    repo = clean_test_db
-
-    # Create a test company
-    company = Company(
-        company_id="test-company",
-        name="Test Company",
-        details=CompaniesSheetRow(name="Test Company"),
-        status=CompanyStatus(),
-    )
-    repo.create(company)
-
-    # Mock the repository
-    with patch("models.company_repository", return_value=repo):
-        request = DummyRequest()
-        request.matchdict = {"company_id": "test-company"}
-        request.json_body = {"alias": "Test Corp", "set_as_canonical": True}
-        response = server.app.create_company_alias(request)
-
-    # Verify successful response
-    assert response is not None
-    assert "id" in response
-    assert "company_id" in response
-    assert "alias" in response
-    assert "normalized_alias" in response
-    assert "source" in response
-    assert "is_active" in response
-    assert "created_at" in response
-    assert "updated_at" in response
-
-    # Verify response values
-    assert response["company_id"] == "test-company"
-    assert response["alias"] == "Test Corp"
-    assert response["normalized_alias"] == "test-corp"
-    assert response["source"] == "manual"
-    assert response["is_active"] is True
-
-    def test_create_company_alias_missing_alias(clean_test_db):
-        """Test that creating an alias without the alias field returns 400 error."""
-        repo = clean_test_db
-
-        # Create a test company
-        company = Company(
-            company_id="test-company",
-            name="Test Company",
-            details=CompaniesSheetRow(name="Test Company"),
-            status=CompanyStatus(),
-        )
-        repo.create(company)
-
-        # Mock the repository
-        with patch("models.company_repository", return_value=repo):
-            request = DummyRequest()
-            request.matchdict = {"company_id": "test-company"}
-            request.json_body = {"set_as_canonical": True}
-            response = server.app.create_company_alias(request)
-
-        # Verify error response
-        assert response["error"] == "alias is required"
-        assert request.response.status == "400 Bad Request"
-
-
 def test_create_company_alias_empty_alias(clean_test_db):
     """Test that creating an alias with empty alias field returns 400 error."""
     repo = clean_test_db
@@ -1815,22 +1754,6 @@ def test_create_company_alias_empty_alias(clean_test_db):
         # Verify error response
         assert response["error"] == "alias is required"
         assert request.response.status == "400 Bad Request"
-
-
-def test_create_company_alias_company_not_found(clean_test_db):
-    """Test that creating an alias for non-existent company returns 404 error."""
-    repo = clean_test_db
-
-    # Mock the repository
-    with patch("models.company_repository", return_value=repo):
-        request = DummyRequest()
-        request.matchdict = {"company_id": "non-existent-company"}
-        request.json_body = {"alias": "Test Corp", "set_as_canonical": True}
-        response = server.app.create_company_alias(request)
-
-        # Verify error response
-        assert response["error"] == "Company not found"
-        assert request.response.status == "404 Not Found"
 
 
 def test_create_company_alias_default_set_as_canonical(clean_test_db):
