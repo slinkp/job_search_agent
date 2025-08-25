@@ -851,6 +851,40 @@ document.addEventListener("alpine:init", () => {
           this.researchCompanyTaskId = null;
         }
       },
+
+      // Alias management
+      newAlias: "",
+      setAsCanonical: true,
+
+      async addAlias(companyId) {
+        if (!this.newAlias.trim()) {
+          this.showError("Please enter an alias name");
+          return;
+        }
+
+        try {
+          const payload = {
+            alias: this.newAlias.trim(),
+            set_as_canonical: this.setAsCanonical,
+          };
+
+          await companiesService.addAlias(companyId, payload);
+
+          // Clear the form
+          this.newAlias = "";
+          this.setAsCanonical = true;
+
+          // Refresh the company data to show the new alias
+          await this.fetchAndUpdateCompany(companyId);
+
+          this.showSuccess("Alias added successfully!");
+        } catch (err) {
+          errorLogger.logFailedTo("add alias", err);
+          this.showError(
+            err.message || "Failed to add alias. Please try again."
+          );
+        }
+      },
     };
   });
 });

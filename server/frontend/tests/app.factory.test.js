@@ -221,4 +221,19 @@ describe("app/companyList factory-capture", () => {
     expect(rawHtml).toContain('x-if="!alias.is_active"');
     expect(rawHtml).toContain("(Inactive)");
   });
+
+  it("should have HTML structure for add alias form", () => {
+    // Load the raw HTML content
+    const rawHtml = loadIndexHtml();
+
+    // Check that the add alias form exists in the HTML content
+    expect(rawHtml).toContain('class="add-alias-form"');
+    expect(rawHtml).toContain("<strong>Add Alias:</strong>");
+    expect(rawHtml).toContain('x-model="newAlias"');
+    expect(rawHtml).toContain('placeholder="Enter company alias"');
+    expect(rawHtml).toContain('x-model="setAsCanonical"');
+    expect(rawHtml).toContain("checked");
+    expect(rawHtml).toContain("Set as canonical name");
+    expect(rawHtml).toContain('@submit.prevent="addAlias(company.company_id)"');
+  });
 });

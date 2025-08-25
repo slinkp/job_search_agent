@@ -224,6 +224,24 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async addAlias(companyId, payload) {
+    const response = await fetch(
+      `/api/companies/${encodeURIComponent(companyId)}/aliases`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to add alias: ${response.status}`);
+    }
+    return response.json();
+  }
 }
 
 

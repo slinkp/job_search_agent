@@ -249,6 +249,17 @@
                   </template>
                 </ul>
               </div>
+              <div class="add-alias-form">
+                <strong>Add Alias:</strong>
+                <form @submit.prevent="addAlias(company.company_id)">
+                  <input type="text" x-model="newAlias" placeholder="Enter company alias" required>
+                  <label class="checkbox-label">
+                    <input type="checkbox" x-model="setAsCanonical" checked>
+                    <span>Set as canonical name</span>
+                  </label>
+                  <button type="submit" class="outline">Add Alias</button>
+                </form>
+              </div>
               <p>
                 <template
                   x-for="[key, value] in Object.entries(company.details || {})"
