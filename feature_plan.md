@@ -16,7 +16,6 @@ We will implement a company merging system that allows combining duplicate compa
 
 1. Data model: soft deletion support
 
-
 - [x] Migration file: `20250828125000_add_company_soft_delete.py` with tests
     - [x] Add `deleted_at` column to companies table
          - `deleted_at TEXT DEFAULT NULL` (ISO timestamp when company was soft-deleted)
@@ -27,7 +26,7 @@ We will implement a company merging system that allows combining duplicate compa
   - [x] Update `get_all_messages()` to select where the associated company isn't deleted by default
   - [x] Add optional `include_deleted: bool = False` parameter to bypass filter when needed
   - [x] Add `soft_delete_company(company_id: str)` method to set `deleted_at = now()`
-- [x] Tests: verify soft-deleted companies are filtered out, can be included when requested
+  - [x] Verify soft-deleted companies are filtered out, can be included when requested
 - [ ] Data validation script:
   - [ ] Check for orphaned aliases after any merges
   - [ ] Verify referential integrity of messages/events
@@ -35,77 +34,67 @@ We will implement a company merging system that allows combining duplicate compa
 2. Backend: duplicate detection logic
 
 - [ ] New helper functions:
-  - [ ] `find_potential_duplicates(company_id: str) -> List[str]`: find companies with overlapping aliases
-  - [ ] `detect_alias_conflicts(alias: str) -> List[str]`: find existing companies with matching normalized alias
-- [ ] Integration points:
-  - [ ] Research completion: check for alias conflicts, log potential duplicates
-  - [ ] Email ingestion: detect immediate duplicates when creating companies
-  - [ ] Manual alias creation: warn if alias matches existing companies
-- [ ] Tests: various alias overlap scenarios, edge cases with inactive aliases
+  - [ ] `detect_alias_conflicts(alias: str) -> List[str]`: find existing companies with matching normalized alias. Test edge cases with inactive aliases, soft-deleted companies.
+  - [ ] `find_potential_duplicates(company_id: str) -> List[str]`: find companies with overlapping aliases.  Test various alias overlap scenarios. 
+- [ ] Integration points with existing code:
+  - [ ] Research completion: check for alias overlap, add to task result. For now just log potential duplicates
+  - [ ] Email ingestion: detect immediate duplicates when creating aliases for new companies. For now just log these
+  - [ ] Manual alias creation API: warn if alias matches existing companies
 
 3. Backend: company merging logic
 
 - [ ] Core merge function: `merge_companies(canonical_id: str, duplicate_id: str) -> bool`:
-  - [ ] Validate both companies exist and are not deleted
+  - [ ] Validate both companies exist and are not deleted. Test error cases.
   - [ ] Use canonical company's name as final name
-  - [ ] Migrate all aliases from duplicate to canonical (preserve source, update company_id)
-  - [ ] Merge `CompaniesSheetRow` fields: canonical takes precedence, fill empty fields from duplicate
+  - [ ] Migrate all aliases from duplicate to canonical (preserve source, update company_id). Test data preservation.
+  - [ ] Merge `CompaniesSheetRow` fields: canonical takes precedence, fill empty fields from duplicate. Test merge scenarios.
   - [ ] Migrate all `recruiter_messages` to point to canonical company
   - [ ] Migrate all `events` to point to canonical company  
   - [ ] Soft-delete the duplicate company
 - [ ] Validation: prevent merging company with itself, handle already-deleted companies
-- [ ] Tests: comprehensive merge scenarios, data preservation, error cases
 
 4. Task system: merge_companies task type
 
 - [ ] Add `MERGE_COMPANIES = "merge_companies"` to `TaskType` enum
-- [ ] Task args: `{"canonical_company_id": str, "duplicate_company_id": str}`
-- [ ] Research daemon integration: handle `merge_companies` tasks
-- [ ] Error handling: rollback on failure, detailed error messages
-- [ ] Tests: successful merge task, error scenarios, task status updates
+- [ ] Create task with args: `{"canonical_company_id": str, "duplicate_company_id": str}`
+- [ ] Research daemon integration: handle `merge_companies` tasks. Test successful merge task.
+- [ ] Error handling: rollback on failure, detailed error messages. Test error scenarios and rollback.
 
 5. API: company merging endpoints
 
 - [ ] `POST /api/companies/:id/merge` - start merge task:
   - [ ] Request body: `{"duplicate_company_id": str}`
-  - [ ] Validation: both companies exist, not same company, not already deleted
-  - [ ] Creates and returns task_id for merge operation
+  - [ ] Validation: both companies exist, not same company, not already deleted. Test validation error cases.
+  - [ ] Creates and returns task_id for merge operation. Test response shape.
 - [ ] `GET /api/companies/:id/potential-duplicates` - find potential duplicates:
-  - [ ] Returns list of companies with overlapping aliases
+  - [ ] Returns list of companies with overlapping aliases. Test response format.
   - [ ] Include alias overlap details for user decision
-- [ ] Tests: API validation, response shapes, error cases
 
 6. Frontend: manual duplicate detection UI
 
 - [ ] Company detail page: add "Mark as Duplicate" button
-  - [ ] Opens search modal for finding potential merge target
+  - [ ] Opens search modal for finding potential merge target. Test modal opens.
   - [ ] Search by company name with autocomplete
   - [ ] Show alias overlap information to help user decide
-  - [ ] Confirm merge with clear indication of which company survives
+  - [ ] Confirm merge with clear indication of which company survives. Test confirmation flow.
 - [ ] Search functionality:
-  - [ ] Type-ahead search across company names and aliases
+  - [ ] Type-ahead search across company names and aliases. Test search functionality.
   - [ ] Exclude current company and already-deleted companies from results
   - [ ] Highlight matching aliases between companies
-- [ ] Tests: UI interactions, search functionality, merge confirmation flow
 
 7. Frontend: duplicate detection prompts
 
 - [ ] Research completion notifications:
-  - [ ] Show banner/modal when research finds potential duplicates
-  - [ ] Allow user to review and merge or dismiss
+  - [ ] Show banner/modal when research finds potential duplicates. Test notification display.
+  - [ ] Allow user to review and merge or dismiss. Test user interaction flows.
 - [ ] Email scanning notifications:
   - [ ] Prompt user when duplicate company detected during ingestion
   - [ ] Option to merge immediately or create separate company
-- [ ] Tests: notification display, user interaction flows
 
-8. Test inventory
+8. Integration verification
 
-- [ ] Models/repo: soft delete filtering, merge logic, data migration
-- [ ] Task system: merge task creation, execution, error handling  
-- [ ] API: merge endpoints, validation, response formats
-- [ ] Frontend: duplicate detection UI, search, merge confirmation
-- [ ] Integration: research/ingestion duplicate detection prompts
-- [ ] Data integrity: migration, consistency checks
+- [ ] End-to-end testing: complete merge workflow from detection through completion
+- [ ] Data integrity: verify no orphaned data after merges, referential integrity maintained
 
 Notes
 
