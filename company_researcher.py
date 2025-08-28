@@ -6,6 +6,7 @@ import datetime
 import json
 import logging
 import os
+import re
 from typing import Optional
 
 import requests
@@ -268,11 +269,13 @@ class TavilyRAGResearchAgent:
             "Referer": "https://www.linkedin.com/",
         }
         try:
+            logger.info(f"Fetching URL for plaintext: {url}")
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
 
             soup = BeautifulSoup(response.content, "html.parser")
             text = soup.get_text(separator="\n", strip=True)
+            logger.info(f"Fetched {len(text)} characters from {url}")
             return text
         except requests.exceptions.SSLError as e:
             logger.warning(f"SSL error when fetching {url}: {e}")
@@ -299,7 +302,40 @@ class TavilyRAGResearchAgent:
             current_state="10. consider applying",  # Default initial state
         )
 
-        content: str = message if message else self._plaintext_from_url(url)
+        # Prefer plaintext from any non-LinkedIn URL found in the message, if provided
+        content: str
+        if not message:
+            content = self._plaintext_from_url(url)
+        else:
+            # Extract URLs from message
+            urls = set(u.strip(".,)\n ") for u in re.findall(r"https?://\S+", message))
+            non_linkedin_urls = [u for u in urls if not "linkedin.com" in u.lower()]
+
+            chosen_url = ""
+            if non_linkedin_urls:
+                # Prefer careers/jobs URLs first
+                prioritized = [
+                    u
+                    for u in non_linkedin_urls
+                    if any(
+                        tok in u.lower()
+                        for tok in ["/careers", "/jobs", "jobs.", "careers."]
+                    )
+                ]
+                chosen_url = prioritized[0] if prioritized else non_linkedin_urls[0]
+
+            if chosen_url:
+                # Fetch plaintext and SUPPLEMENT the original message, not replace it
+                fetched_text = self._plaintext_from_url(chosen_url)
+                content = (
+                    f"Extract company info from email message and referenced page.\n\n"
+                    f"Referenced URL: {chosen_url}\n\n"
+                    f"---- Begin email message ----\n{message}\n---- End email message ----\n"
+                    f"---- Begin referenced page plaintext ----\n{fetched_text}\n---- End referenced page plaintext ----\n\n"
+                )
+            else:
+                # Fall back to raw message content
+                content = message
 
         data = self.extract_initial_company_info(content)
         company_info.name = data.get("company_name", "")
@@ -308,7 +344,7 @@ class TavilyRAGResearchAgent:
 
         logger.info(f"Initial company info: {company_info}")
 
-        if not (company_info.name or company_info.url):
+        if is_placeholder(company_info.name) and not company_info.url:
             logger.warning(
                 f"Not enough company info to proceed with research: {company_info.company_identifier}"
             )
