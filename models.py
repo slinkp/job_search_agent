@@ -814,12 +814,15 @@ class CompanyRepository:
             return recruiter_message
         return None
 
-    def get_by_normalized_name(self, name: str) -> Optional[Company]:
+    def get_by_normalized_name(
+        self, name: str, include_deleted=False
+    ) -> Optional[Company]:
         """
         Get a company by its normalized name (case-insensitive, whitespace-insensitive).
 
         Args:
             name: The company name to search for
+            include_deleted: Whether to include soft-deleted companies in the search
 
         Returns:
             The Company if found, None otherwise
@@ -833,9 +836,11 @@ class CompanyRepository:
 
         with self._get_connection() as conn:
             # Query for companies where the normalized version of the name matches
-            cursor = conn.execute(
-                "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies WHERE deleted_at IS NULL"
-            )
+            query = "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies"
+            if not include_deleted:
+                query += " WHERE deleted_at IS NULL"
+
+            cursor = conn.execute(query)
             for row in cursor.fetchall():
                 # We normalize each company name from the database and compare.
                 # This is slow, but fine since we expect to have O(100) companies at most.
@@ -1226,12 +1231,16 @@ class CompanyRepository:
                 conn, message.company_id, message.date, "message received"
             )
 
-    def get_all(self, include_messages=False, include_aliases=False) -> List[Company]:
+    def get_all(
+        self, include_messages=False, include_aliases=False, include_deleted=False
+    ) -> List[Company]:
         # Reads can happen without the lock
         with self._get_connection() as conn:
-            cursor = conn.execute(
-                "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies WHERE deleted_at IS NULL"
-            )
+            query = "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies"
+            if not include_deleted:
+                query += " WHERE deleted_at IS NULL"
+
+            cursor = conn.execute(query)
             companies = [self._deserialize_company(row) for row in cursor.fetchall()]
             if include_messages:
                 # Don't worry about this being slow for now
@@ -1306,21 +1315,22 @@ class CompanyRepository:
                 self._update_activity(conn, company_id, when, label)
                 conn.commit()
 
-    def get_all_messages(self) -> List[RecruiterMessage]:
+    def get_all_messages(self, include_deleted=False) -> List[RecruiterMessage]:
         """Get all recruiter messages with basic company info."""
         # Reads can happen without the lock
         with self._get_connection() as conn:
-            cursor = conn.execute(
-                """
+            query = """
                 SELECT m.message_id, m.company_id, m.message, m.subject, m.sender,
                        m.email_thread_link, m.thread_id, m.date, m.archived_at,
                        m.reply_sent_at, c.name as company_name, c.reply_message
                 FROM recruiter_messages m
                 LEFT JOIN companies c ON m.company_id = c.company_id
-                WHERE c.deleted_at IS NULL
-                ORDER BY m.date DESC
-                """
-            )
+            """
+            if not include_deleted:
+                query += " WHERE c.deleted_at IS NULL"
+            query += " ORDER BY m.date DESC"
+
+            cursor = conn.execute(query)
             messages = []
             for row in cursor.fetchall():
                 message = RecruiterMessage(
