@@ -24,7 +24,7 @@ We will implement a company merging system that allows combining duplicate compa
     - [x] Tests: migration success, data consistency checks
 - [ ] Repository changes:
   - [x] Update `get_all()`, `get_by_normalized_name()` to select by `WHERE deleted_at IS NULL` by default
-  - [ ] Update `get_all_messages()` to select where the associated company isn't deleted by default
+  - [x] Update `get_all_messages()` to select where the associated company isn't deleted by default
   - [ ] Add optional `include_deleted: bool = False` parameter to bypass filter when needed
   - [ ] Add `soft_delete_company(company_id: str)` method to set `deleted_at = now()`
 - [ ] Tests: verify soft-deleted companies are filtered out, can be included when requested
