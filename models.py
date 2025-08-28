@@ -689,6 +689,38 @@ class CompanyRepository:
 
             return company
 
+    def soft_delete_company(self, company_id: str) -> bool:
+        """
+        Soft delete a company by setting its deleted_at timestamp.
+
+        Args:
+            company_id: The ID of the company to soft delete
+
+        Returns:
+            True if the company was successfully soft deleted, False if it doesn't exist
+        """
+        with self.lock:
+            with self._get_connection() as conn:
+                # Check if company exists and is not already deleted
+                cursor = conn.execute(
+                    "SELECT deleted_at FROM companies WHERE company_id = ?", (company_id,)
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return False  # Company doesn't exist
+
+                if row[0] is not None:
+                    return True  # Company is already deleted. Idempotent.
+
+                # Soft delete the company
+                now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                conn.execute(
+                    "UPDATE companies SET deleted_at = ? WHERE company_id = ?",
+                    (now, company_id),
+                )
+                conn.commit()
+                return True
+
     def get_recruiter_message(self, company_id: str) -> Optional[RecruiterMessage]:
         """
         Get a single recruiter message by company id.

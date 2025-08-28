@@ -17,17 +17,17 @@ We will implement a company merging system that allows combining duplicate compa
 1. Data model: soft deletion support
 
 
-- [x] Migration file: `20250828125000_add_company_soft_delete.py`
+- [x] Migration file: `20250828125000_add_company_soft_delete.py` with tests
     - [x] Add `deleted_at` column to companies table
          - `deleted_at TEXT DEFAULT NULL` (ISO timestamp when company was soft-deleted)
     - [x] Add index on `deleted_at` for efficient filtering
-    - [x] Tests: migration success, data consistency checks
-- [ ] Repository changes:
+    - [x] Migration success, data consistency checks
+- [x] Repository changes with tests:
   - [x] Update `get_all()`, `get_by_normalized_name()` to select by `WHERE deleted_at IS NULL` by default
   - [x] Update `get_all_messages()` to select where the associated company isn't deleted by default
   - [x] Add optional `include_deleted: bool = False` parameter to bypass filter when needed
-  - [ ] Add `soft_delete_company(company_id: str)` method to set `deleted_at = now()`
-- [ ] Tests: verify soft-deleted companies are filtered out, can be included when requested
+  - [x] Add `soft_delete_company(company_id: str)` method to set `deleted_at = now()`
+- [x] Tests: verify soft-deleted companies are filtered out, can be included when requested
 - [ ] Data validation script:
   - [ ] Check for orphaned aliases after any merges
   - [ ] Verify referential integrity of messages/events

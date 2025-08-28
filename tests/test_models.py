@@ -2040,3 +2040,163 @@ class TestIsPlaceholder:
         assert is_placeholder("placeholder")
         assert not is_placeholder("unknown company")  # Not exact match
         assert not is_placeholder("placeholder inc")  # Not exact match
+
+
+class TestSoftDeleteCompany:
+
+    def test_soft_delete_company_success(self, clean_test_db):
+        """Test successful soft deletion of a company."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="Test Company",
+            details=CompaniesSheetRow(name="Test Company"),
+        )
+        repo.create(company)
+
+        # Verify company exists and is not deleted
+        retrieved_company = repo.get("test-company")
+        assert retrieved_company is not None
+        assert retrieved_company.name == "Test Company"
+
+        # Soft delete the company
+        result = repo.soft_delete_company("test-company")
+        assert result is True, "Soft delete should return True for successful deletion"
+
+        # Verify company is now soft deleted
+        with repo._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT deleted_at FROM companies WHERE company_id = ?", ("test-company",)
+            )
+            row = cursor.fetchone()
+            assert row is not None
+            assert row[0] is not None, "deleted_at should be set to a timestamp"
+
+            # Verify it's a valid ISO timestamp
+            import datetime
+
+            try:
+                datetime.datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+            except ValueError:
+                assert False, "deleted_at should be a valid ISO timestamp"
+
+        # Verify company is filtered out by default queries
+        all_companies = repo.get_all()
+        assert (
+            len(all_companies) == 0
+        ), "Soft deleted company should not appear in get_all()"
+
+        # Verify company can be included when requested
+        all_companies_including_deleted = repo.get_all(include_deleted=True)
+        assert (
+            len(all_companies_including_deleted) == 1
+        ), "Should find company when include_deleted=True"
+
+    def test_soft_delete_company_not_found(self, clean_test_db):
+        """Test soft deletion of a non-existent company."""
+        repo = clean_test_db
+
+        # Try to soft delete a non-existent company
+        result = repo.soft_delete_company("non-existent-company")
+        assert result is False, "Soft delete should return False for non-existent company"
+
+    def test_soft_delete_company_already_deleted(self, clean_test_db):
+        """Test soft deletion of an already deleted company."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="Test Company",
+            details=CompaniesSheetRow(name="Test Company"),
+        )
+        repo.create(company)
+
+        # Soft delete the company
+        result1 = repo.soft_delete_company("test-company")
+        assert result1 is True, "First soft delete should succeed"
+
+        # Try to soft delete it again
+        result2 = repo.soft_delete_company("test-company")
+        assert result2 is True, "Second soft delete should succeed (idempotent)"
+
+    def test_soft_deleted_companies_filtered_out_by_default(self, clean_test_db):
+        """Test that soft-deleted companies are filtered out by default in all repository methods."""
+        repo = clean_test_db
+
+        # Create two test companies
+        company1 = Company(
+            company_id="company-1",
+            name="Company One",
+            details=CompaniesSheetRow(name="Company One"),
+        )
+        company2 = Company(
+            company_id="company-2",
+            name="Company Two",
+            details=CompaniesSheetRow(name="Company Two"),
+        )
+        repo.create(company1)
+        repo.create(company2)
+
+        # Verify both companies exist
+        all_companies = repo.get_all()
+        assert len(all_companies) == 2
+
+        # Soft delete one company
+        repo.soft_delete_company("company-1")
+
+        # Test get_all() filtering
+        all_companies = repo.get_all()
+        assert len(all_companies) == 1
+        assert all_companies[0].company_id == "company-2"
+
+        # Test get_by_normalized_name() filtering
+        found_company = repo.get_by_normalized_name("Company One")
+        assert found_company is None, "Soft deleted company should not be found by name"
+
+        found_company = repo.get_by_normalized_name("Company Two")
+        assert found_company is not None, "Non-deleted company should be found"
+        assert found_company.company_id == "company-2"
+
+        # Test get_all_messages() filtering (create messages for both companies)
+        message1 = RecruiterMessage(
+            message_id="msg-1",
+            company_id="company-1",
+            subject="Message from Company One",
+            message="Test message",
+            thread_id="thread1",
+        )
+        message2 = RecruiterMessage(
+            message_id="msg-2",
+            company_id="company-2",
+            subject="Message from Company Two",
+            message="Test message",
+            thread_id="thread2",
+        )
+        repo.create_recruiter_message(message1)
+        repo.create_recruiter_message(message2)
+
+        all_messages = repo.get_all_messages()
+        assert (
+            len(all_messages) == 1
+        ), "Only message from non-deleted company should be returned"
+        assert all_messages[0].company_id == "company-2"
+
+        # Test that include_deleted=True works for all methods
+        all_companies_with_deleted = repo.get_all(include_deleted=True)
+        assert (
+            len(all_companies_with_deleted) == 2
+        ), "Should include deleted company when requested"
+
+        found_company = repo.get_by_normalized_name("Company One", include_deleted=True)
+        assert (
+            found_company is not None
+        ), "Should find deleted company when include_deleted=True"
+        assert found_company.company_id == "company-1"
+
+        all_messages_with_deleted = repo.get_all_messages(include_deleted=True)
+        assert (
+            len(all_messages_with_deleted) == 2
+        ), "Should include messages from deleted companies when requested"
