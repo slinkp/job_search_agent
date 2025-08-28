@@ -2040,3 +2040,158 @@ class TestIsPlaceholder:
         assert is_placeholder("placeholder")
         assert not is_placeholder("unknown company")  # Not exact match
         assert not is_placeholder("placeholder inc")  # Not exact match
+
+
+class TestSoftDeletionMigration:
+
+    def test_migration_adds_deleted_at_column(self, clean_test_db):
+        """Test that the migration successfully adds the deleted_at column."""
+        repo = clean_test_db
+
+        # Import and run the migration
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "migration", "migrations/20250828125000_add_company_soft_delete.py"
+        )
+        migration_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration_module)
+
+        with repo._get_connection() as conn:
+            migration_module.migrate(conn)
+            conn.commit()
+
+        # Verify the column was added by checking table schema
+        with repo._get_connection() as conn:
+            cursor = conn.execute("PRAGMA table_info(companies)")
+            columns = cursor.fetchall()
+
+            # Find the deleted_at column
+            deleted_at_column = None
+            for column in columns:
+                if column[1] == "deleted_at":  # column name is at index 1
+                    deleted_at_column = column
+                    break
+
+            assert deleted_at_column is not None, "deleted_at column was not added"
+            assert deleted_at_column[2] == "TEXT", "deleted_at column should be TEXT type"
+            assert deleted_at_column[3] == 0, "deleted_at column should allow NULL values"
+
+    def test_migration_creates_index(self, clean_test_db):
+        """Test that the migration creates the expected index."""
+        repo = clean_test_db
+
+        # Import and run the migration
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "migration", "migrations/20250828125000_add_company_soft_delete.py"
+        )
+        migration_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration_module)
+
+        with repo._get_connection() as conn:
+            migration_module.migrate(conn)
+            conn.commit()
+
+        # Verify the index was created
+        with repo._get_connection() as conn:
+            cursor = conn.execute("PRAGMA index_list(companies)")
+            indexes = cursor.fetchall()
+
+            # Find the deleted_at index
+            deleted_at_index = None
+            for index in indexes:
+                if index[1] == "idx_companies_deleted_at":  # index name is at index 1
+                    deleted_at_index = index
+                    break
+
+            assert deleted_at_index is not None, "deleted_at index was not created"
+
+    def test_migration_preserves_existing_data(self, clean_test_db):
+        """Test that the migration preserves existing company data."""
+        repo = clean_test_db
+
+        # Create a test company before migration
+        company = Company(
+            company_id="test-company",
+            name="Test Company",
+            details=CompaniesSheetRow(name="Test Company"),
+        )
+        repo.create(company)
+
+        # Import and run the migration
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "migration", "migrations/20250828125000_add_company_soft_delete.py"
+        )
+        migration_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration_module)
+
+        with repo._get_connection() as conn:
+            migration_module.migrate(conn)
+            conn.commit()
+
+        # Verify the company still exists and has NULL deleted_at
+        retrieved_company = repo.get("test-company")
+        assert retrieved_company is not None
+        assert retrieved_company.company_id == "test-company"
+        assert retrieved_company.name == "Test Company"
+
+        # Check that deleted_at is NULL for existing companies
+        with repo._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT deleted_at FROM companies WHERE company_id = ?", ("test-company",)
+            )
+            row = cursor.fetchone()
+            assert row is not None
+            assert row[0] is None, "Existing companies should have NULL deleted_at"
+
+    def test_migration_rollback_removes_column_and_index(self, clean_test_db):
+        """Test that the migration rollback successfully removes the column and index."""
+        repo = clean_test_db
+
+        # First run the migration
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "migration", "migrations/20250828125000_add_company_soft_delete.py"
+        )
+        migration_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration_module)
+
+        with repo._get_connection() as conn:
+            migration_module.migrate(conn)
+            conn.commit()
+
+        # Verify column and index exist
+        with repo._get_connection() as conn:
+            cursor = conn.execute("PRAGMA table_info(companies)")
+            columns = cursor.fetchall()
+            deleted_at_exists = any(col[1] == "deleted_at" for col in columns)
+            assert deleted_at_exists, "deleted_at column should exist after migration"
+
+            cursor = conn.execute("PRAGMA index_list(companies)")
+            indexes = cursor.fetchall()
+            index_exists = any(idx[1] == "idx_companies_deleted_at" for idx in indexes)
+            assert index_exists, "deleted_at index should exist after migration"
+
+        # Now run the rollback
+        with repo._get_connection() as conn:
+            migration_module.rollback(conn)
+            conn.commit()
+
+        # Verify column and index are removed
+        with repo._get_connection() as conn:
+            cursor = conn.execute("PRAGMA table_info(companies)")
+            columns = cursor.fetchall()
+            deleted_at_exists = any(col[1] == "deleted_at" for col in columns)
+            assert (
+                not deleted_at_exists
+            ), "deleted_at column should be removed after rollback"
+
+            cursor = conn.execute("PRAGMA index_list(companies)")
+            indexes = cursor.fetchall()
+            index_exists = any(idx[1] == "idx_companies_deleted_at" for idx in indexes)
+            assert not index_exists, "deleted_at index should be removed after rollback"

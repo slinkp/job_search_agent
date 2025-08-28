@@ -21,7 +21,7 @@ We will implement a company merging system that allows combining duplicate compa
     - [x] Add `deleted_at` column to companies table
          - `deleted_at TEXT DEFAULT NULL` (ISO timestamp when company was soft-deleted)
     - [x] Add index on `deleted_at` for efficient filtering
-    - [ ] Tests: migration success, data consistency checks
+    - [x] Tests: migration success, data consistency checks
 - [ ] Repository changes:
   - [ ] Update `get_all()`, `get_by_normalized_name()` to select by `WHERE deleted_at IS NULL` by default
   - [ ] Update `get_all_messages()` to select where the associated company isn't deleted by default
