@@ -572,7 +572,8 @@ class CompanyRepository:
                         status TEXT NOT NULL DEFAULT '{}',  -- New status column with default empty JSON
                         activity_at TEXT DEFAULT NULL,
                         last_activity TEXT DEFAULT NULL,
-                        reply_message TEXT
+                        reply_message TEXT,
+                        deleted_at TEXT DEFAULT NULL
                     )
                 """
                 )
