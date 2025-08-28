@@ -503,8 +503,9 @@ class TestUpdateCompanyInfoFromDict:
         discovered_names = agent.get_discovered_alternate_names()
         assert "Acme Corporation" in discovered_names
 
-    def test_research_updates_company_name(self):
-        """Test that research updates the company name."""
+    @pytest.mark.parametrize("has_url", [True, False])
+    def test_research_updates_company_name(self, has_url):
+        """Test that research updates the company name when URL is available, or early returns when not."""
         from company_researcher import TavilyRAGResearchAgent
 
         mock_llm = mock.Mock()
@@ -514,7 +515,7 @@ class TestUpdateCompanyInfoFromDict:
         initial_response_data = json.dumps(
             {
                 "company_name": "Company from bobby bobbers",
-                "company_url": "",  # Empty URL to avoid redo
+                "company_url": "https://example.com" if has_url else "",
             }
         )
 
@@ -525,6 +526,7 @@ class TestUpdateCompanyInfoFromDict:
             }
         )
 
+        # Need more mock responses for the research loop
         mock_llm.invoke.side_effect = [
             mock.Mock(spec=["content"], content=initial_response_data),
             mock.Mock(spec=["content"], content=research_response),
@@ -532,23 +534,33 @@ class TestUpdateCompanyInfoFromDict:
             mock.Mock(spec=["content"], content=json.dumps({})),
             mock.Mock(spec=["content"], content=json.dumps({})),
             mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
         ]
 
-        agent = TavilyRAGResearchAgent(llm=mock_llm)
-        agent.tavily_client = mock_tavily
-        mock_tavily.get_search_context.return_value = "mock search context"
+        with mock.patch.dict("os.environ", {"TAVILY_API_KEY": "fake-key"}):
+            agent = TavilyRAGResearchAgent(llm=mock_llm)
+            agent.tavily_client = mock_tavily
+            mock_tavily.get_search_context.return_value = "mock search context"
 
-        with mock.patch.object(
-            agent,
-            "_plaintext_from_url",
-            return_value="mock website content",
-            autospec=True,
-        ):
-            with mock.patch.dict("os.environ", {"TAVILY_API_KEY": "fake-key"}):
+            with mock.patch.object(
+                agent,
+                "_plaintext_from_url",
+                return_value="mock website content",
+                autospec=True,
+            ):
                 result = agent.main(message="Test message")
 
-        # Verify the company name was updated
-        assert result.name == "New Name"
+        if has_url:
+            # Verify the company name was updated when URL is available
+            assert result.name == "New Name"
+        else:
+            # Verify early return with placeholder name when no URL
+            assert result.name == "Company from bobby bobbers"
 
     def test_extract_initial_company_info_basic(self):
         """Test basic extraction of company info from recruiter message."""
@@ -577,3 +589,99 @@ class TestUpdateCompanyInfoFromDict:
 
         assert result == expected_response
         mock_llm.invoke.assert_called_once()
+
+    @mock.patch.dict("os.environ", {"TAVILY_API_KEY": "fake-key-for-testing"})
+    def test_initial_extraction_uses_non_linkedin_url_content_first(self):
+        """When a recruiter message includes a non-LinkedIn URL, fetch that page and use its plaintext for initial extraction before any web search."""
+        mock_llm = mock.Mock()
+        agent = TavilyRAGResearchAgent(llm=mock_llm)
+
+        # First LLM call (initial extraction) returns minimal JSON
+        mock_llm.invoke.side_effect = [
+            mock.Mock(
+                spec=["content"],
+                content=json.dumps(
+                    {
+                        "company_name": "Example Co",
+                        "company_url": "https://example.com",
+                    }
+                ),
+            ),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+        ]
+
+        fetched_plaintext = "THIS IS WEBSITE PLAINTEXT CONTENT"
+
+        # Avoid real Tavily calls
+        mock_tavily = mock.Mock()
+        mock_tavily.get_search_context.return_value = "mock context"
+        agent.tavily_client = mock_tavily
+
+        # Patch _plaintext_from_url so we don't make a network call
+        with mock.patch.object(
+            agent, "_plaintext_from_url", return_value=fetched_plaintext, autospec=True
+        ) as mock_plain:
+            message = "Hi — check details here: https://example.com/careers and also my LinkedIn https://www.linkedin.com/in/recruiter"
+            result = agent.main(message=message)
+
+        # Ensure we fetched a non-LinkedIn URL (called twice: once for initial, once for redo)
+        assert mock_plain.call_count == 2
+        # Check that both calls were to non-LinkedIn URLs
+        for call_args, _ in mock_plain.call_args_list:
+            # When autospec=True on a bound method, first arg is the instance (self)
+            fetched_url = call_args[1] if len(call_args) > 1 else call_args[0]
+            assert fetched_url.startswith("http")
+            assert "linkedin.com" not in fetched_url
+            assert "example.com" in fetched_url
+
+        # Ensure at least one prompt included both fetched plaintext and original message context
+        prompts = [call_args[0][0] for call_args in mock_llm.invoke.call_args_list]
+        assert any(fetched_plaintext in p for p in prompts)
+        assert any("Begin email message" in p for p in prompts)
+
+        # Basic sanity on the result (case-insensitive name check)
+        assert result.name.lower() == "example co"
+        assert result.url == "https://example.com"
+
+    @mock.patch.dict("os.environ", {"TAVILY_API_KEY": "fake-key-for-testing"})
+    def test_ignore_linkedin_only_links_for_initial_fetch(self):
+        """If a recruiter message only contains LinkedIn links, do not attempt a URL fetch; use the raw message for initial extraction."""
+        mock_llm = mock.Mock()
+        agent = TavilyRAGResearchAgent(llm=mock_llm)
+
+        mock_llm.invoke.side_effect = [
+            mock.Mock(
+                spec=["content"],
+                content=json.dumps(
+                    {
+                        "company_name": "LinkedIn Outreach",
+                        "company_url": None,
+                    }
+                ),
+            ),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+            mock.Mock(spec=["content"], content=json.dumps({})),
+        ]
+
+        # Avoid real Tavily calls
+        mock_tavily = mock.Mock()
+        mock_tavily.get_search_context.return_value = "mock context"
+        agent.tavily_client = mock_tavily
+
+        with mock.patch.object(
+            agent, "_plaintext_from_url", return_value="SHOULD NOT BE USED", autospec=True
+        ) as mock_plain:
+            message = "Connect with me on LinkedIn: https://linkedin.com/in/foo or https://www.linkedin.com/jobs/view/12345"
+            agent.main(message=message)
+
+        # Should not fetch any plaintext since only LinkedIn links are present
+        mock_plain.assert_not_called()

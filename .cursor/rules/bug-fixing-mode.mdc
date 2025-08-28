@@ -1,0 +1,22 @@
+---
+alwaysApply: false
+---
+
+# Bug Fixing Mode
+
+When this mode is invoked, an issue number will be provided.
+
+- use `gh` to fetch the content of the issue or limitation
+- write a new (or modify an existing) test to fail by exercising the issue or limitation.
+  - Think about the best place for this. Usually there is an existing test file and class.
+- Run tests by either `./test`, or `./test --no-python` if frontend only needed.
+   - Never allowed to use any other test commands.  **IMPORTANT** never never run `npm test`. It violates this critical instruction AND it hangs.
+- Fix issue by correctly implementing the feature. Think hard about multiple possible underlying causes. Investigate if needed. Don't assume that your first intuition is correct.
+- Optional: Logging to diagnose is often a good idea. Better than making assumptions without evidence.s
+- Run tests after each change to verify
+- ALL tests must pass in order to be done, no exception.
+    - errors are failures
+    - no tests are "irrelevant"
+    - no test skips allowed
+- Tell me an appropriate commit message re the changes. MUST include text like "closes # <issue number>"
+
