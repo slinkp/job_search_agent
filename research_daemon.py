@@ -249,6 +249,15 @@ class ResearchDaemon:
                     # Create a new company
                     logger.info(f"Creating company {company.name}")
                     self.company_repo.create(company)
+                    # Log potential duplicates by alias/name overlap (non-blocking)
+                    try:
+                        overlaps = self.company_repo.find_potential_duplicates(company.company_id)
+                        if overlaps:
+                            logger.warning(
+                                f"Potential duplicates detected for {company.company_id}: {overlaps}"
+                            )
+                    except Exception:
+                        logger.exception("Duplicate detection failed during research")
                     result_company = company
 
         except Exception as e:
@@ -388,6 +397,16 @@ class ResearchDaemon:
                             f"No company extracted from message {i + 1}, skipping"
                         )
                         continue
+                # After creating/updating company, log potential duplicates (non-blocking)
+                try:
+                    if company:
+                        overlaps = self.company_repo.find_potential_duplicates(company.company_id)
+                        if overlaps:
+                            logger.warning(
+                                f"Potential duplicates detected for {company.company_id}: {overlaps}"
+                            )
+                except Exception:
+                    logger.exception("Duplicate detection failed during email ingestion")
                 processed_count += 1
             except Exception:
                 logger.exception(f"Unexpected error processing recruiter message {i + 1}")

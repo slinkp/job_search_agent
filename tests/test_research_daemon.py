@@ -230,6 +230,21 @@ def test_do_research_existing_company(daemon, test_company, mock_spreadsheet_ups
     mock_spreadsheet_upsert.assert_called_once_with(existing_company.details, daemon.args)
 
 
+def test_do_research_logs_potential_duplicates(daemon, test_company, mock_spreadsheet_upsert):
+    """Ensure duplicate detection is invoked after creating a new company during research."""
+    args = {"company_name": "New Co"}
+
+    daemon.company_repo.get.return_value = None
+    daemon.company_repo.get_by_normalized_name.return_value = None
+    daemon.jobsearch.research_company.return_value = test_company
+
+    daemon.do_research(args)
+
+    daemon.company_repo.find_potential_duplicates.assert_called_once()
+    called_with_company_id = daemon.company_repo.find_potential_duplicates.call_args[0][0]
+    assert called_with_company_id == test_company.company_id
+
+
 def test_do_research_error_new_company(mock_spreadsheet_upsert, daemon, test_company):
     """Test research error handling for a new company."""
     args = {"company_id": "test-corp", "company_name": "Test Corp"}
@@ -347,6 +362,8 @@ def test_do_find_companies_in_recruiter_messages(
     for msg, company in zip(test_recruiter_messages, test_companies):
         daemon.company_repo.create.assert_any_call(company)
     assert daemon.jobsearch.research_company.call_count == 2
+    # Duplicate detection invoked for each processed company (may be called more than once)
+    assert daemon.company_repo.find_potential_duplicates.call_count >= 2
 
 
 def test_do_find_companies_in_recruiter_messages_existing_company(
