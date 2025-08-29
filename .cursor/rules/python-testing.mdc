@@ -10,8 +10,10 @@ alwaysApply: false
 - Mock with `mock.patch`/`mock.patch.object` and ALWAYS use `autospec=True` (or `spec=...`).
   - Use `monkeypatch` only for env vars, dicts, or import paths.
 - Parameterize similar cases with `@pytest.mark.parametrize`.
-- Assert contents before size (e.g., values first, then `len` if needed).
-
+- Avoid assertions about `len()`. Make assertions about specific values first, then only fall back to `len()` if needed.
+- Any tests of database must use model and repository methods instead of raw SQL.
+  - Exception: Raw SQL is only allowed when deliberately testing abnormal
+    or bad data or relations that correct code shouldn't be able to create.
 Reviewer notes:
-- Reject tests without `autospec` (unless justified).
+- Reject all usage of mocking without `autospec` or `spec` (unless justified).
 - Reject `monkeypatch` used to mock methods/functions.
