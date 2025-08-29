@@ -1,0 +1,162 @@
+anthropic
+beautifulsoup4
+colorama
+diskcache
+freezegun
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+langchain_anthropic
+langchain_chroma
+langchain_community
+langchain_openai
+matplotlib
+openai
+pandas
+playwright
+pydantic
+pyramid
+pytest
+python-dateutil
+python-slugify
+requests
+scikit-learn
+tavily-python
+ulid-py
+
+#############
+# NO - these are deps
+#############
+# PasteDeploy
+# PyYAML
+# SQLAlchemy
+# aiohappyeyeballs
+# aiohttp
+# aiosignal
+# annotated_types
+# anyio
+# attrs
+# backoff
+# bcrypt
+# bs4
+# build
+# cachetools
+# certifi
+# charset_normalizer
+# chromadb
+# click
+# coloredlogs
+# contourpy
+# dataclasses-json
+# distro
+# durationpy
+# filelock
+# flatbuffers
+# fonttools
+# frozenlist
+# fsspec
+# google-api-core
+# google-auth
+# googleapis-common-protos
+# greenlet
+# grpcio
+# h11
+# hf-xet
+# httpcore
+# httplib2
+# httptools
+# httpx
+# httpx-sse
+# huggingface-hub
+# humanfriendly
+# hupper
+# idna
+# importlib-metadata
+# importlib-resources
+# jiter
+# joblib
+# jsonpatch
+# jsonpointer
+# jsonschema
+# jsonschema-specifications
+# kiwisolver
+# kubernetes
+# langchain
+# langchain-core
+# langchain-text-splitters
+# langsmith
+# legacy-cgi
+# markdown-it-py
+# marshmallow
+# mdurl
+# mmh3
+# mpmath
+# multidict
+# mypy-extensions
+# numpy
+# oauthlib
+# onnxruntime
+# opentelemetry-api
+# opentelemetry-exporter-otlp-proto-common
+# opentelemetry-exporter-otlp-proto-grpc
+# opentelemetry-proto
+# opentelemetry-sdk
+# opentelemetry-semantic-conventions
+# orjson
+# overrides
+# plaster
+# plaster-pastedeploy
+# pluggy
+# posthog
+# propcache
+# proto-plus
+# protobuf
+# pyasn1
+# pyasn1-modules
+# pybase64
+# pydantic-settings
+# pydantic_core
+# pyee
+# pyparsing
+# pypika
+# pyproject_hooks
+# python-dotenv
+# pytz
+# referencing
+# regex
+# requests-oauthlib
+# requests-toolbelt
+# rich
+# rpds-py
+# rsa
+# scipy
+# setuptools
+# shellingham
+# sniffio
+# soupsieve
+# sympy
+# tenacity
+# threadpoolctl
+# tiktoken
+# tokenizers
+# tqdm
+# translationstring
+# typer
+# typing-inspect
+# typing_extensions
+# typing_inspection
+# tzdata
+# uritemplate
+# urllib3
+# uvicorn
+# uvloop
+# venusian
+# watchfiles
+# webob
+# websocket-client
+# websockets
+# yarl
+# zipp
+# zope.deprecation
+# zope.interface
+# zstandard
