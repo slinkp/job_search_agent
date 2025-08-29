@@ -1140,6 +1140,110 @@ class CompanyRepository:
                 conn.commit()
                 return True
 
+    def detect_alias_conflicts(self, alias: str, include_deleted: bool = False) -> list[str]:
+        """Find existing companies that would conflict with the given alias.
+
+        A conflict occurs when the alias (normalized) matches either:
+        - An active alias for another company, or
+        - The canonical company name of another company
+
+        By default, soft-deleted companies are excluded.
+
+        Args:
+            alias: The alias text to check for conflicts
+            include_deleted: If True, include soft-deleted companies in results
+
+        Returns:
+            List of company_ids that have a conflicting alias/name
+        """
+        normalized = normalize_company_name(alias)
+        conflicting_company_ids: set[str] = set()
+
+        with self._get_connection() as conn:
+            # Match active aliases
+            alias_query = (
+                """
+                SELECT DISTINCT c.company_id
+                FROM company_aliases a
+                JOIN companies c ON c.company_id = a.company_id
+                WHERE a.normalized_alias = ? AND a.is_active = 1
+                """
+            )
+            params: list[object] = [normalized]
+            if not include_deleted:
+                alias_query += " AND c.deleted_at IS NULL"
+
+            for row in conn.execute(alias_query, params):
+                conflicting_company_ids.add(row[0])
+
+            # Match canonical company names
+            company_rows = conn.execute(
+                "SELECT company_id, name, deleted_at FROM companies"
+            ).fetchall()
+            for company_id, name, deleted_at in company_rows:
+                if not include_deleted and deleted_at is not None:
+                    continue
+                if normalize_company_name(name) == normalized:
+                    conflicting_company_ids.add(company_id)
+
+        return sorted(conflicting_company_ids)
+
+    def find_potential_duplicates(
+        self, company_id: str, include_deleted: bool = False
+    ) -> list[str]:
+        """Find companies that are potential duplicates of the given company.
+
+        Potential duplicates are detected when the canonical name or any active
+        alias of the target company overlaps (normalized) with the canonical
+        name or any active alias of another company.
+
+        By default, soft-deleted companies are excluded.
+
+        Args:
+            company_id: The ID of the company to compare against others
+            include_deleted: If True, include soft-deleted companies in results
+
+        Returns:
+            List of other company_ids that appear to be duplicates
+        """
+        # Build the set of normalized names for the target company: canonical + active aliases
+        target = self.get(company_id)
+        if target is None:
+            return []
+
+        target_norms: set[str] = {normalize_company_name(target.name)}
+        for alias in self.list_aliases(company_id):
+            if alias.get("is_active"):
+                target_norms.add(normalize_company_name(alias.get("alias", "")))
+
+        # Compare against all other companies
+        duplicates: set[str] = set()
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT company_id, name, deleted_at FROM companies"
+            ).fetchall()
+
+        for other_company_id, other_name, other_deleted_at in rows:
+            if other_company_id == company_id:
+                continue
+            if not include_deleted and other_deleted_at is not None:
+                continue
+
+            # Check canonical name overlap
+            if normalize_company_name(other_name) in target_norms:
+                duplicates.add(other_company_id)
+                continue
+
+            # Check active aliases overlap
+            for alias in self.list_aliases(other_company_id):
+                if not alias.get("is_active"):
+                    continue
+                if normalize_company_name(alias.get("alias", "")) in target_norms:
+                    duplicates.add(other_company_id)
+                    break
+
+        return sorted(duplicates)
+
     def _get_recruiter_message(
         self, company_id: str, conn: sqlite3.Connection
     ) -> Optional[RecruiterMessage]:

@@ -177,6 +177,63 @@ class TestCompanyRepository:
         company_ids = {company.company_id for company in all_companies}
         assert company_ids == {"test-company-0", "test-company-1", "test-company-2"}
 
+    def test_detect_alias_conflicts_and_potential_duplicates(self, clean_test_db):
+        repo = clean_test_db
+
+        # Create canonical companies
+        acme = Company(
+            company_id="acme",
+            name="Acme Corp",
+            details=CompaniesSheetRow(name="Acme Corp"),
+        )
+        repo.create(acme)
+
+        beta = Company(
+            company_id="beta",
+            name="Beta Incorporated",
+            details=CompaniesSheetRow(name="Beta Incorporated"),
+        )
+        repo.create(beta)
+
+        # Add aliases
+        repo.create_alias("acme", "ACME", "manual")
+        repo.create_alias("acme", "Acme Corporation", "manual")
+        repo.create_alias("beta", "Beta Inc", "manual")
+
+        # A new alias that equals acme's canonical should conflict with acme
+        conflicts = repo.detect_alias_conflicts("Acme Corp")
+        assert conflicts == ["acme"]
+
+        # A new alias that equals an existing alias should conflict
+        conflicts2 = repo.detect_alias_conflicts("beta inc")
+        assert conflicts2 == ["beta"]
+
+        # Potential duplicates for acme: none with beta
+        dups_acme = repo.find_potential_duplicates("acme")
+        assert dups_acme == []
+
+        # Now create a duplicate company with overlapping alias
+        acme_dup = Company(
+            company_id="acme-dup",
+            name="Acme",
+            details=CompaniesSheetRow(name="Acme"),
+        )
+        repo.create(acme_dup)
+        repo.create_alias("acme-dup", "Acme Corporation", "manual")
+
+        # Duplicates should be detected in both directions
+        assert repo.find_potential_duplicates("acme") == ["acme-dup"]
+        assert repo.find_potential_duplicates("acme-dup") == ["acme"]
+
+        # Soft delete the duplicate and ensure it's excluded by default
+        repo.soft_delete_company("acme-dup")
+        assert repo.find_potential_duplicates("acme") == []
+
+        # But it can be included when requested
+        assert repo.find_potential_duplicates("acme", include_deleted=True) == [
+            "acme-dup"
+        ]
+
     def test_company_with_recruiter_message(self, clean_test_db):
         """Test creating and retrieving a company with a recruiter message."""
         repo = clean_test_db
