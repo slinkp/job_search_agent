@@ -19,6 +19,9 @@ openai
 pandas
 playwright
 pydantic
+pylsp-mypy
+python-lsp-server
+python-lsp-black
 pyramid
 pyramid_debugtoolbar
 pytest
@@ -41,6 +44,7 @@ pandas-stubs
 #####################
 # NO - these are deps
 #####################
+
 # Mako
 # MarkupSafe
 # PasteDeploy
@@ -67,6 +71,7 @@ pandas-stubs
 # dataclasses-json
 # decorator
 # distro
+# docstring-to-markdown
 # durationpy
 # executing
 # filelock
@@ -154,6 +159,7 @@ pandas-stubs
 # pyproject_hooks
 # pyramid-mako
 # python-dotenv
+# python-lsp-jsonrpc
 # pytz
 # referencing
 # regex
@@ -183,6 +189,7 @@ pandas-stubs
 # typing_extensions
 # typing_inspection
 # tzdata
+# ujson
 # uritemplate
 # urllib3
 # uvicorn
