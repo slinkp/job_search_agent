@@ -7,7 +7,7 @@ def migrate(conn: sqlite3.Connection):
     # Add deleted_at column to companies table
     conn.execute(
         """
-        ALTER TABLE companies 
+        ALTER TABLE companies
         ADD COLUMN deleted_at TEXT DEFAULT NULL
         """
     )
@@ -53,10 +53,10 @@ def rollback(conn: sqlite3.Connection):
         conn.execute(
             """
             INSERT INTO companies (
-                company_id, name, updated_at, details, status, 
+                company_id, name, updated_at, details, status,
                 activity_at, last_activity, reply_message
             )
-            SELECT 
+            SELECT
                 company_id, name, updated_at, details, status,
                 activity_at, last_activity, reply_message
             FROM companies_backup

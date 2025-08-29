@@ -309,7 +309,7 @@ class TavilyRAGResearchAgent:
         else:
             # Extract URLs from message
             urls = set(u.strip(".,)\n ") for u in re.findall(r"https?://\S+", message))
-            non_linkedin_urls = [u for u in urls if not "linkedin.com" in u.lower()]
+            non_linkedin_urls = [u for u in urls if "linkedin.com" not in u.lower()]
 
             chosen_url = ""
             if non_linkedin_urls:
