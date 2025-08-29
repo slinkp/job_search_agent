@@ -20,6 +20,7 @@ pandas
 playwright
 pydantic
 pyramid
+pyramid_debugtoolbar
 pytest
 python-dateutil
 python-slugify
@@ -40,6 +41,8 @@ pandas-stubs
 #####################
 # NO - these are deps
 #####################
+# Mako
+# MarkupSafe
 # PasteDeploy
 # PyYAML
 # SQLAlchemy
@@ -48,6 +51,7 @@ pandas-stubs
 # aiosignal
 # annotated_types
 # anyio
+# asttokens
 # attrs
 # backoff
 # bcrypt
@@ -61,8 +65,10 @@ pandas-stubs
 # coloredlogs
 # contourpy
 # dataclasses-json
+# decorator
 # distro
 # durationpy
+# executing
 # filelock
 # flatbuffers
 # fonttools
@@ -86,6 +92,9 @@ pandas-stubs
 # idna
 # importlib-metadata
 # importlib-resources
+# ipython
+# ipython-pygments-lexers
+# jedi
 # jiter
 # joblib
 # jsonpatch
@@ -101,6 +110,8 @@ pandas-stubs
 # legacy-cgi
 # markdown-it-py
 # marshmallow
+# matplotlib-inline
+# mccabe
 # mdurl
 # mmh3
 # mpmath
@@ -117,22 +128,31 @@ pandas-stubs
 # opentelemetry-semantic-conventions
 # orjson
 # overrides
+# parso
+# pathspec
+# pexpect
 # plaster
 # plaster-pastedeploy
+# platformdirs
 # pluggy
 # posthog
+# prompt_toolkit
 # propcache
 # proto-plus
 # protobuf
+# ptyprocess
+# pure-eval
 # pyasn1
 # pyasn1-modules
 # pybase64
+# pycodestyle
 # pydantic-settings
 # pydantic_core
 # pyee
 # pyparsing
 # pypika
 # pyproject_hooks
+# pyramid-mako
 # python-dotenv
 # pytz
 # referencing
@@ -147,14 +167,18 @@ pandas-stubs
 # shellingham
 # sniffio
 # soupsieve
+# stack_data
 # sympy
 # tenacity
 # threadpoolctl
 # tiktoken
+# tokenize-rt
 # tokenizers
 # tqdm
+# traitlets
 # translationstring
 # typer
+# types-pytz
 # typing-inspect
 # typing_extensions
 # typing_inspection
@@ -165,6 +189,7 @@ pandas-stubs
 # uvloop
 # venusian
 # watchfiles
+# wcwidth
 # webob
 # websocket-client
 # websockets
@@ -173,24 +198,3 @@ pandas-stubs
 # zope.deprecation
 # zope.interface
 # zstandard
-# pycodestyle
-# platformdirs
-# pathspec
-# mccabe
-# wcwidth
-# pure-eval
-# ptyprocess
-# types-pytz
-# traitlets
-# tokenize-rt
-# prompt_toolkit
-# pexpect
-# parso
-# ipython-pygments-lexers
-# executing
-# decorator
-# asttokens
-# stack_data
-# matplotlib-inline
-# jedi
-# ipython
