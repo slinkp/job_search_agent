@@ -4,7 +4,7 @@ We will implement a company merging system that allows combining duplicate compa
 
 0. Ground rules and definition of done
 
-- [ ] Follow `feature-development-process.mdc`; keep edits ≤2–3 files/step, ≤100 LOC where possible; add tests; all tests must pass via `./test`.
+- [ ] Follow `yolo.mdc`; keep edits ≤2–3 files/step, ≤100 LOC where possible; add tests; all tests must pass via `./test`.
 - [ ] Acceptance criteria:
   - [ ] Users can manually mark companies as duplicates and merge them via UI
   - [ ] Backend can detect potential duplicates based on alias intersection
