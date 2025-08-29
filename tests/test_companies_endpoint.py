@@ -1323,6 +1323,16 @@ def test_create_company_alias_success(clean_test_db):
     with patch("models.company_repository", return_value=repo):
         request = DummyRequest(json_body={"alias": "Test Corp"})
         request.matchdict = {"company_id": "test-company"}
+        # Pre-seed a conflicting alias in another company to ensure conflicts list is populated
+        other = Company(
+            company_id="other-co",
+            name="Other Co",
+            details=CompaniesSheetRow(name="Other Co"),
+            status=CompanyStatus(),
+        )
+        repo.create(other)
+        repo.create_alias("other-co", "Test Corp", "manual")
+
         response = server.app.create_company_alias(request)
 
     # Verify the response
@@ -1332,6 +1342,39 @@ def test_create_company_alias_success(clean_test_db):
     assert response["normalized_alias"] == "test-corp"
     assert response["source"] == "manual"
     assert response["is_active"] is True
+    # Conflicts should include the other company
+    assert "conflicts" in response
+    assert other.company_id in response["conflicts"]
+
+
+def test_create_company_alias_conflicts_when_matching_canonical(clean_test_db):
+    """Creating an alias that matches another company's canonical name should warn in conflicts."""
+    repo = clean_test_db
+
+    # Create companies
+    acme = Company(
+        company_id="acme",
+        name="Acme Corp",
+        details=CompaniesSheetRow(name="Acme Corp"),
+        status=CompanyStatus(),
+    )
+    repo.create(acme)
+
+    target = Company(
+        company_id="target",
+        name="Target Name",
+        details=CompaniesSheetRow(name="Target Name"),
+        status=CompanyStatus(),
+    )
+    repo.create(target)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"alias": "acme corp"})
+        request.matchdict = {"company_id": "target"}
+        response = server.app.create_company_alias(request)
+
+    assert "conflicts" in response
+    assert acme.company_id in response["conflicts"]
 
 
 def test_create_company_alias_with_canonical_setting(clean_test_db):

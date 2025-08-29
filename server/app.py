@@ -135,6 +135,12 @@ def create_company_alias(request) -> dict:
             request.response.status = 400
             return {"error": "alias is required"}
 
+        # Warn about conflicts using alias detection helper
+        try:
+            conflicts = repo.detect_alias_conflicts(alias)
+        except Exception:
+            conflicts = []
+
         # Create the alias
         alias_id = repo.create_alias(company_id, alias, "manual")
 
@@ -144,6 +150,10 @@ def create_company_alias(request) -> dict:
 
         # Return the created alias
         created_alias = repo.get_alias(alias_id)
+        if created_alias is None:
+            created_alias = {}
+        # Attach conflicts warning info for the client to surface
+        created_alias["conflicts"] = conflicts
         return created_alias
 
     except Exception as e:
@@ -410,6 +420,9 @@ def update_message_by_id(request):
         f"Updated reply message for message {message_id} (company: {company.name}): {message}"
     )
     company = repo.get(company.company_id)
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found"}
     return models.serialize_company(company)
 
 
