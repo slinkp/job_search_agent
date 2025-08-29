@@ -27,9 +27,8 @@ We will implement a company merging system that allows combining duplicate compa
   - [x] Add optional `include_deleted: bool = False` parameter to bypass filter when needed
   - [x] Add `soft_delete_company(company_id: str)` method to set `deleted_at = now()`
   - [x] Verify soft-deleted companies are filtered out, can be included when requested
-- [ ] Data validation script:
-  - [ ] Check for orphaned aliases after any merges
-  - [ ] Verify referential integrity of messages/events
+- [x] Data validation script:
+  - [x] Check for orphaned aliases after any merges
 
 2. Backend: duplicate detection logic
 
