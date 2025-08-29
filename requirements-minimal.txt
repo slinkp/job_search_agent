@@ -1,0 +1,262 @@
+anthropic
+black
+black[jupyter]
+beautifulsoup4
+colorama
+diskcache
+flake8
+freezegun
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+jupyter
+langchain_anthropic
+langchain_chroma
+langchain_community
+langchain_openai
+matplotlib
+mypy
+openai
+pandas
+playwright
+pydantic
+pylsp-mypy
+python-lsp-server
+python-lsp-black
+pyramid
+pyramid_debugtoolbar
+pytest
+python-dateutil
+python-slugify
+requests
+scikit-learn
+tavily-python
+ulid-py
+
+#####################
+# TYPE STUBS FOR MYPY
+#####################
+
+types-colorama
+types-python-dateutil
+types-requests
+pandas-stubs
+
+#####################
+# NO - these are deps
+#####################
+
+# Mako
+# MarkupSafe
+# PasteDeploy
+# PyYAML
+# SQLAlchemy
+# aiohappyeyeballs
+# aiohttp
+# aiosignal
+# annotated_types
+# anyio
+# appnope
+# argon2-cffi
+# argon2-cffi-bindings
+# arrow
+# asttokens
+# async-lru
+# attrs
+# babel
+# backoff
+# bcrypt
+# bleach
+# bs4
+# build
+# cachetools
+# certifi
+# cffi
+# charset_normalizer
+# chromadb
+# click
+# coloredlogs
+# comm
+# contourpy
+# dataclasses-json
+# debugpy
+# decorator
+# defusedxml
+# distro
+# docstring-to-markdown
+# durationpy
+# executing
+# fastjsonschema
+# filelock
+# flatbuffers
+# fonttools
+# fqdn
+# frozenlist
+# fsspec
+# google-api-core
+# google-auth
+# googleapis-common-protos
+# greenlet
+# grpcio
+# h11
+# hf-xet
+# httpcore
+# httplib2
+# httptools
+# httpx
+# httpx-sse
+# huggingface-hub
+# humanfriendly
+# hupper
+# idna
+# importlib-metadata
+# importlib-resources
+# ipykernel
+# ipython
+# ipython-pygments-lexers
+# ipywidgets
+# isoduration
+# jedi
+# jinja2
+# jiter
+# joblib
+# json5
+# jsonpatch
+# jsonpointer
+# jsonschema
+# jsonschema-specifications
+# jupyter-client
+# jupyter-console
+# jupyter-core
+# jupyter-events
+# jupyter-lsp
+# jupyter-server
+# jupyter-server-terminals
+# jupyterlab
+# jupyterlab-pygments
+# jupyterlab-server
+# jupyterlab_widgets
+# kiwisolver
+# kubernetes
+# langchain
+# langchain-core
+# langchain-text-splitters
+# langsmith
+# lark
+# legacy-cgi
+# markdown-it-py
+# marshmallow
+# matplotlib-inline
+# mccabe
+# mdurl
+# mistune
+# mmh3
+# mpmath
+# multidict
+# mypy-extensions
+# nbclient
+# nbconvert
+# nbformat
+# nest-asyncio
+# notebook
+# notebook-shim
+# numpy
+# oauthlib
+# onnxruntime
+# opentelemetry-api
+# opentelemetry-exporter-otlp-proto-common
+# opentelemetry-exporter-otlp-proto-grpc
+# opentelemetry-proto
+# opentelemetry-sdk
+# opentelemetry-semantic-conventions
+# orjson
+# overrides
+# pandocfilters
+# parso
+# pathspec
+# pexpect
+# plaster
+# plaster-pastedeploy
+# platformdirs
+# pluggy
+# posthog
+# prometheus-client
+# prompt_toolkit
+# propcache
+# proto-plus
+# protobuf
+# psutil
+# ptyprocess
+# pure-eval
+# pyasn1
+# pyasn1-modules
+# pybase64
+# pycodestyle
+# pycparser
+# pydantic-settings
+# pydantic_core
+# pyee
+# pyparsing
+# pypika
+# pyproject_hooks
+# pyramid-mako
+# python-dotenv
+# python-json-logger
+# python-lsp-jsonrpc
+# pytz
+# pyzmq
+# referencing
+# regex
+# requests-oauthlib
+# requests-toolbelt
+# rfc3339-validator
+# rfc3986-validator
+# rfc3987-syntax
+# rich
+# rpds-py
+# rsa
+# scipy
+# send2trash
+# setuptools
+# shellingham
+# sniffio
+# soupsieve
+# stack_data
+# sympy
+# tenacity
+# terminado
+# threadpoolctl
+# tiktoken
+# tinycss2
+# tokenize-rt
+# tokenizers
+# tornado
+# tqdm
+# traitlets
+# translationstring
+# typer
+# types-pytz
+# typing-inspect
+# typing_extensions
+# typing_inspection
+# tzdata
+# ujson
+# uri-template
+# uritemplate
+# urllib3
+# uvicorn
+# uvloop
+# venusian
+# watchfiles
+# wcwidth
+# webcolors
+# webencodings
+# webob
+# websocket-client
+# websockets
+# widgetsnbextension
+# yarl
+# zipp
+# zope.deprecation
+# zope.interface
+# zstandard
