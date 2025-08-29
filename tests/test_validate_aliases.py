@@ -41,7 +41,7 @@ def test_check_orphaned_aliases_no_orphans(temp_db):
     temp_db.create_alias("test-company", "Test Company Inc", "auto")
 
     orphaned = check_orphaned_aliases(temp_db.db_path)
-    assert len(orphaned) == 0
+    assert orphaned == []
 
 
 def test_check_orphaned_aliases_nonexistent_company(temp_db):
@@ -58,10 +58,10 @@ def test_check_orphaned_aliases_nonexistent_company(temp_db):
         )
 
     orphaned = check_orphaned_aliases(temp_db.db_path)
-    assert len(orphaned) == 1
     assert orphaned[0]["company_id"] == "nonexistent-company"
     assert orphaned[0]["alias"] == "Nonexistent Co"
     assert orphaned[0]["source"] == "auto"
+    assert len(orphaned) == 1
 
 
 def test_check_orphaned_aliases_mixed_scenario(temp_db):
@@ -103,7 +103,6 @@ def test_check_orphaned_aliases_mixed_scenario(temp_db):
         )
 
     orphaned = check_orphaned_aliases(temp_db.db_path)
-    assert len(orphaned) == 1
 
     # Check that orphaned aliases are sorted by company_id, alias
     orphaned_ids = [o["company_id"] for o in orphaned]
@@ -114,3 +113,4 @@ def test_check_orphaned_aliases_mixed_scenario(temp_db):
     )
     assert nonexistent_alias["alias"] == "Nonexistent Co"
     assert nonexistent_alias["source"] == "seed"
+    assert len(orphaned) == 1
