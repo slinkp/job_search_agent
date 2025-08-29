@@ -1,7 +1,10 @@
 anthropic
+black
+black[jupyter]
 beautifulsoup4
 colorama
 diskcache
+flake8
 freezegun
 google-api-python-client
 google-auth-httplib2
@@ -11,6 +14,7 @@ langchain_chroma
 langchain_community
 langchain_openai
 matplotlib
+mypy
 openai
 pandas
 playwright
@@ -24,9 +28,18 @@ scikit-learn
 tavily-python
 ulid-py
 
-#############
+#####################
+# TYPE STUBS FOR MYPY
+#####################
+
+types-colorama
+types-python-dateutil
+types-requests
+pandas-stubs
+
+#####################
 # NO - these are deps
-#############
+#####################
 # PasteDeploy
 # PyYAML
 # SQLAlchemy
@@ -160,3 +173,24 @@ ulid-py
 # zope.deprecation
 # zope.interface
 # zstandard
+# pycodestyle
+# platformdirs
+# pathspec
+# mccabe
+# wcwidth
+# pure-eval
+# ptyprocess
+# types-pytz
+# traitlets
+# tokenize-rt
+# prompt_toolkit
+# pexpect
+# parso
+# ipython-pygments-lexers
+# executing
+# decorator
+# asttokens
+# stack_data
+# matplotlib-inline
+# jedi
+# ipython
