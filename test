@@ -23,6 +23,7 @@ export TEST_TAB_1_RANGE="$TAB_1_RANGE"
 # Parse arguments
 RUN_PYTHON=false
 RUN_JS=false
+SKIP_COVERAGE=false
 PYTEST_ARGS=()
 
 # Default behavior: run both if no args
@@ -43,6 +44,9 @@ else
                 RUN_PYTHON=true
                 RUN_JS=true
                 ;;
+            --no-cover)
+                SKIP_COVERAGE=true
+                ;;
             *)
                 # Pass through any other arguments to pytest
                 PYTEST_ARGS+=("$arg")
@@ -52,20 +56,32 @@ else
 fi
 
 if [ "$RUN_PYTHON" = true ]; then
-    # Run Python tests with coverage
-    coverage run -m pytest "${PYTEST_ARGS[@]}"
-    PYTHON_EXIT=$?
-    # Always show coverage report
-    coverage report -m && coverage html
+    if [ "$SKIP_COVERAGE" = true ]; then
+        # Run Python tests without coverage
+        python -m pytest "${PYTEST_ARGS[@]}"
+        PYTHON_EXIT=$?
+    else
+        # Run Python tests with coverage
+        coverage run -m pytest "${PYTEST_ARGS[@]}"
+        PYTHON_EXIT=$?
+        # Always show coverage report
+        coverage report -m && coverage html
+    fi
 else
     echo "Skipping python tests"
     PYTHON_EXIT=0
 fi
 
 if [ "$RUN_JS" = true ]; then
-    # Run JavaScript tests with coverage in UTC timezone
-    TZ=UTC npm run test:coverage -- --run
-    JS_EXIT=$?
+    if [ "$SKIP_COVERAGE" = true ]; then
+        # Run JavaScript tests without coverage in UTC timezone
+        TZ=UTC npm run test -- --run
+        JS_EXIT=$?
+    else
+        # Run JavaScript tests with coverage in UTC timezone
+        TZ=UTC npm run test:coverage -- --run
+        JS_EXIT=$?
+    fi
 else
     echo "Skipping js tests"
     JS_EXIT=0
