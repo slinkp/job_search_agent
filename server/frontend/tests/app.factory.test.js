@@ -82,6 +82,9 @@ describe("app/companyList factory-capture", () => {
         async getCompanies() {
           return [];
         }
+        async getPotentialDuplicates(companyId) {
+          return companyId ? ["dup-1"] : [];
+        }
         async getCompany(id) {
           return { company_id: id, name: "Test Co" };
         }

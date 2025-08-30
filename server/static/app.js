@@ -165,6 +165,8 @@ document.addEventListener("alpine:init", () => {
       selectedDuplicateCompany: null,
       duplicateSearchQuery: "",
       currentCompanyForDuplicate: null,
+      potentialDuplicatesMap: {},
+      dismissedDuplicatePrompts: new Set(),
 
       isUrl,
 
@@ -281,6 +283,38 @@ document.addEventListener("alpine:init", () => {
 
       getAliasOverlap(canonicalCompany, duplicateCompany) {
         return aliasOverlap(canonicalCompany, duplicateCompany);
+      },
+
+      // Duplicate prompts and notifications
+      async checkPotentialDuplicates(company) {
+        if (!company || !company.company_id) return [];
+        try {
+          const list = await companiesService.getPotentialDuplicates(
+            company.company_id
+          );
+          this.potentialDuplicatesMap[company.company_id] = list || [];
+          return list || [];
+        } catch (err) {
+          errorLogger.logFailedTo("load potential duplicates", err);
+          return [];
+        }
+      },
+
+      hasPotentialDuplicates(company) {
+        if (!company || !company.company_id) return false;
+        if (this.dismissedDuplicatePrompts.has(company.company_id)) return false;
+        const list = this.potentialDuplicatesMap[company.company_id];
+        return Array.isArray(list) && list.length > 0;
+      },
+
+      reviewDuplicates(company) {
+        if (!company) return;
+        this.showDuplicateModal(company);
+      },
+
+      dismissPotentialDuplicates(companyId) {
+        if (!companyId) return;
+        this.dismissedDuplicatePrompts.add(companyId);
       },
 
       // View mode toggle methods
@@ -565,6 +599,7 @@ document.addEventListener("alpine:init", () => {
 
           await this.fetchAndUpdateCompany(company.company_id);
           this.showSuccess("Company research completed!");
+          await this.checkPotentialDuplicates(company);
         } catch (err) {
           errorLogger.logFailedTo("research company", err);
           this.showError(

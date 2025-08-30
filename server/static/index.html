@@ -142,6 +142,13 @@
                 :class="getResearchStatusClass(company)"
               >
               </span>
+              <div class="duplicate-banner" x-show="hasPotentialDuplicates(company)">
+                <small>
+                  Potential duplicates found.
+                  <button class="outline" @click="reviewDuplicates(company)">Review</button>
+                  <button class="secondary" @click="dismissPotentialDuplicates(company.company_id)">Dismiss</button>
+                </small>
+              </div>
             </div>
             <template x-if="!company.reply_message">
               <button

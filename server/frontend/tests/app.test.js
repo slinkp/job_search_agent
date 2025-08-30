@@ -192,6 +192,20 @@ describe("Company Import UI", () => {
   });
 });
 
+describe("Duplicate Merge Modal", () => {
+  beforeEach(() => {
+    setupDocumentWithIndexHtml(document);
+  });
+
+  it("renders duplicate modal and button", () => {
+    const modal = document.getElementById("duplicate-modal");
+    expect(modal).toBeTruthy();
+    // Presence of Mark as Duplicate button
+    const rawHtml = document.body.innerHTML;
+    expect(rawHtml).toContain("Mark as Duplicate");
+  });
+});
+
 describe("Daily Dashboard View Mode Toggle", () => {
   let companyList;
 
