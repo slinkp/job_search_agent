@@ -163,6 +163,7 @@ export const modalUtils = {
   modalIds: {
     EDIT: 'editModal',
     RESEARCH_COMPANY: 'research-company-modal',
-    IMPORT_COMPANIES: 'import-companies-modal'
+    IMPORT_COMPANIES: 'import-companies-modal',
+    DUPLICATE: 'duplicate-modal'
   }
 };

@@ -95,3 +95,38 @@ export function normalizeCompanies(companies) {
   const list = Array.isArray(companies) ? companies : [];
   return list.map((c) => normalizeCompany(c));
 }
+
+/**
+ * Compute overlapping aliases (case-insensitive) between two companies.
+ */
+export function aliasOverlap(companyA, companyB) {
+  if (!companyA?.aliases || !companyB?.aliases) return [];
+  const a = companyA.aliases.map((x) => String(x.alias || "").toLowerCase());
+  const b = companyB.aliases.map((x) => String(x.alias || "").toLowerCase());
+  const setA = new Set(a);
+  const overlaps = [];
+  for (const alias of b) {
+    if (setA.has(alias)) overlaps.push(alias);
+  }
+  return overlaps;
+}
+
+/**
+ * Find duplicate candidate companies by name or alias substring match.
+ * Excludes the current company and any soft-deleted companies.
+ */
+export function findDuplicateCandidates(companies, currentCompany, query) {
+  const list = Array.isArray(companies) ? companies : [];
+  const q = String(query || "").toLowerCase().trim();
+  if (!q) return [];
+  const currentId = currentCompany?.company_id;
+  return list.filter((company) => {
+    if (!company) return false;
+    if (currentId && company.company_id === currentId) return false;
+    if (company.deleted_at) return false;
+    const name = String(company.name || "").toLowerCase();
+    if (name.includes(q)) return true;
+    const aliases = Array.isArray(company.aliases) ? company.aliases : [];
+    return aliases.some((a) => String(a.alias || "").toLowerCase().includes(q));
+  });
+}
