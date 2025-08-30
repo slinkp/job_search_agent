@@ -1,7 +1,6 @@
 ---
 alwaysApply: false
 ---
-
 # Bug Fixing Mode
 
 When this mode is invoked, an issue number will be provided.
