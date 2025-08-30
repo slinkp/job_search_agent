@@ -61,13 +61,13 @@ We will implement a company merging system that allows combining duplicate compa
 
 5. API: company merging endpoints
 
-- [ ] `POST /api/companies/:id/merge` - start merge task:
-  - [ ] Request body: `{"duplicate_company_id": str}`
-  - [ ] Validation: both companies exist, not same company, not already deleted. Test validation error cases.
-  - [ ] Creates and returns task_id for merge operation. Test response shape.
-- [ ] `GET /api/companies/:id/potential-duplicates` - find potential duplicates:
-  - [ ] Returns list of companies with overlapping aliases. Test response format.
-  - [ ] Include alias overlap details for user decision
+- [x] `POST /api/companies/:id/merge` - start merge task:
+  - [x] Request body: `{"duplicate_company_id": str}`
+  - [x] Validation: both companies exist, not same company, not already deleted. Test validation error cases.
+  - [x] Creates and returns task_id for merge operation. Test response shape.
+- [x] `GET /api/companies/:id/potential-duplicates` - find potential duplicates:
+  - [x] Returns list of companies with overlapping aliases. Test response format.
+  - [x] Include alias overlap details for user decision
 
 6. Frontend: manual duplicate detection UI
 

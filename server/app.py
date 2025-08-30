@@ -675,6 +675,75 @@ def patch_company_details(request) -> dict:
     return company_dict["details"]
 
 
+@view_config(route_name="company_merge", renderer="json", request_method="POST")
+def merge_companies(request) -> dict:
+    canonical_id = request.matchdict.get("company_id", "").strip()
+    repo = models.company_repository()
+
+    canonical = repo.get(canonical_id)
+    if not canonical:
+        request.response.status = 404
+        return {"error": "Company not found"}
+
+    try:
+        body = request.json_body
+    except Exception:
+        request.response.status = 400
+        return {"error": "Invalid JSON"}
+
+    duplicate_id = (body or {}).get("duplicate_company_id", "").strip()
+    if not duplicate_id:
+        request.response.status = 400
+        return {"error": "duplicate_company_id is required"}
+
+    if duplicate_id == canonical_id:
+        request.response.status = 400
+        return {"error": "Cannot merge a company with itself"}
+
+    duplicate = repo.get(duplicate_id)
+    if not duplicate:
+        request.response.status = 404
+        return {"error": "Duplicate company not found"}
+
+    # Basic deleted check
+    with repo._get_connection() as conn:  # type: ignore[attr-defined]
+        row = conn.execute(
+            "SELECT deleted_at FROM companies WHERE company_id = ?",
+            (duplicate_id,),
+        ).fetchone()
+        if row and row[0] is not None:
+            request.response.status = 400
+            return {"error": "Duplicate company is deleted"}
+
+    # Create merge task
+    try:
+        task_id = tasks.task_manager().create_task(
+            tasks.TaskType.MERGE_COMPANIES,
+            {
+                "canonical_company_id": canonical_id,
+                "duplicate_company_id": duplicate_id,
+            },
+        )
+        return {"task_id": task_id, "status": tasks.TaskStatus.PENDING.value}
+    except Exception as e:
+        logger.exception("Error creating merge task")
+        request.response.status = 500
+        return {"error": str(e)}
+
+
+@view_config(
+    route_name="company_potential_duplicates", renderer="json", request_method="GET"
+)
+def get_potential_duplicates(request) -> list[str]:
+    company_id = request.matchdict.get("company_id", "")
+    repo = models.company_repository()
+    try:
+        return repo.find_potential_duplicates(company_id)
+    except Exception as e:
+        logger.exception("Error finding potential duplicates")
+        request.response.status = 500
+        return {"error": str(e)}
+
 @view_config(route_name="companies", renderer="json", request_method="POST")
 def research_by_url_or_name(request):
     """Start research for a company based on URL or name."""
@@ -768,6 +837,11 @@ def main(global_config, **settings):
         config.add_route("company_aliases", "/api/companies/{company_id}/aliases")
         config.add_route(
             "company_alias", "/api/companies/{company_id}/aliases/{alias_id}"
+        )
+        config.add_route("company_merge", "/api/companies/{company_id}/merge")
+        config.add_route(
+            "company_potential_duplicates",
+            "/api/companies/{company_id}/potential-duplicates",
         )
         config.add_route("scan_recruiter_emails", "/api/scan_recruiter_emails")
         config.add_route("task_status", "/api/tasks/{task_id}")
