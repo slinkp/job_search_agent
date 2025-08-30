@@ -242,6 +242,35 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async mergeCompanies(canonicalCompanyId, duplicateCompanyId) {
+    const response = await fetch(
+      `/api/companies/${encodeURIComponent(canonicalCompanyId)}/merge`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duplicate_company_id: duplicateCompanyId }),
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to start merge: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async getPotentialDuplicates(companyId) {
+    const response = await fetch(
+      `/api/companies/${encodeURIComponent(companyId)}/potential-duplicates`
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.error || `Failed to load potential duplicates: ${response.status}`
+      );
+    }
+    return response.json();
+  }
 }
 
 
