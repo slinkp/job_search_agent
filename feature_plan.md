@@ -87,13 +87,13 @@ We will implement a company merging system that allows combining duplicate compa
   - [x] Show banner/modal when research finds potential duplicates. Test notification display.
   - [x] Allow user to review and merge or dismiss. Test user interaction flows.
 - [ ] Email scanning notifications:
-  - [ ] Prompt user when duplicate company detected during ingestion
-  - [ ] Option to merge immediately or create separate company
+  - [x] Prompt user when duplicate company detected during ingestion
+  - [x] Option to merge immediately or create separate company
 
 8. Integration verification
 
-- [ ] End-to-end testing: complete merge workflow from detection through completion
-- [ ] Data integrity: verify no orphaned data after merges, referential integrity maintained
+- [x] End-to-end testing: complete merge workflow from detection through completion
+- [x] Data integrity: verify no orphaned data after merges, referential integrity maintained
 
 Notes
 
