@@ -253,7 +253,9 @@ class ResearchDaemon:
                     self.company_repo.create(company)
                     # Log potential duplicates by alias/name overlap (non-blocking)
                     try:
-                        overlaps = self.company_repo.find_potential_duplicates(company.company_id)
+                        overlaps = self.company_repo.find_potential_duplicates(
+                            company.company_id
+                        )
                         if overlaps:
                             logger.warning(
                                 f"Potential duplicates detected for {company.company_id}: {overlaps}"
@@ -402,7 +404,9 @@ class ResearchDaemon:
                 # After creating/updating company, log potential duplicates (non-blocking)
                 try:
                     if company:
-                        overlaps = self.company_repo.find_potential_duplicates(company.company_id)
+                        overlaps = self.company_repo.find_potential_duplicates(
+                            company.company_id
+                        )
                         if overlaps:
                             logger.warning(
                                 f"Potential duplicates detected for {company.company_id}: {overlaps}"

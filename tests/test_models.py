@@ -24,27 +24,12 @@ from models import (
     normalize_company_name,
 )
 
+from .utils import make_clean_test_db_fixture
+
 TEST_DB_PATH = "data/_test_companies.db"
 
 
-@pytest.fixture(scope="function")
-def clean_test_db():
-    """Ensure we have a clean test database for each test."""
-    # Remove the test database if it exists
-    if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
-
-    # Make sure the directory exists
-    os.makedirs(os.path.dirname(TEST_DB_PATH), exist_ok=True)
-
-    # Create a new repository with the test database
-    repo = CompanyRepository(db_path=TEST_DB_PATH, clear_data=True)
-
-    yield repo
-
-    # Clean up after the test
-    if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
+clean_test_db = make_clean_test_db_fixture(TEST_DB_PATH)
 
 
 class TestCompanyRepository:

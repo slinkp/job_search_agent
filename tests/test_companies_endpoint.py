@@ -1,5 +1,4 @@
 import datetime
-import os
 from unittest.mock import patch
 
 import pytest
@@ -7,15 +6,14 @@ from pyramid.testing import DummyRequest  # type: ignore[import-untyped]
 
 import server.app
 import tasks
-from models import (
-    CompaniesSheetRow,
-    Company,
-    CompanyRepository,
-    CompanyStatus,
-    RecruiterMessage,
-)
+from models import CompaniesSheetRow, Company, CompanyStatus, RecruiterMessage
+
+from .utils import make_clean_test_db_fixture
 
 TEST_DB_PATH = "data/_test_companies_endpoint.db"
+
+
+clean_test_db = make_clean_test_db_fixture(TEST_DB_PATH)
 
 
 @pytest.fixture
@@ -205,26 +203,6 @@ def test_scan_recruiter_emails_with_null_max_messages(mock_task_manager):
         tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
         {"max_messages": None, "do_research": False},
     )
-
-
-@pytest.fixture(scope="function")
-def clean_test_db():
-    """Ensure we have a clean test database for each test."""
-    # Remove the test database if it exists
-    if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
-
-    # Make sure the directory exists
-    os.makedirs(os.path.dirname(TEST_DB_PATH), exist_ok=True)
-
-    # Create a new repository with the test database
-    repo = CompanyRepository(db_path=TEST_DB_PATH, clear_data=True)
-
-    yield repo
-
-    # Clean up after the test
-    if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
 
 
 # Remove tests for old ignore_and_archive endpoint since it's been removed
@@ -1862,7 +1840,9 @@ def test_create_company_alias_set_as_canonical_false(clean_test_db):
 def test_post_merge_companies_success(clean_test_db, mock_task_manager):
     repo = clean_test_db
 
-    canon = Company(company_id="canon", name="Canon", details=CompaniesSheetRow(name="Canon"))
+    canon = Company(
+        company_id="canon", name="Canon", details=CompaniesSheetRow(name="Canon")
+    )
     dup = Company(company_id="dup", name="Dup", details=CompaniesSheetRow(name="Dup"))
     repo.create(canon)
     repo.create(dup)
@@ -1924,8 +1904,12 @@ def test_post_merge_companies_validation_errors(clean_test_db, mock_task_manager
 def test_get_potential_duplicates(clean_test_db):
     repo = clean_test_db
 
-    acme = Company(company_id="acme", name="Acme Corp", details=CompaniesSheetRow(name="Acme Corp"))
-    dupe = Company(company_id="acme-dup", name="Acme", details=CompaniesSheetRow(name="Acme"))
+    acme = Company(
+        company_id="acme", name="Acme Corp", details=CompaniesSheetRow(name="Acme Corp")
+    )
+    dupe = Company(
+        company_id="acme-dup", name="Acme", details=CompaniesSheetRow(name="Acme")
+    )
     repo.create(acme)
     repo.create(dupe)
     repo.create_alias("acme-dup", "Acme Corp", "manual")

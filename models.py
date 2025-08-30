@@ -784,9 +784,7 @@ class CompanyRepository:
                     WHERE company_id = ?
                     """,
                     (
-                        json.dumps(
-                            canonical.details.model_dump(), cls=CustomJSONEncoder
-                        ),
+                        json.dumps(canonical.details.model_dump(), cls=CustomJSONEncoder),
                         canonical_id,
                     ),
                 )
@@ -801,7 +799,7 @@ class CompanyRepository:
                     (duplicate_id,),
                 ).fetchall()
 
-                for (alias_id, alias, normalized_alias, source, is_active) in alias_rows:
+                for alias_id, alias, normalized_alias, source, is_active in alias_rows:
                     exists = conn.execute(
                         """
                         SELECT 1 FROM company_aliases
@@ -1263,7 +1261,9 @@ class CompanyRepository:
                 conn.commit()
                 return True
 
-    def detect_alias_conflicts(self, alias: str, include_deleted: bool = False) -> list[str]:
+    def detect_alias_conflicts(
+        self, alias: str, include_deleted: bool = False
+    ) -> list[str]:
         """Find existing companies that would conflict with the given alias.
 
         A conflict occurs when the alias (normalized) matches either:
@@ -1284,14 +1284,12 @@ class CompanyRepository:
 
         with self._get_connection() as conn:
             # Match active aliases
-            alias_query = (
-                """
+            alias_query = """
                 SELECT DISTINCT c.company_id
                 FROM company_aliases a
                 JOIN companies c ON c.company_id = a.company_id
                 WHERE a.normalized_alias = ? AND a.is_active = 1
                 """
-            )
             params: list[object] = [normalized]
             if not include_deleted:
                 alias_query += " AND c.deleted_at IS NULL"

@@ -230,7 +230,9 @@ def test_do_research_existing_company(daemon, test_company, mock_spreadsheet_ups
     mock_spreadsheet_upsert.assert_called_once_with(existing_company.details, daemon.args)
 
 
-def test_do_research_logs_potential_duplicates(daemon, test_company, mock_spreadsheet_upsert):
+def test_do_research_logs_potential_duplicates(
+    daemon, test_company, mock_spreadsheet_upsert
+):
     """Ensure duplicate detection is invoked after creating a new company during research."""
     args = {"company_name": "New Co"}
 

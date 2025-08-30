@@ -2,8 +2,13 @@ import datetime
 from unittest.mock import patch
 
 import server.app
-from models import Company, CompaniesSheetRow, Event, EventType, RecruiterMessage
-from tests.test_companies_endpoint import clean_test_db
+from models import CompaniesSheetRow, Company, Event, EventType, RecruiterMessage
+
+from .utils import make_clean_test_db_fixture
+
+TEST_DB_PATH = "data/_test_integration_merge.db"
+
+clean_test_db = make_clean_test_db_fixture(TEST_DB_PATH)
 
 
 class DummyRequest:
@@ -17,8 +22,12 @@ def test_e2e_merge_flow_from_detection_to_completion(clean_test_db):
     repo = clean_test_db
 
     # Create a canonical and a duplicate with overlapping alias
-    canon = Company(company_id="canon", name="Canon", details=CompaniesSheetRow(name="Canon"))
-    dup = Company(company_id="dup", name="Cannon", details=CompaniesSheetRow(name="Cannon"))
+    canon = Company(
+        company_id="canon", name="Canon", details=CompaniesSheetRow(name="Canon")
+    )
+    dup = Company(
+        company_id="dup", name="Cannon", details=CompaniesSheetRow(name="Cannon")
+    )
     repo.create(canon)
     repo.create(dup)
 
@@ -30,14 +39,18 @@ def test_e2e_merge_flow_from_detection_to_completion(clean_test_db):
         request = DummyRequest(matchdict={"company_id": "canon"})
         overlaps = server.app.get_potential_duplicates(request)
 
-    assert overlaps == ["dup"], "Potential duplicates should include the duplicate company"
+    assert overlaps == [
+        "dup"
+    ], "Potential duplicates should include the duplicate company"
 
     # Merge task creation via API
     with patch("models.company_repository", return_value=repo), patch(
         "tasks.task_manager"
     ) as mock_tm:
         mock_tm.return_value.create_task.return_value = "task-merge-1"
-        request = DummyRequest(json_body={"duplicate_company_id": "dup"}, matchdict={"company_id": "canon"})
+        request = DummyRequest(
+            json_body={"duplicate_company_id": "dup"}, matchdict={"company_id": "canon"}
+        )
         resp = server.app.merge_companies(request)
         assert resp["task_id"] == "task-merge-1"
 
@@ -115,5 +128,3 @@ def test_merge_data_integrity_post_merge(clean_test_db):
     assert canon_after.details.type == "Tech"
     assert canon_after.details.url == "https://canonical.example.com"
     assert canon_after.details.headquarters == "NYC"
-
-

@@ -4,15 +4,15 @@ We will implement a company merging system that allows combining duplicate compa
 
 0. Ground rules and definition of done
 
-- [ ] Follow `yolo.mdc`; keep edits ≤2–3 files/step, ≤100 LOC where possible; add tests; all tests must pass via `./test`.
-- [ ] Acceptance criteria:
-  - [ ] Users can manually mark companies as duplicates and merge them via UI
-  - [ ] Backend can detect potential duplicates based on alias intersection
-  - [ ] Merging preserves all data, with canonical company taking precedence
-  - [ ] Duplicate company is soft-deleted after successful merge
-  - [ ] All related data (messages, events, tasks) points to canonical company post-merge
-  - [ ] Repository methods filter out soft-deleted companies by default
-  - [ ] System can prompt users when potential duplicates are detected during research/ingestion
+- [x] Follow `yolo.mdc`; keep edits ≤2–3 files/step, ≤100 LOC where possible; add tests; all tests must pass via `./test`.
+- [x] Acceptance criteria:
+  - [x] Users can manually mark companies as duplicates and merge them via UI
+  - [x] Backend can detect potential duplicates based on alias intersection
+  - [x] Merging preserves all data, with canonical company taking precedence
+  - [x] Duplicate company is soft-deleted after successful merge
+  - [x] All related data (messages, events, tasks) points to canonical company post-merge
+  - [x] Repository methods filter out soft-deleted companies by default
+  - [x] System can prompt users when potential duplicates are detected during research/ingestion
 
 1. Data model: soft deletion support
 
@@ -86,7 +86,7 @@ We will implement a company merging system that allows combining duplicate compa
 - [x] Research completion notifications:
   - [x] Show banner/modal when research finds potential duplicates. Test notification display.
   - [x] Allow user to review and merge or dismiss. Test user interaction flows.
-- [ ] Email scanning notifications:
+- [x] Email scanning notifications:
   - [x] Prompt user when duplicate company detected during ingestion
   - [x] Option to merge immediately or create separate company
 

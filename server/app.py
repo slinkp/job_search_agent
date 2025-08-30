@@ -744,6 +744,7 @@ def get_potential_duplicates(request) -> list[str]:
         request.response.status = 500
         return {"error": str(e)}
 
+
 @view_config(route_name="companies", renderer="json", request_method="POST")
 def research_by_url_or_name(request):
     """Start research for a company based on URL or name."""
