@@ -721,6 +721,129 @@ class CompanyRepository:
                 conn.commit()
                 return True
 
+    def merge_companies(self, canonical_id: str, duplicate_id: str) -> bool:
+        """Merge duplicate company into canonical company.
+
+        - Validate both exist and are not soft-deleted
+        - Preserve canonical name
+        - Merge details by filling empty canonical fields from duplicate
+        - Migrate aliases (avoiding duplicates)
+        - Repoint recruiter_messages and events to canonical
+        - Soft-delete duplicate company
+
+        Returns True on success, False on validation failure.
+        """
+        if canonical_id == duplicate_id:
+            return False
+
+        def _is_empty(value: Any) -> bool:
+            if value is None:
+                return True
+            if isinstance(value, str):
+                return value == ""
+            if isinstance(value, list):
+                return len(value) == 0
+            return False
+
+        with self.lock:
+            with self._get_connection() as conn:
+                # Validate existence and not deleted
+                row = conn.execute(
+                    "SELECT deleted_at FROM companies WHERE company_id = ?",
+                    (canonical_id,),
+                ).fetchone()
+                if row is None or row[0] is not None:
+                    return False
+
+                row = conn.execute(
+                    "SELECT deleted_at FROM companies WHERE company_id = ?",
+                    (duplicate_id,),
+                ).fetchone()
+                if row is None or row[0] is not None:
+                    return False
+
+                # Load both companies
+                canonical = self.get(canonical_id)
+                duplicate = self.get(duplicate_id)
+                if canonical is None or duplicate is None:
+                    return False
+
+                # Merge details: fill empty canonical fields from duplicate
+                for field_name in canonical.details.__class__.model_fields.keys():
+                    canon_val = getattr(canonical.details, field_name)
+                    if _is_empty(canon_val):
+                        dup_val = getattr(duplicate.details, field_name)
+                        if not _is_empty(dup_val):
+                            setattr(canonical.details, field_name, dup_val)
+
+                # Persist canonical details (keep canonical name)
+                conn.execute(
+                    """
+                    UPDATE companies
+                    SET details = ?, updated_at = datetime('now')
+                    WHERE company_id = ?
+                    """,
+                    (
+                        json.dumps(
+                            canonical.details.model_dump(), cls=CustomJSONEncoder
+                        ),
+                        canonical_id,
+                    ),
+                )
+
+                # Migrate aliases from duplicate to canonical, skipping conflicts
+                alias_rows = conn.execute(
+                    """
+                    SELECT id, alias, normalized_alias, source, is_active
+                    FROM company_aliases
+                    WHERE company_id = ?
+                    """,
+                    (duplicate_id,),
+                ).fetchall()
+
+                for (alias_id, alias, normalized_alias, source, is_active) in alias_rows:
+                    exists = conn.execute(
+                        """
+                        SELECT 1 FROM company_aliases
+                        WHERE company_id = ? AND normalized_alias = ?
+                        LIMIT 1
+                        """,
+                        (canonical_id, normalized_alias),
+                    ).fetchone()
+                    if exists:
+                        # Skip migrating this alias to avoid conflicts
+                        continue
+                    conn.execute(
+                        """
+                        UPDATE company_aliases
+                        SET company_id = ?, updated_at = datetime('now')
+                        WHERE id = ?
+                        """,
+                        (canonical_id, alias_id),
+                    )
+
+                # Repoint recruiter messages
+                conn.execute(
+                    "UPDATE recruiter_messages SET company_id = ? WHERE company_id = ?",
+                    (canonical_id, duplicate_id),
+                )
+
+                # Repoint events
+                conn.execute(
+                    "UPDATE events SET company_id = ? WHERE company_id = ?",
+                    (canonical_id, duplicate_id),
+                )
+
+                # Soft-delete duplicate
+                now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                conn.execute(
+                    "UPDATE companies SET deleted_at = ? WHERE company_id = ?",
+                    (now, duplicate_id),
+                )
+
+                conn.commit()
+                return True
+
     def get_recruiter_message(self, company_id: str) -> Optional[RecruiterMessage]:
         """
         Get a single recruiter message by company id.

@@ -42,15 +42,15 @@ We will implement a company merging system that allows combining duplicate compa
 
 3. Backend: company merging logic
 
-- [ ] Core merge function: `merge_companies(canonical_id: str, duplicate_id: str) -> bool`:
-  - [ ] Validate both companies exist and are not deleted. Test error cases.
-  - [ ] Use canonical company's name as final name
-  - [ ] Migrate all aliases from duplicate to canonical (preserve source, update company_id). Test data preservation.
-  - [ ] Merge `CompaniesSheetRow` fields: canonical takes precedence, fill empty fields from duplicate. Test merge scenarios.
-  - [ ] Migrate all `recruiter_messages` to point to canonical company
-  - [ ] Migrate all `events` to point to canonical company  
-  - [ ] Soft-delete the duplicate company
-- [ ] Validation: prevent merging company with itself, handle already-deleted companies
+- [x] Core merge function: `merge_companies(canonical_id: str, duplicate_id: str) -> bool`:
+  - [x] Validate both companies exist and are not deleted. Test error cases.
+  - [x] Use canonical company's name as final name
+  - [x] Migrate all aliases from duplicate to canonical (preserve source, update company_id). Test data preservation.
+  - [x] Merge `CompaniesSheetRow` fields: canonical takes precedence, fill empty fields from duplicate. Test merge scenarios.
+  - [x] Migrate all `recruiter_messages` to point to canonical company
+  - [x] Migrate all `events` to point to canonical company  
+  - [x] Soft-delete the duplicate company
+- [x] Validation: prevent merging company with itself, handle already-deleted companies
 
 4. Task system: merge_companies task type
 

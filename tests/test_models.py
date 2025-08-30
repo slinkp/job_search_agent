@@ -2257,3 +2257,106 @@ class TestSoftDeleteCompany:
         assert (
             len(all_messages_with_deleted) == 2
         ), "Should include messages from deleted companies when requested"
+
+
+class TestMergeCompanies:
+
+    def test_merge_companies_success(self, clean_test_db):
+        repo = clean_test_db
+
+        # Create canonical company with sparse details
+        canonical = Company(
+            company_id="canon",
+            name="Canonical Corp",
+            details=CompaniesSheetRow(name="Canonical Corp", type="Tech", url=""),
+        )
+        repo.create(canonical)
+
+        # Create duplicate company with richer details, alias, message and event
+        duplicate = Company(
+            company_id="dup",
+            name="Canonical",
+            details=CompaniesSheetRow(
+                name="Canonical",
+                type="",  # Should be preserved from canonical
+                url="https://canonical.example.com",
+                headquarters="NYC",
+            ),
+        )
+        repo.create(duplicate)
+
+        # Aliases
+        repo.create_alias("dup", "Canonical Corporation", "manual")
+
+        # Message associated with duplicate
+        msg = RecruiterMessage(
+            message_id="m-1",
+            company_id="dup",
+            message="Hello",
+            subject="Hi",
+            thread_id="t-1",
+            email_thread_link="https://mail/thread/t-1",
+            date=datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
+        )
+        repo.create_recruiter_message(msg)
+
+        # Event associated with duplicate
+        repo.create_event(Event(company_id="dup", event_type=EventType.COMPANY_CREATED))
+
+        # Sanity
+        assert len(repo.get_recruiter_messages("canon")) == 0
+        assert len(repo.get_recruiter_messages("dup")) == 1
+        assert len(repo.get_events(company_id="canon")) == 0
+        assert len(repo.get_events(company_id="dup")) == 1
+
+        # Merge
+        assert repo.merge_companies("canon", "dup") is True
+
+        # Canonical name preserved
+        canon_after = repo.get("canon")
+        assert canon_after is not None
+        assert canon_after.name == "Canonical Corp"
+
+        # Details merged: canonical precedence, fill empty from duplicate
+        assert canon_after.details.type == "Tech"
+        assert canon_after.details.url == "https://canonical.example.com"
+        assert canon_after.details.headquarters == "NYC"
+
+        # Messages migrated
+        canon_msgs = repo.get_recruiter_messages("canon")
+        assert len(canon_msgs) == 1
+        assert canon_msgs[0].message_id == "m-1"
+
+        # Events migrated
+        canon_events = repo.get_events(company_id="canon")
+        assert len(canon_events) == 1
+
+        # Duplicate soft-deleted
+        with repo._get_connection() as conn:  # type: ignore[attr-defined]
+            row = conn.execute(
+                "SELECT deleted_at FROM companies WHERE company_id = ?",
+                ("dup",),
+            ).fetchone()
+            assert row is not None and row[0] is not None
+
+        # Aliases migrated (allow active or inactive depending on conflict handling)
+        canon_aliases = repo.list_aliases("canon")
+        assert any(a["alias"] == "Canonical Corporation" for a in canon_aliases)
+
+    def test_merge_companies_validation(self, clean_test_db):
+        repo = clean_test_db
+
+        a = Company(company_id="a", name="A", details=CompaniesSheetRow(name="A"))
+        b = Company(company_id="b", name="B", details=CompaniesSheetRow(name="B"))
+        repo.create(a)
+        repo.create(b)
+
+        # Prevent merging a company with itself
+        assert repo.merge_companies("a", "a") is False
+
+        # Missing duplicate
+        assert repo.merge_companies("a", "missing") is False
+
+        # Already-deleted duplicate
+        assert repo.soft_delete_company("b") is True
+        assert repo.merge_companies("a", "b") is False
