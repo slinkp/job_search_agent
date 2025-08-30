@@ -32,13 +32,13 @@ We will implement a company merging system that allows combining duplicate compa
 
 2. Backend: duplicate detection logic
 
-- [ ] New helper functions:
-  - [ ] `detect_alias_conflicts(alias: str) -> List[str]`: find existing companies with matching normalized alias. Test edge cases with inactive aliases, soft-deleted companies.
-  - [ ] `find_potential_duplicates(company_id: str) -> List[str]`: find companies with overlapping aliases.  Test various alias overlap scenarios. 
-- [ ] Integration points with existing code:
-  - [ ] Research completion: check for alias overlap, add to task result. For now just log potential duplicates
-  - [ ] Email ingestion: detect immediate duplicates when creating aliases for new companies. For now just log these
-  - [ ] Manual alias creation API: warn if alias matches existing companies
+- [x] New helper functions:
+  - [x] `detect_alias_conflicts(alias: str) -> List[str]`: find existing companies with matching normalized alias. Test edge cases with inactive aliases, soft-deleted companies.
+  - [x] `find_potential_duplicates(company_id: str) -> List[str]`: find companies with overlapping aliases.  Test various alias overlap scenarios. 
+- [x] Integration points with existing code:
+  - [x] Research completion: check for alias overlap, add to task result. For now just log potential duplicates
+  - [x] Email ingestion: detect immediate duplicates when creating aliases for new companies. For now just log these
+  - [x] Manual alias creation API: warn if alias matches existing companies
 
 3. Backend: company merging logic
 
