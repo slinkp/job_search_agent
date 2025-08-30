@@ -71,15 +71,15 @@ We will implement a company merging system that allows combining duplicate compa
 
 6. Frontend: manual duplicate detection UI
 
-- [ ] Company detail page: add "Mark as Duplicate" button
-  - [ ] Opens search modal for finding potential merge target. Test modal opens.
-  - [ ] Search by company name with autocomplete
-  - [ ] Show alias overlap information to help user decide
-  - [ ] Confirm merge with clear indication of which company survives. Test confirmation flow.
-- [ ] Search functionality:
-  - [ ] Type-ahead search across company names and aliases. Test search functionality.
-  - [ ] Exclude current company and already-deleted companies from results
-  - [ ] Highlight matching aliases between companies
+- [x] Company detail page: add "Mark as Duplicate" button
+  - [x] Opens search modal for finding potential merge target. Test modal opens.
+  - [x] Search by company name with autocomplete
+  - [x] Show alias overlap information to help user decide
+  - [x] Confirm merge with clear indication of which company survives. Test confirmation flow.
+- [x] Search functionality:
+  - [x] Type-ahead search across company names and aliases. Test search functionality.
+  - [x] Exclude current company and already-deleted companies from results
+  - [x] Highlight matching aliases between companies
 
 7. Frontend: duplicate detection prompts
 
