@@ -83,9 +83,9 @@ We will implement a company merging system that allows combining duplicate compa
 
 7. Frontend: duplicate detection prompts
 
-- [ ] Research completion notifications:
-  - [ ] Show banner/modal when research finds potential duplicates. Test notification display.
-  - [ ] Allow user to review and merge or dismiss. Test user interaction flows.
+- [x] Research completion notifications:
+  - [x] Show banner/modal when research finds potential duplicates. Test notification display.
+  - [x] Allow user to review and merge or dismiss. Test user interaction flows.
 - [ ] Email scanning notifications:
   - [ ] Prompt user when duplicate company detected during ingestion
   - [ ] Option to merge immediately or create separate company
