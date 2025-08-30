@@ -117,6 +117,8 @@ class ResearchDaemon:
                 elif task_type == TaskType.IMPORT_COMPANIES_FROM_SPREADSHEET:
                     result = self.do_import_companies_from_spreadsheet(task_args)
                     logger.info(f"Import companies result: {result}")
+                elif task_type == TaskType.MERGE_COMPANIES:
+                    result = self.do_merge_companies(task_args)
                 else:
                     logger.error(f"Ignoring unsupported task type: {task_type}")
 
@@ -817,6 +819,40 @@ class ResearchDaemon:
                 )
 
         return "\n".join(summary)
+
+    def do_merge_companies(self, args: dict) -> dict[str, str]:
+        """Handle merge_companies task.
+
+        Args must include:
+          - canonical_company_id
+          - duplicate_company_id
+
+        Returns dict with status.
+        """
+        canonical_id = (args.get("canonical_company_id") or "").strip()
+        duplicate_id = (args.get("duplicate_company_id") or "").strip()
+
+        if not canonical_id or not duplicate_id:
+            raise ValueError("Missing canonical_company_id or duplicate_company_id")
+
+        logger.info(
+            f"Merging companies: canonical={canonical_id}, duplicate={duplicate_id}"
+        )
+
+        ok = self.company_repo.merge_companies(canonical_id, duplicate_id)
+        if not ok:
+            raise ValueError("Merge validation failed or companies not found")
+
+        # Record event on canonical
+        try:
+            event = models.Event(
+                company_id=canonical_id, event_type=models.EventType.COMPANY_UPDATED
+            )
+            self.company_repo.create_event(event)
+        except Exception:
+            logger.exception("Failed to create merge event")
+
+        return {"status": "merged"}
 
 
 if __name__ == "__main__":

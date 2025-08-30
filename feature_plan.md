@@ -54,10 +54,10 @@ We will implement a company merging system that allows combining duplicate compa
 
 4. Task system: merge_companies task type
 
-- [ ] Add `MERGE_COMPANIES = "merge_companies"` to `TaskType` enum
-- [ ] Create task with args: `{"canonical_company_id": str, "duplicate_company_id": str}`
-- [ ] Research daemon integration: handle `merge_companies` tasks. Test successful merge task.
-- [ ] Error handling: rollback on failure, detailed error messages. Test error scenarios and rollback.
+- [x] Add `MERGE_COMPANIES = "merge_companies"` to `TaskType` enum
+- [x] Create task with args: `{"canonical_company_id": str, "duplicate_company_id": str}`
+- [x] Research daemon integration: handle `merge_companies` tasks. Test successful merge task.
+- [x] Error handling: rollback on failure, detailed error messages. Test error scenarios and rollback.
 
 5. API: company merging endpoints
 

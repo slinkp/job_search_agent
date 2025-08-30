@@ -799,6 +799,31 @@ def test_generate_company_id(daemon):
     assert daemon._generate_company_id("Test@Corp.com") == "test-corp-com"
 
 
+def test_do_merge_companies_success(daemon):
+    args = {"canonical_company_id": "canon", "duplicate_company_id": "dup"}
+    daemon.company_repo.merge_companies.return_value = True
+
+    result = daemon.do_merge_companies(args)
+
+    daemon.company_repo.merge_companies.assert_called_once_with("canon", "dup")
+    assert result == {"status": "merged"}
+
+
+def test_do_merge_companies_validation_error(daemon):
+    args = {"canonical_company_id": "canon", "duplicate_company_id": "dup"}
+    daemon.company_repo.merge_companies.return_value = False
+
+    with pytest.raises(ValueError):
+        daemon.do_merge_companies(args)
+
+    daemon.company_repo.merge_companies.assert_called_once_with("canon", "dup")
+
+
+def test_do_merge_companies_missing_args_raises(daemon):
+    with pytest.raises(ValueError):
+        daemon.do_merge_companies({})
+
+
 def test_do_research_with_normalized_name_duplicate(
     daemon, test_company, mock_spreadsheet_upsert
 ):
