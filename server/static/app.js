@@ -1,12 +1,12 @@
 import { CompaniesService } from "./companies-service.js";
 import { CompanyResearchService } from "./company-research.js";
 import {
+  aliasOverlap,
   filterCompanies,
+  findDuplicateCandidates,
   normalizeCompanies,
   sortCompanies,
   formatResearchErrors as utilFormatResearchErrors,
-  aliasOverlap,
-  findDuplicateCandidates,
 } from "./company-utils.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { TaskPollingService } from "./task-polling.js";
@@ -658,6 +658,21 @@ document.addEventListener("alpine:init", () => {
         if (result?.status === "completed") {
           // Refresh companies after successful scan
           await this.refreshAllCompanies();
+
+          // After refreshing, check potential duplicates for companies
+          try {
+            const companies = Array.isArray(this.companies)
+              ? this.companies
+              : [];
+            for (const company of companies) {
+              await this.checkPotentialDuplicates(company);
+            }
+          } catch (err) {
+            errorLogger.logFailedTo(
+              "check potential duplicates after email scan",
+              err
+            );
+          }
         }
       },
 
