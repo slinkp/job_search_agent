@@ -61,11 +61,9 @@ if [ "$RUN_PYTHON" = true ]; then
         python -m pytest "${PYTEST_ARGS[@]}"
         PYTHON_EXIT=$?
     else
-        # Run Python tests with coverage
+        # Run Python tests with coverage (don't show report yet)
         coverage run -m pytest "${PYTEST_ARGS[@]}"
         PYTHON_EXIT=$?
-        # Always show coverage report
-        coverage report -m && coverage html
     fi
 else
     echo "Skipping python tests"
@@ -85,6 +83,11 @@ if [ "$RUN_JS" = true ]; then
 else
     echo "Skipping js tests"
     JS_EXIT=0
+fi
+
+# Show Python coverage report after all tests (if coverage was enabled)
+if [ "$RUN_PYTHON" = true ] && [ "$SKIP_COVERAGE" = false ]; then
+    coverage report -m && coverage html
 fi
 
 EXIT_CODE=0
