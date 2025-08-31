@@ -24,27 +24,12 @@ from models import (
     normalize_company_name,
 )
 
+from .utils import make_clean_test_db_fixture
+
 TEST_DB_PATH = "data/_test_companies.db"
 
 
-@pytest.fixture(scope="function")
-def clean_test_db():
-    """Ensure we have a clean test database for each test."""
-    # Remove the test database if it exists
-    if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
-
-    # Make sure the directory exists
-    os.makedirs(os.path.dirname(TEST_DB_PATH), exist_ok=True)
-
-    # Create a new repository with the test database
-    repo = CompanyRepository(db_path=TEST_DB_PATH, clear_data=True)
-
-    yield repo
-
-    # Clean up after the test
-    if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
+clean_test_db = make_clean_test_db_fixture(TEST_DB_PATH)
 
 
 class TestCompanyRepository:
@@ -176,6 +161,63 @@ class TestCompanyRepository:
         assert len(all_companies) == 3
         company_ids = {company.company_id for company in all_companies}
         assert company_ids == {"test-company-0", "test-company-1", "test-company-2"}
+
+    def test_detect_alias_conflicts_and_potential_duplicates(self, clean_test_db):
+        repo = clean_test_db
+
+        # Create canonical companies
+        acme = Company(
+            company_id="acme",
+            name="Acme Corp",
+            details=CompaniesSheetRow(name="Acme Corp"),
+        )
+        repo.create(acme)
+
+        beta = Company(
+            company_id="beta",
+            name="Beta Incorporated",
+            details=CompaniesSheetRow(name="Beta Incorporated"),
+        )
+        repo.create(beta)
+
+        # Add aliases
+        repo.create_alias("acme", "ACME", "manual")
+        repo.create_alias("acme", "Acme Corporation", "manual")
+        repo.create_alias("beta", "Beta Inc", "manual")
+
+        # A new alias that equals acme's canonical should conflict with acme
+        conflicts = repo.detect_alias_conflicts("Acme Corp")
+        assert conflicts == ["acme"]
+
+        # A new alias that equals an existing alias should conflict
+        conflicts2 = repo.detect_alias_conflicts("beta inc")
+        assert conflicts2 == ["beta"]
+
+        # Potential duplicates for acme: none with beta
+        dups_acme = repo.find_potential_duplicates("acme")
+        assert dups_acme == []
+
+        # Now create a duplicate company with overlapping alias
+        acme_dup = Company(
+            company_id="acme-dup",
+            name="Acme",
+            details=CompaniesSheetRow(name="Acme"),
+        )
+        repo.create(acme_dup)
+        repo.create_alias("acme-dup", "Acme Corporation", "manual")
+
+        # Duplicates should be detected in both directions
+        assert repo.find_potential_duplicates("acme") == ["acme-dup"]
+        assert repo.find_potential_duplicates("acme-dup") == ["acme"]
+
+        # Soft delete the duplicate and ensure it's excluded by default
+        repo.soft_delete_company("acme-dup")
+        assert repo.find_potential_duplicates("acme") == []
+
+        # But it can be included when requested
+        assert repo.find_potential_duplicates("acme", include_deleted=True) == [
+            "acme-dup"
+        ]
 
     def test_company_with_recruiter_message(self, clean_test_db):
         """Test creating and retrieving a company with a recruiter message."""
@@ -2040,3 +2082,266 @@ class TestIsPlaceholder:
         assert is_placeholder("placeholder")
         assert not is_placeholder("unknown company")  # Not exact match
         assert not is_placeholder("placeholder inc")  # Not exact match
+
+
+class TestSoftDeleteCompany:
+
+    def test_soft_delete_company_success(self, clean_test_db):
+        """Test successful soft deletion of a company."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="Test Company",
+            details=CompaniesSheetRow(name="Test Company"),
+        )
+        repo.create(company)
+
+        # Verify company exists and is not deleted
+        retrieved_company = repo.get("test-company")
+        assert retrieved_company is not None
+        assert retrieved_company.name == "Test Company"
+
+        # Soft delete the company
+        result = repo.soft_delete_company("test-company")
+        assert result is True, "Soft delete should return True for successful deletion"
+
+        # Verify company is now soft deleted
+        with repo._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT deleted_at FROM companies WHERE company_id = ?", ("test-company",)
+            )
+            row = cursor.fetchone()
+            assert row is not None
+            assert row[0] is not None, "deleted_at should be set to a timestamp"
+
+            # Verify it's a valid ISO timestamp
+            import datetime
+
+            try:
+                datetime.datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+            except ValueError:
+                assert False, "deleted_at should be a valid ISO timestamp"
+
+        # Verify company is filtered out by default queries
+        all_companies = repo.get_all()
+        assert (
+            len(all_companies) == 0
+        ), "Soft deleted company should not appear in get_all()"
+
+        # Verify company can be included when requested
+        all_companies_including_deleted = repo.get_all(include_deleted=True)
+        assert (
+            len(all_companies_including_deleted) == 1
+        ), "Should find company when include_deleted=True"
+
+    def test_soft_delete_company_not_found(self, clean_test_db):
+        """Test soft deletion of a non-existent company."""
+        repo = clean_test_db
+
+        # Try to soft delete a non-existent company
+        result = repo.soft_delete_company("non-existent-company")
+        assert result is False, "Soft delete should return False for non-existent company"
+
+    def test_soft_delete_company_already_deleted(self, clean_test_db):
+        """Test soft deletion of an already deleted company."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="Test Company",
+            details=CompaniesSheetRow(name="Test Company"),
+        )
+        repo.create(company)
+
+        # Soft delete the company
+        result1 = repo.soft_delete_company("test-company")
+        assert result1 is True, "First soft delete should succeed"
+
+        # Try to soft delete it again
+        result2 = repo.soft_delete_company("test-company")
+        assert result2 is True, "Second soft delete should succeed (idempotent)"
+
+    def test_soft_deleted_companies_filtered_out_by_default(self, clean_test_db):
+        """Test that soft-deleted companies are filtered out by default in all repository methods."""
+        repo = clean_test_db
+
+        # Create two test companies
+        company1 = Company(
+            company_id="company-1",
+            name="Company One",
+            details=CompaniesSheetRow(name="Company One"),
+        )
+        company2 = Company(
+            company_id="company-2",
+            name="Company Two",
+            details=CompaniesSheetRow(name="Company Two"),
+        )
+        repo.create(company1)
+        repo.create(company2)
+
+        # Verify both companies exist
+        all_companies = repo.get_all()
+        assert len(all_companies) == 2
+
+        # Soft delete one company
+        repo.soft_delete_company("company-1")
+
+        # Test get_all() filtering
+        all_companies = repo.get_all()
+        assert len(all_companies) == 1
+        assert all_companies[0].company_id == "company-2"
+
+        # Test get_by_normalized_name() filtering
+        found_company = repo.get_by_normalized_name("Company One")
+        assert found_company is None, "Soft deleted company should not be found by name"
+
+        found_company = repo.get_by_normalized_name("Company Two")
+        assert found_company is not None, "Non-deleted company should be found"
+        assert found_company.company_id == "company-2"
+
+        # Test get_all_messages() filtering (create messages for both companies)
+        message1 = RecruiterMessage(
+            message_id="msg-1",
+            company_id="company-1",
+            subject="Message from Company One",
+            message="Test message",
+            thread_id="thread1",
+        )
+        message2 = RecruiterMessage(
+            message_id="msg-2",
+            company_id="company-2",
+            subject="Message from Company Two",
+            message="Test message",
+            thread_id="thread2",
+        )
+        repo.create_recruiter_message(message1)
+        repo.create_recruiter_message(message2)
+
+        all_messages = repo.get_all_messages()
+        assert (
+            len(all_messages) == 1
+        ), "Only message from non-deleted company should be returned"
+        assert all_messages[0].company_id == "company-2"
+
+        # Test that include_deleted=True works for all methods
+        all_companies_with_deleted = repo.get_all(include_deleted=True)
+        assert (
+            len(all_companies_with_deleted) == 2
+        ), "Should include deleted company when requested"
+
+        found_company = repo.get_by_normalized_name("Company One", include_deleted=True)
+        assert (
+            found_company is not None
+        ), "Should find deleted company when include_deleted=True"
+        assert found_company.company_id == "company-1"
+
+        all_messages_with_deleted = repo.get_all_messages(include_deleted=True)
+        assert (
+            len(all_messages_with_deleted) == 2
+        ), "Should include messages from deleted companies when requested"
+
+
+class TestMergeCompanies:
+
+    def test_merge_companies_success(self, clean_test_db):
+        repo = clean_test_db
+
+        # Create canonical company with sparse details
+        canonical = Company(
+            company_id="canon",
+            name="Canonical Corp",
+            details=CompaniesSheetRow(name="Canonical Corp", type="Tech", url=""),
+        )
+        repo.create(canonical)
+
+        # Create duplicate company with richer details, alias, message and event
+        duplicate = Company(
+            company_id="dup",
+            name="Canonical",
+            details=CompaniesSheetRow(
+                name="Canonical",
+                type="",  # Should be preserved from canonical
+                url="https://canonical.example.com",
+                headquarters="NYC",
+            ),
+        )
+        repo.create(duplicate)
+
+        # Aliases
+        repo.create_alias("dup", "Canonical Corporation", "manual")
+
+        # Message associated with duplicate
+        msg = RecruiterMessage(
+            message_id="m-1",
+            company_id="dup",
+            message="Hello",
+            subject="Hi",
+            thread_id="t-1",
+            email_thread_link="https://mail/thread/t-1",
+            date=datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
+        )
+        repo.create_recruiter_message(msg)
+
+        # Event associated with duplicate
+        repo.create_event(Event(company_id="dup", event_type=EventType.COMPANY_CREATED))
+
+        # Sanity
+        assert len(repo.get_recruiter_messages("canon")) == 0
+        assert len(repo.get_recruiter_messages("dup")) == 1
+        assert len(repo.get_events(company_id="canon")) == 0
+        assert len(repo.get_events(company_id="dup")) == 1
+
+        # Merge
+        assert repo.merge_companies("canon", "dup") is True
+
+        # Canonical name preserved
+        canon_after = repo.get("canon")
+        assert canon_after is not None
+        assert canon_after.name == "Canonical Corp"
+
+        # Details merged: canonical precedence, fill empty from duplicate
+        assert canon_after.details.type == "Tech"
+        assert canon_after.details.url == "https://canonical.example.com"
+        assert canon_after.details.headquarters == "NYC"
+
+        # Messages migrated
+        canon_msgs = repo.get_recruiter_messages("canon")
+        assert len(canon_msgs) == 1
+        assert canon_msgs[0].message_id == "m-1"
+
+        # Events migrated
+        canon_events = repo.get_events(company_id="canon")
+        assert len(canon_events) == 1
+
+        # Duplicate soft-deleted
+        with repo._get_connection() as conn:  # type: ignore[attr-defined]
+            row = conn.execute(
+                "SELECT deleted_at FROM companies WHERE company_id = ?",
+                ("dup",),
+            ).fetchone()
+            assert row is not None and row[0] is not None
+
+        # Aliases migrated (allow active or inactive depending on conflict handling)
+        canon_aliases = repo.list_aliases("canon")
+        assert any(a["alias"] == "Canonical Corporation" for a in canon_aliases)
+
+    def test_merge_companies_validation(self, clean_test_db):
+        repo = clean_test_db
+
+        a = Company(company_id="a", name="A", details=CompaniesSheetRow(name="A"))
+        b = Company(company_id="b", name="B", details=CompaniesSheetRow(name="B"))
+        repo.create(a)
+        repo.create(b)
+
+        # Prevent merging a company with itself
+        assert repo.merge_companies("a", "a") is False
+
+        # Missing duplicate
+        assert repo.merge_companies("a", "missing") is False
+
+        # Already-deleted duplicate
+        assert repo.soft_delete_company("b") is True
+        assert repo.merge_companies("a", "b") is False

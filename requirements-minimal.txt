@@ -3,6 +3,7 @@ black
 black[jupyter]
 beautifulsoup4
 colorama
+coverage
 diskcache
 flake8
 freezegun

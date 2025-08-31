@@ -12,3 +12,8 @@ def test_import_companies_task_type_exists():
         TaskType("import_companies_from_spreadsheet")
         == TaskType.IMPORT_COMPANIES_FROM_SPREADSHEET
     )
+
+
+def test_merge_companies_task_type_exists():
+    assert TaskType.MERGE_COMPANIES.value == "merge_companies"
+    assert TaskType("merge_companies") == TaskType.MERGE_COMPANIES

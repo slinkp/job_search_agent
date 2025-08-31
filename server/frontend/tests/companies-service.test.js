@@ -542,6 +542,35 @@ describe("CompaniesService", () => {
       );
     });
   });
+
+  describe("merge and duplicates", () => {
+    it("starts merge task", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ task_id: "t1", status: "pending" }),
+      });
+
+      const result = await service.mergeCompanies("canon", "dup");
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/companies/canon/merge",
+        expect.objectContaining({ method: "POST" })
+      );
+      expect(result.task_id).toBe("t1");
+    });
+
+    it("loads potential duplicates", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(["a", "b"]),
+      });
+
+      const result = await service.getPotentialDuplicates("canon");
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/companies/canon/potential-duplicates"
+      );
+      expect(result).toEqual(["a", "b"]);
+    });
+  });
 });
 
 

@@ -49,6 +49,7 @@ class TaskType(Enum):
     SEND_AND_ARCHIVE = "send_and_archive"
     IGNORE_AND_ARCHIVE = "ignore_and_archive"
     IMPORT_COMPANIES_FROM_SPREADSHEET = "import_companies_from_spreadsheet"
+    MERGE_COMPANIES = "merge_companies"
 
 
 class TaskManager:

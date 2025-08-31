@@ -572,7 +572,8 @@ class CompanyRepository:
                         status TEXT NOT NULL DEFAULT '{}',  -- New status column with default empty JSON
                         activity_at TEXT DEFAULT NULL,
                         last_activity TEXT DEFAULT NULL,
-                        reply_message TEXT
+                        reply_message TEXT,
+                        deleted_at TEXT DEFAULT NULL
                     )
                 """
                 )
@@ -687,6 +688,159 @@ class CompanyRepository:
                 object.__setattr__(company, "_aliases", aliases)
 
             return company
+
+    def soft_delete_company(self, company_id: str) -> bool:
+        """
+        Soft delete a company by setting its deleted_at timestamp.
+
+        Args:
+            company_id: The ID of the company to soft delete
+
+        Returns:
+            True if the company was successfully soft deleted, False if it doesn't exist
+        """
+        with self.lock:
+            with self._get_connection() as conn:
+                # Check if company exists and is not already deleted
+                cursor = conn.execute(
+                    "SELECT deleted_at FROM companies WHERE company_id = ?", (company_id,)
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return False  # Company doesn't exist
+
+                if row[0] is not None:
+                    return True  # Company is already deleted. Idempotent.
+
+                # Soft delete the company
+                now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                conn.execute(
+                    "UPDATE companies SET deleted_at = ? WHERE company_id = ?",
+                    (now, company_id),
+                )
+                conn.commit()
+                return True
+
+    def merge_companies(self, canonical_id: str, duplicate_id: str) -> bool:
+        """Merge duplicate company into canonical company.
+
+        - Validate both exist and are not soft-deleted
+        - Preserve canonical name
+        - Merge details by filling empty canonical fields from duplicate
+        - Migrate aliases (avoiding duplicates)
+        - Repoint recruiter_messages and events to canonical
+        - Soft-delete duplicate company
+
+        Returns True on success, False on validation failure.
+        """
+        if canonical_id == duplicate_id:
+            return False
+
+        def _is_empty(value: Any) -> bool:
+            if value is None:
+                return True
+            if isinstance(value, str):
+                return value == ""
+            if isinstance(value, list):
+                return len(value) == 0
+            return False
+
+        with self.lock:
+            with self._get_connection() as conn:
+                # Validate existence and not deleted
+                row = conn.execute(
+                    "SELECT deleted_at FROM companies WHERE company_id = ?",
+                    (canonical_id,),
+                ).fetchone()
+                if row is None or row[0] is not None:
+                    return False
+
+                row = conn.execute(
+                    "SELECT deleted_at FROM companies WHERE company_id = ?",
+                    (duplicate_id,),
+                ).fetchone()
+                if row is None or row[0] is not None:
+                    return False
+
+                # Load both companies
+                canonical = self.get(canonical_id)
+                duplicate = self.get(duplicate_id)
+                if canonical is None or duplicate is None:
+                    return False
+
+                # Merge details: fill empty canonical fields from duplicate
+                for field_name in canonical.details.__class__.model_fields.keys():
+                    canon_val = getattr(canonical.details, field_name)
+                    if _is_empty(canon_val):
+                        dup_val = getattr(duplicate.details, field_name)
+                        if not _is_empty(dup_val):
+                            setattr(canonical.details, field_name, dup_val)
+
+                # Persist canonical details (keep canonical name)
+                conn.execute(
+                    """
+                    UPDATE companies
+                    SET details = ?, updated_at = datetime('now')
+                    WHERE company_id = ?
+                    """,
+                    (
+                        json.dumps(canonical.details.model_dump(), cls=CustomJSONEncoder),
+                        canonical_id,
+                    ),
+                )
+
+                # Migrate aliases from duplicate to canonical, skipping conflicts
+                alias_rows = conn.execute(
+                    """
+                    SELECT id, alias, normalized_alias, source, is_active
+                    FROM company_aliases
+                    WHERE company_id = ?
+                    """,
+                    (duplicate_id,),
+                ).fetchall()
+
+                for alias_id, alias, normalized_alias, source, is_active in alias_rows:
+                    exists = conn.execute(
+                        """
+                        SELECT 1 FROM company_aliases
+                        WHERE company_id = ? AND normalized_alias = ?
+                        LIMIT 1
+                        """,
+                        (canonical_id, normalized_alias),
+                    ).fetchone()
+                    if exists:
+                        # Skip migrating this alias to avoid conflicts
+                        continue
+                    conn.execute(
+                        """
+                        UPDATE company_aliases
+                        SET company_id = ?, updated_at = datetime('now')
+                        WHERE id = ?
+                        """,
+                        (canonical_id, alias_id),
+                    )
+
+                # Repoint recruiter messages
+                conn.execute(
+                    "UPDATE recruiter_messages SET company_id = ? WHERE company_id = ?",
+                    (canonical_id, duplicate_id),
+                )
+
+                # Repoint events
+                conn.execute(
+                    "UPDATE events SET company_id = ? WHERE company_id = ?",
+                    (canonical_id, duplicate_id),
+                )
+
+                # Soft-delete duplicate
+                now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                conn.execute(
+                    "UPDATE companies SET deleted_at = ? WHERE company_id = ?",
+                    (now, duplicate_id),
+                )
+
+                conn.commit()
+                return True
 
     def get_recruiter_message(self, company_id: str) -> Optional[RecruiterMessage]:
         """
@@ -813,12 +967,15 @@ class CompanyRepository:
             return recruiter_message
         return None
 
-    def get_by_normalized_name(self, name: str) -> Optional[Company]:
+    def get_by_normalized_name(
+        self, name: str, include_deleted=False
+    ) -> Optional[Company]:
         """
         Get a company by its normalized name (case-insensitive, whitespace-insensitive).
 
         Args:
             name: The company name to search for
+            include_deleted: Whether to include soft-deleted companies in the search
 
         Returns:
             The Company if found, None otherwise
@@ -832,9 +989,11 @@ class CompanyRepository:
 
         with self._get_connection() as conn:
             # Query for companies where the normalized version of the name matches
-            cursor = conn.execute(
-                "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies"
-            )
+            query = "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies"
+            if not include_deleted:
+                query += " WHERE deleted_at IS NULL"
+
+            cursor = conn.execute(query)
             for row in cursor.fetchall():
                 # We normalize each company name from the database and compare.
                 # This is slow, but fine since we expect to have O(100) companies at most.
@@ -1102,6 +1261,110 @@ class CompanyRepository:
                 conn.commit()
                 return True
 
+    def detect_alias_conflicts(
+        self, alias: str, include_deleted: bool = False
+    ) -> list[str]:
+        """Find existing companies that would conflict with the given alias.
+
+        A conflict occurs when the alias (normalized) matches either:
+        - An active alias for another company, or
+        - The canonical company name of another company
+
+        By default, soft-deleted companies are excluded.
+
+        Args:
+            alias: The alias text to check for conflicts
+            include_deleted: If True, include soft-deleted companies in results
+
+        Returns:
+            List of company_ids that have a conflicting alias/name
+        """
+        normalized = normalize_company_name(alias)
+        conflicting_company_ids: set[str] = set()
+
+        with self._get_connection() as conn:
+            # Match active aliases
+            alias_query = """
+                SELECT DISTINCT c.company_id
+                FROM company_aliases a
+                JOIN companies c ON c.company_id = a.company_id
+                WHERE a.normalized_alias = ? AND a.is_active = 1
+                """
+            params: list[object] = [normalized]
+            if not include_deleted:
+                alias_query += " AND c.deleted_at IS NULL"
+
+            for row in conn.execute(alias_query, params):
+                conflicting_company_ids.add(row[0])
+
+            # Match canonical company names
+            company_rows = conn.execute(
+                "SELECT company_id, name, deleted_at FROM companies"
+            ).fetchall()
+            for company_id, name, deleted_at in company_rows:
+                if not include_deleted and deleted_at is not None:
+                    continue
+                if normalize_company_name(name) == normalized:
+                    conflicting_company_ids.add(company_id)
+
+        return sorted(conflicting_company_ids)
+
+    def find_potential_duplicates(
+        self, company_id: str, include_deleted: bool = False
+    ) -> list[str]:
+        """Find companies that are potential duplicates of the given company.
+
+        Potential duplicates are detected when the canonical name or any active
+        alias of the target company overlaps (normalized) with the canonical
+        name or any active alias of another company.
+
+        By default, soft-deleted companies are excluded.
+
+        Args:
+            company_id: The ID of the company to compare against others
+            include_deleted: If True, include soft-deleted companies in results
+
+        Returns:
+            List of other company_ids that appear to be duplicates
+        """
+        # Build the set of normalized names for the target company: canonical + active aliases
+        target = self.get(company_id)
+        if target is None:
+            return []
+
+        target_norms: set[str] = {normalize_company_name(target.name)}
+        for alias in self.list_aliases(company_id):
+            if alias.get("is_active"):
+                target_norms.add(normalize_company_name(alias.get("alias", "")))
+
+        # Compare against all other companies
+        duplicates: set[str] = set()
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT company_id, name, deleted_at FROM companies"
+            ).fetchall()
+
+        for other_company_id, other_name, other_deleted_at in rows:
+            if other_company_id == company_id:
+                continue
+            if not include_deleted and other_deleted_at is not None:
+                continue
+
+            # Check canonical name overlap
+            if normalize_company_name(other_name) in target_norms:
+                duplicates.add(other_company_id)
+                continue
+
+            # Check active aliases overlap
+            for alias in self.list_aliases(other_company_id):
+                if not alias.get("is_active"):
+                    continue
+                if normalize_company_name(alias.get("alias", "")) in target_norms:
+                    duplicates.add(other_company_id)
+                    break
+
+        return sorted(duplicates)
+
     def _get_recruiter_message(
         self, company_id: str, conn: sqlite3.Connection
     ) -> Optional[RecruiterMessage]:
@@ -1225,12 +1488,16 @@ class CompanyRepository:
                 conn, message.company_id, message.date, "message received"
             )
 
-    def get_all(self, include_messages=False, include_aliases=False) -> List[Company]:
+    def get_all(
+        self, include_messages=False, include_aliases=False, include_deleted=False
+    ) -> List[Company]:
         # Reads can happen without the lock
         with self._get_connection() as conn:
-            cursor = conn.execute(
-                "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies"
-            )
+            query = "SELECT company_id, name, updated_at, details, status, activity_at, last_activity, reply_message FROM companies"
+            if not include_deleted:
+                query += " WHERE deleted_at IS NULL"
+
+            cursor = conn.execute(query)
             companies = [self._deserialize_company(row) for row in cursor.fetchall()]
             if include_messages:
                 # Don't worry about this being slow for now
@@ -1305,20 +1572,22 @@ class CompanyRepository:
                 self._update_activity(conn, company_id, when, label)
                 conn.commit()
 
-    def get_all_messages(self) -> List[RecruiterMessage]:
+    def get_all_messages(self, include_deleted=False) -> List[RecruiterMessage]:
         """Get all recruiter messages with basic company info."""
         # Reads can happen without the lock
         with self._get_connection() as conn:
-            cursor = conn.execute(
-                """
+            query = """
                 SELECT m.message_id, m.company_id, m.message, m.subject, m.sender,
                        m.email_thread_link, m.thread_id, m.date, m.archived_at,
                        m.reply_sent_at, c.name as company_name, c.reply_message
                 FROM recruiter_messages m
                 LEFT JOIN companies c ON m.company_id = c.company_id
-                ORDER BY m.date DESC
-                """
-            )
+            """
+            if not include_deleted:
+                query += " WHERE c.deleted_at IS NULL"
+            query += " ORDER BY m.date DESC"
+
+            cursor = conn.execute(query)
             messages = []
             for row in cursor.fetchall():
                 message = RecruiterMessage(

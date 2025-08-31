@@ -117,6 +117,8 @@ class ResearchDaemon:
                 elif task_type == TaskType.IMPORT_COMPANIES_FROM_SPREADSHEET:
                     result = self.do_import_companies_from_spreadsheet(task_args)
                     logger.info(f"Import companies result: {result}")
+                elif task_type == TaskType.MERGE_COMPANIES:
+                    result = self.do_merge_companies(task_args)
                 else:
                     logger.error(f"Ignoring unsupported task type: {task_type}")
 
@@ -249,6 +251,17 @@ class ResearchDaemon:
                     # Create a new company
                     logger.info(f"Creating company {company.name}")
                     self.company_repo.create(company)
+                    # Log potential duplicates by alias/name overlap (non-blocking)
+                    try:
+                        overlaps = self.company_repo.find_potential_duplicates(
+                            company.company_id
+                        )
+                        if overlaps:
+                            logger.warning(
+                                f"Potential duplicates detected for {company.company_id}: {overlaps}"
+                            )
+                    except Exception:
+                        logger.exception("Duplicate detection failed during research")
                     result_company = company
 
         except Exception as e:
@@ -388,6 +401,18 @@ class ResearchDaemon:
                             f"No company extracted from message {i + 1}, skipping"
                         )
                         continue
+                # After creating/updating company, log potential duplicates (non-blocking)
+                try:
+                    if company:
+                        overlaps = self.company_repo.find_potential_duplicates(
+                            company.company_id
+                        )
+                        if overlaps:
+                            logger.warning(
+                                f"Potential duplicates detected for {company.company_id}: {overlaps}"
+                            )
+                except Exception:
+                    logger.exception("Duplicate detection failed during email ingestion")
                 processed_count += 1
             except Exception:
                 logger.exception(f"Unexpected error processing recruiter message {i + 1}")
@@ -798,6 +823,40 @@ class ResearchDaemon:
                 )
 
         return "\n".join(summary)
+
+    def do_merge_companies(self, args: dict) -> dict[str, str]:
+        """Handle merge_companies task.
+
+        Args must include:
+          - canonical_company_id
+          - duplicate_company_id
+
+        Returns dict with status.
+        """
+        canonical_id = (args.get("canonical_company_id") or "").strip()
+        duplicate_id = (args.get("duplicate_company_id") or "").strip()
+
+        if not canonical_id or not duplicate_id:
+            raise ValueError("Missing canonical_company_id or duplicate_company_id")
+
+        logger.info(
+            f"Merging companies: canonical={canonical_id}, duplicate={duplicate_id}"
+        )
+
+        ok = self.company_repo.merge_companies(canonical_id, duplicate_id)
+        if not ok:
+            raise ValueError("Merge validation failed or companies not found")
+
+        # Record event on canonical
+        try:
+            event = models.Event(
+                company_id=canonical_id, event_type=models.EventType.COMPANY_UPDATED
+            )
+            self.company_repo.create_event(event)
+        except Exception:
+            logger.exception("Failed to create merge event")
+
+        return {"status": "merged"}
 
 
 if __name__ == "__main__":

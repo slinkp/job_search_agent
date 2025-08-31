@@ -1,5 +1,4 @@
 import datetime
-import os
 from unittest.mock import patch
 
 import pytest
@@ -7,15 +6,14 @@ from pyramid.testing import DummyRequest  # type: ignore[import-untyped]
 
 import server.app
 import tasks
-from models import (
-    CompaniesSheetRow,
-    Company,
-    CompanyRepository,
-    CompanyStatus,
-    RecruiterMessage,
-)
+from models import CompaniesSheetRow, Company, CompanyStatus, RecruiterMessage
+
+from .utils import make_clean_test_db_fixture
 
 TEST_DB_PATH = "data/_test_companies_endpoint.db"
+
+
+clean_test_db = make_clean_test_db_fixture(TEST_DB_PATH)
 
 
 @pytest.fixture
@@ -205,26 +203,6 @@ def test_scan_recruiter_emails_with_null_max_messages(mock_task_manager):
         tasks.TaskType.FIND_COMPANIES_FROM_RECRUITER_MESSAGES,
         {"max_messages": None, "do_research": False},
     )
-
-
-@pytest.fixture(scope="function")
-def clean_test_db():
-    """Ensure we have a clean test database for each test."""
-    # Remove the test database if it exists
-    if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
-
-    # Make sure the directory exists
-    os.makedirs(os.path.dirname(TEST_DB_PATH), exist_ok=True)
-
-    # Create a new repository with the test database
-    repo = CompanyRepository(db_path=TEST_DB_PATH, clear_data=True)
-
-    yield repo
-
-    # Clean up after the test
-    if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
 
 
 # Remove tests for old ignore_and_archive endpoint since it's been removed
@@ -1323,6 +1301,16 @@ def test_create_company_alias_success(clean_test_db):
     with patch("models.company_repository", return_value=repo):
         request = DummyRequest(json_body={"alias": "Test Corp"})
         request.matchdict = {"company_id": "test-company"}
+        # Pre-seed a conflicting alias in another company to ensure conflicts list is populated
+        other = Company(
+            company_id="other-co",
+            name="Other Co",
+            details=CompaniesSheetRow(name="Other Co"),
+            status=CompanyStatus(),
+        )
+        repo.create(other)
+        repo.create_alias("other-co", "Test Corp", "manual")
+
         response = server.app.create_company_alias(request)
 
     # Verify the response
@@ -1332,6 +1320,39 @@ def test_create_company_alias_success(clean_test_db):
     assert response["normalized_alias"] == "test-corp"
     assert response["source"] == "manual"
     assert response["is_active"] is True
+    # Conflicts should include the other company
+    assert "conflicts" in response
+    assert other.company_id in response["conflicts"]
+
+
+def test_create_company_alias_conflicts_when_matching_canonical(clean_test_db):
+    """Creating an alias that matches another company's canonical name should warn in conflicts."""
+    repo = clean_test_db
+
+    # Create companies
+    acme = Company(
+        company_id="acme",
+        name="Acme Corp",
+        details=CompaniesSheetRow(name="Acme Corp"),
+        status=CompanyStatus(),
+    )
+    repo.create(acme)
+
+    target = Company(
+        company_id="target",
+        name="Target Name",
+        details=CompaniesSheetRow(name="Target Name"),
+        status=CompanyStatus(),
+    )
+    repo.create(target)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"alias": "acme corp"})
+        request.matchdict = {"company_id": "target"}
+        response = server.app.create_company_alias(request)
+
+    assert "conflicts" in response
+    assert acme.company_id in response["conflicts"]
 
 
 def test_create_company_alias_with_canonical_setting(clean_test_db):
@@ -1813,3 +1834,90 @@ def test_create_company_alias_set_as_canonical_false(clean_test_db):
     assert response["alias"] == "Test Corp"
     assert response["source"] == "manual"
     assert response["is_active"] is True
+
+
+# Merge endpoints
+def test_post_merge_companies_success(clean_test_db, mock_task_manager):
+    repo = clean_test_db
+
+    canon = Company(
+        company_id="canon", name="Canon", details=CompaniesSheetRow(name="Canon")
+    )
+    dup = Company(company_id="dup", name="Dup", details=CompaniesSheetRow(name="Dup"))
+    repo.create(canon)
+    repo.create(dup)
+
+    mock_task_manager.create_task.return_value = "task-merge-1"
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest(json_body={"duplicate_company_id": "dup"})
+        request.matchdict = {"company_id": "canon"}
+        response = server.app.merge_companies(request)
+
+    assert response["task_id"] == "task-merge-1"
+    assert response["status"] == tasks.TaskStatus.PENDING.value
+    mock_task_manager.create_task.assert_called_once_with(
+        tasks.TaskType.MERGE_COMPANIES,
+        {"canonical_company_id": "canon", "duplicate_company_id": "dup"},
+    )
+
+
+def test_post_merge_companies_validation_errors(clean_test_db, mock_task_manager):
+    repo = clean_test_db
+
+    a = Company(company_id="a", name="A", details=CompaniesSheetRow(name="A"))
+    b = Company(company_id="b", name="B", details=CompaniesSheetRow(name="B"))
+    repo.create(a)
+    repo.create(b)
+
+    with patch("models.company_repository", return_value=repo):
+        # Same company
+        request = DummyRequest(json_body={"duplicate_company_id": "a"})
+        request.matchdict = {"company_id": "a"}
+        resp = server.app.merge_companies(request)
+        assert resp["error"] == "Cannot merge a company with itself"
+        assert request.response.status == "400 Bad Request"
+
+        # Missing duplicate id
+        request = DummyRequest(json_body={})
+        request.matchdict = {"company_id": "a"}
+        resp = server.app.merge_companies(request)
+        assert resp["error"] == "duplicate_company_id is required"
+        assert request.response.status == "400 Bad Request"
+
+        # Non-existent duplicate
+        request = DummyRequest(json_body={"duplicate_company_id": "missing"})
+        request.matchdict = {"company_id": "a"}
+        resp = server.app.merge_companies(request)
+        assert resp["error"] == "Duplicate company not found"
+        assert request.response.status == "404 Not Found"
+
+        # Deleted duplicate
+        assert repo.soft_delete_company("b") is True
+        request = DummyRequest(json_body={"duplicate_company_id": "b"})
+        request.matchdict = {"company_id": "a"}
+        resp = server.app.merge_companies(request)
+        assert resp["error"] == "Duplicate company is deleted"
+        assert request.response.status == "400 Bad Request"
+
+
+def test_get_potential_duplicates(clean_test_db):
+    repo = clean_test_db
+
+    acme = Company(
+        company_id="acme", name="Acme Corp", details=CompaniesSheetRow(name="Acme Corp")
+    )
+    dupe = Company(
+        company_id="acme-dup", name="Acme", details=CompaniesSheetRow(name="Acme")
+    )
+    repo.create(acme)
+    repo.create(dupe)
+    repo.create_alias("acme-dup", "Acme Corp", "manual")
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"company_id": "acme"}
+        response = server.app.get_potential_duplicates(request)
+
+    assert isinstance(response, list)
+    assert response == ["acme-dup"]

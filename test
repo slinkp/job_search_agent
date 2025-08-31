@@ -20,39 +20,97 @@ export TEST_SHEET_DOC_ID='sheet_test_xyz'
 export TEST_TAB_1_GID='xyz'
 export TEST_TAB_1_RANGE="$TAB_1_RANGE"
 
-if [ "$1" == "--no-python" ]; then
-	echo "Skipping python tests"
-	shift
-	PYTHON_EXIT=0
-else
-	# Run Python tests with coverage
-	coverage run -m pytest $* 
-	PYTHON_EXIT=$?
-	# Always show coverage report
-	coverage report -m && coverage html
+# Parse arguments
+RUN_PYTHON=false
+RUN_JS=false
+SKIP_COVERAGE=false
+PYTEST_ARGS=()
+
+# Check each argument
+for arg in "$@"; do
+    case "$arg" in
+        --py|--python)
+            RUN_PYTHON=true
+            ;;
+        --js)
+            RUN_JS=true
+            ;;
+        --all)
+            RUN_PYTHON=true
+            RUN_JS=true
+            ;;
+        --no-cover)
+            SKIP_COVERAGE=true
+            ;;
+        *)
+            # Pass through any other arguments to pytest
+            PYTEST_ARGS+=("$arg")
+            ;;
+    esac
+done
+
+# Default behavior: run both if no test type specified
+if [ "$RUN_PYTHON" = false ] && [ "$RUN_JS" = false ]; then
+    RUN_PYTHON=true
+    RUN_JS=true
 fi
 
-# Run JavaScript tests with coverage in UTC timezone
-TZ=UTC npm run test:coverage -- --run
-JS_EXIT=$?
+if [ "$RUN_PYTHON" = true ]; then
+    if [ "$SKIP_COVERAGE" = true ]; then
+        # Run Python tests without coverage
+        python -m pytest "${PYTEST_ARGS[@]}"
+        PYTHON_EXIT=$?
+    else
+        # Run Python tests with coverage (don't show report yet)
+        coverage run -m pytest "${PYTEST_ARGS[@]}"
+        PYTHON_EXIT=$?
+    fi
+else
+    echo "Skipping python tests"
+    PYTHON_EXIT=0
+fi
+
+if [ "$RUN_JS" = true ]; then
+    if [ "$SKIP_COVERAGE" = true ]; then
+        # Run JavaScript tests without coverage in UTC timezone
+        TZ=UTC npm run test -- --run
+        JS_EXIT=$?
+    else
+        # Run JavaScript tests with coverage in UTC timezone
+        TZ=UTC npm run test:coverage -- --run
+        JS_EXIT=$?
+    fi
+else
+    echo "Skipping js tests"
+    JS_EXIT=0
+fi
+
+# Show Python coverage report after all tests (if coverage was enabled)
+if [ "$RUN_PYTHON" = true ] && [ "$SKIP_COVERAGE" = false ]; then
+    coverage report -m && coverage html
+fi
 
 EXIT_CODE=0
 
 echo '=== Test summary ================================================'
 echo
 
-if [ $PYTHON_EXIT -ne 0 ]; then
-    EXIT_CODE=$PYTHON_EXIT
-    echo ' !!! Python tests FAILED' >&2
-else
-    echo ' Python tests ok'
+if [ "$RUN_PYTHON" = true ]; then
+    if [ $PYTHON_EXIT -ne 0 ]; then
+        EXIT_CODE=$PYTHON_EXIT
+        echo ' !!! Python tests FAILED' >&2
+    else
+        echo ' Python tests ok'
+    fi
 fi
 
-if [ $JS_EXIT -ne 0 ]; then
-    EXIT_CODE=$JS_EXIT
-    echo ' !!! JS tests FAILED' >&2
-else
-    echo ' JS tests ok'
+if [ "$RUN_JS" = true ]; then
+    if [ $JS_EXIT -ne 0 ]; then
+        EXIT_CODE=$JS_EXIT
+        echo ' !!! JS tests FAILED' >&2
+    else
+        echo ' JS tests ok'
+    fi
 fi
 echo
 exit $EXIT_CODE

@@ -1,7 +1,9 @@
 import { CompaniesService } from "./companies-service.js";
 import { CompanyResearchService } from "./company-research.js";
 import {
+  aliasOverlap,
   filterCompanies,
+  findDuplicateCandidates,
   normalizeCompanies,
   sortCompanies,
   formatResearchErrors as utilFormatResearchErrors,
@@ -156,6 +158,16 @@ document.addEventListener("alpine:init", () => {
       },
       researchCompanyTaskId: null,
 
+      // Duplicate detection modal state
+      duplicateModalOpen: false,
+      searchingDuplicates: false,
+      duplicateSearchResults: [],
+      selectedDuplicateCompany: null,
+      duplicateSearchQuery: "",
+      currentCompanyForDuplicate: null,
+      potentialDuplicatesMap: {},
+      dismissedDuplicatePrompts: new Set(),
+
       isUrl,
 
       async init() {
@@ -199,6 +211,110 @@ document.addEventListener("alpine:init", () => {
         } finally {
           this.loading = false;
         }
+      },
+
+      // Duplicate detection methods
+      showDuplicateModal(company) {
+        this.currentCompanyForDuplicate = company;
+        modalUtils.showModal(modalUtils.modalIds.DUPLICATE);
+        this.duplicateSearchQuery = "";
+        this.duplicateSearchResults = [];
+        this.selectedDuplicateCompany = null;
+        this.searchingDuplicates = false;
+      },
+
+      closeDuplicateModal() {
+        modalUtils.closeModal(modalUtils.modalIds.DUPLICATE);
+        this.currentCompanyForDuplicate = null;
+        this.duplicateSearchQuery = "";
+        this.duplicateSearchResults = [];
+        this.selectedDuplicateCompany = null;
+        this.searchingDuplicates = false;
+      },
+
+      async searchDuplicates() {
+        if (!this.duplicateSearchQuery.trim() || !this.currentCompanyForDuplicate) {
+          return;
+        }
+
+        this.searchingDuplicates = true;
+        try {
+          const companies = await companiesService.getCompanies(true);
+          const matches = findDuplicateCandidates(
+            companies,
+            this.currentCompanyForDuplicate,
+            this.duplicateSearchQuery
+          );
+          this.duplicateSearchResults = matches.slice(0, 10);
+        } catch (err) {
+          errorLogger.logFailedTo("search duplicates", err);
+          this.showError("Failed to search for companies");
+        } finally {
+          this.searchingDuplicates = false;
+        }
+      },
+
+      selectDuplicateCompany(company) {
+        this.selectedDuplicateCompany = company;
+      },
+
+      async mergeCompanies() {
+        if (!this.selectedDuplicateCompany || !this.currentCompanyForDuplicate) {
+          this.showError("Please select a company to merge");
+          return;
+        }
+
+        try {
+          await companiesService.mergeCompanies(
+            this.currentCompanyForDuplicate.company_id,
+            this.selectedDuplicateCompany.company_id
+          );
+
+          this.showSuccess("Merge task started. This may take a few moments.");
+          this.closeDuplicateModal();
+          await this.refreshAllCompanies(this.showArchived);
+        } catch (err) {
+          errorLogger.logFailedTo("merge companies", err);
+          this.showError(
+            err.message || "Failed to start merge. Please try again."
+          );
+        }
+      },
+
+      getAliasOverlap(canonicalCompany, duplicateCompany) {
+        return aliasOverlap(canonicalCompany, duplicateCompany);
+      },
+
+      // Duplicate prompts and notifications
+      async checkPotentialDuplicates(company) {
+        if (!company || !company.company_id) return [];
+        try {
+          const list = await companiesService.getPotentialDuplicates(
+            company.company_id
+          );
+          this.potentialDuplicatesMap[company.company_id] = list || [];
+          return list || [];
+        } catch (err) {
+          errorLogger.logFailedTo("load potential duplicates", err);
+          return [];
+        }
+      },
+
+      hasPotentialDuplicates(company) {
+        if (!company || !company.company_id) return false;
+        if (this.dismissedDuplicatePrompts.has(company.company_id)) return false;
+        const list = this.potentialDuplicatesMap[company.company_id];
+        return Array.isArray(list) && list.length > 0;
+      },
+
+      reviewDuplicates(company) {
+        if (!company) return;
+        this.showDuplicateModal(company);
+      },
+
+      dismissPotentialDuplicates(companyId) {
+        if (!companyId) return;
+        this.dismissedDuplicatePrompts.add(companyId);
       },
 
       // View mode toggle methods
@@ -483,6 +599,7 @@ document.addEventListener("alpine:init", () => {
 
           await this.fetchAndUpdateCompany(company.company_id);
           this.showSuccess("Company research completed!");
+          await this.checkPotentialDuplicates(company);
         } catch (err) {
           errorLogger.logFailedTo("research company", err);
           this.showError(
@@ -541,6 +658,21 @@ document.addEventListener("alpine:init", () => {
         if (result?.status === "completed") {
           // Refresh companies after successful scan
           await this.refreshAllCompanies();
+
+          // After refreshing, check potential duplicates for companies
+          try {
+            const companies = Array.isArray(this.companies)
+              ? this.companies
+              : [];
+            for (const company of companies) {
+              await this.checkPotentialDuplicates(company);
+            }
+          } catch (err) {
+            errorLogger.logFailedTo(
+              "check potential duplicates after email scan",
+              err
+            );
+          }
         }
       },
 

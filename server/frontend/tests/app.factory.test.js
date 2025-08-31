@@ -82,6 +82,9 @@ describe("app/companyList factory-capture", () => {
         async getCompanies() {
           return [];
         }
+        async getPotentialDuplicates(companyId) {
+          return companyId ? ["dup-1"] : [];
+        }
         async getCompany(id) {
           return { company_id: id, name: "Test Co" };
         }
@@ -203,6 +206,11 @@ describe("app/companyList factory-capture", () => {
     expect(["company_management", "daily_dashboard"]).toContain(
       instance.viewMode
     );
+
+    // Directly check duplicates for a company and ensure map is populated
+    const company = { company_id: "c1", name: "Alpha" };
+    await instance.checkPotentialDuplicates(company);
+    expect(instance.potentialDuplicatesMap["c1"]).toEqual(["dup-1"]);
   });
 
   it("should have HTML structure for displaying company aliases", () => {
