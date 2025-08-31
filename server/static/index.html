@@ -694,27 +694,27 @@
       </dialog>
 
       <!-- Duplicate Merge Modal -->
-      <dialog id="duplicate-modal" x-data="{ duplicateSearchQuery: '', duplicateSearchResults: [], selectedDuplicateCompany: null }">
+      <dialog id="duplicate-modal">
         <article>
           <h2>Merge Duplicate Company</h2>
           <p>
             Select the company to merge into
-            <strong x-text="typeof $root.currentCompanyForDuplicate === 'undefined' ? '' : ($root.currentCompanyForDuplicate && $root.currentCompanyForDuplicate.name ? $root.currentCompanyForDuplicate.name : '')"></strong>.
+            <strong x-text="(typeof currentCompanyForDuplicate !== 'undefined' && currentCompanyForDuplicate && currentCompanyForDuplicate.name) ? currentCompanyForDuplicate.name : ''"></strong>.
           </p>
-          <input type="text" placeholder="Search companies by name or alias" x-model="duplicateSearchQuery" @input.debounce.300ms="$root.duplicateSearchQuery = duplicateSearchQuery; $root.searchDuplicates()" />
+          <input type="text" placeholder="Search companies by name or alias" x-model="duplicateSearchQuery" @input.debounce.300ms="searchDuplicates()" />
           <div class="search-results">
             <ul>
-              <template x-for="dup in duplicateSearchResults" :key="dup.company_id">
+              <template x-for="dup in (duplicateSearchResults || [])" :key="dup.company_id">
                 <li>
                   <label>
-                    <input type="radio" name="duplicate" :value="dup.company_id" @change="$root.selectDuplicateCompany(dup); selectedDuplicateCompany = dup" />
+                    <input type="radio" name="duplicate" :value="dup.company_id" @change="selectDuplicateCompany(dup)" />
                     <span x-text="dup.name"></span>
-                    <template x-if="$root.currentCompanyForDuplicate">
+                    <template x-if="typeof currentCompanyForDuplicate !== 'undefined' && currentCompanyForDuplicate">
                       <small>
-                        <template x-if="$root.getAliasOverlap(typeof $root.currentCompanyForDuplicate === 'undefined' ? null : $root.currentCompanyForDuplicate, dup).length > 0">
+                        <template x-if="typeof getAliasOverlap === 'function' && getAliasOverlap(currentCompanyForDuplicate, dup).length > 0">
                           <span>
                             — Overlap:
-                            <span x-text="$root.getAliasOverlap(typeof $root.currentCompanyForDuplicate === 'undefined' ? null : $root.currentCompanyForDuplicate, dup).join(', ')"></span>
+                            <span x-text="getAliasOverlap(currentCompanyForDuplicate, dup).join(', ')"></span>
                           </span>
                         </template>
                       </small>
@@ -725,8 +725,8 @@
             </ul>
           </div>
           <footer>
-            <button type="button" class="outline" @click="modalUtils.closeModal('duplicate-modal')">Cancel</button>
-            <button type="button" :disabled="!selectedDuplicateCompany" @click="$root.mergeCompanies()">Merge</button>
+            <button type="button" class="outline" @click="closeDuplicateModal()">Cancel</button>
+            <button type="button" :disabled="!selectedDuplicateCompany" @click="mergeCompanies()">Merge</button>
           </footer>
         </article>
       </dialog>

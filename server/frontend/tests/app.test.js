@@ -204,6 +204,79 @@ describe("Duplicate Merge Modal", () => {
     const rawHtml = document.body.innerHTML;
     expect(rawHtml).toContain("Mark as Duplicate");
   });
+
+  it("should demonstrate modal scope issues", () => {
+    // This test demonstrates the actual issues with the modal
+    const modal = document.getElementById("duplicate-modal");
+
+    // The modal should NOT have its own x-data scope anymore
+    expect(modal.hasAttribute("x-data")).toBe(false);
+
+    // The modal should inherit from the parent scope
+    const searchInput = modal.querySelector(
+      'input[placeholder*="Search companies"]'
+    );
+    expect(searchInput).toBeTruthy();
+
+    // The input should call searchDuplicates() directly (not $root.searchDuplicates())
+    expect(searchInput.getAttribute("@input.debounce.300ms")).toBe(
+      "searchDuplicates()"
+    );
+
+    // The cancel button should call closeDuplicateModal() directly (not $root.closeDuplicateModal())
+    const cancelButton = modal.querySelector('button[class*="outline"]');
+    expect(cancelButton).toBeTruthy();
+    expect(cancelButton.getAttribute("@click")).toBe("closeDuplicateModal()");
+  });
+
+  it("should have proper modal structure after fix", () => {
+    const modal = document.getElementById("duplicate-modal");
+
+    // Check that the modal does NOT have its own x-data scope
+    expect(modal.hasAttribute("x-data")).toBe(false);
+
+    // Check that the modal uses duplicateSearchResults with fallback (not $root.duplicateSearchResults)
+    const searchResultsTemplate = modal.querySelector(
+      'template[x-for*="dup in (duplicateSearchResults || [])"]'
+    );
+    expect(searchResultsTemplate).toBeTruthy();
+
+    // Check that the cancel button uses closeDuplicateModal() directly
+    const cancelButton = modal.querySelector('button[class*="outline"]');
+    expect(cancelButton).toBeTruthy();
+    expect(cancelButton.getAttribute("@click")).toBe("closeDuplicateModal()");
+
+    // Check that the modal does NOT have x-init since it doesn't have its own scope
+    expect(modal.hasAttribute("x-init")).toBe(false);
+  });
+
+  it("should have proper search input configuration", () => {
+    const modal = document.getElementById("duplicate-modal");
+    const searchInput = modal.querySelector(
+      'input[placeholder*="Search companies"]'
+    );
+
+    // Check that the input calls searchDuplicates() directly
+    expect(searchInput.getAttribute("@input.debounce.300ms")).toBe(
+      "searchDuplicates()"
+    );
+
+    // Check that the input uses x-model for the main app's duplicateSearchQuery
+    expect(searchInput.getAttribute("x-model")).toBe("duplicateSearchQuery");
+  });
+
+  it("should have proper merge button configuration", () => {
+    const modal = document.getElementById("duplicate-modal");
+    const mergeButton = modal.querySelector('button:not([class*="outline"])');
+
+    // Check that the merge button calls mergeCompanies() directly
+    expect(mergeButton.getAttribute("@click")).toBe("mergeCompanies()");
+
+    // Check that the merge button is disabled when no company is selected
+    expect(mergeButton.getAttribute(":disabled")).toBe(
+      "!selectedDuplicateCompany"
+    );
+  });
 });
 
 describe("Daily Dashboard View Mode Toggle", () => {
