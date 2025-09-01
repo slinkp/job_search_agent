@@ -571,6 +571,66 @@ describe("CompaniesService", () => {
       expect(result).toEqual(["a", "b"]);
     });
   });
+
+  describe("makeAliasCanonical", () => {
+    it("should make an alias canonical successfully", async () => {
+      const service = new CompaniesService();
+      const mockResponse = {
+        success: true,
+        message: "Alias set as canonical name",
+        company: {
+          company_id: "test-company",
+          name: "New Canonical Name",
+          aliases: [
+            {
+              alias_id: 1,
+              alias: "New Canonical Name",
+              source: "manual",
+              is_active: true,
+            },
+            {
+              alias_id: 2,
+              alias: "Original Name",
+              source: "seed",
+              is_active: true,
+            },
+          ],
+        },
+      };
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.makeAliasCanonical("test-company", 1);
+
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/companies/test-company/aliases/1/canonical",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("should handle API errors", async () => {
+      const service = new CompaniesService();
+      const errorResponse = { error: "Alias not found" };
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve(errorResponse),
+      });
+
+      await expect(
+        service.makeAliasCanonical("test-company", 999)
+      ).rejects.toThrow("Alias not found");
+    });
+  });
 });
 
 

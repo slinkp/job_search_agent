@@ -271,6 +271,27 @@ export class CompaniesService {
     }
     return response.json();
   }
+
+  async makeAliasCanonical(companyId, aliasId) {
+    const response = await fetch(
+      `/api/companies/${encodeURIComponent(
+        companyId
+      )}/aliases/${aliasId}/canonical`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.error || `Failed to make alias canonical: ${response.status}`
+      );
+    }
+    return response.json();
+  }
 }
 
 

@@ -233,7 +233,10 @@ document.addEventListener("alpine:init", () => {
       },
 
       async searchDuplicates() {
-        if (!this.duplicateSearchQuery.trim() || !this.currentCompanyForDuplicate) {
+        if (
+          !this.duplicateSearchQuery.trim() ||
+          !this.currentCompanyForDuplicate
+        ) {
           return;
         }
 
@@ -259,7 +262,10 @@ document.addEventListener("alpine:init", () => {
       },
 
       async mergeCompanies() {
-        if (!this.selectedDuplicateCompany || !this.currentCompanyForDuplicate) {
+        if (
+          !this.selectedDuplicateCompany ||
+          !this.currentCompanyForDuplicate
+        ) {
           this.showError("Please select a company to merge");
           return;
         }
@@ -302,7 +308,8 @@ document.addEventListener("alpine:init", () => {
 
       hasPotentialDuplicates(company) {
         if (!company || !company.company_id) return false;
-        if (this.dismissedDuplicatePrompts.has(company.company_id)) return false;
+        if (this.dismissedDuplicatePrompts.has(company.company_id))
+          return false;
         const list = this.potentialDuplicatesMap[company.company_id];
         return Array.isArray(list) && list.length > 0;
       },
@@ -987,6 +994,7 @@ document.addEventListener("alpine:init", () => {
       // Alias management
       newAlias: "",
       setAsCanonical: true,
+      makingCanonical: new Set(),
 
       async addAlias(companyId) {
         if (!this.newAlias.trim()) {
@@ -1016,6 +1024,39 @@ document.addEventListener("alpine:init", () => {
             err.message || "Failed to add alias. Please try again."
           );
         }
+      },
+
+      async makeAliasCanonical(companyId, aliasId) {
+        const key = `${companyId}-${aliasId}`;
+        this.makingCanonical.add(key);
+
+        try {
+          const response = await companiesService.makeAliasCanonical(
+            companyId,
+            aliasId
+          );
+
+          // Update the company data with the response
+          const companyIndex = this.companies.findIndex(
+            (c) => c.company_id === companyId
+          );
+          if (companyIndex !== -1) {
+            this.companies[companyIndex] = response.company;
+          }
+
+          this.showSuccess("Alias set as canonical name successfully!");
+        } catch (err) {
+          errorLogger.logFailedTo("make alias canonical", err);
+          this.showError(
+            err.message || "Failed to make alias canonical. Please try again."
+          );
+        } finally {
+          this.makingCanonical.delete(key);
+        }
+      },
+
+      isMakingCanonical(companyId, aliasId) {
+        return this.makingCanonical.has(`${companyId}-${aliasId}`);
       },
     };
   });
