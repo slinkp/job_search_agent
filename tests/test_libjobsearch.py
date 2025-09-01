@@ -449,10 +449,58 @@ def test_research_company_with_unknown_company(
 
     # Verify basic research methods were called
     mock_research_methods["company_researcher"].assert_called_once()
-    mock_research_methods["levels_main"].assert_called_once()
-    mock_research_methods["levels_extract"].assert_called_once()
+
+    # Verify that salary and LinkedIn research were NOT called for unknown company names
+    # Unknown company names are placeholders and should be skipped according to issue 47
+    mock_research_methods["levels_main"].assert_not_called()  # This should NOT be called
+    mock_research_methods[
+        "levels_extract"
+    ].assert_not_called()  # This should NOT be called
 
     # LinkedIn research should NOT be called for unknown companies that don't pass fit check
+    # (no compensation data, no remote policy, no AI focus = 0 points, below 70% threshold)
+    mock_research_methods["linkedin_main"].assert_not_called()
+
+
+def test_research_company_with_placeholder_name_skips_research(
+    mock_research_methods,
+    job_search,
+    recruiter_message,
+):
+    """Test that research is skipped when company name is a placeholder."""
+    # Configure mocks to return a placeholder company name
+    mock_research_methods["company_researcher"].return_value = (
+        CompaniesSheetRow(
+            name="Company from email",  # This is a placeholder
+            type="Private",
+            url="https://acme.com",
+        ),
+        [],
+    )
+    mock_research_methods["levels_main"].return_value = []
+    mock_research_methods["levels_extract"].return_value = []
+    mock_research_methods["linkedin_main"].return_value = []
+
+    # Research the company with a placeholder name
+    company = job_search.research_company(
+        recruiter_message, model="claude-3-5-sonnet-latest", do_advanced=True
+    )
+
+    # Verify the company was created with the placeholder name
+    assert company.name == "Company from email"
+    assert company.recruiter_message is not None
+    assert company.recruiter_message.message_id == "test123"
+
+    # Verify basic research was called (initial research)
+    mock_research_methods["company_researcher"].assert_called_once()
+
+    # Verify that salary and LinkedIn research were NOT called for placeholder names
+    # This is the bug - these should be skipped when name is a placeholder
+    mock_research_methods["levels_main"].assert_not_called()  # This should NOT be called
+    mock_research_methods[
+        "levels_extract"
+    ].assert_not_called()  # This should NOT be called
+    # LinkedIn research is not called because the company doesn't pass the fit check
     # (no compensation data, no remote policy, no AI focus = 0 points, below 70% threshold)
     mock_research_methods["linkedin_main"].assert_not_called()
 

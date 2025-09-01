@@ -578,6 +578,13 @@ class JobSearch:
 
     @disk_cache(CacheStep.LEVELS_RESEARCH)
     def research_levels(self, row: CompaniesSheetRow) -> CompaniesSheetRow:
+        # Skip research if company name is a placeholder
+        if self._is_company_name_placeholder(row.name):
+            logger.info(
+                f"Skipping levels research for placeholder company name: {row.name}"
+            )
+            return row
+
         now = datetime.datetime.now()
         logger.info("Finding equivalent job levels ...")
         equivalent_levels = list(
@@ -595,6 +602,13 @@ class JobSearch:
 
     @disk_cache(CacheStep.COMPENSATION_RESEARCH)
     def research_compensation(self, row: CompaniesSheetRow) -> CompaniesSheetRow:
+        # Skip research if company name is a placeholder
+        if self._is_company_name_placeholder(row.name):
+            logger.info(
+                f"Skipping compensation research for placeholder company name: {row.name}"
+            )
+            return row
+
         now = datetime.datetime.now()
         logger.info("Finding salary data ...")
         now = datetime.datetime.now()
@@ -643,6 +657,12 @@ class JobSearch:
             logger.warning(f"Company name not found: {company_info}, nothing else to do")
             return company_info
 
+        if self._is_company_name_placeholder(company_info.name):
+            logger.info(
+                f"Skipping followup research for placeholder company name: {company_info.name}"
+            )
+            return company_info
+
         logger.info(f"Doing followup research on: {company_info}")
 
         linkedin_contacts = (
@@ -668,6 +688,15 @@ class JobSearch:
         self, max_results: int = 100
     ) -> list[RecruiterMessage]:
         return self.email_responder.get_new_recruiter_messages(max_results=max_results)
+
+    def _is_company_name_placeholder(self, name: str | None) -> bool:
+        """
+        Check if the company name is a placeholder.
+
+        This uses the existing models.is_placeholder function which handles
+        all placeholder patterns like "Company from email", "<UNKNOWN>", etc.
+        """
+        return models.is_placeholder(name)
 
 
 def arg_parser():
