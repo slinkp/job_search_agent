@@ -272,8 +272,8 @@ document.addEventListener("alpine:init", () => {
 
         try {
           await companiesService.mergeCompanies(
-            this.currentCompanyForDuplicate.company_id,
-            this.selectedDuplicateCompany.company_id
+            this.selectedDuplicateCompany.company_id,
+            this.currentCompanyForDuplicate.company_id
           );
 
           this.showSuccess("Merge task started. This may take a few moments.");

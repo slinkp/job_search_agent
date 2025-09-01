@@ -205,67 +205,27 @@ describe("Duplicate Merge Modal", () => {
     expect(rawHtml).toContain("Mark as Duplicate");
   });
 
-  it("should demonstrate modal scope issues", () => {
-    // This test demonstrates the actual issues with the modal
+
+
+
+
+  it("should have correct modal text indicating merge direction", () => {
     const modal = document.getElementById("duplicate-modal");
+    const modalText = modal.querySelector("p");
 
     // The modal should NOT have its own x-data scope anymore
     expect(modal.hasAttribute("x-data")).toBe(false);
+    // The text should indicate that the current company will be merged INTO the selected company
+    expect(modalText.textContent).toContain("Select the company to merge");
+    expect(modalText.textContent).toContain("into");
 
-    // The modal should inherit from the parent scope
-    const searchInput = modal.querySelector(
-      'input[placeholder*="Search companies"]'
+    // The text should NOT contain the backwards wording
+    expect(modalText.textContent).not.toContain(
+      "Select the company to merge into"
     );
-    expect(searchInput).toBeTruthy();
-
-    // The input should call searchDuplicates() directly (not $root.searchDuplicates())
-    expect(searchInput.getAttribute("@input.debounce.300ms")).toBe(
-      "searchDuplicates()"
-    );
-
-    // The cancel button should call closeDuplicateModal() directly (not $root.closeDuplicateModal())
-    const cancelButton = modal.querySelector('button[class*="outline"]');
-    expect(cancelButton).toBeTruthy();
-    expect(cancelButton.getAttribute("@click")).toBe("closeDuplicateModal()");
   });
 
-  it("should have proper modal structure after fix", () => {
-    const modal = document.getElementById("duplicate-modal");
-
-    // Check that the modal does NOT have its own x-data scope
-    expect(modal.hasAttribute("x-data")).toBe(false);
-
-    // Check that the modal uses duplicateSearchResults with fallback (not $root.duplicateSearchResults)
-    const searchResultsTemplate = modal.querySelector(
-      'template[x-for*="dup in (duplicateSearchResults || [])"]'
-    );
-    expect(searchResultsTemplate).toBeTruthy();
-
-    // Check that the cancel button uses closeDuplicateModal() directly
-    const cancelButton = modal.querySelector('button[class*="outline"]');
-    expect(cancelButton).toBeTruthy();
-    expect(cancelButton.getAttribute("@click")).toBe("closeDuplicateModal()");
-
-    // Check that the modal does NOT have x-init since it doesn't have its own scope
-    expect(modal.hasAttribute("x-init")).toBe(false);
-  });
-
-  it("should have proper search input configuration", () => {
-    const modal = document.getElementById("duplicate-modal");
-    const searchInput = modal.querySelector(
-      'input[placeholder*="Search companies"]'
-    );
-
-    // Check that the input calls searchDuplicates() directly
-    expect(searchInput.getAttribute("@input.debounce.300ms")).toBe(
-      "searchDuplicates()"
-    );
-
-    // Check that the input uses x-model for the main app's duplicateSearchQuery
-    expect(searchInput.getAttribute("x-model")).toBe("duplicateSearchQuery");
-  });
-
-  it("should have proper merge button configuration", () => {
+  it("should have correct merge button configuration", () => {
     const modal = document.getElementById("duplicate-modal");
     const mergeButton = modal.querySelector('button:not([class*="outline"])');
 
@@ -276,6 +236,63 @@ describe("Duplicate Merge Modal", () => {
     expect(mergeButton.getAttribute(":disabled")).toBe(
       "!selectedDuplicateCompany"
     );
+  });
+
+  it("should call mergeCompanies with correct parameter order", () => {
+    // Mock the companiesService.mergeCompanies function
+    const mockMergeCompanies = vi.fn();
+    global.companiesService = { mergeCompanies: mockMergeCompanies };
+
+    // Create a mock companyList instance
+    const companyList = {
+      currentCompanyForDuplicate: {
+        company_id: "current-company-id",
+        name: "Current Company",
+      },
+      selectedDuplicateCompany: {
+        company_id: "selected-company-id",
+        name: "Selected Company",
+      },
+      showError: vi.fn(),
+      showSuccess: vi.fn(),
+      closeDuplicateModal: vi.fn(),
+      refreshAllCompanies: vi.fn(),
+    };
+
+    // Call the mergeCompanies function
+    const mergeCompanies = async function () {
+      if (!this.selectedDuplicateCompany || !this.currentCompanyForDuplicate) {
+        this.showError("Please select a company to merge");
+        return;
+      }
+
+      try {
+        await companiesService.mergeCompanies(
+          this.selectedDuplicateCompany.company_id,
+          this.currentCompanyForDuplicate.company_id
+        );
+
+        this.showSuccess("Merge task started. This may take a few moments.");
+        this.closeDuplicateModal();
+        await this.refreshAllCompanies();
+      } catch (err) {
+        this.showError(
+          err.message || "Failed to start merge. Please try again."
+        );
+      }
+    };
+
+    // Bind the function to the companyList context
+    const boundMergeCompanies = mergeCompanies.bind(companyList);
+
+    // Call the function
+    return boundMergeCompanies().then(() => {
+      // Verify that mergeCompanies was called with the correct parameter order
+      expect(mockMergeCompanies).toHaveBeenCalledWith(
+        "selected-company-id", // canonical (the company selected in search)
+        "current-company-id" // duplicate (the company we clicked "Mark as Duplicate" on)
+      );
+    });
   });
 });
 

@@ -707,8 +707,8 @@
         <article>
           <h2>Merge Duplicate Company</h2>
           <p>
-            Select the company to merge into
-            <strong x-text="(typeof currentCompanyForDuplicate !== 'undefined' && currentCompanyForDuplicate && currentCompanyForDuplicate.name) ? currentCompanyForDuplicate.name : ''"></strong>.
+            Select the company to merge
+            <strong x-text="(typeof currentCompanyForDuplicate !== 'undefined' && currentCompanyForDuplicate && currentCompanyForDuplicate.name) ? currentCompanyForDuplicate.name : ''"></strong> into.
           </p>
           <input type="text" placeholder="Search companies by name or alias" x-model="duplicateSearchQuery" @input.debounce.300ms="searchDuplicates()" />
           <div class="search-results">
