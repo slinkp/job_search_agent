@@ -1921,3 +1921,82 @@ def test_get_potential_duplicates(clean_test_db):
 
     assert isinstance(response, list)
     assert response == ["acme-dup"]
+
+
+def test_make_alias_canonical_success(clean_test_db):
+    """Test successful making of an alias canonical via POST /api/companies/:id/aliases/:alias_id/canonical."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Original Name",
+        details=CompaniesSheetRow(name="Original Name"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    # Create an alias
+    alias_id = repo.create_alias("test-company", "New Canonical Name", "manual")
+
+    # Mock the repository
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"company_id": "test-company", "alias_id": alias_id}
+
+        response = server.app.make_alias_canonical(request)
+
+    # Verify the response
+    assert response["success"] is True
+    assert response["message"] == "Alias set as canonical name"
+    assert "company" in response
+
+    # Verify the company data was updated
+    company_data = response["company"]
+    assert company_data["name"] == "New Canonical Name"
+
+    # Verify the old name is now an alias
+    aliases = company_data["aliases"]
+    assert len(aliases) >= 2  # Should have at least the new canonical and the old name
+
+    # Check that the old name is now an alias
+    old_name_aliases = [a for a in aliases if a["alias"] == "Original Name"]
+    assert len(old_name_aliases) == 1
+    assert old_name_aliases[0]["source"] == "seed"
+
+
+def test_make_alias_canonical_company_not_found(clean_test_db):
+    """Test making alias canonical when company doesn't exist."""
+    repo = clean_test_db
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"company_id": "nonexistent", "alias_id": 1}
+
+        response = server.app.make_alias_canonical(request)
+
+    assert request.response.status == "404 Not Found"
+    assert response["error"] == "Company not found"
+
+
+def test_make_alias_canonical_alias_not_found(clean_test_db):
+    """Test making alias canonical when alias doesn't exist."""
+    repo = clean_test_db
+
+    # Create a test company
+    company = Company(
+        company_id="test-company",
+        name="Test Company",
+        details=CompaniesSheetRow(name="Test Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"company_id": "test-company", "alias_id": 999}
+
+        response = server.app.make_alias_canonical(request)
+
+    assert request.response.status == "404 Not Found"
+    assert response["error"] == "Alias not found"

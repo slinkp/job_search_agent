@@ -229,6 +229,45 @@ def delete_company_alias(request) -> dict:
         return {"error": str(e)}
 
 
+@view_config(route_name="company_alias_canonical", renderer="json", request_method="POST")
+def make_alias_canonical(request) -> dict:
+    """Make an alias the canonical name for a company."""
+    company_id = request.matchdict["company_id"]
+    alias_id = request.matchdict["alias_id"]
+    repo = models.company_repository()
+
+    # Check if company exists
+    company = repo.get(company_id)
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found"}
+
+    try:
+        # Set the alias as canonical
+        success = repo.set_alias_as_canonical(company_id, alias_id)
+
+        if not success:
+            request.response.status = 404
+            return {"error": "Alias not found"}
+
+        # Get updated company data with aliases
+        updated_company = repo.get(company_id, include_aliases=True)
+        if not updated_company:
+            request.response.status = 404
+            return {"error": "Company not found after update"}
+
+        return {
+            "success": True,
+            "message": "Alias set as canonical name",
+            "company": get_company_dict_with_status(updated_company, repo),
+        }
+
+    except Exception as e:
+        logger.exception("Error making alias canonical")
+        request.response.status = 500
+        return {"error": str(e)}
+
+
 @view_config(route_name="companies", renderer="json", request_method="GET")
 def get_companies(request) -> list[dict]:
     repo = models.company_repository()
@@ -838,6 +877,10 @@ def main(global_config, **settings):
         config.add_route("company_aliases", "/api/companies/{company_id}/aliases")
         config.add_route(
             "company_alias", "/api/companies/{company_id}/aliases/{alias_id}"
+        )
+        config.add_route(
+            "company_alias_canonical",
+            "/api/companies/{company_id}/aliases/{alias_id}/canonical",
         )
         config.add_route("company_merge", "/api/companies/{company_id}/merge")
         config.add_route(
