@@ -546,3 +546,114 @@ def test_research_company_with_advanced_research(
     mock_research_methods["levels_main"].assert_called_once()
     mock_research_methods["levels_extract"].assert_called_once()
     mock_research_methods["linkedin_main"].assert_called_once()
+
+
+def test_research_company_with_placeholder_name_but_good_alias_does_research(
+    mock_research_methods,
+    job_search,
+    recruiter_message,
+    temp_repo,
+):
+    """Test that research is NOT skipped when company has placeholder name but good alias."""
+    # Configure mocks to return a placeholder company name
+    mock_research_methods["company_researcher"].return_value = (
+        CompaniesSheetRow(
+            name="Company from email",  # This is a placeholder
+            type="Private",
+            url="https://acme.com",
+        ),
+        [],
+    )
+    mock_research_methods["levels_main"].return_value = []
+    mock_research_methods["levels_extract"].return_value = []
+    mock_research_methods["linkedin_main"].return_value = []
+
+    # Create a company in the repo with a placeholder canonical name but a good alias
+    repo = temp_repo
+    company = models.Company(
+        company_id="company-from-email",
+        name="Company from email",  # Placeholder canonical name
+        details=models.CompaniesSheetRow(name="Company from email"),
+    )
+    repo.create(company)
+
+    # Add a good alias
+    repo.create_alias("company-from-email", "Acme Corp", "manual")
+
+    # Research the company with a placeholder name
+    company = job_search.research_company(
+        recruiter_message, model="claude-3-5-sonnet-latest", do_advanced=True
+    )
+
+    # Verify the company was created with the placeholder name
+    assert company.name == "Company from email"
+    assert company.recruiter_message is not None
+    assert company.recruiter_message.message_id == "test123"
+
+    # Verify basic research was called (initial research)
+    mock_research_methods["company_researcher"].assert_called_once()
+
+    # Verify that salary and LinkedIn research WERE called because there's a good alias
+    # The company has a placeholder canonical name but a good alias "Acme Corp"
+    mock_research_methods["levels_main"].assert_called_once()  # This SHOULD be called
+    mock_research_methods["levels_extract"].assert_called_once()  # This SHOULD be called
+    # LinkedIn research is not called because the company doesn't pass the fit check
+    # (no compensation data, no remote policy, no AI focus = 0 points, below 70% threshold)
+    mock_research_methods["linkedin_main"].assert_not_called()
+
+
+def test_research_company_with_placeholder_name_and_all_placeholder_aliases_skips_research(
+    mock_research_methods,
+    job_search,
+    recruiter_message,
+    temp_repo,
+):
+    """Test that research IS skipped when company has placeholder name AND all aliases are placeholders."""
+    # Configure mocks to return a placeholder company name
+    mock_research_methods["company_researcher"].return_value = (
+        CompaniesSheetRow(
+            name="Company from email",  # This is a placeholder
+            type="Private",
+            url="https://acme.com",
+        ),
+        [],
+    )
+    mock_research_methods["levels_main"].return_value = []
+    mock_research_methods["levels_extract"].return_value = []
+    mock_research_methods["linkedin_main"].return_value = []
+
+    # Create a company in the repo with a placeholder canonical name and placeholder aliases
+    repo = temp_repo
+    company = models.Company(
+        company_id="company-from-email",
+        name="Company from email",  # Placeholder canonical name
+        details=models.CompaniesSheetRow(name="Company from email"),
+    )
+    repo.create(company)
+
+    # Add placeholder aliases
+    repo.create_alias("company-from-email", "unknown", "manual")
+    repo.create_alias("company-from-email", "<UNKNOWN 123>", "auto")
+
+    # Research the company with a placeholder name
+    company = job_search.research_company(
+        recruiter_message, model="claude-3-5-sonnet-latest", do_advanced=True
+    )
+
+    # Verify the company was created with the placeholder name
+    assert company.name == "Company from email"
+    assert company.recruiter_message is not None
+    assert company.recruiter_message.message_id == "test123"
+
+    # Verify basic research was called (initial research)
+    mock_research_methods["company_researcher"].assert_called_once()
+
+    # Verify that salary and LinkedIn research were NOT called because all names are placeholders
+    # The company has a placeholder canonical name AND all aliases are placeholders
+    mock_research_methods["levels_main"].assert_not_called()  # This should NOT be called
+    mock_research_methods[
+        "levels_extract"
+    ].assert_not_called()  # This should NOT be called
+    # LinkedIn research is not called because the company doesn't pass the fit check
+    # (no compensation data, no remote policy, no AI focus = 0 points, below 70% threshold)
+    mock_research_methods["linkedin_main"].assert_not_called()
