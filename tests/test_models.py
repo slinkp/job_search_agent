@@ -809,6 +809,160 @@ class TestCompanyRepository:
         success = repo.set_alias_as_canonical("company-2", alias_id)
         assert success is False
 
+    def test_list_aliases_active_only_false(self, clean_test_db):
+        """Test list_aliases with active_only=False returns all aliases."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create multiple aliases with different active states
+        alias1_id = repo.create_alias("test-company", "Active Alias 1", "manual")
+        alias2_id = repo.create_alias("test-company", "Active Alias 2", "manual")
+        alias3_id = repo.create_alias("test-company", "Inactive Alias", "manual")
+
+        # Deactivate one alias
+        repo.update_alias(alias3_id, is_active=False)
+
+        # List all aliases (active_only=False is default)
+        aliases = repo.list_aliases("test-company", active_only=False)
+
+        # Should return all 3 aliases
+        assert len(aliases) == 3
+
+        # Verify all aliases are present
+        alias_names = [alias["alias"] for alias in aliases]
+        assert "Active Alias 1" in alias_names
+        assert "Active Alias 2" in alias_names
+        assert "Inactive Alias" in alias_names
+
+        # Verify active status is correct
+        active_aliases = [alias for alias in aliases if alias["is_active"]]
+        inactive_aliases = [alias for alias in aliases if not alias["is_active"]]
+        assert len(active_aliases) == 2
+        assert len(inactive_aliases) == 1
+
+    def test_list_aliases_active_only_true(self, clean_test_db):
+        """Test list_aliases with active_only=True returns only active aliases."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create multiple aliases with different active states
+        alias1_id = repo.create_alias("test-company", "Active Alias 1", "manual")
+        alias2_id = repo.create_alias("test-company", "Active Alias 2", "manual")
+        alias3_id = repo.create_alias("test-company", "Inactive Alias", "manual")
+
+        # Deactivate one alias
+        repo.update_alias(alias3_id, is_active=False)
+
+        # List only active aliases
+        aliases = repo.list_aliases("test-company", active_only=True)
+
+        # Should return only 2 active aliases
+        assert len(aliases) == 2
+
+        # Verify only active aliases are present
+        alias_names = [alias["alias"] for alias in aliases]
+        assert "Active Alias 1" in alias_names
+        assert "Active Alias 2" in alias_names
+        assert "Inactive Alias" not in alias_names
+
+        # Verify all returned aliases are active
+        for alias in aliases:
+            assert alias["is_active"] is True
+
+    def test_list_aliases_active_only_mixed_states(self, clean_test_db):
+        """Test list_aliases with mixed active/inactive states."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create aliases and immediately deactivate some
+        repo.create_alias("test-company", "Active Alias", "manual")
+        repo.create_alias("test-company", "Another Active", "manual")
+
+        inactive_alias_id = repo.create_alias("test-company", "Inactive Alias", "manual")
+        repo.update_alias(inactive_alias_id, is_active=False)
+
+        # Test active_only=False
+        all_aliases = repo.list_aliases("test-company", active_only=False)
+        assert len(all_aliases) == 3
+
+        # Test active_only=True
+        active_aliases = repo.list_aliases("test-company", active_only=True)
+        assert len(active_aliases) == 2
+
+        # Verify the filtering is correct
+        active_names = {alias["alias"] for alias in active_aliases}
+        assert "Active Alias" in active_names
+        assert "Another Active" in active_names
+        assert "Inactive Alias" not in active_names
+
+    def test_list_aliases_active_only_no_aliases(self, clean_test_db):
+        """Test list_aliases with active_only when company has no aliases."""
+        repo = clean_test_db
+
+        # Create a test company with no aliases
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Test both active_only values return empty list
+        all_aliases = repo.list_aliases("test-company", active_only=False)
+        active_aliases = repo.list_aliases("test-company", active_only=True)
+
+        assert all_aliases == []
+        assert active_aliases == []
+
+    def test_list_aliases_active_only_all_inactive(self, clean_test_db):
+        """Test list_aliases with active_only when all aliases are inactive."""
+        repo = clean_test_db
+
+        # Create a test company
+        company = Company(
+            company_id="test-company",
+            name="TestCompany",
+            details=CompaniesSheetRow(name="TestCompany"),
+        )
+        repo.create(company)
+
+        # Create aliases and deactivate all of them
+        alias1_id = repo.create_alias("test-company", "Inactive Alias 1", "manual")
+        alias2_id = repo.create_alias("test-company", "Inactive Alias 2", "manual")
+
+        repo.update_alias(alias1_id, is_active=False)
+        repo.update_alias(alias2_id, is_active=False)
+
+        # Test active_only=False returns all aliases
+        all_aliases = repo.list_aliases("test-company", active_only=False)
+        assert len(all_aliases) == 2
+        assert all(not alias["is_active"] for alias in all_aliases)
+
+        # Test active_only=True returns empty list
+        active_aliases = repo.list_aliases("test-company", active_only=True)
+        assert active_aliases == []
+
 
 class TestCompaniesSheetRow:
 
