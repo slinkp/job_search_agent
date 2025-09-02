@@ -15,6 +15,7 @@ from pyramid.view import view_config  # type: ignore[import-untyped]
 import models
 import tasks
 from logsetup import setup_logging
+from server.text_cleaning import clean_recruiter_message
 
 # Get our application logger
 logger = logging.getLogger("server.app")
@@ -334,6 +335,9 @@ def get_messages(request) -> list[dict]:
         message_dict["company_name"] = getattr(
             message, "_company_name", "Unknown Company"
         )
+
+        # Add cleaned message for display
+        message_dict["message_display"] = clean_recruiter_message(message.message)
 
         # Add reply_message from company
         reply_message = getattr(message, "_reply_message", "")
