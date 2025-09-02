@@ -183,3 +183,40 @@ John"""
         # Quoted content should still be removed
         assert "On Mon, Jan 15" not in cleaned
         assert "-----Original Message-----" not in cleaned
+
+    def test_removes_linkedin_specific_content(self):
+        """Test that LinkedIn-specific content is removed."""
+        message = """Exciting remote role - Python Software Architect Exciting remote role - Python Software Architect Ankit Singh Reply
+https://www.linkedin.com/messaging/thread/2-YTRkMzUwODctN214YS00Y2Q0LWJkMzMtNWMyODBhMGQ4NDIIXzEwMA==/
+
+Hi Paul, I hope you're doing well! I'm reaching out because our client is hiring for a Python Software Architect.
+
+Best regards,
+Ankit
+
+This email was intended for Paul Winkler (Staff Engineer | Engineering Leader | Python & Ruby Expert | Transitioning to AI/ML) Learn why we included this: https://www.linkedin.com/help/linkedin/answer/4788?lang=en&lipi=urn%3Ali%3Apage%3Aemail_email_hire_inmail_initial_single_01%3BluZkQwkBSaCy8gS3SQQYJA%3D%3D&midToken=AQGSAMQrXJpkcw&midSig=3AJmmylbwsobU1&trk=eml-email_hire_inmail_initial_single_01-SecurityHelp-0-textfooterglimmer&trkEmail=eml-email_hire_inmail_initial_single_01-SecurityHelp-0-textfooterglimmer-null-4ylml~mec4ffq4~jh-null-null&eid=4ylml-mec4ffq4-jh You are receiving LinkedIn notification emails."""
+
+        cleaned = clean_recruiter_message(message)
+
+        # Core message content should be preserved
+        assert "Hi Paul, I hope you're doing well!" in cleaned
+        assert (
+            "I'm reaching out because our client is hiring for a Python Software Architect"
+            in cleaned
+        )
+        assert "Best regards," in cleaned
+        assert "Ankit" in cleaned
+
+        # LinkedIn-specific junk should be removed
+        assert (
+            "Exciting remote role - Python Software Architect Exciting remote role - Python Software Architect Ankit Singh Reply"
+            not in cleaned
+        )
+        assert "https://www.linkedin.com/messaging/thread/" not in cleaned
+        assert "This email was intended for Paul Winkler" not in cleaned
+        assert "Learn why we included this:" not in cleaned
+        assert (
+            "lipi=urn%3Ali%3Apage%3Aemail_email_hire_inmail_initial_single_01"
+            not in cleaned
+        )
+        assert "You are receiving LinkedIn notification emails" not in cleaned

@@ -12,13 +12,16 @@
 export function computeMessagePreview(message, isExpanded, limit = 200) {
   if (!message.message) return "No message content";
 
-  let content = message.message;
-  
+  // Use cleaned message_display if available, otherwise fall back to raw message
+  let content = message.message_display || message.message;
+
   // Convert received_at to local time if exists
   if (message.received_at) {
     try {
       const utcDate = new Date(message.received_at);
-      const localDate = new Date(utcDate.getTime() + utcDate.getTimezoneOffset() * 60000);
+      const localDate = new Date(
+        utcDate.getTime() + utcDate.getTimezoneOffset() * 60000
+      );
       const dateStr = localDate.toLocaleString();
       content = `[${dateStr}] ${content}`;
     } catch (e) {
@@ -30,7 +33,5 @@ export function computeMessagePreview(message, isExpanded, limit = 200) {
     return content;
   }
 
-  return content.length > limit
-    ? content.substring(0, limit) + "..."
-    : content;
+  return content.length > limit ? content.substring(0, limit) + "..." : content;
 }

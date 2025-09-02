@@ -24,6 +24,9 @@ def clean_recruiter_message(text: str) -> str:
     # Normalize line endings and whitespace
     text = text.replace("\r\n", "\n").replace("\r", "\n")
 
+    # Pre-clean: Remove LinkedIn-specific junk patterns
+    text = _pre_clean_linkedin_content(text)
+
     # Split into lines for processing
     lines = text.split("\n")
 
@@ -91,6 +94,70 @@ def clean_recruiter_message(text: str) -> str:
     cleaned_text = cleaned_text.strip()
 
     return cleaned_text
+
+
+def _pre_clean_linkedin_content(text: str) -> str:
+    """Pre-clean LinkedIn-specific content patterns before line-by-line processing."""
+
+    # Remove LinkedIn messaging thread URLs and fragments
+    text = re.sub(r"https://www\.linkedin\.com/messaging/thread/[^\s]+", "", text)
+    # Remove URL fragments that might remain (base64-like strings)
+    text = re.sub(r"\b[a-zA-Z0-9]{20,}\b", "", text)
+    # Remove LinkedIn URL fragments with various patterns
+    # Handle fragments that end with == and optional trailing characters
+    # Look for 20+ alphanumeric characters followed by == and optional trailing chars
+    text = re.sub(r"[a-zA-Z0-9]{20,}==[^\w\s]*", "", text)
+    # Also handle fragments that are shorter but still end with ==
+    text = re.sub(r"[a-zA-Z0-9]{15,}==[^\w\s]*", "", text)
+    # Handle fragments that appear on their own lines
+    text = re.sub(r"\n[a-zA-Z0-9]{20,}[^\w\s]*\n", "\n", text)
+    # Remove "Reply" text
+    text = re.sub(r"\bReply\b", "", text)
+
+    # Remove redundant subject lines (patterns like "Subject Subject Sender Reply")
+    # Use a simpler, more efficient pattern to avoid catastrophic backtracking
+    lines = text.split("\n")
+    if len(lines) >= 2:
+        # Check if first two lines are very similar (likely duplicate subject)
+        first_line = lines[0].strip()
+        second_line = lines[1].strip()
+        if first_line and second_line and first_line == second_line:
+            # Remove the duplicate line
+            lines = lines[1:]
+            text = "\n".join(lines)
+
+    # Remove LinkedIn email footer patterns
+    text = re.sub(
+        r"This email was intended for.*?You are receiving LinkedIn notification emails\.",
+        "",
+        text,
+        flags=re.DOTALL,
+    )
+
+    # Remove LinkedIn help/security URLs
+    text = re.sub(
+        r"https://www\.linkedin\.com/help/linkedin/answer/\d+\?[^\s]+", "", text
+    )
+
+    # Remove LinkedIn-specific tracking parameters
+    text = re.sub(r"lipi=urn%3Ali%3Apage%3A[^\s]+", "", text)
+    text = re.sub(r"midToken=[^\s]+", "", text)
+    text = re.sub(r"midSig=[^\s]+", "", text)
+    text = re.sub(r"trk=[^\s]+", "", text)
+    text = re.sub(r"trkEmail=[^\s]+", "", text)
+    text = re.sub(r"eid=[^\s]+", "", text)
+
+    # Remove "Learn why we included this" sections
+    text = re.sub(
+        r"Learn why we included this:.*?(?=\n\n|\n[A-Z]|$)", "", text, flags=re.DOTALL
+    )
+
+    # Remove recruiter signature sections (lines with titles like "Technical Recruiter")
+    # Only remove specific LinkedIn signature patterns, not general names
+    text = re.sub(r"\nTechnical Recruiter\n", "\n", text)
+    text = re.sub(r"\nConnecting people to wonderful opportunities\n", "\n", text)
+
+    return text
 
 
 def _is_quoted_section_start(line: str, all_lines: List[str], current_index: int) -> bool:
