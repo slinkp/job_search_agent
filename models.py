@@ -1155,7 +1155,7 @@ class CompanyRepository:
                 conn.commit()
                 return cursor.rowcount > 0
 
-    def list_aliases(self, company_id: str) -> list[dict]:
+    def list_aliases(self, company_id: str, active_only: bool = False) -> list[dict]:
         """List all aliases for a company.
 
         Args:
@@ -1174,6 +1174,9 @@ class CompanyRepository:
                 """,
                 (company_id,),
             )
+            rows = cursor.fetchall()
+            if active_only:
+                rows = [row for row in rows if row[3]]
             return [
                 {
                     "id": row[0],
@@ -1181,7 +1184,7 @@ class CompanyRepository:
                     "source": row[2],
                     "is_active": bool(row[3]),
                 }
-                for row in cursor.fetchall()
+                for row in rows
             ]
 
     def set_alias_as_canonical(self, company_id: str, alias_id: int) -> bool:
