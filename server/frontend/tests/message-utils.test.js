@@ -67,4 +67,32 @@ describe("computeMessagePreview", () => {
       "This message is exactly 50 characters long and should be truncated"
     );
   });
+
+  it("should prefer message_display over message when available", () => {
+    const message = {
+      message: "Raw message with quoted content and footers",
+      message_display: "Clean message without quoted content",
+    };
+    const result = computeMessagePreview(message, true);
+    expect(result).toBe("Clean message without quoted content");
+  });
+
+  it("should fall back to message when message_display is not available", () => {
+    const message = {
+      message: "Raw message content",
+    };
+    const result = computeMessagePreview(message, true);
+    expect(result).toBe("Raw message content");
+  });
+
+  it("should handle message_display with paragraph breaks", () => {
+    const message = {
+      message: "Raw message",
+      message_display: "First paragraph\n\nSecond paragraph\n\nThird paragraph",
+    };
+    const result = computeMessagePreview(message, true);
+    expect(result).toBe(
+      "First paragraph\n\nSecond paragraph\n\nThird paragraph"
+    );
+  });
 });
