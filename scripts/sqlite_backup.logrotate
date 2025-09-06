@@ -1,0 +1,32 @@
+# Logrotate configuration to trigger SQLite backups via postrotate script.
+# This does NOT rotate the databases directly. It triggers a safe backup script.
+#
+# How to run manually:
+#   logrotate -s /Users/paul/src/job_search_agent/logrotate.status \
+#     /Users/paul/src/job_search_agent/scripts/sqlite_backup.logrotate
+#
+# Recommended schedule (macOS launchd or cron) can call the same command daily.
+#
+# Important: Ensure the trigger file exists at least once:
+#   touch /Users/paul/src/job_search_agent/data/.sqlite-backup-trigger
+#
+# The backup script invoked below will:
+# - Create consistent snapshots using 'sqlite3 ".backup"' when available
+# - Rotate backups like: file.db -> file.db.1 (previous .1 -> .2, etc.)
+# - Gzip backups older than the most recent one
+
+"/Users/paul/src/job_search_agent/data/.sqlite-backup-trigger" {
+    missingok
+    daily
+    rotate 7
+    notifempty
+    sharedscripts
+    create 0644
+
+    postrotate
+        /Users/paul/src/job_search_agent/scripts/backup_sqlite.sh \
+            --dir /Users/paul/src/job_search_agent/data \
+            --keep 7 \
+            --gzip
+    endscript
+}
