@@ -125,8 +125,24 @@ document.addEventListener("alpine:init", () => {
         try {
           const messages = await companiesService.getMessages();
 
+          // Normalize reply_status to reflect ground truth from sent/archived fields
+          const normalizedMessages = messages.map((m) => {
+            const sent = !!m.sent_at;
+            const archived = !!m.archived_at;
+            let reply_status = m.reply_status;
+            if (sent) {
+              reply_status = "sent";
+            } else if (!reply_status) {
+              reply_status = m.reply_message ? "generated" : "none";
+            }
+            return { ...m, reply_status, sent_at: m.sent_at, archived_at: m.archived_at };
+          });
+
           // Apply client-side filtering based on filterMode
-          this.unprocessedMessages = filterMessages(messages, this.filterMode);
+          this.unprocessedMessages = filterMessages(
+            normalizedMessages,
+            this.filterMode
+          );
 
           console.log(
             `Loaded ${this.unprocessedMessages.length} messages after filtering (mode: ${this.filterMode})`
