@@ -748,15 +748,6 @@ def merge_companies(request) -> dict:
         request.response.status = 404
         return {"error": "Duplicate company not found"}
 
-    # Basic deleted check
-    with repo._get_connection() as conn:  # type: ignore[attr-defined]
-        row = conn.execute(
-            "SELECT deleted_at FROM companies WHERE company_id = ?",
-            (duplicate_id,),
-        ).fetchone()
-        if row and row[0] is not None:
-            request.response.status = 400
-            return {"error": "Duplicate company is deleted"}
 
     # Create merge task
     try:
