@@ -1892,13 +1892,13 @@ def test_post_merge_companies_validation_errors(clean_test_db, mock_task_manager
         assert resp["error"] == "Duplicate company not found"
         assert request.response.status == "404 Not Found"
 
-        # Deleted duplicate
+        # Deleted duplicate - now allowed (soft-deleted duplicate can be merged)
         assert repo.soft_delete_company("b") is True
         request = DummyRequest(json_body={"duplicate_company_id": "b"})
         request.matchdict = {"company_id": "a"}
         resp = server.app.merge_companies(request)
-        assert resp["error"] == "Duplicate company is deleted"
-        assert request.response.status == "400 Bad Request"
+        assert "task_id" in resp
+        assert resp["status"] == tasks.TaskStatus.PENDING.value
 
 
 def test_get_potential_duplicates(clean_test_db):

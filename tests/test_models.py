@@ -2498,4 +2498,4 @@ class TestMergeCompanies:
 
         # Already-deleted duplicate
         assert repo.soft_delete_company("b") is True
-        assert repo.merge_companies("a", "b") is False
+        assert repo.merge_companies("a", "b") is True

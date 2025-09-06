@@ -760,8 +760,9 @@ class CompanyRepository:
                     "SELECT deleted_at FROM companies WHERE company_id = ?",
                     (duplicate_id,),
                 ).fetchone()
-                if row is None or row[0] is not None:
+                if row is None:
                     return False
+                # Allow merging a soft-deleted duplicate
 
                 # Load both companies
                 canonical = self.get(canonical_id)
