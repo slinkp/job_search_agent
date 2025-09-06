@@ -748,7 +748,6 @@ def merge_companies(request) -> dict:
         request.response.status = 404
         return {"error": "Duplicate company not found"}
 
-
     # Create merge task
     try:
         task_id = tasks.task_manager().create_task(
