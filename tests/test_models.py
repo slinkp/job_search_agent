@@ -822,8 +822,8 @@ class TestCompanyRepository:
         repo.create(company)
 
         # Create multiple aliases with different active states
-        alias1_id = repo.create_alias("test-company", "Active Alias 1", "manual")
-        alias2_id = repo.create_alias("test-company", "Active Alias 2", "manual")
+        repo.create_alias("test-company", "Active Alias 1", "manual")
+        repo.create_alias("test-company", "Active Alias 2", "manual")
         alias3_id = repo.create_alias("test-company", "Inactive Alias", "manual")
 
         # Deactivate one alias
@@ -860,8 +860,8 @@ class TestCompanyRepository:
         repo.create(company)
 
         # Create multiple aliases with different active states
-        alias1_id = repo.create_alias("test-company", "Active Alias 1", "manual")
-        alias2_id = repo.create_alias("test-company", "Active Alias 2", "manual")
+        repo.create_alias("test-company", "Active Alias 1", "manual")
+        repo.create_alias("test-company", "Active Alias 2", "manual")
         alias3_id = repo.create_alias("test-company", "Inactive Alias", "manual")
 
         # Deactivate one alias
