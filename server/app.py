@@ -777,7 +777,7 @@ def merge_companies(request) -> dict:
 @view_config(
     route_name="company_potential_duplicates", renderer="json", request_method="GET"
 )
-def get_potential_duplicates(request) -> list[str]:
+def get_potential_duplicates(request) -> list[str] | dict[str, str]:
     company_id = request.matchdict.get("company_id", "")
     repo = models.company_repository()
     try:
