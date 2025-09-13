@@ -39,7 +39,7 @@ auto-commits: true
 restore-chat-history: true
 
 ## Enable/disable automatic acceptance of architect changes (default: True)
-auto-accept-architect: false
+# auto-accept-architect: false
 
 ## I am really curious how i am burning so much anthropic usage
 
@@ -48,4 +48,16 @@ llm-history-file: .aider.llm.history.md
 # This may help??
 
 cache-prompts: true
+
+
+#### MODEL DEFAULTS
+
+# TODO: is there a way to make an alias for a whole model config, not just a model name??
+model: openrouter/openai/gpt-5
+architect: true
+edit-format: architect
+editor-model: openrouter/openai/gpt-5-mini
+editor-edit-format: diff
+reasoning-effort: medium
+weak-model: openrouter/openai/gpt-5-nano
 

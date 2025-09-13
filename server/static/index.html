@@ -360,8 +360,8 @@
             <article class="message-item" :id="message.message_id">
               <header>
                 <div class="message-status-icons">
-                  <span class="status-icon reply-generated-icon" x-show="message.reply_status === 'generated'" title="Reply generated">📝</span>
-                  <span class="status-icon reply-sent-icon" x-show="message.reply_status === 'sent'" title="Reply sent">📧</span>
+                  <span class="status-icon reply-generated-icon" x-show="(message.reply_status === 'generated') && !message.sent_at && !message.archived_at" title="Reply generated">📝</span>
+                  <span class="status-icon reply-sent-icon" x-show="message.reply_status === 'sent' || message.sent_at" title="Reply sent">📧</span>
                   <span class="status-icon archived-icon" x-show="message.archived_at" title="Archived">A</span>
                 </div>
                 <div class="message-info">
@@ -437,7 +437,7 @@
                   </div>
                 </template>
                 
-                <template x-if="message.reply_status === 'generated' && !message.archived_at">
+                <template x-if="message.reply_status === 'generated' && !message.sent_at && !message.archived_at">
                   <div class="reply-actions">
                     <div class="reply-preview">
                       <div class="reply-preview-content">
@@ -495,7 +495,7 @@
                   </div>
                 </template>
 
-                <template x-if="message.reply_status === 'sent'">
+                <template x-if="message.reply_status === 'sent' || message.sent_at">
                   <div class="reply-actions">
                     <div class="reply-preview sent">
                       <div class="reply-preview-content">
