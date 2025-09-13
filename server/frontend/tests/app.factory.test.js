@@ -192,6 +192,10 @@ describe("app/companyList factory-capture", () => {
     const instance = captured.companyList();
     expect(instance).toBeTruthy();
 
+    // Initialize component and verify default title for company view
+    await instance.init();
+    expect(document.title).toBe("Companies");
+
     // Exercise a few methods to execute code paths
     await instance.refreshAllCompanies(false);
     expect(Array.isArray(instance.companies)).toBe(true);
@@ -203,6 +207,8 @@ describe("app/companyList factory-capture", () => {
 
     // Toggle view mode and ensure URL update is invoked without throwing
     instance.toggleViewMode();
+    // Title should reflect messages view after toggling
+    expect(document.title).toBe("Messages");
     expect(["company_management", "daily_dashboard"]).toContain(
       instance.viewMode
     );

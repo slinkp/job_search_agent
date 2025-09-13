@@ -181,6 +181,7 @@ document.addEventListener("alpine:init", () => {
 
           // Set view mode based on URL parameter
           this.viewMode = viewMode;
+          document.title = this.viewMode === "daily_dashboard" ? "Messages" : "Companies";
 
           // Track show archived state
           this.showArchived = includeAllParam;
@@ -339,6 +340,8 @@ document.addEventListener("alpine:init", () => {
           },
           true
         );
+        document.title =
+          this.viewMode === "daily_dashboard" ? "Messages" : "Companies";
       },
 
       isCompanyManagementView() {
@@ -353,6 +356,7 @@ document.addEventListener("alpine:init", () => {
       navigateToCompany(companyId) {
         // Ensure we're in company management view
         this.viewMode = "company_management";
+        document.title = "Companies";
 
         // Update URL with anchor and preserve include_all parameter
         const url = urlUtils.createUrl();
