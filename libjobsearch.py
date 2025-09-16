@@ -813,7 +813,8 @@ def arg_parser():
         default=DEFAULT_RECRUITER_MESSAGES,
         help=(
             "Number of recruiter messages to fetch if not using test-messages."
-            f" Default {DEFAULT_RECRUITER_MESSAGES}"),
+            f" Default {DEFAULT_RECRUITER_MESSAGES}"
+        ),
     )
     parser.add_argument(
         "-s",
@@ -854,6 +855,8 @@ if __name__ == "__main__":
 
     job_searcher = JobSearch(args, loglevel=logger.level, cache_settings=cache_settings)
     job_searcher.main()
+
+
 def select_provider_and_model(args: argparse.Namespace) -> Tuple[str, str]:
     """
     Determine provider and model defaults based on the parsed args.
