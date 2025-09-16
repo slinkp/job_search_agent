@@ -283,7 +283,7 @@ class EmailResponseGenerator:
         reply_rag_limit: int,
         loglevel: int,
         cache_settings: CacheSettings,
-        provider: str,
+        provider: str | None = None,
     ):
         logger.info("Initializing EmailResponder...")
         self.cache_settings = cache_settings
@@ -746,7 +746,7 @@ def arg_parser():
         "--model",
         help="AI model to use",
         action="store",
-        default=None,
+        default=SONNET_LATEST,
         choices=[
             "gpt-4o",
             "gpt-4-turbo",
