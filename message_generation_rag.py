@@ -108,12 +108,25 @@ class RecruitmentRAG:
         TIMEOUT = 120
 
         if provider:
-            llm = get_chat_client(
+            llm_client = get_chat_client(
                 provider=provider,
                 model=llm_type,
                 temperature=TEMPERATURE,
                 timeout=TIMEOUT,
             )
+            # The factory may return a runnable-like, a callable, or an object
+            # exposing .invoke(). LangChain composes runnables/callables/dicts,
+            # but objects with .invoke aren't directly accepted. Normalize to a
+            # callable so tests (which mock the factory to return a dummy object
+            # with .invoke) and real clients both work.
+            if callable(llm_client):
+                llm = llm_client
+            else:
+
+                def _llm_invoke(input, _llm=llm_client):
+                    return _llm.invoke(input)
+
+                llm = _llm_invoke
         else:
             if llm_type.lower() == "openai":
                 llm = ChatOpenAI(temperature=TEMPERATURE, timeout=TIMEOUT)
