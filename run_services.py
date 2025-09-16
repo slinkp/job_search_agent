@@ -248,11 +248,6 @@ def main():
     parser.add_argument(
         "--dry-run", action="store_true", help="Don't actually send emails"
     )
-    parser.add_argument(
-        "--no-headless",
-        action="store_true",
-        help="Run browser in visible mode (not headless)",
-    )
 
     args = parser.parse_args()
     setup_logging(args.verbose, process_name="combined")
