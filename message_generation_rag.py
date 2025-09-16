@@ -138,8 +138,18 @@ class RecruitmentRAG:
 
         prompt = ChatPromptTemplate.from_template(TEMPLATE)
 
+        # Ensure the retriever is runnable-like for LangChain.
+        # LangChain accepts a callable, Runnable or dict. Tests inject a simple
+        # object with an `invoke` method, so wrap it in a callable if needed.
+        if callable(self.retriever):
+            context_runnable = self.retriever
+        else:
+            def _context_callable(input, retr=self.retriever):
+                return retr.invoke(input)
+            context_runnable = _context_callable
+
         self.chain = (
-            {"context": self.retriever, "question": RunnablePassthrough()}
+            {"context": context_runnable, "question": RunnablePassthrough()}
             | prompt
             | llm
             | StrOutputParser()
