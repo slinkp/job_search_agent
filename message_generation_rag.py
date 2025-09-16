@@ -108,7 +108,7 @@ class RecruitmentRAG:
         TIMEOUT = 120
 
         if provider:
-            llm: BaseChatModel = get_chat_client(
+            llm = get_chat_client(
                 provider=provider,
                 model=llm_type,
                 temperature=TEMPERATURE,
@@ -116,7 +116,7 @@ class RecruitmentRAG:
             )
         else:
             if llm_type.lower() == "openai":
-                llm: BaseChatModel = ChatOpenAI(temperature=TEMPERATURE, timeout=TIMEOUT)
+                llm = ChatOpenAI(temperature=TEMPERATURE, timeout=TIMEOUT)
             elif llm_type.lower() == "claude":
                 llm = ChatAnthropic(
                     model="claude-3-5-sonnet-20240620",  # type: ignore[call-arg]
