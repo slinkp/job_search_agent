@@ -412,6 +412,8 @@ class JobSearch:
             provider=getattr(args, "provider", None),
         )
         self.cache_settings = cache_settings
+        # Determine Playwright headless mode from args (--no-headless means headless=False)
+        self.headless = not getattr(args, "no_headless", False)
 
     def main(self):
         args = self.args
@@ -594,7 +596,10 @@ class JobSearch:
         now = datetime.datetime.now()
         logger.info("Finding equivalent job levels ...")
         equivalent_levels = list(
-            run_in_process(levels_searcher.extract_levels, row.name) or []
+            run_in_process(
+                levels_searcher.extract_levels, row.name, headless=self.headless
+            )
+            or []
         )
         if equivalent_levels:
             row.level_equiv = ", ".join(equivalent_levels)
@@ -618,7 +623,12 @@ class JobSearch:
         now = datetime.datetime.now()
         logger.info("Finding salary data ...")
         now = datetime.datetime.now()
-        salary_data = run_in_process(levels_searcher.main, company_name=row.name) or []
+        salary_data = (
+            run_in_process(
+                levels_searcher.main, company_name=row.name, headless=self.headless
+            )
+            or []
+        )
         salary_data = list(salary_data)  # Convert generator to list if needed
 
         delta = datetime.datetime.now() - now
@@ -672,7 +682,10 @@ class JobSearch:
         logger.info(f"Doing followup research on: {company_info}")
 
         linkedin_contacts = (
-            run_in_process(linkedin_searcher.main, company_info.name) or []
+            run_in_process(
+                linkedin_searcher.main, company_info.name, headless=self.headless
+            )
+            or []
         )
         linkedin_contacts = linkedin_contacts[:4]
 
