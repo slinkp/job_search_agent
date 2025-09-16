@@ -7,6 +7,7 @@ from models import CompaniesSheetRow
 class DummyLLM:
     def __init__(self):
         self.name = "dummy-llm"
+
     def invoke(self, prompt):
         return type("Resp", (), {"content": "{}"})
 
@@ -14,6 +15,7 @@ class DummyLLM:
 class DummyAgent:
     def __init__(self, *, verbose=False, llm=None):
         self.llm = llm
+
     def main(self, *, url="", message=""):
         # Return a minimal CompaniesSheetRow similar to production path
         return CompaniesSheetRow(
@@ -21,6 +23,7 @@ class DummyAgent:
             updated=datetime.date.today(),
             current_state="10. consider applying",
         )
+
     def get_discovered_alternate_names(self):
         return []
 
