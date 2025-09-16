@@ -409,7 +409,7 @@ class JobSearch:
             reply_rag_limit=args.rag_message_limit,
             loglevel=loglevel,
             cache_settings=cache_settings,
-            provider=args.provider,
+            provider=getattr(args, "provider", None),
         )
         self.cache_settings = cache_settings
 
@@ -573,7 +573,10 @@ class JobSearch:
         # - If there are attachments to the message (eg .doc or .pdf), extract the text from them
         #   and pass that to company_researcher.py too
         row, discovered_names = company_researcher.main(
-            url_or_message=message, model=model, provider=self.args.provider, is_url=False
+            url_or_message=message,
+            model=model,
+            provider=getattr(self.args, "provider", None),
+            is_url=False,
         )
         row.email_thread_link = email_thread_link
 
@@ -746,11 +749,13 @@ def arg_parser():
         "--model",
         help="AI model to use",
         action="store",
-        default=SONNET_LATEST,
+        default=None,
         choices=[
             "gpt-4o",
             "gpt-4-turbo",
             "gpt-3.5-turbo",
+            "gpt-5",
+            "gpt-5-mini",
             "claude-3-5-sonnet-20241022",
             "claude-3-7-sonnet-20250219",
             "claude-sonnet-4-20250514",
