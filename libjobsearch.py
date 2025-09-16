@@ -828,35 +828,6 @@ def arg_parser():
     return parser
 
 
-if __name__ == "__main__":
-    parser = arg_parser()
-    args = parser.parse_args()
-
-    setup_logging(args.verbose, process_name="libjobsearch")
-    if args.verbose:
-        email_client.logger.setLevel(logging.DEBUG)
-
-    # Clear all cache if requested (do this before any other operations)
-    if args.clear_all_cache:
-        logger.info("Clearing all cache...")
-        cache.clear()
-
-    cache_settings = CacheSettings(
-        clear_all_cache=args.clear_all_cache,
-        clear_cache=args.clear_cache or [],
-        cache_until=args.cache_until,
-        no_cache=args.no_cache,
-    )
-
-    # Normalize provider/model per plan defaults
-    normalized_provider, normalized_model = select_provider_and_model(args)
-    args.provider = normalized_provider
-    args.model = normalized_model
-
-    job_searcher = JobSearch(args, loglevel=logger.level, cache_settings=cache_settings)
-    job_searcher.main()
-
-
 def select_provider_and_model(args: argparse.Namespace) -> Tuple[str, str]:
     """
     Determine provider and model defaults based on the parsed args.
@@ -896,3 +867,32 @@ def select_provider_and_model(args: argparse.Namespace) -> Tuple[str, str]:
         return "openai", (model or "gpt-4o")
 
     raise ValueError(f"Unknown provider: {provider}")
+
+
+if __name__ == "__main__":
+    parser = arg_parser()
+    args = parser.parse_args()
+
+    setup_logging(args.verbose, process_name="libjobsearch")
+    if args.verbose:
+        email_client.logger.setLevel(logging.DEBUG)
+
+    # Clear all cache if requested (do this before any other operations)
+    if args.clear_all_cache:
+        logger.info("Clearing all cache...")
+        cache.clear()
+
+    cache_settings = CacheSettings(
+        clear_all_cache=args.clear_all_cache,
+        clear_cache=args.clear_cache or [],
+        cache_until=args.cache_until,
+        no_cache=args.no_cache,
+    )
+
+    # Normalize provider/model per plan defaults
+    normalized_provider, normalized_model = select_provider_and_model(args)
+    args.provider = normalized_provider
+    args.model = normalized_model
+
+    job_searcher = JobSearch(args, loglevel=logger.level, cache_settings=cache_settings)
+    job_searcher.main()
