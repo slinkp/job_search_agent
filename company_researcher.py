@@ -7,11 +7,10 @@ import json
 import logging
 import os
 import re
-from typing import Optional
+from typing import Optional, Literal, cast
 
 import requests
 from bs4 import BeautifulSoup
-from langchain_anthropic import ChatAnthropic
 from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
 from langchain_core.language_models import BaseChatModel
@@ -526,7 +525,7 @@ def main(
             raise ValueError(f"Unknown model: {model}")
 
     llm: BaseChatModel = get_chat_client(
-        provider=resolved_provider,
+        provider=cast(Literal["openai", "anthropic", "openrouter"], resolved_provider),
         model=model,
         temperature=TEMPERATURE,
         timeout=TIMEOUT,
