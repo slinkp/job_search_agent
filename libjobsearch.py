@@ -746,7 +746,7 @@ def arg_parser():
             SONNET_LATEST,
         ],
     )
-    DEFAULT_RAG_LIMIT = 20
+    DEFAULT_RAG_LIMIT = 300
     parser.add_argument(
         "--rag-message-limit",
         action="store",
@@ -795,11 +795,14 @@ def arg_parser():
         help="Test messages to use instead of fetching from Gmail",
     )
 
+    DEFAULT_RECRUITER_MESSAGES = 500
     parser.add_argument(
         "--recruiter-message-limit",
         type=int,
-        default=1,
-        help="Number of recruiter messages to fetch if not using test-messages",
+        default=DEFAULT_RECRUITER_MESSAGES,
+        help=(
+            "Number of recruiter messages to fetch if not using test-messages."
+            f" Default {DEFAULT_RECRUITER_MESSAGES}"),
     )
     parser.add_argument(
         "-s",
