@@ -99,7 +99,7 @@ class RecruitmentRAG:
             raise ValueError("Failed to create vectorstore")
         self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": 3})
 
-    def setup_chain(self, llm_type: str):
+    def setup_chain(self, llm_type: str, provider: str | None = None):
         if self.retriever is None:
             raise ValueError("Data not prepared. Call prepare_data() first.")
 

@@ -497,6 +497,7 @@ class TavilyRAGResearchAgent:
 def main(
     url_or_message: str,
     model: str,
+    provider: str | None = None,
     refresh_rag_db: bool = False,  # TODO: Unused
     verbose: bool = False,
     is_url: bool | None = None,
