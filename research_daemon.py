@@ -866,11 +866,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dry-run", action="store_true", help="Don't actually send emails"
     )
-    parser.add_argument(
-        "--no-headless",
-        action="store_true",
-        help="Run browser in visible mode (not headless)",
-    )
     parser.set_defaults(recruiter_message_limit=0)
     args = parser.parse_args()
 
