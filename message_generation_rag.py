@@ -10,6 +10,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from ai.client_factory import get_chat_client
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 logger = logging.getLogger(__name__)
@@ -106,24 +107,36 @@ class RecruitmentRAG:
         TEMPERATURE = 0.2  # Lowish because we're writing email to real people.
         TIMEOUT = 120
 
-        if llm_type.lower() == "openai":
-            llm: BaseChatModel = ChatOpenAI(temperature=TEMPERATURE, timeout=TIMEOUT)
-        elif llm_type.lower() == "claude":
-            llm = ChatAnthropic(
-                model="claude-3-5-sonnet-20240620",  # type: ignore[call-arg]
-                temperature=TEMPERATURE,
-                timeout=TIMEOUT,
-            )
-        elif llm_type.startswith("gpt"):
-            llm = ChatOpenAI(model=llm_type, temperature=TEMPERATURE)
-        elif llm_type.startswith("claude"):
-            llm = ChatAnthropic(
-                model=llm_type,  # type: ignore[call-arg]
+        if provider:
+            llm: BaseChatModel = get_chat_client(
+                provider=provider,
+                model=llm_type,
                 temperature=TEMPERATURE,
                 timeout=TIMEOUT,
             )
         else:
-            raise ValueError("Invalid llm_type. Choose 'openai' or 'claude' or 'gpt'.")
+            if llm_type.lower() == "openai":
+                llm: BaseChatModel = ChatOpenAI(
+                    temperature=TEMPERATURE, timeout=TIMEOUT
+                )
+            elif llm_type.lower() == "claude":
+                llm = ChatAnthropic(
+                    model="claude-3-5-sonnet-20240620",  # type: ignore[call-arg]
+                    temperature=TEMPERATURE,
+                    timeout=TIMEOUT,
+                )
+            elif llm_type.startswith("gpt"):
+                llm = ChatOpenAI(model=llm_type, temperature=TEMPERATURE)
+            elif llm_type.startswith("claude"):
+                llm = ChatAnthropic(
+                    model=llm_type,  # type: ignore[call-arg]
+                    temperature=TEMPERATURE,
+                    timeout=TIMEOUT,
+                )
+            else:
+                raise ValueError(
+                    "Invalid llm_type. Choose 'openai' or 'claude' or 'gpt'."
+                )
 
         prompt = ChatPromptTemplate.from_template(TEMPLATE)
 

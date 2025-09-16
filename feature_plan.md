@@ -37,25 +37,25 @@ Plan of Work
 Single-task focus: I will implement exactly one checkbox at a time and nothing else. After each sub-task or nested sub-task, I will stop for approval and run ./test.
 
 1) Centralize LLM client creation
-- [ ] Create ai/client_factory.py
-  - [ ] Implement get_chat_client(provider: Literal["openai","anthropic","openrouter"], model: str, temperature: float, timeout: int) -> BaseChatModel
-  - [ ] openai: return ChatOpenAI(model=model, temperature=..., timeout=...)
-  - [ ] anthropic: return ChatAnthropic(model=model, temperature=..., timeout=...)
-  - [ ] openrouter: return ChatOpenAI(model=model, temperature=..., timeout=..., base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"]) with clear error if key missing
-  - [ ] Do not handle embeddings here; keep them unchanged elsewhere
-- [ ] Tests: tests/test_client_factory.py
-  - [ ] Asserts provider=openrouter uses base_url and OPENROUTER_API_KEY (mock ChatOpenAI)
-  - [ ] Missing OPENROUTER_API_KEY raises helpful error
-  - [ ] openai/anthropic paths unchanged
+- [x] Create ai/client_factory.py
+  - [x] Implement get_chat_client(provider: Literal["openai","anthropic","openrouter"], model: str, temperature: float, timeout: int) -> BaseChatModel
+  - [x] openai: return ChatOpenAI(model=model, temperature=..., timeout=...)
+  - [x] anthropic: return ChatAnthropic(model=model, temperature=..., timeout=...)
+  - [x] openrouter: return ChatOpenAI(model=model, temperature=..., timeout=..., base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"]) with clear error if key missing
+  - [x] Do not handle embeddings here; keep them unchanged elsewhere
+- [x] Tests: tests/test_client_factory.py
+  - [x] Asserts provider=openrouter uses base_url and OPENROUTER_API_KEY (mock ChatOpenAI)
+  - [x] Missing OPENROUTER_API_KEY raises helpful error
+  - [x] openai/anthropic paths unchanged
 - Stop for approval.
 
 2) Update libjobsearch argument parsing and config propagation
-- [ ] Add --provider with choices ["openai","anthropic","openrouter"]; default remains current behavior (openai or existing SONNET_LATEST behavior)
-- [ ] If provider=openrouter and model not explicitly set, default model to gpt-5-mini
-- [ ] Thread provider through JobSearch -> EmailResponseGenerator -> RecruitmentRAG setup and into company_researcher main path
-- [ ] Tests: tests/test_libjobsearch_args.py
-  - [ ] Parses provider/model combos correctly
-  - [ ] Defaults apply (openrouter -> gpt-5-mini) if model not set
+- [x] Add --provider with choices ["openai","anthropic","openrouter"]; default remains current behavior (openai or existing SONNET_LATEST behavior)
+- [x] If provider=openrouter and model not explicitly set, default model to gpt-5-mini
+- [x] Thread provider through JobSearch -> EmailResponseGenerator -> RecruitmentRAG setup and into company_researcher main path
+- [x] Tests: tests/test_libjobsearch_args.py
+  - [x] Parses provider/model combos correctly
+  - [x] Defaults apply (openrouter -> gpt-5-mini) if model not set
 - Stop for approval.
 
 3) Integrate in message_generation_rag.py
