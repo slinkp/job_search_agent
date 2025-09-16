@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Literal, Any
+from typing import Literal, Any, cast
 
 # (no change needed here; just remove the SecretStr import)
 
@@ -42,7 +42,8 @@ def get_chat_client(
     if provider == "openai":
         return ChatOpenAI(model=model, temperature=temperature, timeout=timeout)
     elif provider == "anthropic":
-        return ChatAnthropic(model=model, temperature=temperature, timeout=timeout)
+        anthropic_cls = cast(Any, ChatAnthropic)
+        return anthropic_cls(model=model, temperature=temperature, timeout=timeout)
     elif provider == "openrouter":
         key = os.environ.get("OPENROUTER_API_KEY")
         if not key:
@@ -52,7 +53,7 @@ def get_chat_client(
             temperature=temperature,
             timeout=timeout,
             base_url="https://openrouter.ai/api/v1",
-            api_key=key,
+            api_key=cast(Any, key),
         )
     else:
         raise ValueError(f"Unknown provider: {provider}")
