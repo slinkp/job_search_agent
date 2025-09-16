@@ -144,8 +144,10 @@ class RecruitmentRAG:
         if callable(self.retriever):
             context_runnable = self.retriever
         else:
+
             def _context_callable(input, retr=self.retriever):
                 return retr.invoke(input)
+
             context_runnable = _context_callable
 
         self.chain = (
