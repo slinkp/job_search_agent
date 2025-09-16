@@ -843,6 +843,12 @@ def arg_parser():
         help="Use the test or production spreadsheet",
     )
 
+    parser.add_argument(
+        "--no-headless",
+        action="store_true",
+        help="Run browser in visible mode (not headless)",
+    )
+
     return parser
 
 
