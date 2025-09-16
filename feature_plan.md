@@ -59,18 +59,18 @@ Single-task focus: I will implement exactly one checkbox at a time and nothing e
 - Stop for approval.
 
 3) Integrate in message_generation_rag.py
-- [ ] Replace direct ChatOpenAI/ChatAnthropic init in setup_chain with ai/client_factory.get_chat_client(provider, model, TEMPERATURE, TIMEOUT)
-- [ ] Keep embeddings creation as-is
-- [ ] Tests: tests/test_message_generation_rag_openrouter.py
-  - [ ] With provider=openrouter, ensure factory is called and returns the OpenRouter client (mocked)
-  - [ ] Embeddings remain OpenAIEmbeddings
+- [x] Replace direct ChatOpenAI/ChatAnthropic init in setup_chain with ai/client_factory.get_chat_client(provider, model, TEMPERATURE, TIMEOUT)
+- [x] Keep embeddings creation as-is
+- [x] Tests: tests/test_message_generation_rag_openrouter.py
+  - [x] With provider=openrouter, ensure factory is called and returns the OpenRouter client (mocked)
+  - [x] Embeddings remain OpenAIEmbeddings
 - Stop for approval.
 
 4) Integrate in company_researcher.py
-- [ ] In TavilyRAGResearchAgent.__init__, replace direct llm init with factory usage when llm not provided
-- [ ] In main() model selection paths, use factory for both OpenAI and Anthropic; add openrouter case
-- [ ] Tests: tests/test_company_researcher_openrouter.py
-  - [ ] With provider=openrouter, factory used and OpenRouter client selected (mocked)
+- [x] In TavilyRAGResearchAgent.__init__, replace direct llm init with factory usage when llm not provided
+- [x] In main() model selection paths, use factory for both OpenAI and Anthropic; add openrouter case
+- [x] Tests: tests/test_company_researcher_openrouter.py
+  - [x] With provider=openrouter, factory used and OpenRouter client selected (mocked)
 - Stop for approval.
 
 5) Sweep remaining backend LLM usages (exclude company_classifier/)

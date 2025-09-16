@@ -16,6 +16,7 @@ from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
+from ai.client_factory import get_chat_client
 from tavily import TavilyClient  # type: ignore[import-untyped]
 
 from models import CompaniesSheetRow, is_placeholder
@@ -513,29 +514,23 @@ def main(
         is_url: Force interpretation as URL (True) or message (False). If None, will try to auto-detect.
     """
     TEMPERATURE = 0.7  # TBD what's a good range for this use case? Is this high?
-    if model.startswith("gpt-"):
-        llm: BaseChatModel = ChatOpenAI(
-            model=model, temperature=TEMPERATURE, timeout=TIMEOUT
-        )
-    elif model.startswith("claude"):
-        logger.info(f"Creating ChatAnthropic with model: {model}")
-        try:
-            llm = ChatAnthropic(
-                # This is 100% correct but pylance expects model_name instead
-                model=model,  # type: ignore[call-arg]
-                temperature=TEMPERATURE,
-                timeout=TIMEOUT,
-            )
-            logger.info(
-                f"Successfully created ChatAnthropic instance with model: {model}"
-            )
-        except Exception as e:
-            logger.error(
-                f"Failed to create ChatAnthropic instance with model '{model}': {e}"
-            )
-            raise
-    else:
-        raise ValueError(f"Unknown model: {model}")
+
+    # Resolve provider if not explicitly provided
+    resolved_provider = provider
+    if resolved_provider is None:
+        if model.lower().startswith("claude"):
+            resolved_provider = "anthropic"
+        elif model.lower().startswith("gpt"):
+            resolved_provider = "openai"
+        else:
+            raise ValueError(f"Unknown model: {model}")
+
+    llm: BaseChatModel = get_chat_client(
+        provider=resolved_provider,
+        model=model,
+        temperature=TEMPERATURE,
+        timeout=TIMEOUT,
+    )
 
     researcher = TavilyRAGResearchAgent(verbose=verbose, llm=llm)
 

@@ -749,7 +749,7 @@ def arg_parser():
         "--model",
         help="AI model to use",
         action="store",
-        default=None,
+        default=SONNET_LATEST,
         choices=[
             "gpt-4o",
             "gpt-4-turbo",
