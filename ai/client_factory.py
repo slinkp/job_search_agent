@@ -41,7 +41,7 @@ def get_chat_client(
     if provider == "openai":
         return ChatOpenAI(model=model, temperature=temperature, timeout=timeout)
     elif provider == "anthropic":
-        return ChatAnthropic(model_name=model, temperature=temperature, timeout=timeout)
+        return ChatAnthropic(model_name=model, temperature=temperature, timeout=timeout, stop=None)
     elif provider == "openrouter":
         key = os.environ.get("OPENROUTER_API_KEY")
         if not key:
