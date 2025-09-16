@@ -14,7 +14,6 @@ from bs4 import BeautifulSoup
 from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
 from langchain_core.language_models import BaseChatModel
-from langchain_openai import ChatOpenAI
 from ai.client_factory import get_chat_client
 from tavily import TavilyClient  # type: ignore[import-untyped]
 
@@ -164,9 +163,12 @@ class TavilyRAGResearchAgent:
     llm: BaseChatModel
 
     def __init__(self, verbose: bool = False, llm: Optional[BaseChatModel] = None):
-        # set up the agent
-        self.llm = llm or ChatOpenAI(
-            model="gpt-4", temperature=TEMPERATURE, timeout=TIMEOUT
+        # set up the agent using centralized client factory (default to OpenAI gpt-4)
+        self.llm = llm or get_chat_client(
+            provider="openai",
+            model="gpt-4",
+            temperature=TEMPERATURE,
+            timeout=TIMEOUT,
         )
         # Cache to reduce LLM calls.
         set_llm_cache(SQLiteCache(database_path=".langchain-cache.db"))

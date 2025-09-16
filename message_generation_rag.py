@@ -2,14 +2,12 @@ import logging
 import os
 from typing import List, Tuple
 
-from langchain_anthropic import ChatAnthropic
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from ai.client_factory import get_chat_client
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -107,47 +105,41 @@ class RecruitmentRAG:
         TEMPERATURE = 0.2  # Lowish because we're writing email to real people.
         TIMEOUT = 120
 
-        if provider:
-            llm_client = get_chat_client(
-                provider=provider,
-                model=llm_type,
-                temperature=TEMPERATURE,
-                timeout=TIMEOUT,
-            )
-            # The factory may return a runnable-like, a callable, or an object
-            # exposing .invoke(). LangChain composes runnables/callables/dicts,
-            # but objects with .invoke aren't directly accepted. Normalize to a
-            # callable so tests (which mock the factory to return a dummy object
-            # with .invoke) and real clients both work.
-            if callable(llm_client):
-                llm = llm_client
-            else:
-
-                def _llm_invoke(input, _llm=llm_client):
-                    return _llm.invoke(input)
-
-                llm = _llm_invoke
-        else:
-            if llm_type.lower() == "openai":
-                llm = ChatOpenAI(temperature=TEMPERATURE, timeout=TIMEOUT)
-            elif llm_type.lower() == "claude":
-                llm = ChatAnthropic(
-                    model="claude-3-5-sonnet-20240620",  # type: ignore[call-arg]
-                    temperature=TEMPERATURE,
-                    timeout=TIMEOUT,
-                )
-            elif llm_type.startswith("gpt"):
-                llm = ChatOpenAI(model=llm_type, temperature=TEMPERATURE)
-            elif llm_type.startswith("claude"):
-                llm = ChatAnthropic(
-                    model=llm_type,  # type: ignore[call-arg]
-                    temperature=TEMPERATURE,
-                    timeout=TIMEOUT,
-                )
+        # Infer provider/model if not explicitly provided
+        model_to_use = llm_type
+        resolved_provider = provider
+        if resolved_provider is None:
+            lt = llm_type.lower()
+            if lt == "openai":
+                resolved_provider = "openai"
+                model_to_use = "gpt-4o"
+            elif lt == "claude":
+                resolved_provider = "anthropic"
+                model_to_use = "claude-3-5-sonnet-20240620"
+            elif lt.startswith("gpt"):
+                resolved_provider = "openai"
+            elif lt.startswith("claude"):
+                resolved_provider = "anthropic"
             else:
                 raise ValueError(
-                    "Invalid llm_type. Choose 'openai' or 'claude' or 'gpt'."
+                    "Invalid llm_type. Choose 'openai' or 'claude' or a specific model starting with 'gpt' or 'claude'."
                 )
+
+        llm_client = get_chat_client(
+            provider=resolved_provider,
+            model=model_to_use,
+            temperature=TEMPERATURE,
+            timeout=TIMEOUT,
+        )
+        # Normalize to callable so both real clients (runnable) and test doubles with .invoke work
+        if callable(llm_client):
+            llm = llm_client
+        else:
+
+            def _llm_invoke(input, _llm=llm_client):
+                return _llm.invoke(input)
+
+            llm = _llm_invoke
 
         prompt = ChatPromptTemplate.from_template(TEMPLATE)
 

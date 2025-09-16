@@ -74,8 +74,8 @@ Single-task focus: I will implement exactly one checkbox at a time and nothing e
 - Stop for approval.
 
 5) Sweep remaining backend LLM usages (exclude company_classifier/)
-- [ ] Grep for ChatOpenAI/ChatAnthropic in backend; migrate any remaining call sites to client_factory
-- [ ] Tests as needed to cover provider routing in those paths
+- [x] Grep for ChatOpenAI/ChatAnthropic in backend; migrate any remaining call sites to client_factory
+- [x] Tests as needed to cover provider routing in those paths
 - Stop for approval.
 
 6) Error handling, logging, docs
