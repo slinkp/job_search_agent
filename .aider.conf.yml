@@ -10,7 +10,7 @@ gitignore: false
 ## Enable/disable automatic linting after changes (default: True)
 
 auto-lint: true
-test-cmd: ./test
+test-cmd: ./test --no-cover
 auto-test: true
 
 ## Lint and fix provided files, or dirty files if none provided
