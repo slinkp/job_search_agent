@@ -23,8 +23,10 @@ export TEST_TAB_1_RANGE="$TAB_1_RANGE"
 # Parse arguments
 RUN_PYTHON=false
 RUN_JS=false
-SKIP_COVERAGE=false
+SKIP_COVERAGE=true
 PYTEST_ARGS=()
+NPMTEST_ARGS=()
+FAIL_FAST=false
 
 # Check each argument
 for arg in "$@"; do
@@ -39,7 +41,17 @@ for arg in "$@"; do
             RUN_PYTHON=true
             RUN_JS=true
             ;;
-        --no-cover)
+        --no-cover|--without-coverage|--no-coverage)
+            SKIP_COVERAGE=true
+            ;;
+        --cover|--with-coverage)
+            SKIP_COVERAGE=false
+            ;;
+        -x|--exitfirst|--failfast|--bail|-b)
+            # Stop on first error in either test runner
+            PYTEST_ARGS+=("-x")
+            NPMTEST_ARGS+=("--bail" "1")
+            FAIL_FAST=true
             SKIP_COVERAGE=true
             ;;
         *)
@@ -70,16 +82,20 @@ else
     PYTHON_EXIT=0
 fi
 
+if [[ "$FAIL_FAST" = true && $PYTHON_EXIT -ne 0 ]]; then
+    # Don't run if failing fast and already failed
+    RUN_JS=false
+fi
+
 if [ "$RUN_JS" = true ]; then
-    if [ "$SKIP_COVERAGE" = true ]; then
-        # Run JavaScript tests without coverage in UTC timezone
-        TZ=UTC npm run test -- --run
-        JS_EXIT=$?
+    if [ "$SKIP_COVERAGE" = false ]; then
+        TEST_CMD="test:coverage"
     else
-        # Run JavaScript tests with coverage in UTC timezone
-        TZ=UTC npm run test:coverage -- --run
-        JS_EXIT=$?
+        TEST_CMD="test"
     fi
+    # Run JavaScript tests in UTC timezone
+    TZ=UTC npm run "$TEST_CMD" -- --run "${NPMTEST_ARGS[@]}"
+    JS_EXIT=$?
 else
     echo "Skipping js tests"
     JS_EXIT=0
@@ -102,6 +118,8 @@ if [ "$RUN_PYTHON" = true ]; then
     else
         echo ' Python tests ok'
     fi
+else
+    echo ' Python tests skipped'
 fi
 
 if [ "$RUN_JS" = true ]; then
@@ -109,8 +127,11 @@ if [ "$RUN_JS" = true ]; then
         EXIT_CODE=$JS_EXIT
         echo ' !!! JS tests FAILED' >&2
     else
-        echo ' JS tests ok'
+        echo ' JS tests OK'
     fi
+else
+    echo ' JS tests skipped'
 fi
-echo
+
+echo "exiting $EXIT_CODE"
 exit $EXIT_CODE
