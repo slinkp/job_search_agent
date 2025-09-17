@@ -45,8 +45,8 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
   - [x] Run tests and fix until green.
 
 - [ ] Backend: Task pipeline forwards flags to research
-  - [ ] Write tests to assert the research daemon reads flags from task args and calls JobSearch.research_company(..., force_levels, force_contacts).
-  - [ ] Implement flag extraction in the daemon and pass-through to the research entry point; keep behavior unchanged when flags are absent/false.
+  - [x] Write tests to assert the research daemon reads flags from task args and calls JobSearch.research_company(..., force_levels, force_contacts).
+  - [x] Implement flag extraction in the daemon and pass-through to the research entry point; keep behavior unchanged when flags are absent/false.
   - [ ] Run tests and fix until green.
 
 - [ ] Backend: Research core respects flags

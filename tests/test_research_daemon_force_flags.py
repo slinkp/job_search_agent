@@ -76,9 +76,6 @@ class FakeJobSearch:
         ),
     ],
 )
-@pytest.mark.xfail(
-    reason="Not implemented yet: daemon must pass flags to JobSearch.research_company"
-)
 def test_daemon_passes_force_flags_to_jobsearch(monkeypatch, task_body, expected):
     # Arrange: fake singleton providers and dependencies
     fake_tm = FakeTaskManager(task_body)
@@ -107,7 +104,7 @@ def test_daemon_passes_force_flags_to_jobsearch(monkeypatch, task_body, expected
 
     # Assert: JobSearch.research_company was called with the expected flags
     assert FakeJobSearch.instances, "JobSearch should have been instantiated"
-    calls = FakeJobSearch.instances[0].calls
+    calls = FakeJobSearch.instances[-1].calls
     assert calls, "research_company should have been called"
     kwargs = calls[0]["kwargs"]
     assert kwargs.get("force_levels", False) is expected["force_levels"]
