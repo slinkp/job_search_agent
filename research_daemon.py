@@ -174,6 +174,10 @@ class ResearchDaemon:
         }
 
     def do_research(self, args: dict) -> Optional[models.Company]:
+        # Support both flat args and nested {"body": {...}} payloads
+        if isinstance(args, dict) and isinstance(args.get("body"), dict):
+            args = args["body"]
+
         # Extract args, with URL and name being optional
         company_id = args.get("company_id", "").strip()
         company_name = args.get("company_name", "").strip()
