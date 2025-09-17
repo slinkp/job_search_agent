@@ -41,7 +41,7 @@ class FakeRepo:
 
 
 class FakeJobSearch:
-    instances = []
+    instances: list["FakeJobSearch"] = []
 
     def __init__(self, *args, **kwargs):
         self.calls = []
