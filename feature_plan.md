@@ -39,10 +39,10 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
 
 4) Linear Implementation Checklist (test-first; proceed strictly top-to-bottom)
 
-- [ ] Backend: API accepts override flags and enqueues them
+- [x] Backend: API accepts override flags and enqueues them
   - [x] Write tests to assert POST /api/companies/{id}/research accepts JSON body with { force_levels, force_contacts } booleans defaulting to false, and that task args include these flags.
   - [x] Implement tolerant JSON parsing (default both flags to false when body missing/invalid), include flags in task creation, and add a concise log noting company_id and flags.
-  - [ ] Run tests and fix until green.
+  - [x] Run tests and fix until green.
 
 - [ ] Backend: Task pipeline forwards flags to research
   - [ ] Write tests to assert the research daemon reads flags from task args and calls JobSearch.research_company(..., force_levels, force_contacts).
