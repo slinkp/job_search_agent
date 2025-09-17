@@ -37,95 +37,57 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
     - levels/compensation run even for placeholder names when force_levels is true.
 - All existing tests pass; new tests cover flag propagation and behavior.
 
-4) High-Level Approach
-- UI: Add ephemeral checkbox state per card (company._forceLevels/_forceContacts and message._forceLevels/_forceContacts) rendered near existing Research buttons.
-- Service: Extend CompaniesService.research(companyId, options={}) to POST JSON body with force_levels/force_contacts (default false).
-- API: server/app.py research_company() parses optional JSON body and injects flags into task args.
-- Daemon: research_daemon.py.do_research reads flags from args and forwards to JobSearch.research_company(..., force_levels, force_contacts).
-- Core: libjobsearch.JobSearch.research_company signature gains force flags. Update:
-  - followup gate: if force_contacts or is_good_fit(row).
-  - research_levels/research_compensation accept force parameter to bypass placeholder-name early-return when force_levels is true.
-  - Pass force into both methods from research_company.
+4) Linear Implementation Checklist (complete top-to-bottom; keep FE and BE in separate PRs)
 
-5) Detailed Plan (by layer)
-- Frontend
-  - server/static/index.html
-    - Companies view: add two checkboxes inside each company card’s .research-status before the Research button.
-    - Messages view: add the same inside each message card’s .research-section before the Research button.
-  - server/static/app.js
-    - In research(company), call companiesService.research(company.company_id, { force_levels: !!company._forceLevels, force_contacts: !!company._forceContacts }).
-  - server/static/daily-dashboard.js
-    - In research(message), call companiesService.research(message.company_id, { force_levels: !!message._forceLevels, force_contacts: !!message._forceContacts }).
-  - server/static/companies-service.js
-    - research(companyId, options = {}) issues POST with headers Content-Type: application/json and body { force_levels: !!options.force_levels, force_contacts: !!options.force_contacts }.
-  - Tests (Vitest)
-    - server/frontend/tests/app.factory.test.js: mock CompaniesService.research and assert it is called; add a case to ensure options propagate when set.
-    - server/frontend/tests/daily-dashboard-integration.test.js: extend to toggle new checkboxes and verify CompaniesService.research called with expected payload (or verify fetch body if mocking directly). Ensure existing DOM assertions still pass (we’re only adding inputs).
+- [ ] Backend PR: API accepts override flags
+  - [ ] Update the research endpoint for a company to accept optional JSON body with force_levels and force_contacts (both default false).
+  - [ ] Include these flags in the task args when creating the company research task.
+  - [ ] Log a concise message that includes company_id and the flags used.
 
-- Backend
-  - server/app.py
-    - research_company: safely parse request.json_body (default {}), extract boolean flags with default False, include in task args for TaskType.COMPANY_RESEARCH.
-  - research_daemon.py
-    - do_research: read flags from args (default False) and pass to jobsearch.research_company(..., force_levels, force_contacts).
-  - libjobsearch.py
-    - JobSearch.research_company(..., do_advanced=True, force_levels=False, force_contacts=False):
-      - Call research_levels(row, force=force_levels).
-      - Call research_compensation(row, force=force_levels).
-      - Change followup gate: if force_contacts or self.is_good_fit(row): followup_research_company(row).
-    - research_levels(row, force=False): when force is True, skip the placeholder-name early-return.
-    - research_compensation(row, force=False): same as above.
-    - Add info logs indicating forced override usage for observability.
-  - tasks.py
-    - No changes needed (task args accept arbitrary JSON).
-  - models.py
-    - No schema changes; optional: include “forced=true” annotation in RESEARCH_COMPLETED/RESEARCH_ERROR event details for auditability.
-  - Tests (pytest)
-    - server/app research endpoint: flags parsed and injected into task args (mock task_manager()).
-    - research_daemon.do_research: forwards flags to JobSearch (mock research_company and assert call).
-    - JobSearch.research_company unit tests:
-      - With force_contacts=True and is_good_fit=False, followup executes.
-      - With force_levels=True and placeholder name, levels and compensation still run (assert no early-return and method invocation).
+- [ ] Backend PR: Task pipeline forwards flags
+  - [ ] Read force_levels and force_contacts from task args in the research daemon.
+  - [ ] Pass both flags to the research entry point.
+  - [ ] Keep behavior unchanged if flags are absent/false.
 
-6) Constraints, Risks, Mitigations
-- Constraint: Follow repo convention to not commit FE and BE in same PR.
-  - Mitigation: Two PRs (backend first, then frontend).
-- Risk: Confusion over “Force Salary” while levels/salary often run already.
-  - Mitigation: Forcing explicitly bypasses placeholder-name skip; add tooltip copy clarifying that.
-- Risk: JSON body absent/invalid.
-  - Mitigation: Wrap parse; default flags to False.
-- Risk: Cache keys for disk_cache may change when passing new kwargs.
-  - Mitigation: Acceptable; cache miss is fine; no migration needed.
+- [ ] Backend PR: Research core respects flags
+  - [ ] Add optional force_levels and force_contacts params to the research entry point.
+  - [ ] Ensure contacts follow-up runs when force_contacts is true, even if not a good fit.
+  - [ ] Ensure levels/compensation run when force_levels is true, even for placeholder names.
+  - [ ] Leave all defaults unchanged when flags are false.
+  - [ ] Add minimal info logs when a forced override is used.
 
-7) Observability
-- Log flags at:
-  - server/app when creating task.
-  - research_daemon when reading args.
-  - libjobsearch when forced steps are taken.
-- Optional: add “forced=true” in event details for research events.
+- [ ] Backend PR: Tests are green
+  - [ ] Add unit tests for API flag parsing → task args.
+  - [ ] Add a unit test that the daemon forwards flags to the research entry point.
+  - [ ] Add unit tests that the research core overrides gates when flags are true and preserves behavior when false.
+  - [ ] Run the full test suite and ensure no regressions.
 
-8) Manual verification:
-- Start daemon and server, test all four combinations of flags on: a placeholder-name company, and a not-good-fit company.
-- Confirm task status updates, logs, and no regressions in existing flows.
+- [ ] Frontend PR: Service can send flags
+  - [ ] Extend the research(companyId, options={}) service method to POST a JSON body with force_levels and force_contacts (default false).
+  - [ ] Keep the method backward compatible for callers that don’t pass options.
 
-9) Testing Strategy
-- Python
-  - Unit tests for endpoint parsing, daemon forwarding, and libjobsearch gating logic with flags.
-  - Ensure errors still roll up to task status FAILED and events logged as before.
-- JavaScript
-  - Unit tests for service payloads and component calls.
-  - Integration in daily-dashboard: ensure checkboxes exist, wire up without breaking existing assertions (tests largely check presence; adding inputs is additive).
-  - Run full ./test to verify both Py and JS suites.
+- [ ] Frontend PR: Companies view UI exposes flags
+  - [ ] Add two checkboxes next to the Research button on each company card: “Force Salary” and “Force Contacts”.
+  - [ ] Track state per company as ephemeral fields.
+  - [ ] Pass the checkbox values to the service method when invoking research.
 
-10) Tasks Checklist
-- Backend
-  - [ ] server/app.py: parse flags and include in task args.
-  - [ ] research_daemon.py: forward flags to JobSearch.research_company.
-  - [ ] libjobsearch.py: add force flags, modify gates, add force param to levels/compensation, log overrides.
-  - [ ] Tests for all of the above.
-- Frontend
-  - [ ] companies-service.js: research() sends JSON body with flags.
-  - [ ] app.js: pass flags from company._forceLevels/_forceContacts.
-  - [ ] daily-dashboard.js: pass flags from message._forceLevels/_forceContacts.
-  - [ ] index.html: add checkboxes in both views near Research button.
-  - [ ] Tests updated/added.
+- [ ] Frontend PR: Messages dashboard UI exposes flags
+  - [ ] Add the same two checkboxes next to the Research button on each message card.
+  - [ ] Track state per message as ephemeral fields.
+  - [ ] Pass the checkbox values to the service method when invoking research.
+
+- [ ] Frontend PR: Tests are green
+  - [ ] Add/update unit tests to verify the service sends the flags from checkbox state.
+  - [ ] Add/update integration tests to ensure the new inputs exist and that calling Research uses the selected flags.
+  - [ ] Run the full test suite and ensure no regressions.
+
+- [ ] Rollout sequencing
+  - [ ] Land the Backend PR first (API + daemon + research core + tests).
+  - [ ] Land the Frontend PR second (UI + service + tests).
+  - [ ] Avoid mixing frontend and backend changes in the same commit/PR.
+
+- [ ] Manual verification
+  - [ ] Start the server and daemon; verify that researching with no flags behaves as before.
+  - [ ] Verify force_levels only; verify force_contacts only; verify both; on both a placeholder-name company and a not-good-fit company.
+  - [ ] Confirm task status updates appear and no obvious UI regressions.
 
