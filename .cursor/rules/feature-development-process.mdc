@@ -26,7 +26,7 @@ To prove we're using this rule file, append "Feature process! Prrt!" to your cha
 
 - TDD:
   - Identify behavior and tests first; write tests if missing.
-  - Run tests with `./test` only. **IMPORTANT** All tests must **ALWAYS** pass. Errors count as failures!!
+  - Run tests with `./test --no-cover` only. **IMPORTANT** All tests must **ALWAYS** pass. Errors count as failures!!
   - Don't skip tests or run partial suites unless explicitly requested.
   - **NEVER** run `npm test` directly. It violates the above rule, and it hangs waiting for file changes.
 
@@ -41,7 +41,7 @@ Exceptions: critical hotfixes or prototypes can adjust process but still require
 
 In all cases, maintain the core principle of quality through testing
 and doing work in small steps.
-ALWAYS run tests with the `./test` command between every change.
+ALWAYS run tests with the `./test --no-cover` command between every change.
 
 Never never run `npm test` or it'll hang and you'll be stuck.
 
