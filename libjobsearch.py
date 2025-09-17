@@ -13,7 +13,7 @@ import time
 from enum import IntEnum
 from functools import wraps
 from multiprocessing import Process, Queue
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 from diskcache import Cache  # type: ignore
 from pydantic import BaseModel, ValidationError
@@ -283,12 +283,14 @@ class EmailResponseGenerator:
         reply_rag_limit: int,
         loglevel: int,
         cache_settings: CacheSettings,
+        provider: str | None = None,
     ):
         logger.info("Initializing EmailResponder...")
         self.cache_settings = cache_settings
         self.reply_rag_model = reply_rag_model
         self.reply_rag_limit = reply_rag_limit
         self.loglevel = loglevel
+        self.provider = provider
         self.email_client = email_client.GmailRepliesSearcher()
         self.email_client.authenticate()
         old_replies = self.load_previous_replies_to_recruiters()
@@ -306,7 +308,7 @@ class EmailResponseGenerator:
         else:
             logger.info("Reusing existing RAG data...")
         rag.prepare_data(clear_existing=clear_rag_context)
-        rag.setup_chain(llm_type=self.reply_rag_model)
+        rag.setup_chain(llm_type=self.reply_rag_model, provider=self.provider)
         logger.info("...RAG setup complete")
         return rag
 
@@ -407,6 +409,7 @@ class JobSearch:
             reply_rag_limit=args.rag_message_limit,
             loglevel=loglevel,
             cache_settings=cache_settings,
+            provider=getattr(args, "provider", None),
         )
         self.cache_settings = cache_settings
 
@@ -570,7 +573,10 @@ class JobSearch:
         # - If there are attachments to the message (eg .doc or .pdf), extract the text from them
         #   and pass that to company_researcher.py too
         row, discovered_names = company_researcher.main(
-            url_or_message=message, model=model, is_url=False
+            url_or_message=message,
+            model=model,
+            provider=getattr(self.args, "provider", None),
+            is_url=False,
         )
         row.email_thread_link = email_thread_link
 
@@ -732,14 +738,24 @@ def arg_parser():
     )
 
     parser.add_argument(
+        "--provider",
+        help="LLM provider to use",
+        action="store",
+        choices=["openai", "anthropic", "openrouter"],
+        default=None,
+    )
+
+    parser.add_argument(
         "--model",
         help="AI model to use",
         action="store",
-        default=SONNET_LATEST,
+        default=None,
         choices=[
             "gpt-4o",
             "gpt-4-turbo",
             "gpt-3.5-turbo",
+            "gpt-5",
+            "gpt-5-mini",
             "claude-3-5-sonnet-20241022",
             "claude-3-7-sonnet-20250219",
             "claude-sonnet-4-20250514",
@@ -802,7 +818,8 @@ def arg_parser():
         default=DEFAULT_RECRUITER_MESSAGES,
         help=(
             "Number of recruiter messages to fetch if not using test-messages."
-            f" Default {DEFAULT_RECRUITER_MESSAGES}"),
+            f" Default {DEFAULT_RECRUITER_MESSAGES}"
+        ),
     )
     parser.add_argument(
         "-s",
@@ -814,6 +831,47 @@ def arg_parser():
     )
 
     return parser
+
+
+def select_provider_and_model(args: argparse.Namespace) -> Tuple[str, str]:
+    """
+    Determine provider and model defaults based on the parsed args.
+
+    Rules:
+    - If neither provider nor model provided: use anthropic + SONNET_LATEST (existing default behavior).
+    - If only model provided: infer provider from model prefix (claude -> anthropic, gpt -> openai).
+    - If provider=openrouter and model not provided: default model to gpt-5-mini.
+    - If provider provided but model not provided:
+        anthropic -> SONNET_LATEST
+        openai -> gpt-4o
+        openrouter -> gpt-5-mini
+    - If both provided: respect both.
+    """
+    provider = args.provider
+    model = args.model
+
+    if provider is None and model is None:
+        return "anthropic", SONNET_LATEST
+
+    if provider is None and model is not None:
+        lower = model.lower()
+        if lower.startswith("claude"):
+            return "anthropic", model
+        if lower.startswith("gpt"):
+            return "openai", model
+        # Fallback if unknown model prefix
+        return "openai", model
+
+    if provider == "openrouter":
+        return "openrouter", (model or "gpt-5-mini")
+
+    if provider == "anthropic":
+        return "anthropic", (model or SONNET_LATEST)
+
+    if provider == "openai":
+        return "openai", (model or "gpt-4o")
+
+    raise ValueError(f"Unknown provider: {provider}")
 
 
 if __name__ == "__main__":
@@ -835,6 +893,11 @@ if __name__ == "__main__":
         cache_until=args.cache_until,
         no_cache=args.no_cache,
     )
+
+    # Normalize provider/model per plan defaults
+    normalized_provider, normalized_model = select_provider_and_model(args)
+    args.provider = normalized_provider
+    args.model = normalized_model
 
     job_searcher = JobSearch(args, loglevel=logger.level, cache_settings=cache_settings)
     job_searcher.main()

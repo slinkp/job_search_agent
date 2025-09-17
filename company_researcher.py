@@ -7,15 +7,14 @@ import json
 import logging
 import os
 import re
-from typing import Optional
+from typing import Optional, Literal, cast
 
 import requests
 from bs4 import BeautifulSoup
-from langchain_anthropic import ChatAnthropic
 from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
 from langchain_core.language_models import BaseChatModel
-from langchain_openai import ChatOpenAI
+from ai.client_factory import get_chat_client
 from tavily import TavilyClient  # type: ignore[import-untyped]
 
 from models import CompaniesSheetRow, is_placeholder
@@ -164,9 +163,12 @@ class TavilyRAGResearchAgent:
     llm: BaseChatModel
 
     def __init__(self, verbose: bool = False, llm: Optional[BaseChatModel] = None):
-        # set up the agent
-        self.llm = llm or ChatOpenAI(
-            model="gpt-4", temperature=TEMPERATURE, timeout=TIMEOUT
+        # set up the agent using centralized client factory (default to OpenAI gpt-4)
+        self.llm = llm or get_chat_client(
+            provider="openai",
+            model="gpt-4",
+            temperature=TEMPERATURE,
+            timeout=TIMEOUT,
         )
         # Cache to reduce LLM calls.
         set_llm_cache(SQLiteCache(database_path=".langchain-cache.db"))
@@ -500,6 +502,7 @@ def main(
     refresh_rag_db: bool = False,  # TODO: Unused
     verbose: bool = False,
     is_url: bool | None = None,
+    provider: str | None = None,
 ) -> tuple[CompaniesSheetRow, list[str]]:
     """
     Research a company based on either a URL or a recruiter message.
@@ -512,29 +515,23 @@ def main(
         is_url: Force interpretation as URL (True) or message (False). If None, will try to auto-detect.
     """
     TEMPERATURE = 0.7  # TBD what's a good range for this use case? Is this high?
-    if model.startswith("gpt-"):
-        llm: BaseChatModel = ChatOpenAI(
-            model=model, temperature=TEMPERATURE, timeout=TIMEOUT
-        )
-    elif model.startswith("claude"):
-        logger.info(f"Creating ChatAnthropic with model: {model}")
-        try:
-            llm = ChatAnthropic(
-                # This is 100% correct but pylance expects model_name instead
-                model=model,  # type: ignore[call-arg]
-                temperature=TEMPERATURE,
-                timeout=TIMEOUT,
-            )
-            logger.info(
-                f"Successfully created ChatAnthropic instance with model: {model}"
-            )
-        except Exception as e:
-            logger.error(
-                f"Failed to create ChatAnthropic instance with model '{model}': {e}"
-            )
-            raise
-    else:
-        raise ValueError(f"Unknown model: {model}")
+
+    # Resolve provider if not explicitly provided
+    resolved_provider = provider
+    if resolved_provider is None:
+        if model.lower().startswith("claude"):
+            resolved_provider = "anthropic"
+        elif model.lower().startswith("gpt"):
+            resolved_provider = "openai"
+        else:
+            raise ValueError(f"Unknown model: {model}")
+
+    llm: BaseChatModel = get_chat_client(
+        provider=cast(Literal["openai", "anthropic", "openrouter"], resolved_provider),
+        model=model,
+        temperature=TEMPERATURE,
+        timeout=TIMEOUT,
+    )
 
     researcher = TavilyRAGResearchAgent(verbose=verbose, llm=llm)
 

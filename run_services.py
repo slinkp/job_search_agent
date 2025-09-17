@@ -75,6 +75,10 @@ class ServiceManager:
                 args.sheet,
             ]
 
+            # Forward provider to research daemon (enables OpenRouter and others)
+            if getattr(args, "provider", None):
+                research_cmd.extend(["--provider", args.provider])
+
             # Add optional arguments if they were specified
             if args.verbose:
                 research_cmd.append("--verbose")
@@ -213,6 +217,17 @@ class ServiceManager:
 def main():
     # Get the base argument parser from libjobsearch
     parser = libjobsearch.arg_parser()
+
+    # Enhance --model help with examples (visible in --help output)
+    for action in parser._actions:
+        if "--model" in getattr(action, "option_strings", []):
+            action.help = (
+                "AI model to use. Examples: "
+                "OpenAI: gpt-4o, gpt-4-turbo; "
+                "Anthropic: claude-sonnet-4-0; "
+                "OpenRouter: gpt-5, gpt-5-mini (requires --provider openrouter)"
+            )
+            break
 
     # Add research daemon specific arguments
     parser.add_argument(
