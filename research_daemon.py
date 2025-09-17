@@ -230,7 +230,7 @@ class ResearchDaemon:
 
             logger.debug(f"Calling JobSearch.research_company with flags: {flags_kwargs}")
             company = self.jobsearch.research_company(
-                content_or_message, self.ai_model, **flags_kwargs
+                content_or_message, model=self.ai_model, **flags_kwargs
             )
 
             # Log any research errors that occurred
