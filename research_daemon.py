@@ -229,7 +229,9 @@ class ResearchDaemon:
                 flags_kwargs["force_contacts"] = force_contacts
 
             logger.debug(f"Calling JobSearch.research_company with flags: {flags_kwargs}")
-            company = self.jobsearch.research_company(content_or_message, self.ai_model, **flags_kwargs)
+            company = self.jobsearch.research_company(
+                content_or_message, self.ai_model, **flags_kwargs
+            )
 
             # Log any research errors that occurred
             research_errors = company.status.research_errors
