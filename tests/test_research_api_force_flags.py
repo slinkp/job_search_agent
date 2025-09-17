@@ -57,9 +57,6 @@ class FakeTaskManager:
         ),
     ],
 )
-@pytest.mark.xfail(
-    reason="Not implemented yet: research endpoint must accept flags and enqueue them"
-)
 def test_research_endpoint_enqueues_force_flags(monkeypatch, body, expected):
     # Arrange: patch repository and task manager
     fake_repo = FakeRepo()
