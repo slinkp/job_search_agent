@@ -62,12 +62,23 @@ class FakeJobSearch:
     "task_body,expected",
     [
         ({"content": "hello"}, {"force_levels": False, "force_contacts": False}),
-        ({"content": "hello", "force_levels": True}, {"force_levels": True, "force_contacts": False}),
-        ({"content": "hello", "force_contacts": True}, {"force_levels": False, "force_contacts": True}),
-        ({"content": "hello", "force_levels": True, "force_contacts": True}, {"force_levels": True, "force_contacts": True}),
+        (
+            {"content": "hello", "force_levels": True},
+            {"force_levels": True, "force_contacts": False},
+        ),
+        (
+            {"content": "hello", "force_contacts": True},
+            {"force_levels": False, "force_contacts": True},
+        ),
+        (
+            {"content": "hello", "force_levels": True, "force_contacts": True},
+            {"force_levels": True, "force_contacts": True},
+        ),
     ],
 )
-@pytest.mark.xfail(reason="Not implemented yet: daemon must pass flags to JobSearch.research_company")
+@pytest.mark.xfail(
+    reason="Not implemented yet: daemon must pass flags to JobSearch.research_company"
+)
 def test_daemon_passes_force_flags_to_jobsearch(monkeypatch, task_body, expected):
     # Arrange: fake singleton providers and dependencies
     fake_tm = FakeTaskManager(task_body)
@@ -79,7 +90,9 @@ def test_daemon_passes_force_flags_to_jobsearch(monkeypatch, task_body, expected
 
     # Patch JobSearch and spreadsheet upsert to avoid side effects
     monkeypatch.setattr(rd.libjobsearch, "JobSearch", FakeJobSearch)
-    monkeypatch.setattr(rd.libjobsearch, "upsert_company_in_spreadsheet", lambda *a, **k: None)
+    monkeypatch.setattr(
+        rd.libjobsearch, "upsert_company_in_spreadsheet", lambda *a, **k: None
+    )
 
     # Minimal args namespace required by ResearchDaemon
     args = types.SimpleNamespace(model="test-model", dry_run=True, no_headless=True)
