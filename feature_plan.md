@@ -37,57 +37,45 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
     - levels/compensation run even for placeholder names when force_levels is true.
 - All existing tests pass; new tests cover flag propagation and behavior.
 
-4) Linear Implementation Checklist (complete top-to-bottom; keep FE and BE in separate PRs)
+4) Linear Implementation Checklist (test-first; proceed strictly top-to-bottom)
 
-- [ ] Backend PR: API accepts override flags
-  - [ ] Update the research endpoint for a company to accept optional JSON body with force_levels and force_contacts (both default false).
-  - [ ] Include these flags in the task args when creating the company research task.
-  - [ ] Log a concise message that includes company_id and the flags used.
+- [ ] Backend: API accepts override flags and enqueues them
+  - [ ] Write tests to assert POST /api/companies/{id}/research accepts JSON body with { force_levels, force_contacts } booleans defaulting to false, and that task args include these flags.
+  - [ ] Implement tolerant JSON parsing (default both flags to false when body missing/invalid), include flags in task creation, and add a concise log noting company_id and flags.
+  - [ ] Run tests and fix until green.
 
-- [ ] Backend PR: Task pipeline forwards flags
-  - [ ] Read force_levels and force_contacts from task args in the research daemon.
-  - [ ] Pass both flags to the research entry point.
-  - [ ] Keep behavior unchanged if flags are absent/false.
+- [ ] Backend: Task pipeline forwards flags to research
+  - [ ] Write tests to assert the research daemon reads flags from task args and calls JobSearch.research_company(..., force_levels, force_contacts).
+  - [ ] Implement flag extraction in the daemon and pass-through to the research entry point; keep behavior unchanged when flags are absent/false.
+  - [ ] Run tests and fix until green.
 
-- [ ] Backend PR: Research core respects flags
-  - [ ] Add optional force_levels and force_contacts params to the research entry point.
-  - [ ] Ensure contacts follow-up runs when force_contacts is true, even if not a good fit.
-  - [ ] Ensure levels/compensation run when force_levels is true, even for placeholder names.
-  - [ ] Leave all defaults unchanged when flags are false.
-  - [ ] Add minimal info logs when a forced override is used.
+- [ ] Backend: Research core respects flags
+  - [ ] Write tests for JobSearch.research_company to verify:
+    - [ ] follow-up contacts runs when force_contacts=True even if is_good_fit(...) is false,
+    - [ ] levels/compensation run when force_levels=True even for placeholder names (bypass placeholder skip),
+    - [ ] existing behavior is preserved when both flags are False.
+  - [ ] Add optional force_levels and force_contacts params to the research entry point, use them to override gates, and add minimal info logs when forced.
+  - [ ] Run tests and fix until green.
 
-- [ ] Backend PR: Tests are green
-  - [ ] Add unit tests for API flag parsing → task args.
-  - [ ] Add a unit test that the daemon forwards flags to the research entry point.
-  - [ ] Add unit tests that the research core overrides gates when flags are true and preserves behavior when false.
-  - [ ] Run the full test suite and ensure no regressions.
+- [ ] Frontend: Service can send flags with research request
+  - [ ] Write a unit test that CompaniesService.research(companyId, options) POSTs JSON { force_levels, force_contacts } and remains backward compatible when options are omitted.
+  - [ ] Implement options parameter, send JSON body, and default flags to false when not provided.
+  - [ ] Run tests and fix until green.
 
-- [ ] Frontend PR: Service can send flags
-  - [ ] Extend the research(companyId, options={}) service method to POST a JSON body with force_levels and force_contacts (default false).
-  - [ ] Keep the method backward compatible for callers that don’t pass options.
+- [ ] Frontend: Companies view shows override checkboxes and sends flags
+  - [ ] Add two checkboxes next to the Research button on each company card: “Force Salary” and “Force Contacts” (ephemeral per-company state).
+  - [ ] Update research(company) to pass { force_levels: !!company._forceLevels, force_contacts: !!company._forceContacts } to the service.
+  - [ ] Add/adjust tests to verify the new inputs exist and that research() calls the service with the expected options.
+  - [ ] Run tests and fix until green.
 
-- [ ] Frontend PR: Companies view UI exposes flags
-  - [ ] Add two checkboxes next to the Research button on each company card: “Force Salary” and “Force Contacts”.
-  - [ ] Track state per company as ephemeral fields.
-  - [ ] Pass the checkbox values to the service method when invoking research.
-
-- [ ] Frontend PR: Messages dashboard UI exposes flags
-  - [ ] Add the same two checkboxes next to the Research button on each message card.
-  - [ ] Track state per message as ephemeral fields.
-  - [ ] Pass the checkbox values to the service method when invoking research.
-
-- [ ] Frontend PR: Tests are green
-  - [ ] Add/update unit tests to verify the service sends the flags from checkbox state.
-  - [ ] Add/update integration tests to ensure the new inputs exist and that calling Research uses the selected flags.
-  - [ ] Run the full test suite and ensure no regressions.
-
-- [ ] Rollout sequencing
-  - [ ] Land the Backend PR first (API + daemon + research core + tests).
-  - [ ] Land the Frontend PR second (UI + service + tests).
-  - [ ] Avoid mixing frontend and backend changes in the same commit/PR.
+- [ ] Frontend: Messages dashboard shows override checkboxes and sends flags
+  - [ ] Add two checkboxes next to the Research button on each message card: “Force Salary” and “Force Contacts” (ephemeral per-message state).
+  - [ ] Update research(message) to pass { force_levels: !!message._forceLevels, force_contacts: !!message._forceContacts } to the service.
+  - [ ] Add/adjust integration test to toggle the checkboxes and assert the service is called with the expected options.
+  - [ ] Run tests and fix until green.
 
 - [ ] Manual verification
   - [ ] Start the server and daemon; verify that researching with no flags behaves as before.
-  - [ ] Verify force_levels only; verify force_contacts only; verify both; on both a placeholder-name company and a not-good-fit company.
-  - [ ] Confirm task status updates appear and no obvious UI regressions.
+  - [ ] Verify each combination: salary only, contacts only, both; try on a placeholder-name company and a not-good-fit company.
+  - [ ] Confirm task status updates and no obvious UI regressions.
 
