@@ -262,9 +262,7 @@ class ResearchDaemon:
                     content_or_message, model=self.ai_model, **flags_kwargs
                 )
             else:
-                logger.debug(
-                    "Calling JobSearch.research_company without force flags"
-                )
+                logger.debug("Calling JobSearch.research_company without force flags")
                 company = self.jobsearch.research_company(
                     content_or_message, model=self.ai_model
                 )
