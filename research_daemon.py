@@ -235,16 +235,11 @@ class ResearchDaemon:
             force_levels_val = _find_flag(raw_args, "force_levels")
             force_contacts_val = _find_flag(raw_args, "force_contacts")
 
-            flags_kwargs: dict[str, bool] = {}
-            if force_levels_val is not None or force_contacts_val is not None:
-                flags_kwargs = {
-                    "force_levels": (
-                        force_levels_val if force_levels_val is not None else False
-                    ),
-                    "force_contacts": (
-                        force_contacts_val if force_contacts_val is not None else False
-                    ),
-                }
+            # Always pass explicit flags; default to False when absent
+            flags_kwargs: dict[str, bool] = {
+                "force_levels": bool(force_levels_val),
+                "force_contacts": bool(force_contacts_val),
+            }
 
             logger.debug(f"Calling JobSearch.research_company with flags: {flags_kwargs}")
             company = self.jobsearch.research_company(
