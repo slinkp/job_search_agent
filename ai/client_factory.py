@@ -48,6 +48,12 @@ def get_chat_client(
         key = os.environ.get("OPENROUTER_API_KEY")
         if not key:
             raise ValueError("OPENROUTER_API_KEY is required when provider='openrouter'")
+        lower = model.lower()
+        if not (lower.startswith("gpt") or lower.startswith("claude")):
+            raise ValueError(
+                "For provider='openrouter', model must start with 'gpt' or 'claude'"
+            )
+        # OpenRouter uses the OpenAI-compatible API for both GPT and Claude models.
         return ChatOpenAI(
             model=model,
             temperature=temperature,
