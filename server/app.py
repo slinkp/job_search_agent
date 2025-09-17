@@ -478,12 +478,37 @@ def research_company(request):
         request.response.status = 404
         return {"error": "Company not found"}
 
+    try:
+        body = request.json_body
+    except Exception:
+        body = None
+
+    def _as_bool(v):
+        # Only literal True counts; anything else defaults to False
+        return v is True
+
+    if isinstance(body, dict):
+        force_levels = _as_bool(body.get("force_levels"))
+        force_contacts = _as_bool(body.get("force_contacts"))
+    else:
+        force_levels = False
+        force_contacts = False
+
     # Create a new task
+    task_args = {
+        "company_id": company.company_id,
+        "company_name": company.name,
+        "force_levels": force_levels,
+        "force_contacts": force_contacts,
+    }
     task_id = tasks.task_manager().create_task(
         tasks.TaskType.COMPANY_RESEARCH,
-        {"company_id": company.company_id, "company_name": company.name},
+        task_args,
     )
-    logger.info(f"Research requested for {company.name}, task_id: {task_id}")
+    logger.info(
+        f"Research requested for {company.name}, task_id: {task_id}, "
+        f"flags: force_levels={force_levels}, force_contacts={force_contacts}"
+    )
 
     # When research is completed, we'll set this timestamp
     # For now, just return the task info
