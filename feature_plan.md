@@ -80,8 +80,8 @@ Single-task focus: I will implement exactly one checkbox at a time and nothing e
 
 6) Error handling, logging, docs
 - [x] Early validation and clear error if provider=openrouter and OPENROUTER_API_KEY missing
-- [ ] Log provider/model (without secrets) at INFO on client creation
-- [ ] Documentation: add a short note in README or docs/ about OPENROUTER_API_KEY and examples
+- [x] Log provider/model (without secrets) at INFO on client creation
+- [x] Documentation: add a short note in README or docs/ about OPENROUTER_API_KEY and examples
 - Stop for approval.
 
 7) QA and rollout
