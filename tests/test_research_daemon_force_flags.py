@@ -76,9 +76,6 @@ class FakeJobSearch:
         ),
     ],
 )
-@pytest.mark.xfail(
-    reason="Not implemented yet: daemon must pass flags to JobSearch.research_company"
-)
 def test_daemon_passes_force_flags_to_jobsearch(monkeypatch, task_body, expected):
     # Arrange: fake singleton providers and dependencies
     fake_tm = FakeTaskManager(task_body)
