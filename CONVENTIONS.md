@@ -25,7 +25,7 @@ Web app runs at http://localhost:8080
 ### Testing
 ```bash
 # Run all python and javascript tests, always.
-./test
+./test --no-cover
 ```
 
 ### Development Tools
