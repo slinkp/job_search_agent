@@ -215,8 +215,21 @@ class ResearchDaemon:
         result_company = None
         company = None
         try:
+            force_levels = args.get("force_levels") is True
+            force_contacts = args.get("force_contacts") is True
+
+            # Build kwargs for research_company, but only include the force flags
+            # if they were explicitly provided in the task args. This preserves
+            # the original call signature when flags are absent (avoids passing
+            # unexpected kwargs to mocks in tests).
+            research_kwargs = {"model": self.ai_model}
+            if "force_levels" in args:
+                research_kwargs["force_levels"] = force_levels
+            if "force_contacts" in args:
+                research_kwargs["force_contacts"] = force_contacts
+
             company = self.jobsearch.research_company(
-                content_or_message, model=self.ai_model
+                content_or_message, **research_kwargs
             )
 
             # Log any research errors that occurred
