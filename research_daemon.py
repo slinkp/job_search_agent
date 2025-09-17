@@ -215,14 +215,12 @@ class ResearchDaemon:
         result_company = None
         company = None
         try:
-            force_levels = bool(args.get("force_levels", False))
-            force_contacts = bool(args.get("force_contacts", False))
-
-            # Always pass both flags explicitly so kwargs include them for tests/assertions
-            flags_kwargs: dict[str, bool] = {
-                "force_levels": force_levels,
-                "force_contacts": force_contacts,
-            }
+            # Only include flags in kwargs if they were explicitly provided in args.
+            flags_kwargs: dict[str, bool] = {}
+            if "force_levels" in args:
+                flags_kwargs["force_levels"] = bool(args.get("force_levels"))
+            if "force_contacts" in args:
+                flags_kwargs["force_contacts"] = bool(args.get("force_contacts"))
 
             logger.debug(f"Calling JobSearch.research_company with flags: {flags_kwargs}")
             company = self.jobsearch.research_company(
