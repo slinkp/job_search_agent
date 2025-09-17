@@ -235,16 +235,39 @@ class ResearchDaemon:
             force_levels_val = _find_flag(raw_args, "force_levels")
             force_contacts_val = _find_flag(raw_args, "force_contacts")
 
-            # Always pass explicit flags; default to False when absent
-            flags_kwargs: dict[str, bool] = {
-                "force_levels": bool(force_levels_val),
-                "force_contacts": bool(force_contacts_val),
-            }
+            # Detect presence of flags independently of their truthy value
+            def _has_key(d: Any, key: str) -> bool:
+                if isinstance(d, dict):
+                    if key in d:
+                        return True
+                    return any(_has_key(v, key) for v in d.values())
+                return False
 
-            logger.debug(f"Calling JobSearch.research_company with flags: {flags_kwargs}")
-            company = self.jobsearch.research_company(
-                content_or_message, model=self.ai_model, **flags_kwargs
-            )
+            has_force_levels = _has_key(raw_args, "force_levels")
+            has_force_contacts = _has_key(raw_args, "force_contacts")
+
+            # Only pass flags that are actually present in the payload.
+            # This keeps the default call signature unchanged for legacy callers/tests.
+            flags_kwargs: dict[str, bool] = {}
+            if has_force_levels:
+                flags_kwargs["force_levels"] = bool(force_levels_val)
+            if has_force_contacts:
+                flags_kwargs["force_contacts"] = bool(force_contacts_val)
+
+            if flags_kwargs:
+                logger.debug(
+                    f"Calling JobSearch.research_company with flags: {flags_kwargs}"
+                )
+                company = self.jobsearch.research_company(
+                    content_or_message, model=self.ai_model, **flags_kwargs
+                )
+            else:
+                logger.debug(
+                    "Calling JobSearch.research_company without force flags"
+                )
+                company = self.jobsearch.research_company(
+                    content_or_message, model=self.ai_model
+                )
 
             # Log any research errors that occurred
             research_errors = company.status.research_errors
