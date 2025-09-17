@@ -20,6 +20,31 @@ pip install -r requirements.txt
 TODO: Document the necessary environment variables you must export.
 I use [direnv](https://direnv.net/) which loads them from an `.envrc` file (not provided)
 
+### OpenRouter support (optional)
+
+Backend-only support for OpenRouter chat models (for example, gpt-5 and gpt-5-mini) is available.
+
+Environment variables:
+- OPENROUTER_API_KEY: required when using --provider openrouter
+- OPENAI_API_KEY: still required for embeddings (text-embedding-3-large)
+
+Example usage:
+```bash
+export OPENROUTER_API_KEY="sk-openrouter-..."
+# Embeddings remain OpenAI; keep this set
+export OPENAI_API_KEY="sk-openai-..."
+
+python libjobsearch.py \
+  --provider openrouter \
+  --model gpt-5-mini \
+  --test-messages "Hi, recruiting for Acme. Are you open to roles?"
+```
+
+Notes:
+- The OpenRouter route uses base_url=https://openrouter.ai/api/v1.
+- If OPENROUTER_API_KEY is missing while --provider openrouter is set, a clear error is raised.
+- OpenAI embeddings are unchanged and still require OPENAI_API_KEY.
+
 ```console
 # In one terminal
 python research_daemon.py
