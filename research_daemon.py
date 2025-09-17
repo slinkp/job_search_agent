@@ -219,13 +219,25 @@ class ResearchDaemon:
         result_company = None
         company = None
         try:
-            # Include both flags if at least one was explicitly provided; otherwise include none.
-            include_flags = ("force_levels" in args) or ("force_contacts" in args)
+            # Include both flags if any is present anywhere in the args payload (handle nested dicts)
+            def _find_flag(d: Any, key: str) -> Optional[bool]:
+                if isinstance(d, dict):
+                    if key in d:
+                        return bool(d.get(key))
+                    for v in d.values():
+                        found = _find_flag(v, key)
+                        if found is not None:
+                            return found
+                return None
+
+            force_levels_val = _find_flag(args, "force_levels")
+            force_contacts_val = _find_flag(args, "force_contacts")
+
             flags_kwargs: dict[str, bool] = {}
-            if include_flags:
+            if force_levels_val is not None or force_contacts_val is not None:
                 flags_kwargs = {
-                    "force_levels": bool(args.get("force_levels", False)),
-                    "force_contacts": bool(args.get("force_contacts", False)),
+                    "force_levels": force_levels_val if force_levels_val is not None else False,
+                    "force_contacts": force_contacts_val if force_contacts_val is not None else False,
                 }
 
             logger.debug(f"Calling JobSearch.research_company with flags: {flags_kwargs}")
