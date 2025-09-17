@@ -453,13 +453,21 @@ class JobSearch:
         return self.email_responder.generate_reply(content)
 
     def research_company(
-        self, message: str | RecruiterMessage, model: str, do_advanced=True
+        self,
+        message: str | RecruiterMessage,
+        model: str,
+        force_levels: bool = False,
+        force_contacts: bool = False,
+        do_advanced=True,
     ) -> models.Company:
         """
         Builds a Company object from raw text about the company, eg could be from a recruiter email.  # noqa: B950
 
         This does not update the company in the database, but it may create events in the db.
         """
+        logger.debug(
+            f"research_company called with force_levels={force_levels}, force_contacts={force_contacts}"
+        )
         (company_info, discovered_names) = self.initial_research_company(
             message, model=model
         )
