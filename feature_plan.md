@@ -103,12 +103,9 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
   - libjobsearch when forced steps are taken.
 - Optional: add “forced=true” in event details for research events.
 
-8) Rollout Plan
-- PR 1 (Backend): server/app.py, research_daemon.py, libjobsearch.py + pytest.
-- PR 2 (Frontend): companies-service.js, app.js, daily-dashboard.js, index.html + Vitest.
-- Manual verification:
-  - Start daemon and server, test all four combinations of flags on: a placeholder-name company, and a not-good-fit company.
-  - Confirm task status updates, logs, and no regressions in existing flows.
+8) Manual verification:
+- Start daemon and server, test all four combinations of flags on: a placeholder-name company, and a not-good-fit company.
+- Confirm task status updates, logs, and no regressions in existing flows.
 
 9) Testing Strategy
 - Python
@@ -132,7 +129,3 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
   - [ ] index.html: add checkboxes in both views near Research button.
   - [ ] Tests updated/added.
 
-11) Effort Estimate
-- Backend: 4–6 hours inc. tests.
-- Frontend: 3–5 hours inc. tests.
-- Buffer: 1–2 hours.
