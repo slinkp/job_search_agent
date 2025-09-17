@@ -224,14 +224,14 @@ class ResearchDaemon:
             # if they were explicitly provided in the task args. This preserves
             # the original call signature when flags are absent (avoids passing
             # unexpected kwargs to mocks in tests).
-            research_kwargs = {"model": self.ai_model}
+            research_kwargs = {}
             if "force_levels" in args:
                 research_kwargs["force_levels"] = force_levels
             if "force_contacts" in args:
                 research_kwargs["force_contacts"] = force_contacts
 
             company = self.jobsearch.research_company(
-                content_or_message, **research_kwargs
+                content_or_message, model=self.ai_model, **research_kwargs
             )
 
             # Log any research errors that occurred
