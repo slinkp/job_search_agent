@@ -12,11 +12,11 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
 
 2) Goals and Non-Goals
 - Goals
-  - Add per-action flags to override gates:
-    - force_levels: run levels and compensation even if name is a placeholder.
+  - Add two override flags per action:
+    - force_levels: run levels/compensation even if the name is a placeholder.
     - force_contacts: run LinkedIn contacts even if not a good fit.
-  - Wire flags end-to-end: UI → frontend service → API → task args → daemon → libjobsearch.
-  - Backward compatible: no change when flags are absent/false.
+  - Wire flags end-to-end: UI → frontend service → API → task → daemon → research core.
+  - Preserve current defaults when flags are absent/false.
 - Non-Goals
   - Changing the is_good_fit heuristic.
   - Persisting “always force” preferences.
