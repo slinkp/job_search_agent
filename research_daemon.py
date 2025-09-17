@@ -175,6 +175,7 @@ class ResearchDaemon:
 
     def do_research(self, args: dict) -> Optional[models.Company]:
         # Support both flat args and nested {"body": {...}} payloads
+        raw_args = args  # Keep original structure for flag detection
         if isinstance(args, dict) and isinstance(args.get("body"), dict):
             args = args["body"]
 
@@ -230,8 +231,9 @@ class ResearchDaemon:
                             return found
                 return None
 
-            force_levels_val = _find_flag(args, "force_levels")
-            force_contacts_val = _find_flag(args, "force_contacts")
+            # Look for flags anywhere in the original task args, not just the unwrapped body
+            force_levels_val = _find_flag(raw_args, "force_levels")
+            force_contacts_val = _find_flag(raw_args, "force_contacts")
 
             flags_kwargs: dict[str, bool] = {}
             if force_levels_val is not None or force_contacts_val is not None:
