@@ -51,21 +51,34 @@ class FakeTaskManager:
             {"force_levels": True, "force_contacts": True},
         ),
         # Invalid types should default both to False (tolerant parsing)
-        ({"force_levels": "yes", "force_contacts": "no"}, {"force_levels": False, "force_contacts": False}),
+        (
+            {"force_levels": "yes", "force_contacts": "no"},
+            {"force_levels": False, "force_contacts": False},
+        ),
     ],
 )
-@pytest.mark.xfail(reason="Not implemented yet: research endpoint must accept flags and enqueue them")
+@pytest.mark.xfail(
+    reason="Not implemented yet: research endpoint must accept flags and enqueue them"
+)
 def test_research_endpoint_enqueues_force_flags(monkeypatch, body, expected):
     # Arrange: patch repository and task manager
     fake_repo = FakeRepo()
     fake_tm = FakeTaskManager()
 
-    monkeypatch.setattr(app_module, "models", types.SimpleNamespace(company_repository=lambda: fake_repo))
-    monkeypatch.setattr(app_module, "tasks", types.SimpleNamespace(
-        task_manager=lambda: fake_tm,
-        TaskStatus=types.SimpleNamespace(PENDING=types.SimpleNamespace(value="pending")),
-        TaskType=types.SimpleNamespace(COMPANY_RESEARCH="company_research"),
-    ))
+    monkeypatch.setattr(
+        app_module, "models", types.SimpleNamespace(company_repository=lambda: fake_repo)
+    )
+    monkeypatch.setattr(
+        app_module,
+        "tasks",
+        types.SimpleNamespace(
+            task_manager=lambda: fake_tm,
+            TaskStatus=types.SimpleNamespace(
+                PENDING=types.SimpleNamespace(value="pending")
+            ),
+            TaskType=types.SimpleNamespace(COMPANY_RESEARCH="company_research"),
+        ),
+    )
 
     req = make_request("co-1", body)
 
