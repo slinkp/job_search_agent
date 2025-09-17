@@ -802,7 +802,8 @@ def arg_parser():
         default=DEFAULT_RECRUITER_MESSAGES,
         help=(
             "Number of recruiter messages to fetch if not using test-messages."
-            f" Default {DEFAULT_RECRUITER_MESSAGES}"),
+            f" Default {DEFAULT_RECRUITER_MESSAGES}"
+        ),
     )
     parser.add_argument(
         "-s",
