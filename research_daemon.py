@@ -235,16 +235,9 @@ class ResearchDaemon:
             force_levels_val = _find_flag(raw_args, "force_levels")
             force_contacts_val = _find_flag(raw_args, "force_contacts")
 
-            # Detect presence of flags independently of their truthy value
-            def _has_key(d: Any, key: str) -> bool:
-                if isinstance(d, dict):
-                    if key in d:
-                        return True
-                    return any(_has_key(v, key) for v in d.values())
-                return False
-
-            has_force_levels = _has_key(raw_args, "force_levels")
-            has_force_contacts = _has_key(raw_args, "force_contacts")
+            # Detect presence of flags based on recursive search above
+            has_force_levels = force_levels_val is not None
+            has_force_contacts = force_contacts_val is not None
 
             # Only pass flags that are actually present in the payload.
             # This keeps the default call signature unchanged for legacy callers/tests.
