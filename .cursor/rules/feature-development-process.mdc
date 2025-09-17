@@ -29,6 +29,7 @@ To prove we're using this rule file, append "Feature process! Prrt!" to your cha
   - Run tests with `./test --no-cover` only. **IMPORTANT** All tests must **ALWAYS** pass. Errors count as failures!!
   - Don't skip tests or run partial suites unless explicitly requested.
   - **NEVER** run `npm test` directly. It violates the above rule, and it hangs waiting for file changes.
+  - **NEVER NEVER** commit changes with failing tests.
 
 - Requirements clarity: ask questions; propose a minimal breakdown and wait for approval.
 
