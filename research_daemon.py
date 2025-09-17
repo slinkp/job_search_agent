@@ -215,12 +215,14 @@ class ResearchDaemon:
         result_company = None
         company = None
         try:
-            # Only include flags in kwargs if they were explicitly provided in args.
+            # Include both flags if at least one was explicitly provided; otherwise include none.
+            include_flags = ("force_levels" in args) or ("force_contacts" in args)
             flags_kwargs: dict[str, bool] = {}
-            if "force_levels" in args:
-                flags_kwargs["force_levels"] = bool(args.get("force_levels"))
-            if "force_contacts" in args:
-                flags_kwargs["force_contacts"] = bool(args.get("force_contacts"))
+            if include_flags:
+                flags_kwargs = {
+                    "force_levels": bool(args.get("force_levels", False)),
+                    "force_contacts": bool(args.get("force_contacts", False)),
+                }
 
             logger.debug(f"Calling JobSearch.research_company with flags: {flags_kwargs}")
             company = self.jobsearch.research_company(
