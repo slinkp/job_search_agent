@@ -303,6 +303,9 @@ class EmailResponseGenerator:
         self.provider = provider
         self.email_client = email_client.GmailRepliesSearcher()
         self.email_client.authenticate()
+        # Declare a permissive type for self.rag so we can assign either the full
+        # RecruitmentRAG or a lightweight DummyRAG (used in tests) without mypy errors.
+        self.rag: Any = None
         old_replies = self.load_previous_replies_to_recruiters()
         try:
             # Building the full RAG can fail in some test environments (invalid model name,
