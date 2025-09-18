@@ -275,14 +275,6 @@ def maybe_edit_reply(reply: str) -> str:
         os.unlink(temp_path)
 
 
-class DummyRAG:
-    """
-    Minimal fallback RAG used when full RAG setup fails (e.g. in tests).
-    Provides just the interface we call elsewhere.
-    """
-
-    def generate_reply(self, msg: str) -> str:
-        return ""
 
 
 class EmailResponseGenerator:
@@ -303,18 +295,10 @@ class EmailResponseGenerator:
         self.provider = provider
         self.email_client = email_client.GmailRepliesSearcher()
         self.email_client.authenticate()
-        # Declare a permissive type for self.rag so we can assign either the full
-        # RecruitmentRAG or a lightweight DummyRAG (used in tests) without mypy errors.
-        self.rag: Any = None
+        # Expect self.rag to be a RecruitmentRAG instance; tests should stub _build_reply_rag.
+        self.rag: RecruitmentRAG
         old_replies = self.load_previous_replies_to_recruiters()
-        try:
-            # Building the full RAG can fail in some test environments (invalid model name,
-            # missing external artifacts, etc). Fall back to a minimal dummy RAG so tests
-            # and lightweight flows can continue without hard dependency on LLM setup.
-            self.rag = self._build_reply_rag(old_replies)
-        except Exception:
-            logger.exception("Failed to build RAG; falling back to dummy RAG")
-            self.rag = DummyRAG()
+        self.rag = self._build_reply_rag(old_replies)
         logger.info("...EmailResponder initialized")
 
     def _build_reply_rag(
