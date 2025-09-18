@@ -92,7 +92,9 @@ def test_levels_and_comp_run_when_force_levels_even_if_placeholder():
     ):
         mock_init.return_value = (row, [])
 
-        js.research_company("hello", model=js.args.model, force_levels=True, do_advanced=True)
+        js.research_company(
+            "hello", model=js.args.model, force_levels=True, do_advanced=True
+        )
 
         # Ensure both research steps were invoked and with force=True
         assert mock_levels.call_count == 1
