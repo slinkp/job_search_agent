@@ -284,6 +284,7 @@ class DummyRAG:
     def generate_reply(self, msg: str) -> str:
         return ""
 
+
 class EmailResponseGenerator:
 
     def __init__(
