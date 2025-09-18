@@ -66,7 +66,8 @@ document.addEventListener("alpine:init", () => {
         await this.loadMessages();
 
         // Handle anchor scrolling after messages load
-        this.$nextTick(() => {
+        // Use setTimeout to defer until after DOM updates (works in tests and runtime)
+        setTimeout(() => {
           if (window.location.hash) {
             const element = document.getElementById(
               window.location.hash.slice(1)
@@ -75,7 +76,7 @@ document.addEventListener("alpine:init", () => {
               element.scrollIntoView({ behavior: "smooth" });
             }
           }
-        });
+        }, 0);
       },
 
       // Read filtering state from URL parameters
@@ -171,7 +172,10 @@ document.addEventListener("alpine:init", () => {
         try {
           this.researchingCompanies.add(message.company_name);
           taskPollingService.addResearching(message);
-          const data = await companiesService.research(message.company_id);
+          const data = await companiesService.research(message.company_id, {
+            force_levels: !!message._forceLevels,
+            force_contacts: !!message._forceContacts,
+          });
           message.research_task_id = data.task_id;
           message.research_status = data.status;
 

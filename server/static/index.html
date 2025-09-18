@@ -402,6 +402,16 @@
               
               <div class="message-actions">
                 <div class="research-section">
+                  <div class="research-overrides">
+                    <label class="checkbox-label">
+                      <input type="checkbox" x-model="message._forceLevels" :disabled="isResearching(message) || isSendingMessage(message) || message.archived_at" aria-label="dd-force-salary" data-testid="dd-force-salary">
+                      <span>Force Salary</span>
+                    </label>
+                    <label class="checkbox-label">
+                      <input type="checkbox" x-model="message._forceContacts" :disabled="isResearching(message) || isSendingMessage(message) || message.archived_at" aria-label="dd-force-contacts" data-testid="dd-force-contacts">
+                      <span>Force Contacts</span>
+                    </label>
+                  </div>
                   <button 
                     @click="research(message)" 
                     :disabled="isResearching(message) || isSendingMessage(message) || message.archived_at"

@@ -66,13 +66,13 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
   - [x] Add two checkboxes next to the Research button on each company card: “Force Salary” and “Force Contacts” (ephemeral per-company state).
   - [x] Update research(company) to pass { force_levels: !!company._forceLevels, force_contacts: !!company._forceContacts } to the service.
   - [x] Add/adjust tests to verify the new inputs exist and that research() calls the service with the expected options.
-  - [ ] Run tests and fix until green.
+  - [x] Run tests and fix until green.
 
 - [ ] Frontend: Messages dashboard shows override checkboxes and sends flags
-  - [ ] Add two checkboxes next to the Research button on each message card: “Force Salary” and “Force Contacts” (ephemeral per-message state).
-  - [ ] Update research(message) to pass { force_levels: !!message._forceLevels, force_contacts: !!message._forceContacts } to the service.
-  - [ ] Add/adjust integration test to toggle the checkboxes and assert the service is called with the expected options.
-  - [ ] Run tests and fix until green.
+  - [x] Add two checkboxes next to the Research button on each message card: “Force Salary” and “Force Contacts” (ephemeral per-message state).
+  - [x] Update research(message) to pass { force_levels: !!message._forceLevels, force_contacts: !!message._forceContacts } to the service.
+  - [x] Add/adjust integration test to toggle the checkboxes and assert the service is called with the expected options.
+  - [x] Run tests and fix until green.
 
 - [ ] Manual verification
   - [ ] Start the server and daemon; verify that researching with no flags behaves as before.
