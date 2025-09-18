@@ -19,6 +19,14 @@ class _FakeGmailRepliesSearcher:
     def get_new_recruiter_messages(self, max_results: int):
         return []
 
+    def send_reply(self, thread_id: str, message_id: str, reply: str) -> bool:
+        # Tests may patch the GmailRepliesSearcher with autospec; provide the full
+        # interface expected by the test suite so autospec'ed mocks include these methods.
+        return True
+
+    def label_and_archive_message(self, message_id: str) -> bool:
+        return True
+
 
 @pytest.fixture(autouse=True)
 def _patch_email_and_rag(monkeypatch):
