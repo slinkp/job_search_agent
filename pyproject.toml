@@ -3,6 +3,11 @@ line-length = 90
 
 [tool.flake8]
 extend-ignore = ["E501", "E203", "E701"]
-exclude = [".direnv", ".git", "__pycache__","htmlcov"]
+exclude = [".direnv", ".git", "__pycache__","htmlcov", "data"]
 max-line-length = 90
 extend-select = ["B950"]
+
+[tool.mypy]
+check_untyped_defs = false
+disable_error_code = "annotation-unchecked"
+exclude = [".direnv", ".git", "__pycache__","htmlcov", "data"]
