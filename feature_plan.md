@@ -44,10 +44,10 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
   - [x] Implement tolerant JSON parsing (default both flags to false when body missing/invalid), include flags in task creation, and add a concise log noting company_id and flags.
   - [x] Run tests and fix until green.
 
-- [ ] Backend: Task pipeline forwards flags to research
+- [x] Backend: Task pipeline forwards flags to research
   - [x] Write tests to assert the research daemon reads flags from task args and calls JobSearch.research_company(..., force_levels, force_contacts).
   - [x] Implement flag extraction in the daemon and pass-through to the research entry point; keep behavior unchanged when flags are absent/false.
-  - [ ] Run tests and fix until green.
+  - [x] Run tests and fix until green.
 
 - [ ] Backend: Research core respects flags
   - [ ] Write tests for JobSearch.research_company to verify:
