@@ -49,7 +49,7 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
   - [x] Implement flag extraction in the daemon and pass-through to the research entry point; keep behavior unchanged when flags are absent/false.
   - [x] Run tests and fix until green.
 
-- [ ] Backend: Research core respects flags
+- [x] Backend: Research core respects flags
   - [x] Write tests for JobSearch.research_company to verify:
     - [x] follow-up contacts runs when force_contacts=True even if is_good_fit(...) is false,
     - [x] levels/compensation run when force_levels=True even for placeholder names (bypass placeholder skip),
