@@ -50,10 +50,10 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
   - [x] Run tests and fix until green.
 
 - [ ] Backend: Research core respects flags
-  - [ ] Write tests for JobSearch.research_company to verify:
-    - [ ] follow-up contacts runs when force_contacts=True even if is_good_fit(...) is false,
-    - [ ] levels/compensation run when force_levels=True even for placeholder names (bypass placeholder skip),
-    - [ ] existing behavior is preserved when both flags are False.
+  - [x] Write tests for JobSearch.research_company to verify:
+    - [x] follow-up contacts runs when force_contacts=True even if is_good_fit(...) is false,
+    - [x] levels/compensation run when force_levels=True even for placeholder names (bypass placeholder skip),
+    - [x] existing behavior is preserved when both flags are False.
   - [ ] Add optional force_levels and force_contacts params to the research entry point, use them to override gates, and add minimal info logs when forced.
   - [ ] Run tests and fix until green.
 
