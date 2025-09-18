@@ -46,7 +46,9 @@ def test_followup_runs_when_force_contacts_true(monkeypatch):
     row = models.CompaniesSheetRow(name="Acme Corp")
 
     # Patch research steps to be no-ops
-    monkeypatch.setattr(lj.JobSearch, "initial_research_company", lambda self, message, model: (row, []))
+    monkeypatch.setattr(
+        lj.JobSearch, "initial_research_company", lambda self, message, model: (row, [])
+    )
     monkeypatch.setattr(lj.JobSearch, "research_levels", lambda self, r: r)
     monkeypatch.setattr(lj.JobSearch, "research_compensation", lambda self, r: r)
 
@@ -54,6 +56,7 @@ def test_followup_runs_when_force_contacts_true(monkeypatch):
     monkeypatch.setattr(lj.JobSearch, "is_good_fit", lambda self, r: False)
 
     calls = {"count": 0}
+
     def fake_followup(self, r):
         calls["count"] += 1
         return r
@@ -62,7 +65,9 @@ def test_followup_runs_when_force_contacts_true(monkeypatch):
 
     js.research_company("msg", model="m", force_contacts=True)
 
-    assert calls["count"] == 1, "followup should run when force_contacts=True even if not a good fit"
+    assert (
+        calls["count"] == 1
+    ), "followup should run when force_contacts=True even if not a good fit"
 
 
 def test_followup_not_run_when_force_contacts_false(monkeypatch):
@@ -70,12 +75,15 @@ def test_followup_not_run_when_force_contacts_false(monkeypatch):
 
     row = models.CompaniesSheetRow(name="Acme Corp")
 
-    monkeypatch.setattr(lj.JobSearch, "initial_research_company", lambda self, message, model: (row, []))
+    monkeypatch.setattr(
+        lj.JobSearch, "initial_research_company", lambda self, message, model: (row, [])
+    )
     monkeypatch.setattr(lj.JobSearch, "research_levels", lambda self, r: r)
     monkeypatch.setattr(lj.JobSearch, "research_compensation", lambda self, r: r)
     monkeypatch.setattr(lj.JobSearch, "is_good_fit", lambda self, r: False)
 
     calls = {"count": 0}
+
     def fake_followup(self, r):
         calls["count"] += 1
         return r
@@ -84,4 +92,6 @@ def test_followup_not_run_when_force_contacts_false(monkeypatch):
 
     js.research_company("msg", model="m", force_contacts=False)
 
-    assert calls["count"] == 0, "followup should not run when force_contacts=False and not a good fit"
+    assert (
+        calls["count"] == 0
+    ), "followup should not run when force_contacts=False and not a good fit"
