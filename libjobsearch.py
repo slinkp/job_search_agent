@@ -503,13 +503,13 @@ class JobSearch:
             return company
 
         try:
-            company_info = self.research_levels(company_info)
+            company_info = self.research_levels(company_info, force=force_levels)
             logger.debug(f"Company info after levels research: {company_info}\n\n")
         except Exception as e:
             self._handle_research_error("levels_research", company, e)
 
         try:
-            company_info = self.research_compensation(company_info)
+            company_info = self.research_compensation(company_info, force=force_levels)
             logger.debug(f"Company info after salary research: {company_info}\n\n")
         except Exception as e:
             self._handle_research_error("compensation_research", company, e)
@@ -518,6 +518,10 @@ class JobSearch:
         # or when explicitly requested via force_contacts.
         if self.is_good_fit(company_info) or force_contacts:
             try:
+                if force_contacts and not self.is_good_fit(company_info):
+                    logger.info(
+                        "Force enabled: running follow-up contacts research despite not a good fit"
+                    )
                 company_info = self.followup_research_company(company_info)
                 logger.debug(f"Company info after followup research: {company_info}\n\n")
             except Exception as e:
@@ -595,13 +599,18 @@ class JobSearch:
         return (row, discovered_names)
 
     @disk_cache(CacheStep.LEVELS_RESEARCH)
-    def research_levels(self, row: CompaniesSheetRow) -> CompaniesSheetRow:
-        # Skip research if company name is a placeholder
+    def research_levels(self, row: CompaniesSheetRow, force: bool = False) -> CompaniesSheetRow:
+        # Skip research if company name is a placeholder (unless forced)
         if self._is_company_name_placeholder(row):
-            logger.info(
-                f"Skipping levels research for placeholder company name: {row.name}"
-            )
-            return row
+            if not force:
+                logger.info(
+                    f"Skipping levels research for placeholder company name: {row.name}"
+                )
+                return row
+            else:
+                logger.info(
+                    f"Force enabled: running levels research for placeholder company name: {row.name}"
+                )
 
         now = datetime.datetime.now()
         logger.info("Finding equivalent job levels ...")
@@ -619,13 +628,18 @@ class JobSearch:
         return row
 
     @disk_cache(CacheStep.COMPENSATION_RESEARCH)
-    def research_compensation(self, row: CompaniesSheetRow) -> CompaniesSheetRow:
-        # Skip research if company name is a placeholder
+    def research_compensation(self, row: CompaniesSheetRow, force: bool = False) -> CompaniesSheetRow:
+        # Skip research if company name is a placeholder (unless forced)
         if self._is_company_name_placeholder(row):
-            logger.info(
-                f"Skipping compensation research for placeholder company name: {row.name}"
-            )
-            return row
+            if not force:
+                logger.info(
+                    f"Skipping compensation research for placeholder company name: {row.name}"
+                )
+                return row
+            else:
+                logger.info(
+                    f"Force enabled: running compensation research for placeholder company name: {row.name}"
+                )
 
         now = datetime.datetime.now()
         logger.info("Finding salary data ...")
