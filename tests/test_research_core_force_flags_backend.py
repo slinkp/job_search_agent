@@ -1,3 +1,4 @@
+# Consolidated force flags tests; redundant tests moved from test_research_core_force_contacts.py
 import datetime
 from argparse import Namespace
 from unittest import mock
