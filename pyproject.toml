@@ -1,2 +1,8 @@
 [tool.black]
 line-length = 90
+
+[tool.flake8]
+extend-ignore = ["E501", "E203", "E701"]
+exclude = [".direnv", ".git", "__pycache__","htmlcov"]
+max-line-length = 90
+extend-select = ["B950"]
