@@ -336,6 +336,31 @@ describe("CompaniesService", () => {
       const result = await service.research("company-id");
       expect(fetch).toHaveBeenCalledWith("/api/companies/company-id/research", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ force_levels: false, force_contacts: false }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("sends flags when provided", async () => {
+      const mockResponse = { task_id: "task-456", status: "pending" };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.research("company-id", {
+        force_levels: true,
+        force_contacts: true,
+      });
+      expect(fetch).toHaveBeenCalledWith("/api/companies/company-id/research", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ force_levels: true, force_contacts: true }),
       });
       expect(result).toEqual(mockResponse);
     });
