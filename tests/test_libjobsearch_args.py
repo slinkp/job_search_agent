@@ -1,5 +1,3 @@
-import argparse
-
 from libjobsearch import arg_parser, select_provider_and_model, SONNET_LATEST
 
 
