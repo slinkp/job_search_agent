@@ -602,7 +602,10 @@ document.addEventListener("alpine:init", () => {
         try {
           this.researchingCompanies.add(company.name);
           taskPollingService.addResearching(company);
-          const data = await companiesService.research(company.company_id);
+          const data = await companiesService.research(company.company_id, {
+            force_levels: !!company._forceLevels,
+            force_contacts: !!company._forceContacts,
+          });
           company.research_task_id = data.task_id;
           company.research_status = data.status;
 
