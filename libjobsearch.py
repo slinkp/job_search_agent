@@ -275,8 +275,6 @@ def maybe_edit_reply(reply: str) -> str:
         os.unlink(temp_path)
 
 
-
-
 class EmailResponseGenerator:
 
     def __init__(

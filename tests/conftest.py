@@ -3,17 +3,22 @@ import types
 import libjobsearch
 import email_client
 
+
 class _TestDummyRAG:
     def generate_reply(self, msg: str) -> str:
         return ""
 
+
 class _FakeGmailRepliesSearcher:
     def authenticate(self):
         pass
+
     def get_my_replies_to_recruiters(self, max_results: int):
         return []
+
     def get_new_recruiter_messages(self, max_results: int):
         return []
+
 
 @pytest.fixture(autouse=True)
 def _patch_email_and_rag(monkeypatch):
