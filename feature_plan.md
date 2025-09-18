@@ -57,10 +57,10 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
   - [x] Add optional force_levels and force_contacts params to the research entry point, use them to override gates, and add minimal info logs when forced.
   - [x] Run tests and fix until green.
 
-- [ ] Frontend: Service can send flags with research request
-  - [ ] Write a unit test that CompaniesService.research(companyId, options) POSTs JSON { force_levels, force_contacts } and remains backward compatible when options are omitted.
-  - [ ] Implement options parameter, send JSON body, and default flags to false when not provided.
-  - [ ] Run tests and fix until green.
+- [x] Frontend: Service can send flags with research request
+  - [x] Write a unit test that CompaniesService.research(companyId, options) POSTs JSON { force_levels, force_contacts } and remains backward compatible when options are omitted.
+  - [x] Implement options parameter, send JSON body, and default flags to false when not provided.
+  - [x] Run tests and fix until green.
 
 - [ ] Frontend: Companies view shows override checkboxes and sends flags
   - [ ] Add two checkboxes next to the Research button on each company card: “Force Salary” and “Force Contacts” (ephemeral per-company state).
