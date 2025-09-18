@@ -4,9 +4,16 @@
 # which flake8
 # which black
 
+if [ "$1" != "" ]; then
+    WHERE="$1"
+    shift
+else
+    WHERE="."
+fi
+
 echo Black...
-black $*
+black "$WHERE" $* 
 echo Flake8...
-flake8 $* # || exit 1
+flake8 "$WHERE" $* # || exit 1
 echo Mypy...
-mypy $* || exit 1
+mypy "$WHERE" $* || exit 1
