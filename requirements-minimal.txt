@@ -6,6 +6,7 @@ colorama
 coverage
 diskcache
 flake8
+flake8-pyproject
 freezegun
 google-api-python-client
 google-auth-httplib2
