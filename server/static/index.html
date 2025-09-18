@@ -122,6 +122,16 @@
               </span>
             </header>
             <div class="research-status">
+              <div class="research-overrides">
+                <label class="checkbox-label">
+                  <input type="checkbox" x-model="company._forceLevels" :disabled="isResearching(company) || isSendingMessage(company) || company.archived_at" aria-label="force-salary" data-testid="force-salary">
+                  <span>Force Salary</span>
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" x-model="company._forceContacts" :disabled="isResearching(company) || isSendingMessage(company) || company.archived_at" aria-label="force-contacts" data-testid="force-contacts">
+                  <span>Force Contacts</span>
+                </label>
+              </div>
               <button
                 @click="research(company)"
                 :disabled="isResearching(company) || isSendingMessage(company) || company.archived_at"

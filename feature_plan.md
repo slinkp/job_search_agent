@@ -62,10 +62,10 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
   - [x] Implement options parameter, send JSON body, and default flags to false when not provided.
   - [x] Run tests and fix until green.
 
-- [ ] Frontend: Companies view shows override checkboxes and sends flags
-  - [ ] Add two checkboxes next to the Research button on each company card: “Force Salary” and “Force Contacts” (ephemeral per-company state).
-  - [ ] Update research(company) to pass { force_levels: !!company._forceLevels, force_contacts: !!company._forceContacts } to the service.
-  - [ ] Add/adjust tests to verify the new inputs exist and that research() calls the service with the expected options.
+- [x] Frontend: Companies view shows override checkboxes and sends flags
+  - [x] Add two checkboxes next to the Research button on each company card: “Force Salary” and “Force Contacts” (ephemeral per-company state).
+  - [x] Update research(company) to pass { force_levels: !!company._forceLevels, force_contacts: !!company._forceContacts } to the service.
+  - [x] Add/adjust tests to verify the new inputs exist and that research() calls the service with the expected options.
   - [ ] Run tests and fix until green.
 
 - [ ] Frontend: Messages dashboard shows override checkboxes and sends flags
