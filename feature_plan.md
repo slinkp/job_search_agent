@@ -54,8 +54,8 @@ Title: Force salary/levels and/or contacts research from UI (Companies + Message
     - [x] follow-up contacts runs when force_contacts=True even if is_good_fit(...) is false,
     - [x] levels/compensation run when force_levels=True even for placeholder names (bypass placeholder skip),
     - [x] existing behavior is preserved when both flags are False.
-  - [ ] Add optional force_levels and force_contacts params to the research entry point, use them to override gates, and add minimal info logs when forced.
-  - [ ] Run tests and fix until green.
+  - [x] Add optional force_levels and force_contacts params to the research entry point, use them to override gates, and add minimal info logs when forced.
+  - [x] Run tests and fix until green.
 
 - [ ] Frontend: Service can send flags with research request
   - [ ] Write a unit test that CompaniesService.research(companyId, options) POSTs JSON { force_levels, force_contacts } and remains backward compatible when options are omitted.

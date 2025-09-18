@@ -8,6 +8,27 @@ import libjobsearch
 import models
 
 
+class _FakeRepo:
+    def create_event(self, event):
+        return event
+
+    def list_aliases(self, company_id, active_only=True):
+        return []
+
+    def get_by_normalized_name(self, name):
+        return None
+
+    def create_alias(self, company_id, alias, source):
+        return {"company_id": company_id, "alias": alias, "source": source}
+
+
+@pytest.fixture(autouse=True)
+def _patch_company_repository():
+    fake = _FakeRepo()
+    with mock.patch("models.company_repository", autospec=True, return_value=fake):
+        yield fake
+
+
 def _make_job_search():
     args = Namespace(
         model=libjobsearch.SONNET_LATEST,
