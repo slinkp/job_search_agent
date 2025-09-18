@@ -601,7 +601,9 @@ class JobSearch:
         return (row, discovered_names)
 
     @disk_cache(CacheStep.LEVELS_RESEARCH)
-    def research_levels(self, row: CompaniesSheetRow, force: bool = False) -> CompaniesSheetRow:
+    def research_levels(
+        self, row: CompaniesSheetRow, force: bool = False
+    ) -> CompaniesSheetRow:
         # Skip research if company name is a placeholder (unless forced)
         if self._is_company_name_placeholder(row):
             if not force:
@@ -633,7 +635,9 @@ class JobSearch:
         return row
 
     @disk_cache(CacheStep.COMPENSATION_RESEARCH)
-    def research_compensation(self, row: CompaniesSheetRow, force: bool = False) -> CompaniesSheetRow:
+    def research_compensation(
+        self, row: CompaniesSheetRow, force: bool = False
+    ) -> CompaniesSheetRow:
         # Skip research if company name is a placeholder (unless forced)
         if self._is_company_name_placeholder(row):
             if not force:
