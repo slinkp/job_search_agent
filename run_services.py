@@ -47,7 +47,7 @@ def find_process_using_port(port):
                     return f"Port {port} is in use by process {pid} ({name})"
         return None
     except Exception as e:
-        logger.warning(f"Error checking port usage: {e}")
+        logger.exception(f"Error checking port usage: {e}")
         return None
 
 
