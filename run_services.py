@@ -64,44 +64,59 @@ class ServiceManager:
     def start_services(self, args):
         try:
             # Start research daemon
-            research_cmd = [
-                "python",
-                "research_daemon.py",
-                "--model",
-                args.model,
-                "--rag-message-limit",
-                str(args.rag_message_limit),
-                "--sheet",
-                args.sheet,
-            ]
+            research_cmd = ["python", "research_daemon.py"]
+
+            # Only append options when they have values
+            if getattr(args, "model", None):
+                research_cmd.extend(["--model", args.model])
+
+            if getattr(args, "rag_message_limit", None) is not None:
+                research_cmd.extend(["--rag-message-limit", str(args.rag_message_limit)])
+
+            if getattr(args, "sheet", None):
+                research_cmd.extend(["--sheet", args.sheet])
 
             # Forward provider to research daemon (enables OpenRouter and others)
             if getattr(args, "provider", None):
                 research_cmd.extend(["--provider", args.provider])
 
-            # Add optional arguments if they were specified
-            if args.verbose:
+            # Optional flags
+            if getattr(args, "verbose", False):
                 research_cmd.append("--verbose")
-            if args.no_cache:
+            if getattr(args, "no_cache", False):
                 research_cmd.append("--no-cache")
-            if args.clear_all_cache:
+            if getattr(args, "clear_all_cache", False):
                 research_cmd.append("--clear-all-cache")
-            if args.clear_cache:
+            if getattr(args, "clear_cache", None):
                 for step in args.clear_cache:
-                    research_cmd.extend(["--clear-cache", step.name])
-            if args.cache_until:
-                research_cmd.extend(["--cache-until", args.cache_until.name])
-            if args.dry_run:
+                    if step is not None:
+                        research_cmd.extend(
+                            ["--clear-cache", getattr(step, "name", str(step))]
+                        )
+            if getattr(args, "cache_until", None):
+                research_cmd.extend(
+                    [
+                        "--cache-until",
+                        getattr(args.cache_until, "name", str(args.cache_until)),
+                    ]
+                )
+            if getattr(args, "dry_run", False):
                 research_cmd.append("--dry-run")
-            if args.no_headless:
+            if getattr(args, "no_headless", False):
                 research_cmd.append("--no-headless")
-            if args.test_messages:
+            if getattr(args, "test_messages", None):
                 for msg in args.test_messages:
-                    research_cmd.extend(["--test-messages", msg])
-            if args.recruiter_message_limit:
+                    if msg:
+                        research_cmd.extend(["--test-messages", msg])
+            if getattr(args, "recruiter_message_limit", None) is not None:
                 research_cmd.extend(
                     ["--recruiter-message-limit", str(args.recruiter_message_limit)]
                 )
+
+            # Optional: helpful for debugging command assembly
+            logger.debug(
+                "Starting research daemon with cmd: %s", " ".join(map(str, research_cmd))
+            )
 
             # Create a pseudo-terminal for the research daemon
             research_master_fd, research_slave_fd = pty.openpty()
