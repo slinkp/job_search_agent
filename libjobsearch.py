@@ -847,8 +847,12 @@ def select_provider_and_model(args: argparse.Namespace) -> Tuple[str, str]:
         openrouter -> gpt-5-mini
     - If both provided: respect both.
     """
-    provider = args.provider
-    model = args.model
+    provider = getattr(args, "provider", None)
+    model = getattr(args, "model", None)
+    if not isinstance(provider, str):
+        provider = None
+    if not isinstance(model, str):
+        model = None
 
     if provider is None and model is None:
         return "anthropic", SONNET_LATEST

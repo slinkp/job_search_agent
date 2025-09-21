@@ -60,9 +60,9 @@ class ResearchDaemon:
         self.running = False
         self.task_mgr = task_manager()
         self.company_repo = models.company_repository()
-        self.ai_model = args.model or "gpt-4o-mini"
-        # Ensure downstream components get a non-None model
-        args.model = self.ai_model
+        provider, model = libjobsearch.select_provider_and_model(args)
+        args.provider = provider
+        self.ai_model = args.model = model
         self.dry_run = args.dry_run
         # TODO: headless isn't actually passed down to libjobsearch
         # and to linkedin ... and would it work??
@@ -82,7 +82,7 @@ class ResearchDaemon:
         signal.signal(signal.SIGINT, self.stop)
         signal.signal(signal.SIGTERM, self.stop)
 
-        logger.info("Research daemon starting")
+        logger.info(f"Research daemon starting with model {self.ai_model}")
         while self.running:
             try:
                 self.process_next_task()
