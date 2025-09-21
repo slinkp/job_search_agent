@@ -30,7 +30,8 @@ lint-cmd: "python: ./black-flake8-mypy"
 attribute-co-authored-by: true
 attribute-commit-message-author: true
 no-dirty-commits: true
-auto-commits: true
+# auto-commits: true
+auto-commits: false 
 
 ######################################################################
 ## Misc stuff
