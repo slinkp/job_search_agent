@@ -426,7 +426,7 @@ class TavilyRAGResearchAgent:
                 logger.warning(f"Skipping unknown field: {fieldname}")
 
         # Company name is a special case - only update if research found a better name
-        new_name = content.get("company_name", "").strip()
+        new_name = (content.get("company_name") or "").strip()
         current_name = (company_info.name or "").strip()
 
         if new_name:
