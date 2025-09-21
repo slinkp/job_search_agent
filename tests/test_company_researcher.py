@@ -7,6 +7,7 @@ from unittest import mock
 
 import pytest
 
+from models import CompaniesSheetRow
 from company_researcher import TavilyRAGResearchAgent
 
 
@@ -685,3 +686,34 @@ class TestUpdateCompanyInfoFromDict:
 
         # Should not fetch any plaintext since only LinkedIn links are present
         mock_plain.assert_not_called()
+
+
+@mock.patch.dict("os.environ", {"TAVILY_API_KEY": "fake-key-for-testing"})
+def test_update_company_info_from_dict_without_company_name_key_does_not_raise():
+    # Issue 79
+    agent = TavilyRAGResearchAgent(llm=mock.Mock())
+
+    company = CompaniesSheetRow(name="Existing Co", company_identifier="test")
+    content = {
+        # Intentionally omit "company_name"
+        "headquarters_city": "San Francisco, CA, USA",
+    }
+
+    # Should not raise
+    agent.update_company_info_from_dict(company, content)
+
+    # Name should remain unchanged; other fields should update (normalized to lowercase)
+    assert company.name.lower() == "existing co"
+    assert company.headquarters.lower() == "san francisco, ca, usa"
+
+    content = {
+        "company_name": None,  # Explicit None should not cause exceptions
+        "headquarters_city": "New York, NY, USA",
+    }
+
+    # Should not raise
+    agent.update_company_info_from_dict(company, content)
+
+    # Name should remain unchanged; other fields should update (normalized to lowercase)
+    assert company.name.lower() == "existing co"
+    assert company.headquarters.lower() == "new york, ny, usa"
