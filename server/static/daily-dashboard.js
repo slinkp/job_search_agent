@@ -57,6 +57,7 @@ document.addEventListener("alpine:init", () => {
       // Message expansion state
       expandedMessages: new Set(), // Track which messages are expanded by company_id
       expandedReplies: new Set(), // Track which replies are expanded by message_id
+      emailScanPollingTimerId: null, // Internal polling timer id for email scan
 
       // Initialize the component
       async init() {
@@ -417,7 +418,7 @@ document.addEventListener("alpine:init", () => {
       async scanRecruiterEmails() {
         try {
           await emailScanningService.scanRecruiterEmails(this.doResearch);
-          await this.pollEmailScanStatus();
+          this.startEmailScanPolling();
         } catch (err) {
           errorLogger.logFailedTo("scan recruiter emails", err);
           // Error is already handled by the service
@@ -426,12 +427,35 @@ document.addEventListener("alpine:init", () => {
 
       // Poll for email scan task status
       async pollEmailScanStatus() {
-        const result = await emailScanningService.pollEmailScanStatus();
+        return await emailScanningService.pollEmailScanStatus();
+      },
 
-        if (result?.status === "completed") {
-          // Reload messages after successful scan
-          await this.loadMessages();
+      // Continuously poll until email scan completes or fails
+      startEmailScanPolling() {
+        const pollOnce = async () => {
+          try {
+            const result = await this.pollEmailScanStatus();
+            if (result && (result.status === "completed" || result.status === "failed")) {
+              this.emailScanPollingTimerId = null;
+              await this.loadMessages();
+              if (result.status === "completed") {
+                showSuccess("Email scan completed");
+              } else {
+                showError(`Email scan failed${result.error ? `: ${result.error}` : ""}`);
+              }
+              return;
+            }
+          } catch (err) {
+            errorLogger.logFailedTo("poll email scan status", err);
+          }
+          this.emailScanPollingTimerId = setTimeout(pollOnce, 1500);
+        };
+        // Ensure only one polling loop
+        if (this.emailScanPollingTimerId) {
+          clearTimeout(this.emailScanPollingTimerId);
+          this.emailScanPollingTimerId = null;
         }
+        pollOnce();
       },
 
       // Get email scan status text for display
