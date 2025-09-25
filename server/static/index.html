@@ -344,9 +344,9 @@
           </div>
         </div>
         
-        <div x-show="emailScanStatus" :class="getEmailScanStatusClass()" class="email-scan-status">
+        <div x-show="emailScanStatus || scanningEmails" :class="getEmailScanStatusClass()" class="email-scan-status">
           <span x-show="scanningEmails" class="loading-spinner"></span>
-          <span x-text="getEmailScanStatusText()"></span>
+          <span x-text="(scanningEmails && !emailScanStatus) ? 'Scanning emails...' : getEmailScanStatusText()"></span>
         </div>
         
         <div x-show="loading" class="loading-message">Loading unprocessed messages...</div>
