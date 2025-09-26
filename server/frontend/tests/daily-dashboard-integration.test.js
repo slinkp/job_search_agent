@@ -38,7 +38,7 @@ describe("Daily Dashboard Integration", () => {
     const filterButtons = filterControls.querySelectorAll("button");
     expect(filterButtons.length).toBe(4);
     expect(filterButtons[0].textContent.trim()).toBe("All");
-    expect(filterButtons[1].textContent.trim()).toBe("Not Replied");
+    expect(filterButtons[1].textContent.trim()).toBe("Reply Needed");
     expect(filterButtons[2].textContent.trim()).toBe("Replied");
     expect(filterButtons[3].textContent.trim()).toBe("Archived");
 
