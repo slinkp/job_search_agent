@@ -73,7 +73,7 @@ describe("dailyDashboard factory-capture", () => {
     expect(instance).toBeTruthy();
 
     // Basic state methods should not throw
-    expect(instance.filterMode).toBe("all");
+    expect(instance.filterMode).toBe("not-replied");
     instance.toggleSortOrder();
     expect(typeof instance.getSortButtonText()).toBe("string");
 
