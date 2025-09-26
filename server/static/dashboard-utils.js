@@ -16,7 +16,7 @@ export function filterMessages(messages, filterMode) {
     case "replied":
       return input.filter((message) => message.reply_sent_at);
     case "not-replied":
-      return input.filter((message) => !message.reply_sent_at);
+      return input.filter((message) => !(message.reply_sent_at || message.archived_at || message.company_archived_at));
     case "all":
     default:
       return input;

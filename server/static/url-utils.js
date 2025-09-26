@@ -83,7 +83,20 @@ export const urlUtils = {
 import { buildUpdatedSearch, parseUrlState } from "./dashboard-utils.js";
 
 export function readDailyDashboardStateFromUrl(search) {
-  return parseUrlState(search || window.location.search || "");
+  const effectiveSearch = search || window.location.search || "";
+  const params = new URLSearchParams(effectiveSearch);
+  const state = parseUrlState(effectiveSearch);
+
+  // If no explicit filterMode param is present in the URL, default to "not-replied"
+  const hasFilterParam = params.has("filterMode");
+  const filterMode = hasFilterParam
+    ? (state && state.filterMode ? state.filterMode : "not-replied")
+    : "not-replied";
+
+  const sortNewestFirst =
+    state && state.sortNewestFirst !== undefined ? state.sortNewestFirst : true;
+
+  return { ...state, filterMode, sortNewestFirst };
 }
 
 export function updateDailyDashboardUrlWithState(filterMode, sortNewestFirst) {

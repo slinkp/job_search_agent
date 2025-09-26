@@ -36,7 +36,7 @@ describe("dashboard-utils", () => {
     ]);
     expect(
       filterMessages(messages, "not-replied").map((m) => m.message_id)
-    ).toEqual(["1", "3"]);
+    ).toEqual(["1"]);
     expect(filterMessages(messages, "archived").map((m) => m.message_id)).toEqual([
       "3",
     ]);

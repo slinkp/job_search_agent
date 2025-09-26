@@ -41,7 +41,7 @@ document.addEventListener("alpine:init", () => {
       loading: false,
 
       // Filtering state - REPLACED with filterMode approach
-      filterMode: "all", // 'all', 'archived', 'replied', 'not-replied'
+      filterMode: "not-replied", // 'all', 'archived', 'replied', 'not-replied'
 
       // Local tracking for UI state
       generatingMessages: new Set(),
@@ -141,10 +141,11 @@ document.addEventListener("alpine:init", () => {
           });
 
           // Apply client-side filtering based on filterMode
-          this.unprocessedMessages = filterMessages(
+          let filtered = filterMessages(
             normalizedMessages,
             this.filterMode
           );
+          this.unprocessedMessages = filtered;
 
           console.log(
             `Loaded ${this.unprocessedMessages.length} messages after filtering (mode: ${this.filterMode})`
