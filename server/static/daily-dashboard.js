@@ -57,6 +57,8 @@ document.addEventListener("alpine:init", () => {
       // Message expansion state
       expandedMessages: new Set(), // Track which messages are expanded by company_id
       expandedReplies: new Set(), // Track which replies are expanded by message_id
+      emailScanPollingTimerId: null, // Internal polling timer id for email scan
+      scanningEmailsLocal: false, // Local UI flag to keep spinner visible during polling
 
       // Initialize the component
       async init() {
@@ -416,22 +418,50 @@ document.addEventListener("alpine:init", () => {
       // Scan for new recruiter emails from Gmail
       async scanRecruiterEmails() {
         try {
+          this.scanningEmailsLocal = true;
           await emailScanningService.scanRecruiterEmails(this.doResearch);
-          await this.pollEmailScanStatus();
+          this.startEmailScanPolling();
         } catch (err) {
           errorLogger.logFailedTo("scan recruiter emails", err);
+          this.scanningEmailsLocal = false;
           // Error is already handled by the service
         }
       },
 
       // Poll for email scan task status
       async pollEmailScanStatus() {
-        const result = await emailScanningService.pollEmailScanStatus();
+        return await emailScanningService.pollEmailScanStatus();
+      },
 
-        if (result?.status === "completed") {
-          // Reload messages after successful scan
-          await this.loadMessages();
+      // Continuously poll until email scan completes or fails
+      startEmailScanPolling() {
+        // Ensure only one polling loop and turn on local spinner
+        if (this.emailScanPollingTimerId) {
+          clearTimeout(this.emailScanPollingTimerId);
+          this.emailScanPollingTimerId = null;
         }
+        this.scanningEmailsLocal = true;
+
+        const pollOnce = async () => {
+          try {
+            const result = await this.pollEmailScanStatus();
+            if (result && (result.status === "completed" || result.status === "failed")) {
+              this.emailScanPollingTimerId = null;
+              this.scanningEmailsLocal = false;
+              await this.loadMessages();
+              if (result.status === "completed") {
+                showSuccess("Email scan completed");
+              } else {
+                showError(`Email scan failed${result.error ? `: ${result.error}` : ""}`);
+              }
+              return;
+            }
+          } catch (err) {
+            errorLogger.logFailedTo("poll email scan status", err);
+          }
+          this.emailScanPollingTimerId = setTimeout(pollOnce, 1500);
+        };
+        pollOnce();
       },
 
       // Get email scan status text for display
@@ -446,7 +476,7 @@ document.addEventListener("alpine:init", () => {
 
       // Get scanning emails state from service
       get scanningEmails() {
-        return emailScanningService.scanningEmails;
+        return this.scanningEmailsLocal || emailScanningService.scanningEmails;
       },
 
       // Get email scan status from service
