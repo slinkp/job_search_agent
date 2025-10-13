@@ -36,6 +36,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 SONNET_LATEST = "claude-sonnet-4-0"
+DEFAULT_RECRUITER_MESSAGES = 500
 
 
 cache = Cache(os.path.join(HERE, ".cache"))
@@ -331,7 +332,7 @@ class EmailResponseGenerator:
 
     @disk_cache(CacheStep.GET_MESSAGES)
     def get_new_recruiter_messages(
-        self, max_results: int = 100
+        self, max_results: int = DEFAULT_RECRUITER_MESSAGES
     ) -> list[RecruiterMessage]:
         logger.info(f"Getting {max_results} new recruiter messages")
         return self.email_client.get_new_recruiter_messages(max_results=max_results)
@@ -704,7 +705,7 @@ class JobSearch:
         return company_fit_heuristic.is_good_fit(company_info)
 
     def get_new_recruiter_messages(
-        self, max_results: int = 100
+        self, max_results: int = DEFAULT_RECRUITER_MESSAGES
     ) -> list[RecruiterMessage]:
         return self.email_responder.get_new_recruiter_messages(max_results=max_results)
 
@@ -824,7 +825,6 @@ def arg_parser():
         help="Test messages to use instead of fetching from Gmail",
     )
 
-    DEFAULT_RECRUITER_MESSAGES = 500
     parser.add_argument(
         "--recruiter-message-limit",
         type=int,
