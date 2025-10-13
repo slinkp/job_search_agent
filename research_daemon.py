@@ -285,11 +285,8 @@ class ResearchDaemon:
                 self.company_repo.update(existing)
                 result_company = existing
             else:
-                # Create a minimal company record if no existing company was found
-                # Use the same unknown company name logic as in libjobsearch.py
-                # TODO: put this in a function and use both places.
                 if not company_name:
-                    company_name = f"<UNKNOWN {int(time.time() * 1000 * 1000)}>"
+                    company_name = libjobsearch.generate_unknown_placeholder_name()
                     logger.warning(f"Company name not found, using {company_name}")
 
                 minimal_row = models.CompaniesSheetRow(

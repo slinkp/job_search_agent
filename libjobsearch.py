@@ -396,6 +396,10 @@ def _parse_cache_step(value: str) -> CacheStep:
             )
 
 
+def generate_unknown_placeholder_name() -> str:
+    return "<UNKNOWN %s>" % int(time.time() * 1000 * 1000)
+
+
 class JobSearch:
     """
     Main entry points for this module.
@@ -472,7 +476,7 @@ class JobSearch:
         if not str(company_info.name or "").strip():
             # Just name it after microseconds since epoch and assume that in THIS application
             # those will never collide.
-            unknown_company_name = "<UNKNOWN %s>" % int(time.time() * 1000 * 1000)
+            unknown_company_name = generate_unknown_placeholder_name()
             logger.warning(f"Company name not found, using {unknown_company_name}")
             company_info.name = unknown_company_name
         logger.debug(f"Company info after initial research: {company_info}\n\n")
