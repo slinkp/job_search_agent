@@ -1044,6 +1044,64 @@ def test_send_and_archive_message_not_found(mock_company_repo):
     assert request.response.status == "404 Not Found"
 
 
+def test_archive_company_and_messages_by_message_id_success(clean_test_db):
+    """Archiving with archive_all=true should archive company and all its messages."""
+    repo = clean_test_db
+
+    # Create a company with two messages
+    company = Company(
+        company_id="co-arch-all",
+        name="Arch All Co",
+        details=CompaniesSheetRow(name="Arch All Co"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    msg1 = RecruiterMessage(
+        message_id="m1",
+        company_id="co-arch-all",
+        subject="S1",
+        message="body1",
+        thread_id="t1",
+    )
+    msg2 = RecruiterMessage(
+        message_id="m2",
+        company_id="co-arch-all",
+        subject="S2",
+        message="body2",
+        thread_id="t2",
+    )
+    repo.create_recruiter_message(msg1)
+    repo.create_recruiter_message(msg2)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"message_id": "m1"}
+        # Signal archive-all behavior
+        request.params = {"archive_all": "true"}
+
+        resp = server.app.archive_message_by_id(request)
+
+    assert resp["message"] == "Message archived successfully"
+    # Company archived
+    updated_company = repo.get("co-arch-all")
+    assert updated_company.status.archived_at is not None
+    # All messages archived
+    messages = repo.get_recruiter_messages("co-arch-all")
+    assert all(m.archived_at is not None for m in messages)
+
+
+def test_archive_company_and_messages_by_message_id_message_not_found(clean_test_db):
+    repo = clean_test_db
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"message_id": "does-not-exist"}
+        request.params = {"archive_all": "true"}
+        resp = server.app.archive_message_by_id(request)
+        assert resp["error"] == "Message not found"
+        assert request.response.status == "404 Not Found"
+
+
 def test_send_and_archive_message_company_not_found(mock_company_repo):
     """Test send and archive when company is not found."""
     test_message = RecruiterMessage(

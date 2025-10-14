@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { captureAlpineFactories } from "./test-utils.js";
 
 // Mock dependencies BEFORE importing the component module
@@ -10,11 +10,21 @@ vi.mock("../../static/task-polling.js", () => ({
     removeGeneratingMessage() {}
     addSendingMessage() {}
     removeSendingMessage() {}
-    async pollResearchStatus() { return { status: "completed" }; }
-    async pollMessageStatus() { return { status: "completed" }; }
-    async pollSendAndArchiveStatus() { return { status: "completed" }; }
-    getResearchStatusText() { return ""; }
-    getResearchStatusClass() { return {}; }
+    async pollResearchStatus() {
+      return { status: "completed" };
+    }
+    async pollMessageStatus() {
+      return { status: "completed" };
+    }
+    async pollSendAndArchiveStatus() {
+      return { status: "completed" };
+    }
+    getResearchStatusText() {
+      return "";
+    }
+    getResearchStatusClass() {
+      return {};
+    }
   },
 }));
 
@@ -22,20 +32,38 @@ vi.mock("../../static/email-scanning.js", () => ({
   EmailScanningService: class {
     scanningEmails = false;
     emailScanStatus = null;
-    async scanRecruiterEmails() { return {}; }
-    async pollEmailScanStatus() { return { status: "completed" }; }
-    getEmailScanStatusText() { return ""; }
-    getEmailScanStatusClass() { return ""; }
+    async scanRecruiterEmails() {
+      return {};
+    }
+    async pollEmailScanStatus() {
+      return { status: "completed" };
+    }
+    getEmailScanStatusText() {
+      return "";
+    }
+    getEmailScanStatusClass() {
+      return "";
+    }
   },
 }));
 
 vi.mock("../../static/companies-service.js", () => ({
   CompaniesService: class {
-    async getMessages() { return []; }
-    async generateReply() { return { task_id: "t1", status: "pending" }; }
-    async sendAndArchive() { return { task_id: "t2", status: "pending" }; }
-    async research() { return { task_id: "t3", status: "pending" }; }
-    async archiveMessage() { return {}; }
+    async getMessages() {
+      return [];
+    }
+    async generateReply() {
+      return { task_id: "t1", status: "pending" };
+    }
+    async sendAndArchive() {
+      return { task_id: "t2", status: "pending" };
+    }
+    async research() {
+      return { task_id: "t3", status: "pending" };
+    }
+    async archiveMessage() {
+      return {};
+    }
   },
 }));
 
@@ -43,6 +71,7 @@ vi.mock("../../static/ui-utils.js", () => ({
   confirmDialogs: {
     archiveWithoutReply: () => true,
     sendAndArchive: () => true,
+    archiveScope: () => "all",
   },
   errorLogger: { logFailedTo: () => {}, logError: () => {} },
   showError: () => {},
@@ -93,5 +122,3 @@ describe("dailyDashboard factory-capture flows", () => {
     expect(instance.isSendingMessage(message)).toBe(false);
   });
 });
-
-

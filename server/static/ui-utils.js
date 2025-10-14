@@ -107,6 +107,73 @@ export const confirmDialogs = {
    */
   sendAndArchive() {
     return confirm("Are you sure you want to send this reply and archive the message?");
+  },
+
+  /**
+   * Confirm archiving scope via a clickable modal.
+   * Returns a Promise resolving to:
+   *  - 'all' to archive company+all messages
+   *  - 'one' to archive only this message
+   *  - null if cancelled (e.g. ESC)
+   */
+  archiveScope() {
+    return new Promise((resolve) => {
+      const dialog = document.createElement("dialog");
+      dialog.setAttribute("id", "archive-scope-dialog");
+      dialog.innerHTML = `
+        <form method="dialog" class="confirm-modal">
+          <h3>Archive this message and the company?</h3>
+          <p>This will archive the company and all associated messages.</p>
+          <div class="buttons">
+            <button value="all" autofocus>Yes, archive all</button>
+            <button value="one">No, only this message</button>
+            <button value="cancel" class="outline">Cancel</button>
+          </div>
+        </form>
+      `;
+
+      const handleClose = (ev) => {
+        const value = ev?.target?.returnValue || dialog.returnValue;
+        // Normalize outcomes
+        if (value === "all") {
+          cleanup();
+          resolve("all");
+          return;
+        }
+        if (value === "one") {
+          cleanup();
+          resolve("one");
+          return;
+        }
+        cleanup();
+        resolve(null);
+      };
+
+      const onCancel = (ev) => {
+        ev.preventDefault();
+        cleanup();
+        resolve(null);
+      };
+
+      function cleanup() {
+        dialog.removeEventListener("close", handleClose);
+        dialog.removeEventListener("cancel", onCancel);
+        dialog.close();
+        dialog.parentElement && dialog.parentElement.removeChild(dialog);
+      }
+
+      dialog.addEventListener("close", handleClose);
+      dialog.addEventListener("cancel", onCancel);
+
+      document.body.appendChild(dialog);
+      try {
+        dialog.showModal();
+      } catch (e) {
+        // Fallback: if showModal not supported, default to single-message archive
+        cleanup();
+        resolve("one");
+      }
+    });
   }
 };
 
