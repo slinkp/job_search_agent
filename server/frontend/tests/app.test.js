@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { setupDocumentWithIndexHtml } from "./test-utils";
+import { loadIndexHtml, setupDocumentWithIndexHtml } from "./test-utils";
 
 describe("App", () => {
   beforeEach(() => {
@@ -15,6 +15,15 @@ describe("App", () => {
 
     // Test that the element is in the document
     expect(document.body.textContent).toContain("Test Content");
+  });
+});
+
+describe("Companies view Archive button (issue #82)", () => {
+  it("includes an Archive button on the companies view", () => {
+    // Load the raw HTML content
+    const rawHtml = loadIndexHtml();
+    // The companies view should provide an Archive action bound to archiveCompany(company)
+    expect(rawHtml).toContain('@click="archiveCompany(company)"');
   });
 });
 

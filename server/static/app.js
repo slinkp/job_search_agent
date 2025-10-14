@@ -874,6 +874,30 @@ document.addEventListener("alpine:init", () => {
         }
       },
 
+      async archiveCompany(company) {
+        if (!company) {
+          this.showError("No company selected");
+          return;
+        }
+        try {
+          // Optional confirm
+          if (
+            confirmDialogs.archiveCompany &&
+            !confirmDialogs.archiveCompany()
+          ) {
+            return;
+          }
+          await companiesService.archiveCompany(company.company_id);
+          await this.fetchAndUpdateCompany(company.company_id);
+          this.showSuccess("Company archived successfully");
+        } catch (err) {
+          errorLogger.logFailedTo("archive company", err);
+          this.showError(
+            err.message || "Failed to archive company. Please try again."
+          );
+        }
+      },
+
       async togglePromising(company, value) {
         if (!company) return;
 

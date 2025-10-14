@@ -124,6 +124,9 @@ describe("app/companyList factory-capture", () => {
         async getMessages() {
           return [];
         }
+        async archiveCompany() {
+          return {};
+        }
       },
     }));
 
@@ -131,6 +134,7 @@ describe("app/companyList factory-capture", () => {
       confirmDialogs: {
         archiveWithoutReply: () => true,
         sendAndArchive: () => true,
+        archiveCompany: () => true,
       },
       errorLogger: { logFailedTo: () => {}, logError: () => {} },
       showError: () => {},
@@ -217,6 +221,27 @@ describe("app/companyList factory-capture", () => {
     const company = { company_id: "c1", name: "Alpha" };
     await instance.checkPotentialDuplicates(company);
     expect(instance.potentialDuplicatesMap["c1"]).toEqual(["dup-1"]);
+  });
+
+  it("exposes archiveCompany and refreshes after archiving", async () => {
+    const mod = await import("../../static/app.js");
+    expect(mod).toBeTruthy();
+    document.dispatchEvent(new Event("alpine:init"));
+    const instance = (await import("./test-utils.js"))
+      .captureAlpineFactories()
+      .companyList?.();
+    // Fallback: re-capture if needed
+    const captured = (await import("./test-utils.js")).captureAlpineFactories();
+    if (!instance) {
+      document.dispatchEvent(new Event("alpine:init"));
+    }
+    const factories = captured;
+    const comp = factories.companyList ? factories.companyList() : null;
+    expect(typeof comp.archiveCompany).toBe("function");
+    comp.fetchAndUpdateCompany = vi.fn();
+    comp.showSuccess = vi.fn();
+    await comp.archiveCompany({ company_id: "co-1", name: "Test" });
+    expect(comp.fetchAndUpdateCompany).toHaveBeenCalledWith("co-1");
   });
 
   it("should have HTML structure for displaying company aliases", () => {
