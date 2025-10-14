@@ -271,7 +271,9 @@ export class CompaniesService {
     );
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || `Failed to start merge: ${response.status}`);
+      throw new Error(
+        error.error || `Failed to start merge: ${response.status}`
+      );
     }
     return response.json();
   }
