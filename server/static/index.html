@@ -180,6 +180,15 @@
                 </button>
               </div>
             </template>
+            <div class="company-actions">
+              <button 
+                class="outline"
+                @click="archiveCompany(company)"
+                :disabled="company.archived_at"
+                aria-label="archive-company"
+                data-testid="archive-company"
+              >Archive</button>
+            </div>
             <div class="promising-controls" x-show="company.research_completed_at">
               <span>Promising?</span>
               <button 

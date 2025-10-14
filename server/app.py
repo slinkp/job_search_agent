@@ -721,6 +721,48 @@ def archive_message_by_id(request):
     }
 
 
+@view_config(route_name="archive_company", renderer="json", request_method="POST")
+def archive_company(request):
+    """Archive a company and all associated messages.
+
+    Also updates activity. This is used by the Companies view to archive without sending a reply.
+    """
+    company_id = request.matchdict["company_id"]
+
+    repo = models.company_repository()
+    company = repo.get(company_id)
+    if not company:
+        request.response.status = 404
+        return {"error": "Company not found"}
+
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    # Mark company archived
+    company.status.archived_at = current_time
+    repo.update(company)
+
+    # Archive all recruiter messages for this company
+    try:
+        messages = repo.get_recruiter_messages(company_id)
+        for m in messages:
+            if m.archived_at is None:
+                m.archived_at = current_time
+                repo.create_recruiter_message(m)
+    except Exception:
+        logger.exception("Failed to archive all messages for company")
+
+    # Update activity
+    try:
+        repo.update_activity(company_id, current_time, "company archived")
+    except Exception:
+        logger.exception("Failed to update activity for company archived")
+
+    return {
+        "message": "Company archived successfully",
+        "company_id": company_id,
+        "archived_at": current_time.isoformat(),
+    }
+
+
 @view_config(route_name="company_details", renderer="json", request_method="PATCH")
 def patch_company_details(request) -> dict:
     company_id = request.matchdict["company_id"]
@@ -913,6 +955,7 @@ def main(global_config, **settings):
         config.add_route("task_status", "/api/tasks/{task_id}")
         config.add_route("import_companies", "/api/import_companies")
         config.add_route("archive_message_by_id", "/api/messages/{message_id}/archive")
+        config.add_route("archive_company", "/api/companies/{company_id}/archive")
         config.add_static_view(name="static", path="static")
         config.scan()
 

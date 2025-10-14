@@ -128,6 +128,22 @@ export class CompaniesService {
     return response.json();
   }
 
+  async archiveCompany(companyId) {
+    const response = await fetch(
+      `/api/companies/${encodeURIComponent(companyId)}/archive`,
+      {
+        method: "POST",
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        error.error || `Failed to archive company: ${response.status}`
+      );
+    }
+    return response.json();
+  }
+
   async sendAndArchive(messageId) {
     const response = await fetch(
       `/api/messages/${messageId}/send_and_archive`,

@@ -181,7 +181,8 @@ document.addEventListener("alpine:init", () => {
 
           // Set view mode based on URL parameter
           this.viewMode = viewMode;
-          document.title = this.viewMode === "daily_dashboard" ? "Messages" : "Companies";
+          document.title =
+            this.viewMode === "daily_dashboard" ? "Messages" : "Companies";
 
           // Track show archived state
           this.showArchived = includeAllParam;
@@ -870,6 +871,30 @@ document.addEventListener("alpine:init", () => {
           errorLogger.logFailedTo("archive message", err);
           this.showError(
             err.message || "Failed to archive message. Please try again."
+          );
+        }
+      },
+
+      async archiveCompany(company) {
+        if (!company) {
+          this.showError("No company selected");
+          return;
+        }
+        try {
+          // Optional confirm
+          if (
+            confirmDialogs.archiveCompany &&
+            !confirmDialogs.archiveCompany()
+          ) {
+            return;
+          }
+          await companiesService.archiveCompany(company.company_id);
+          await this.fetchAndUpdateCompany(company.company_id);
+          this.showSuccess("Company archived successfully");
+        } catch (err) {
+          errorLogger.logFailedTo("archive company", err);
+          this.showError(
+            err.message || "Failed to archive company. Please try again."
           );
         }
       },
