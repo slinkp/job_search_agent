@@ -181,7 +181,8 @@ document.addEventListener("alpine:init", () => {
 
           // Set view mode based on URL parameter
           this.viewMode = viewMode;
-          document.title = this.viewMode === "daily_dashboard" ? "Messages" : "Companies";
+          document.title =
+            this.viewMode === "daily_dashboard" ? "Messages" : "Companies";
 
           // Track show archived state
           this.showArchived = includeAllParam;
