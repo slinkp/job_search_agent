@@ -43,6 +43,7 @@ vi.mock("../../static/ui-utils.js", () => ({
   confirmDialogs: {
     archiveWithoutReply: () => true,
     sendAndArchive: () => true,
+    archiveScope: () => "all",
   },
   errorLogger: { logFailedTo: () => {}, logError: () => {} },
   showError: () => {},

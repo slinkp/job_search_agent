@@ -266,6 +266,37 @@ describe("CompaniesService", () => {
     });
   });
 
+  describe("archiveCompanyAndMessagesByMessage", () => {
+    it("archives company and all messages via archive_all flag", async () => {
+      const mockResponse = { success: true };
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await service.archiveCompanyAndMessagesByMessage(
+        "message-id"
+      );
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/messages/message-id/archive?archive_all=true",
+        { method: "POST" }
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("throws error on failure", async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ error: "Message not found" }),
+      });
+
+      await expect(
+        service.archiveCompanyAndMessagesByMessage("bad-id")
+      ).rejects.toThrow("Message not found");
+    });
+  });
+
   describe("sendAndArchive", () => {
     it("sends and archives a message", async () => {
       const mockResponse = { success: true };

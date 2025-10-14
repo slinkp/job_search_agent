@@ -254,24 +254,36 @@ document.addEventListener("alpine:init", () => {
           return;
         }
 
-        // Confirm with the user before proceeding
-        if (!confirmDialogs.archiveWithoutReply()) {
-          return;
-        }
-
         try {
-          // Call the message-centric archive endpoint via service
-          await companiesService.archiveMessage(message_id);
+          // Ask user if they want to archive just this message or company+all messages
+          const scope =
+            confirmDialogs.archiveScope &&
+            (await confirmDialogs.archiveScope());
+          if (scope === null) {
+            // cancelled
+            return;
+          }
 
-          // Refresh the message list to remove the archived message
+          if (scope === "all") {
+            await companiesService.archiveCompanyAndMessagesByMessage(
+              message_id
+            );
+          } else {
+            // default to only this message
+            await companiesService.archiveMessage(message_id);
+          }
+
+          // Refresh the message list to remove the archived item(s)
           await this.loadMessages();
 
-          showSuccess("Message archived successfully");
+          showSuccess(
+            scope === "all"
+              ? "Company and messages archived successfully"
+              : "Message archived successfully"
+          );
         } catch (err) {
           errorLogger.logFailedTo("archive message", err);
-          showError(
-            err.message || "Failed to archive message. Please try again."
-          );
+          showError(err.message || "Failed to archive. Please try again.");
         }
       },
 

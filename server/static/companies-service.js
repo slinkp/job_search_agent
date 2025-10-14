@@ -111,6 +111,23 @@ export class CompaniesService {
     return response.json();
   }
 
+  async archiveCompanyAndMessagesByMessage(messageId) {
+    const response = await fetch(
+      `/api/messages/${messageId}/archive?archive_all=true`,
+      {
+        method: "POST",
+      }
+    );
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.error ||
+          `Failed to archive company and messages: ${response.status}`
+      );
+    }
+    return response.json();
+  }
+
   async sendAndArchive(messageId) {
     const response = await fetch(
       `/api/messages/${messageId}/send_and_archive`,

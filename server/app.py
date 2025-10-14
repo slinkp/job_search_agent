@@ -658,7 +658,11 @@ def send_and_archive(request):
 
 @view_config(route_name="archive_message_by_id", renderer="json", request_method="POST")
 def archive_message_by_id(request):
-    """Archive a specific message by message_id."""
+    """Archive a specific message by message_id.
+
+    If query param archive_all=true is provided, also archive the associated
+    company and all of its messages, after setting the specific message archived.
+    """
     message_id = request.matchdict["message_id"]
 
     if not message_id:
@@ -675,16 +679,40 @@ def archive_message_by_id(request):
         request.response.status = 404
         return {"error": "Message not found"}
 
-    # Set archived_at on the specific message
+    # Always set archived_at on the specific message first
     message.archived_at = current_time
     repo.create_recruiter_message(message)  # This will update via upsert
-    # Activity: message archived
+
+    archive_all = request.params.get("archive_all", "").lower() == "true"
+
+    if archive_all:
+        # Archive the company and all messages for that company
+        company = repo.get(message.company_id)
+        if company:
+            company.status.archived_at = current_time
+            repo.update(company)
+        # Archive all messages for the company
+        try:
+            company_messages = repo.get_recruiter_messages(message.company_id)
+            for m in company_messages:
+                if m.archived_at is None:
+                    m.archived_at = current_time
+                    repo.create_recruiter_message(m)
+        except Exception:
+            logger.exception(
+                "Failed to archive all messages for company during archive_all"
+            )
+
+    # Activity: message archived (company activity tracks last action)
     try:
         repo.update_activity(message.company_id, current_time, "message archived")
     except Exception:
         logger.exception("Failed to update activity for message archived")
 
-    logger.info(f"Message {message_id} archived via direct endpoint")
+    logger.info(
+        f"Message {message_id} archived via direct endpoint"
+        + (" (archive_all)" if archive_all else "")
+    )
 
     return {
         "message": "Message archived successfully",
