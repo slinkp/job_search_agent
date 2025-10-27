@@ -14,7 +14,7 @@ def test_openrouter_defaults_model():
     args = parser.parse_args(["--provider", "openrouter"])
     provider, model = select_provider_and_model(args)
     assert provider == "openrouter"
-    assert model == "gpt-5-mini"
+    assert model == "gpt-5"
 
 
 def test_model_implies_provider_openai():
