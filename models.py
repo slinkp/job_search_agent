@@ -305,7 +305,6 @@ class CompaniesSheetRow(BaseSheetRow):
     headquarters: Optional[str] = Field(default=None)
     ny_address: Optional[str] = Field(default=None)
     commute_home: Optional[str] = Field(default=None)
-    commute_lynn: Optional[str] = Field(default=None)
 
     notes: Optional[str] = Field(default=None)
 
