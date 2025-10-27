@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-SONNET_LATEST = "claude-sonnet-4-0"
+SONNET_LATEST = "claude-sonnet-4-5"
 DEFAULT_RECRUITER_MESSAGES = 500
 
 
@@ -890,13 +890,13 @@ def select_provider_and_model(args: argparse.Namespace) -> Tuple[str, str]:
         return "openai", model
 
     if provider == "openrouter":
-        return "openrouter", (model or "gpt-5-mini")
+        return "openrouter", (model or "gpt-5")
 
     if provider == "anthropic":
         return "anthropic", (model or SONNET_LATEST)
 
     if provider == "openai":
-        return "openai", (model or "gpt-4o")
+        return "openai", (model or "gpt-5")
 
     raise ValueError(f"Unknown provider: {provider}")
 

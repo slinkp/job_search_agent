@@ -568,9 +568,11 @@ if __name__ == "__main__":
             "gpt-4o",
             "gpt-4-turbo",
             "gpt-3.5-turbo",
+            "gpt-5",
             "claude-3-5-sonnet-20241022",
             "claude-3-7-sonnet-20250219",
             "claude-sonnet-4-20250514",
+            "claude-sonnet-4-5",
             SONNET_LATEST,
         ],
     )
