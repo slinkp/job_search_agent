@@ -1083,7 +1083,7 @@ def test_do_import_companies_from_spreadsheet(
             return existing_company
         return None
 
-    def get_by_normalized_name_side_effect(name):
+    def get_by_normalized_name_side_effect(name, **kwargs):
         if "existing" in name.lower():
             return existing_company
         elif "error" in name.lower():
