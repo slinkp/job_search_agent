@@ -585,14 +585,42 @@ class ResearchDaemon:
             logger.exception(f"Error creating basic company from message: {e}")
             return None
 
+    def _should_archive_by_status(self, current_state: str) -> bool:
+        """Determine if a company should be archived based on its current_state.
+
+        Companies with status above "80. ruled out - low comp" are treated as archived.
+
+        Args:
+            current_state: The current_state field from the spreadsheet
+
+        Returns:
+            True if the company should be archived, False otherwise
+        """
+        if not current_state:
+            return False
+
+        # Extract the numeric prefix from the status
+        try:
+            # Look for pattern like "80. ruled out - low comp"
+            if "." in current_state:
+                status_num = int(current_state.split(".")[0])
+                # Archive if status is 80 or higher
+                return status_num >= 80
+        except (ValueError, IndexError):
+            # If we can't parse the status, don't archive
+            pass
+
+        return False
+
     def do_import_companies_from_spreadsheet(self, args: dict):
         """Import companies from the spreadsheet into the database.
 
         This will:
         1. Fetch all company rows from the spreadsheet
-        2. For each company, check if it already exists in the DB by normalized name
+        2. For each company, check if it already exists in the DB by normalized name (including archived)
         3. If it exists, merge the spreadsheet data with the DB data (spreadsheet values take precedence)
         4. If it doesn't exist, create a new company in the DB
+        5. Handle archiving based on current_state (status >= 80 means archived)
 
         Args:
             args: Task arguments (not used for this task)
@@ -678,16 +706,38 @@ class ResearchDaemon:
                     company_id = models.normalize_company_name(company_name)
 
                     # Check both ways if company already exists in database
+                    # Include archived companies so we can update them
                     existing_company = self.company_repo.get(company_id=company_id)
                     if not existing_company:
                         existing_company = self.company_repo.get_by_normalized_name(
-                            company_name
+                            company_name, include_deleted=True
                         )
 
                     if existing_company:
                         # Company exists, merge data (spreadsheet data takes precedence)
                         logger.info(f"Updating existing company: {company_name}")
                         models.merge_company_data(existing_company, sheet_row)
+
+                        # Handle archiving based on current_state
+                        should_be_archived = self._should_archive_by_status(
+                            sheet_row.current_state or ""
+                        )
+                        was_archived = existing_company.status.archived_at is not None
+
+                        if should_be_archived and not was_archived:
+                            # Archive the company
+                            existing_company.status.archived_at = datetime.datetime.now(
+                                datetime.timezone.utc
+                            )
+                            logger.info(
+                                f"Archiving company {company_name} based on status: {sheet_row.current_state}"
+                            )
+                        elif not should_be_archived and was_archived:
+                            # Unarchive the company
+                            existing_company.status.archived_at = None
+                            logger.info(
+                                f"Unarchiving company {company_name} based on status: {sheet_row.current_state}"
+                            )
 
                         # Mark as imported and set timestamp
                         existing_company.status.imported_from_spreadsheet = True
@@ -705,6 +755,17 @@ class ResearchDaemon:
                             sheet_row.updated = datetime.date.today()
 
                         # Create a new company, using status from existing company if found
+                        # Check if this new company should be archived based on status
+                        should_be_archived = self._should_archive_by_status(
+                            sheet_row.current_state or ""
+                        )
+                        archived_at = None
+                        if should_be_archived:
+                            archived_at = datetime.datetime.now(datetime.timezone.utc)
+                            logger.info(
+                                f"Creating archived company {company_name} based on status: {sheet_row.current_state}"
+                            )
+
                         new_company = models.Company(
                             company_id=company_id,
                             name=company_name,
@@ -715,6 +776,7 @@ class ResearchDaemon:
                                     imported_at=datetime.datetime.now(
                                         datetime.timezone.utc
                                     ),
+                                    archived_at=archived_at,
                                 )
                             ),
                         )
