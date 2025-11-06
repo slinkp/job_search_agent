@@ -564,6 +564,18 @@ class ResearchDaemon:
             if company.recruiter_message:
                 company.recruiter_message.company_id = company_id
 
+            # Check if company already exists by company_id first (most reliable check)
+            existing_by_id = self.company_repo.get(company_id)
+            if existing_by_id is not None:
+                logger.info(
+                    f"Found existing company with company_id match: {existing_by_id.name}"
+                )
+                # Update the existing company with the new recruiter message
+                existing_by_id.recruiter_message = message
+                existing_by_id.recruiter_message.company_id = existing_by_id.company_id
+                self.company_repo.update(existing_by_id)
+                return existing_by_id
+
             # Check if company already exists by normalized name
             existing = self.company_repo.get_by_normalized_name(company.name)
             if existing:

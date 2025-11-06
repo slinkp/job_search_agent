@@ -20,7 +20,9 @@ def mock_task_manager():
 @pytest.fixture
 def mock_company_repo():
     with patch("models.company_repository", autospec=True) as mock:
-        yield mock.return_value
+        repo = mock.return_value
+        repo.get.return_value = None
+        yield repo
 
 
 @pytest.fixture
@@ -586,6 +588,42 @@ def test_create_basic_company_from_message_error(daemon, test_recruiter_messages
 
     # Verify error was handled gracefully
     assert result is None
+
+
+def test_create_basic_company_from_message_duplicate_company_id(
+    daemon, test_recruiter_messages, test_companies
+):
+    """Test creating a basic company when company_id already exists but normalized name doesn't match."""
+    message = test_recruiter_messages[0]
+    # Set sender to ensure predictable company_id generation
+    message.sender = "recruiter@example.com"
+    existing_company = test_companies[0]
+
+    # Generate the same company_id that would be created from the message
+    placeholder_name = f"Company from {message.sender}"
+    company_id = models.normalize_company_name(placeholder_name)
+
+    # Set the existing company to have the same company_id but different name
+    # (simulating a company that was created earlier and then had its name updated)
+    existing_company.company_id = company_id
+    existing_company.name = "Updated Company Name"  # Different from placeholder
+
+    # get_by_normalized_name returns None (name doesn't match)
+    daemon.company_repo.get_by_normalized_name.return_value = None
+    # But get by company_id returns the existing company
+    daemon.company_repo.get.return_value = existing_company
+
+    result = daemon.create_basic_company_from_message(message)
+
+    # Verify NO research was done
+    assert daemon.jobsearch.research_company.call_count == 0
+
+    # Verify get was called with the correct company_id
+    daemon.company_repo.get.assert_called_once_with(company_id)
+    # Verify existing company was updated (not created)
+    daemon.company_repo.update.assert_called_once()
+    daemon.company_repo.create.assert_not_called()
+    assert result == existing_company
 
 
 def test_do_ignore_and_archive(daemon, test_company):
