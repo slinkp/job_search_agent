@@ -117,16 +117,50 @@ export function aliasOverlap(companyA, companyB) {
  */
 export function findDuplicateCandidates(companies, currentCompany, query) {
   const list = Array.isArray(companies) ? companies : [];
-  const q = String(query || "").toLowerCase().trim();
+  const q = String(query || "")
+    .toLowerCase()
+    .trim();
   if (!q) return [];
   const currentId = currentCompany?.company_id;
-  return list.filter((company) => {
-    if (!company) return false;
-    if (currentId && company.company_id === currentId) return false;
-    if (company.deleted_at) return false;
+  // Build scored candidates so exact/prefix matches rank above generic substrings
+  const candidates = [];
+  for (const company of list) {
+    if (!company) continue;
+    if (currentId && company.company_id === currentId) continue;
+    if (company.deleted_at) continue;
+
     const name = String(company.name || "").toLowerCase();
-    if (name.includes(q)) return true;
     const aliases = Array.isArray(company.aliases) ? company.aliases : [];
-    return aliases.some((a) => String(a.alias || "").toLowerCase().includes(q));
+    const aliasStrings = aliases.map((a) =>
+      String(a.alias || "").toLowerCase()
+    );
+
+    let score = 0;
+    // Name scoring
+    if (name === q) score = Math.max(score, 100);
+    else if (name.startsWith(q)) score = Math.max(score, 70);
+    else if (name.includes(q)) score = Math.max(score, 40);
+
+    // Alias scoring (slightly lower than exact name equality but above name prefix/substring when exact)
+    for (const alias of aliasStrings) {
+      if (alias === q) score = Math.max(score, 90);
+      else if (alias.startsWith(q)) score = Math.max(score, 60);
+      else if (alias.includes(q)) score = Math.max(score, 35);
+    }
+
+    if (score > 0) {
+      candidates.push({ company, score });
+    }
+  }
+
+  // Sort by score desc, then shorter name first, then lexicographically
+  candidates.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const an = String(a.company.name || "");
+    const bn = String(b.company.name || "");
+    if (an.length !== bn.length) return an.length - bn.length;
+    return an.localeCompare(bn);
   });
+
+  return candidates.map((c) => c.company);
 }
