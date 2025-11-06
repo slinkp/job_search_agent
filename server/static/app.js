@@ -250,7 +250,13 @@ document.addEventListener("alpine:init", () => {
             this.currentCompanyForDuplicate,
             this.duplicateSearchQuery
           );
-          this.duplicateSearchResults = matches.slice(0, 10);
+          // Extra safety: filter out the current company by id
+          const currentId = this.currentCompanyForDuplicate?.company_id;
+          const filtered = Array.isArray(matches)
+            ? matches.filter((c) => c && c.company_id !== currentId)
+            : [];
+          // Show more results to avoid short-query crowding (e.g., "Ro")
+          this.duplicateSearchResults = filtered.slice(0, 25);
         } catch (err) {
           errorLogger.logFailedTo("search duplicates", err);
           this.showError("Failed to search for companies");
