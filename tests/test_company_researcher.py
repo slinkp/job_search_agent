@@ -90,8 +90,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_update_company_name_from_blank(self):
         """Test that company name is updated when current name is blank."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="", company_identifier="test")
         content = {"company_name": "Google Inc"}
@@ -101,8 +99,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_update_company_name_from_placeholder(self):
         """Test that company name is updated when current name is a placeholder."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Company from email", company_identifier="test")
         content = {"company_name": "Microsoft"}
@@ -112,8 +108,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_dont_update_company_name_with_placeholder(self):
         """Test that company name is not updated when new name is a placeholder."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Google", company_identifier="test")
         content = {"company_name": "Company from LinkedIn"}
@@ -123,8 +117,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_update_basic_fields(self):
         """Test that basic fields are updated correctly."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Test", company_identifier="test")
         content = {
@@ -142,8 +134,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_ignore_empty_values(self):
         """Test that empty or null values are ignored."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(
             name="Test", ny_address="existing", company_identifier="test"
@@ -155,8 +145,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_ignore_notion_host_name(self):
         """Test that company name is not updated when research returns 'Notion'."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Company from email", company_identifier="test")
         content = {"company_name": "Notion"}
@@ -166,8 +154,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_ignore_linkedin_host_name(self):
         """Test that company name is not updated when research returns 'LinkedIn'."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Tech Startup", company_identifier="test")
         content = {"company_name": "LinkedIn"}
@@ -177,8 +163,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_ignore_notion_host_name_case_insensitive(self):
         """Test that company name is not updated when research returns 'notion' (lowercase)."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Real Company", company_identifier="test")
         content = {"company_name": "notion"}
@@ -188,8 +172,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_ignore_notion_variations(self):
         """Test that company name is not updated when research returns Notion variations."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Real Company", company_identifier="test")
 
@@ -213,8 +195,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_ignore_linkedin_variations(self):
         """Test that company name is not updated when research returns LinkedIn variations."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Real Company", company_identifier="test")
 
@@ -236,8 +216,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_preserve_existing_name_when_research_returns_notion(self):
         """Test that existing valid company name is preserved when research returns 'notion'."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Google Inc", company_identifier="test")
         content = {"company_name": "notion"}
@@ -247,8 +225,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_keep_placeholder_when_research_returns_notion(self):
         """Test that placeholder name remains when research returns 'notion'."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Company from email", company_identifier="test")
         content = {"company_name": "notion"}
@@ -258,8 +234,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_accept_legitimate_names_containing_notion(self):
         """Test that legitimate company names containing 'notion' are accepted."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
 
         # These should be accepted as they're legitimate company names
@@ -284,8 +258,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_accept_legitimate_names_containing_linkedin(self):
         """Test that legitimate company names containing 'linkedin' are accepted."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
 
         # These should be accepted as they're legitimate company names
@@ -309,8 +281,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_notion_guardrails_with_other_fields(self):
         """Test that Notion guardrails work correctly when other fields are also updated."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Real Company", company_identifier="test")
         content = {
@@ -326,8 +296,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_linkedin_host_name_case_insensitive(self):
         """Test that company name is not updated when research returns 'linkedin' (lowercase)."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Another Company", company_identifier="test")
         content = {"company_name": "linkedin"}
@@ -337,8 +305,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_allow_legitimate_company_with_notion_in_name(self):
         """Test that legitimate company names containing 'notion' are still allowed."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Company from email", company_identifier="test")
         content = {"company_name": "Notion Labs Inc"}
@@ -348,8 +314,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_allow_legitimate_company_with_linkedin_in_name(self):
         """Test that legitimate company names containing 'linkedin' are still allowed."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Company from email", company_identifier="test")
         content = {"company_name": "LinkedIn Corporation"}
@@ -359,8 +323,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_prefer_existing_canonical_name_unless_placeholder(self):
         """Test that existing canonical names are preferred unless they are placeholders."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
 
         # Test 1: Existing canonical name should not be replaced
@@ -479,8 +441,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_alternate_names_are_discovered_but_not_replace_canonical(self):
         """Test that alternate names are discovered but don't replace existing canonical names."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Acme Corp")
         content = {"company_name": "Acme Corporation"}
@@ -492,8 +452,6 @@ class TestUpdateCompanyInfoFromDict:
 
     def test_alternate_names_are_tracked_during_research(self):
         """Test that alternate names are tracked during research process."""
-        from models import CompaniesSheetRow
-
         agent = TavilyRAGResearchAgent()
         company = CompaniesSheetRow(name="Acme Corp")
         content = {"company_name": "Acme Corporation"}
