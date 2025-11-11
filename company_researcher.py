@@ -17,6 +17,7 @@ from langchain_core.language_models import BaseChatModel
 from ai.client_factory import get_chat_client
 from tavily import TavilyClient  # type: ignore[import-untyped]
 
+import models
 from models import CompaniesSheetRow, is_placeholder
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -301,7 +302,7 @@ class TavilyRAGResearchAgent:
         company_info = CompaniesSheetRow(
             url=url,
             updated=datetime.date.today(),
-            current_state="10. consider applying",  # Default initial state
+            current_state=models.DEFAULT_CURRENT_STATE,
         )
 
         # Prefer plaintext from any non-LinkedIn URL found in the message, if provided

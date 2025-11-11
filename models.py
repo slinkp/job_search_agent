@@ -105,7 +105,23 @@ class Event(BaseModel):
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CURRENT_STATE = "25. consider applying"
+
+class RoleStates:
+    # This is all in sheet as of 11/11
+    # except there is a redundant "10. consider applying"
+    STAY_IN_TOUCH = "10. stay in touch"
+    ON_HOLD = "20. on hold"
+    CONSIDER_APPLYING = "25. consider applying"
+    NOTHING_OPEN = "30. nothing open"
+    RULED_OUT_LOW_COMP = "80. ruled out - low comp"
+    RULED_OUT_RELOCATE = "81. ruled out - relocate"
+    RULED_OUT_BAD_FIT = "85. ruled out - bad fit"
+    END_NO_REPLY = "90. end - no reply"
+    END_NO_OFFER_AFTER_INTERVIEW = "91. end - no offer after interview"
+    END_SCREENED_OUT = "95. end - screened out"
+
+
+DEFAULT_CURRENT_STATE = RoleStates.CONSIDER_APPLYING
 
 
 class BaseSheetRow(BaseModel):

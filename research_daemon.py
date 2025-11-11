@@ -547,7 +547,7 @@ class ResearchDaemon:
             company_details = models.CompaniesSheetRow(
                 name=placeholder_name,
                 updated=datetime.date.today(),
-                current_state="10. consider applying",  # Default initial state
+                current_state=models.DEFAULT_CURRENT_STATE,
                 email_thread_link=message.email_thread_link,
             )
 

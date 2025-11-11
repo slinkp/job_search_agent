@@ -474,7 +474,7 @@ class TestUpdateCompanyInfoFromDict:
         assert result.eng_size == 200
         assert result.total_size == 1000
         assert result.remote_policy == "hybrid"
-        assert result.current_state == "10. consider applying"
+        assert result.current_state == "25. consider applying"
         assert result.updated is not None
 
     def test_alternate_names_are_discovered_but_not_replace_canonical(self):
