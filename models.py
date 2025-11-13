@@ -2015,9 +2015,22 @@ def merge_company_data(
             continue
 
         # Special handling for date fields: use the most recent date
-        if isinstance(sheet_value, datetime.date):
-            db_value = getattr(company.details, field_name)
-            if db_value and db_value > sheet_value:
+        if isinstance(sheet_value, (datetime.date, datetime.datetime)):
+
+            def force_datetime(
+                value: datetime.date | datetime.datetime | None,
+            ) -> datetime.datetime:
+                if value is None:
+                    return datetime.datetime.fromtimestamp(0)
+                elif isinstance(value, datetime.date):
+                    return datetime.datetime(value.year, value.month, value.day)
+                elif isinstance(value, datetime.datetime):
+                    return value
+                raise ValueError(f"Invalid date type: {type(value)}")
+
+            db_dt = force_datetime(getattr(company.details, field_name))
+            sheet_dt = force_datetime(sheet_value)
+            if db_dt > sheet_dt:
                 continue
 
         # Special handling for notes field - append instead of replace
