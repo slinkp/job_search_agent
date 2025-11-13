@@ -1411,6 +1411,57 @@ def test_merge_company_data_date_fields():
 
 
 @freeze_time("2023-01-15")
+def test_merge_company_data_date_datetime_comparison():
+    """Test merging when db has datetime.datetime and sheet has datetime.date.
+
+    This reproduces the bug: '>' not supported between instances of
+    'datetime.date' and 'datetime.datetime'
+    """
+    # Create existing company with datetime.datetime in the updated field
+    existing_company = Company(
+        company_id="test-corp",
+        name="Test Corp",
+        details=CompaniesSheetRow(
+            name="Test Corp",
+            type="Tech",
+            # Set updated to a datetime.datetime instead of datetime.date
+            updated=datetime.datetime(
+                2022, 12, 1, 10, 30, 0, tzinfo=datetime.timezone.utc
+            ),
+        ),
+        status=CompanyStatus(),
+    )
+
+    # Create spreadsheet row with datetime.date in updated field
+    sheet_row = CompaniesSheetRow(
+        name="Test Corp",
+        type="AI",
+        # Spreadsheet has date.date (older than db datetime)
+        updated=date(2022, 11, 1),
+    )
+
+    # This should not raise an error about comparing date and datetime
+    merged_company = merge_company_data(existing_company, sheet_row)
+
+    # Should keep the newer datetime from db (even though it's a datetime)
+    assert merged_company.details.updated == datetime.datetime(
+        2022, 12, 1, 10, 30, 0, tzinfo=datetime.timezone.utc
+    )
+    assert merged_company.details.type == "AI"  # Non-date fields should still update
+
+    # Now test the opposite: sheet has newer date than db datetime
+    sheet_row_newer = CompaniesSheetRow(
+        name="Test Corp",
+        updated=date(2023, 1, 10),  # Newer than db datetime
+    )
+
+    merged_company = merge_company_data(existing_company, sheet_row_newer)
+
+    # Should use the newer date from the spreadsheet
+    assert merged_company.details.updated == date(2023, 1, 10)
+
+
+@freeze_time("2023-01-15")
 def test_merge_company_data_notes_field():
     """Test merging data with notes field."""
     # Create existing company with notes
