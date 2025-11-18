@@ -455,15 +455,28 @@ class GmailRepliesSearcher:
             # Create message
             message = MIMEText(reply_text)
 
-            # Extract email address from From header to avoid character encoding issues
-            from_header = headers.get("From", "")
-            # Parse email address from "Display Name <email@domain.com>" format
-            email_match = re.search(r"<([^>]+)>", from_header)
-            if email_match:
-                to_email = email_match.group(1)
+            # Extract email address - use Reply-To if present, otherwise use From
+            # This is important for LinkedIn messages and other services that use
+            # different Reply-To addresses to avoid bounces
+            def extract_email_from_header(header_value: str) -> str:
+                """Extract email address from header, handling display name format."""
+                if not header_value:
+                    return ""
+                # Parse email address from "Display Name <email@domain.com>" format
+                email_match = re.search(r"<([^>]+)>", header_value)
+                if email_match:
+                    return email_match.group(1)
+                else:
+                    # If no angle brackets, assume the whole thing is an email
+                    return header_value.strip()
+
+            # Check Reply-To first, fall back to From
+            reply_to_header = headers.get("Reply-To", "")
+            if reply_to_header:
+                to_email = extract_email_from_header(reply_to_header)
             else:
-                # If no angle brackets, assume the whole thing is an email
-                to_email = from_header.strip()
+                from_header = headers.get("From", "")
+                to_email = extract_email_from_header(from_header)
 
             message["To"] = to_email
             message["Subject"] = subject

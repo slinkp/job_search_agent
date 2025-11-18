@@ -611,6 +611,140 @@ class TestGmailRepliesSearcher:
         decoded_message = base64.urlsafe_b64decode(raw_message).decode("utf-8")
         assert "To: simple@example.com" in decoded_message
 
+    def test_send_reply_uses_reply_to_header(self, gmail_searcher):
+        """Test that send_reply uses Reply-To header when present, not From header."""
+        # Setup
+        thread_id = "thread123"
+        message_id = "msg456"
+        reply_text = "Thank you for your message"
+
+        # Mock message with both From and Reply-To headers
+        # This simulates LinkedIn messages that have a different Reply-To
+        mock_message_with_reply_to = {
+            "id": "msg456",
+            "threadId": "thread123",
+            "internalDate": "1617235200000",
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "Job Opportunity"},
+                    {"name": "From", "value": "noreply@linkedin.com"},
+                    {"name": "Reply-To", "value": "recruiter@company.com"},
+                    {"name": "Message-ID", "value": "<msg123@example.com>"},
+                ],
+                "body": {"data": base64.b64encode(b"Message content").decode()},
+            },
+        }
+
+        gmail_searcher.service.users().messages().get.return_value.execute.return_value = (
+            mock_message_with_reply_to
+        )
+        gmail_searcher.service.users().messages().send.return_value.execute.return_value = {
+            "id": "sent123"
+        }
+
+        # Call the method
+        result = gmail_searcher.send_reply(thread_id, message_id, reply_text)
+
+        # Assertions
+        assert result is True
+
+        # Verify the message was constructed correctly
+        send_call = gmail_searcher.service.users().messages().send.call_args
+        assert send_call is not None
+
+        # Check that the threadId was included
+        body_arg = send_call[1]["body"]
+        assert body_arg["threadId"] == thread_id
+
+        # Verify that the raw message uses Reply-To address, not From address
+        raw_message = body_arg["raw"]
+        decoded_message = base64.urlsafe_b64decode(raw_message).decode("utf-8")
+        assert "To: recruiter@company.com" in decoded_message
+        assert "To: noreply@linkedin.com" not in decoded_message
+
+    def test_send_reply_uses_reply_to_with_display_name(self, gmail_searcher):
+        """Test that send_reply correctly extracts email from Reply-To header with display name."""
+        # Setup
+        thread_id = "thread123"
+        message_id = "msg456"
+        reply_text = "Thank you for your message"
+
+        # Mock message with Reply-To header containing display name
+        mock_message_with_reply_to_display = {
+            "id": "msg456",
+            "threadId": "thread123",
+            "internalDate": "1617235200000",
+            "payload": {
+                "headers": [
+                    {"name": "Subject", "value": "Job Opportunity"},
+                    {"name": "From", "value": "noreply@linkedin.com"},
+                    {
+                        "name": "Reply-To",
+                        "value": '"John Recruiter" <john.recruiter@company.com>',
+                    },
+                    {"name": "Message-ID", "value": "<msg123@example.com>"},
+                ],
+                "body": {"data": base64.b64encode(b"Message content").decode()},
+            },
+        }
+
+        gmail_searcher.service.users().messages().get.return_value.execute.return_value = (
+            mock_message_with_reply_to_display
+        )
+        gmail_searcher.service.users().messages().send.return_value.execute.return_value = {
+            "id": "sent123"
+        }
+
+        # Call the method
+        result = gmail_searcher.send_reply(thread_id, message_id, reply_text)
+
+        # Assertions
+        assert result is True
+
+        # Verify the message was constructed correctly
+        send_call = gmail_searcher.service.users().messages().send.call_args
+        assert send_call is not None
+
+        # Verify that the raw message uses Reply-To email address (not display name)
+        raw_message = send_call[1]["body"]["raw"]
+        decoded_message = base64.urlsafe_b64decode(raw_message).decode("utf-8")
+        assert "To: john.recruiter@company.com" in decoded_message
+        assert "To: noreply@linkedin.com" not in decoded_message
+        assert "John Recruiter" not in decoded_message
+
+    def test_send_reply_uses_from_when_no_reply_to(self, gmail_searcher, mock_message):
+        """Test that send_reply falls back to From header when Reply-To is not present."""
+        # Setup
+        thread_id = "thread123"
+        message_id = "msg456"
+        reply_text = "Thank you for your message"
+
+        gmail_searcher.service.users().messages().get.return_value.execute.return_value = (
+            mock_message
+        )
+        gmail_searcher.service.users().messages().send.return_value.execute.return_value = {
+            "id": "sent123"
+        }
+
+        # Call the method
+        result = gmail_searcher.send_reply(thread_id, message_id, reply_text)
+
+        # Assertions
+        assert result is True
+
+        # Verify the message was constructed correctly
+        send_call = gmail_searcher.service.users().messages().send.call_args
+        assert send_call is not None
+
+        # Check that the threadId was included
+        body_arg = send_call[1]["body"]
+        assert body_arg["threadId"] == thread_id
+
+        # Verify that the raw message uses From address when Reply-To is absent
+        raw_message = body_arg["raw"]
+        decoded_message = base64.urlsafe_b64decode(raw_message).decode("utf-8")
+        assert "To: recruiter@example.com" in decoded_message
+
 
 class TestBatchMessageFetching:
     """Test the optimized batch message fetching functionality."""
