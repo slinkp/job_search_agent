@@ -191,17 +191,19 @@ export class TaskPollingService {
             if (company) {
               company[errorField] = task.error;
             }
+            trackingSet.delete(trackingKey);
+            throw new Error(task.error || "Task failed");
           }
 
           trackingSet.delete(trackingKey);
-          break;
+          return task;
         }
 
         await this._sleep(1000);
       } catch (err) {
         console.error(`Failed to poll ${taskType} status:`, err);
         trackingSet.delete(trackingKey);
-        break;
+        throw err;
       }
     }
   }
