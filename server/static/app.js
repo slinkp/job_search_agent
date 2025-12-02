@@ -7,6 +7,7 @@ import {
   normalizeCompanies,
   sortCompanies,
   formatResearchErrors as utilFormatResearchErrors,
+  normalizeCompanyNameForComparison,
 } from "./company-utils.js";
 import { EmailScanningService } from "./email-scanning.js";
 import { TaskPollingService } from "./task-polling.js";
@@ -1092,6 +1093,17 @@ document.addEventListener("alpine:init", () => {
 
       isMakingCanonical(companyId, aliasId) {
         return this.makingCanonical.has(`${companyId}-${aliasId}`);
+      },
+
+      isCanonicalAlias(company, alias) {
+        if (!company || !alias) return false;
+        const companyName = company.name || "";
+        const aliasName = alias.alias || "";
+        if (!companyName || !aliasName) return false;
+        return (
+          normalizeCompanyNameForComparison(companyName) ===
+          normalizeCompanyNameForComparison(aliasName)
+        );
       },
     };
   });
