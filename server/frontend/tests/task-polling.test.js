@@ -240,7 +240,9 @@ describe("TaskPollingService", () => {
           }),
       });
 
-      await service.pollResearchStatus(company);
+      await expect(service.pollResearchStatus(company)).rejects.toThrow(
+        "API timeout"
+      );
 
       expect(company.research_status).toBe("failed");
       expect(company.research_error).toBe("API timeout");
@@ -259,7 +261,9 @@ describe("TaskPollingService", () => {
       // Mock network error
       global.fetch.mockRejectedValueOnce(new Error("Network error"));
 
-      await service.pollResearchStatus(company);
+      await expect(service.pollResearchStatus(company)).rejects.toThrow(
+        "Network error"
+      );
 
       expect(service.isResearching(company)).toBe(false);
     });

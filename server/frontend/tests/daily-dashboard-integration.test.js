@@ -286,8 +286,20 @@ describe("Daily Dashboard Integration", () => {
             }
 
             const data = await response.json();
+            message.message_task_id = data.task_id;
+            message.message_status = data.status;
 
-            // Simulate polling completion
+            // Simulate polling for task completion
+            const pollResponse = await fetch(`/api/tasks/${data.task_id}`);
+            const taskResult = await pollResponse.json();
+            message.message_status = taskResult.status;
+
+            if (taskResult.status === "failed") {
+              message.message_error = taskResult.error;
+              throw new Error(taskResult.error || "Task failed");
+            }
+
+            // Simulate polling completion for successful tasks
             message.reply_message = "Generated reply content";
             message.reply_status = "generated";
 
@@ -381,6 +393,10 @@ describe("Daily Dashboard Integration", () => {
           }) // Generate reply
           .mockResolvedValueOnce({
             ok: true,
+            json: () => Promise.resolve({ status: "completed" }),
+          }) // Poll task status
+          .mockResolvedValueOnce({
+            ok: true,
             json: () =>
               Promise.resolve({ reply_message: "Updated reply content" }),
           }); // Save reply
@@ -440,6 +456,49 @@ describe("Daily Dashboard Integration", () => {
         expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
       });
 
+      it("should show error message when task fails during execution", async () => {
+        const mockMessage = {
+          message_id: "msg-fail-123",
+          message: "Test message content",
+          reply_status: "none",
+        };
+
+        // Mock successful task creation
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              task_id: "task-fail-456",
+              status: "pending",
+            }),
+        });
+
+        // Mock task polling - task fails during execution
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              status: "failed",
+              error:
+                "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}}",
+            }),
+        });
+
+        // Mock final loadMessages call
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+
+        // This should throw an error, not show success
+        await expect(
+          dailyDashboard.generateReply(mockMessage)
+        ).rejects.toThrow();
+
+        // Verify loading state is cleared
+        expect(dailyDashboard.isGeneratingMessage(mockMessage)).toBe(false);
+      });
+
       it("should handle save API failure gracefully", async () => {
         const mockMessage = {
           message_id: "msg-123",
@@ -474,11 +533,16 @@ describe("Daily Dashboard Integration", () => {
         };
 
         // Mock API response for regenerate
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({ task_id: "task-456", status: "pending" }),
-        });
+        mockFetch
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () =>
+              Promise.resolve({ task_id: "task-456", status: "pending" }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () => Promise.resolve({ status: "completed" }),
+          }); // Poll task status
 
         // Verify initial state
         expect(mockMessage.reply_message).toBe("Existing reply content");
@@ -667,6 +731,12 @@ describe("Daily Dashboard Integration", () => {
           });
         });
 
+        // Mock task polling response
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ status: "completed" }),
+        });
+
         // Start generation
         generatePromise = dailyDashboard.generateReply(mockMessage);
 
@@ -741,7 +811,11 @@ describe("Daily Dashboard Integration", () => {
             ok: true,
             json: () =>
               Promise.resolve({ task_id: "task-2", status: "pending" }),
-          });
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () => Promise.resolve({ status: "completed" }),
+          }); // Poll task status for generateReply
 
         // Start concurrent operations
         const generatePromise = dailyDashboard.generateReply(message1);
