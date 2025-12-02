@@ -829,6 +829,54 @@ def test_do_research_with_unknown_company_name(mock_spreadsheet_upsert, daemon):
     mock_spreadsheet_upsert.assert_called_once_with(error_company.details, daemon.args)
 
 
+def test_do_research_preserves_good_name_over_placeholder(
+    mock_spreadsheet_upsert, daemon
+):
+    """Test that research doesn't overwrite a good canonical name with a placeholder.
+
+    This reproduces issue #100 where a manually-set canonical alias like "Venmo"
+    gets replaced with a placeholder like "<UNKNOWN 1764096385324692>" after research.
+    """
+    # Create existing company with a good canonical name that was manually set
+    existing_company = Company(
+        company_id="venmo",
+        name="Venmo",
+        details=CompaniesSheetRow(name="Venmo"),
+        status=CompanyStatus(),
+    )
+
+    args = {"company_id": "venmo"}
+    daemon.company_repo.get.return_value = existing_company
+
+    # Research returns a placeholder name (happens when research can't find company name)
+    research_result = Company(
+        company_id="venmo",
+        name="<UNKNOWN 1764096385324692>",
+        details=CompaniesSheetRow(
+            name="<UNKNOWN 1764096385324692>",
+            headquarters="San Francisco",  # Some other details were found
+        ),
+        status=CompanyStatus(),
+    )
+    daemon.jobsearch.research_company.return_value = research_result
+
+    # Do research
+    result = daemon.do_research(args)
+
+    # The good name should be preserved, not replaced with placeholder
+    assert result.name == "Venmo"
+    assert result.details.name == "Venmo"
+
+    # But other details from research should be updated
+    assert result.details.headquarters == "San Francisco"
+
+    # Verify update was called with the preserved name
+    daemon.company_repo.update.assert_called_once()
+    updated_company = daemon.company_repo.update.call_args[0][0]
+    assert updated_company.name == "Venmo"
+    assert updated_company.details.name == "Venmo"
+
+
 def test_generate_company_id(daemon):
     """Test the company ID generation function."""
     assert daemon._generate_company_id("Test Corp") == "test-corp"

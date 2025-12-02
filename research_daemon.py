@@ -231,6 +231,20 @@ class ResearchDaemon:
             if existing:
                 # Update existing company with new research results
                 logger.info(f"Updating company {company_name or existing.name}")
+
+                # Preserve good existing name if research returned a placeholder
+                # This prevents overwriting manually-set canonical names (issue #100)
+                if models.is_placeholder(company.name) and not models.is_placeholder(
+                    existing.name
+                ):
+                    logger.info(
+                        f"Preserving existing good name '{existing.name}' "
+                        f"instead of placeholder '{company.name}'"
+                    )
+                    # Keep the existing name in details as well
+                    company.details.name = existing.name
+                    company.name = existing.name
+
                 existing.details = company.details
                 existing.name = company.name or existing.name
                 existing.status.research_errors = research_errors
@@ -244,6 +258,20 @@ class ResearchDaemon:
                     logger.info(
                         f"Found existing company with normalized name match: {normalized_match.name}"
                     )
+
+                    # Preserve good existing name if research returned a placeholder
+                    # This prevents overwriting manually-set canonical names (issue #100)
+                    if models.is_placeholder(company.name) and not models.is_placeholder(
+                        normalized_match.name
+                    ):
+                        logger.info(
+                            f"Preserving existing good name '{normalized_match.name}' "
+                            f"instead of placeholder '{company.name}'"
+                        )
+                        # Keep the existing name in details as well
+                        company.details.name = normalized_match.name
+                        company.name = normalized_match.name
+
                     normalized_match.details = company.details
                     normalized_match.name = company.name or normalized_match.name
                     normalized_match.status.research_errors = research_errors
