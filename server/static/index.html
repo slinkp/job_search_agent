@@ -261,15 +261,17 @@
                       <template x-if="!alias.is_active">
                         <span>(Inactive)</span>
                       </template>
-                      <button 
-                        @click="makeAliasCanonical(company.company_id, alias.alias_id)"
-                        :disabled="isMakingCanonical(company.company_id, alias.alias_id)"
-                        class="btn-small outline"
-                        title="Make this the canonical name"
-                      >
-                        <span x-show="!isMakingCanonical(company.company_id, alias.alias_id)">Make Canonical</span>
-                        <span x-show="isMakingCanonical(company.company_id, alias.alias_id)" class="loading-spinner"></span>
-                      </button>
+                      <template x-if="!isCanonicalAlias(company, alias)">
+                        <button 
+                          @click="makeAliasCanonical(company.company_id, alias.alias_id)"
+                          :disabled="isMakingCanonical(company.company_id, alias.alias_id)"
+                          class="btn-small outline"
+                          title="Make this the canonical name"
+                        >
+                          <span x-show="!isMakingCanonical(company.company_id, alias.alias_id)">Make Canonical</span>
+                          <span x-show="isMakingCanonical(company.company_id, alias.alias_id)" class="loading-spinner"></span>
+                        </button>
+                      </template>
                     </li>
                   </template>
                 </ul>

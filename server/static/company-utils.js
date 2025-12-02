@@ -164,3 +164,22 @@ export function findDuplicateCandidates(companies, currentCompany, query) {
 
   return candidates.map((c) => c.company);
 }
+
+/**
+ * Normalize a company name for equality comparison on the frontend.
+ *
+ * This intentionally mirrors the spirit (but not the exact details) of the
+ * backend `normalize_company_name` helper:
+ * - trims whitespace
+ * - lowercases
+ * - normalizes "&" to "and"
+ * - collapses internal whitespace
+ */
+export function normalizeCompanyNameForComparison(name) {
+  if (!name) return "";
+  let result = String(name).trim().toLowerCase();
+  result = result.replace(/&/g, "and");
+  // Collapse any internal whitespace to a single space
+  result = result.replace(/\s+/g, " ");
+  return result;
+}

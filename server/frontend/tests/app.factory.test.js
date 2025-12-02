@@ -259,6 +259,25 @@ describe("app/companyList factory-capture", () => {
     expect(rawHtml).toContain("x-text=\"' (' + alias.source + ')'\"");
     expect(rawHtml).toContain('x-if="!alias.is_active"');
     expect(rawHtml).toContain("(Inactive)");
+    // The Make Canonical button should be guarded so we don't show it for the current canonical name
+    expect(rawHtml).toContain('x-if="!isCanonicalAlias(company, alias)"');
+    expect(rawHtml).toContain("Make Canonical");
+  });
+
+  it("exposes isCanonicalAlias helper to compare alias vs canonical name", async () => {
+    const mod = await import("../../static/app.js");
+    expect(mod).toBeTruthy();
+    document.dispatchEvent(new Event("alpine:init"));
+
+    const instance = captured.companyList ? captured.companyList() : null;
+    expect(instance).toBeTruthy();
+
+    const company = { name: "Acme Corp" };
+    const canonicalAlias = { alias: "acme   corp" };
+    const otherAlias = { alias: "Acme Holdings" };
+
+    expect(instance.isCanonicalAlias(company, canonicalAlias)).toBe(true);
+    expect(instance.isCanonicalAlias(company, otherAlias)).toBe(false);
   });
 
   it("should have HTML structure for add alias form", () => {

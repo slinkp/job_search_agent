@@ -4,6 +4,7 @@ import {
   formatResearchErrors,
   normalizeCompanies,
   normalizeCompany,
+  normalizeCompanyNameForComparison,
   sortCompanies,
 } from "../../static/company-utils.js";
 
@@ -124,5 +125,33 @@ describe("company-utils: filterCompanies & sortCompanies", () => {
     ]);
     expect(list[0].details).toEqual({});
     expect(list[1].details).toEqual({ a: 1 });
+  });
+});
+
+describe("company-utils: normalizeCompanyNameForComparison", () => {
+  it("handles nullish and basic strings", () => {
+    expect(normalizeCompanyNameForComparison(null)).toBe("");
+    expect(normalizeCompanyNameForComparison(undefined)).toBe("");
+    expect(normalizeCompanyNameForComparison("  Acme Corp  ")).toBe(
+      "acme corp",
+    );
+  });
+
+  it("normalizes case, ampersand, and whitespace", () => {
+    expect(normalizeCompanyNameForComparison("Acme & Co")).toBe("acme and co");
+    expect(normalizeCompanyNameForComparison(" acme   and\tco ")).toBe(
+      "acme and co",
+    );
+    expect(
+      normalizeCompanyNameForComparison("ACME   CORPORATION"),
+    ).toBe("acme corporation");
+  });
+
+  it("produces equal strings for equivalent names", () => {
+    const a = normalizeCompanyNameForComparison("Acme Corp");
+    const b = normalizeCompanyNameForComparison("  acme corp ");
+    const c = normalizeCompanyNameForComparison("ACME   CORP");
+    expect(a).toBe(b);
+    expect(b).toBe(c);
   });
 });
