@@ -1529,7 +1529,7 @@ class CompanyRepository:
                 for comp in companies:
                     cursor = conn.execute(
                         """
-                        SELECT alias, source, is_active
+                        SELECT id, alias, source, is_active
                         FROM company_aliases
                         WHERE company_id = ?
                         ORDER BY source, alias
@@ -1538,9 +1538,10 @@ class CompanyRepository:
                     )
                     aliases = [
                         {
-                            "alias": row[0],
-                            "source": row[1],
-                            "is_active": bool(row[2]),
+                            "alias_id": row[0],
+                            "alias": row[1],
+                            "source": row[2],
+                            "is_active": bool(row[3]),
                         }
                         for row in cursor.fetchall()
                     ]

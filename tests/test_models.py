@@ -963,6 +963,71 @@ class TestCompanyRepository:
         active_aliases = repo.list_aliases("test-company", active_only=True)
         assert active_aliases == []
 
+    def test_get_all_includes_alias_id_field(self, clean_test_db):
+        """Test that get_all with include_aliases=True returns alias_id field.
+
+        This is a regression test for issue #101 where aliases were not shown
+        on the front page because get_all() was missing the alias_id field
+        that get() includes.
+        """
+        repo = clean_test_db
+
+        # Create two test companies
+        company1 = Company(
+            company_id="zillow",
+            name="Zillow",
+            details=CompaniesSheetRow(name="Zillow"),
+        )
+        company2 = Company(
+            company_id="other-company",
+            name="Other Company",
+            details=CompaniesSheetRow(name="Other Company"),
+        )
+        repo.create(company1)
+        repo.create(company2)
+
+        # Create aliases for the first company
+        repo.create_alias("zillow", "Zillow Group", "auto")
+        repo.create_alias("zillow", "Zillow StreetEasy", "auto")
+
+        # Get the company using get() with include_aliases
+        company_via_get = repo.get("zillow", include_aliases=True)
+        get_aliases = getattr(company_via_get, "_aliases", None)
+
+        # Get companies using get_all() with include_aliases
+        companies_via_get_all = repo.get_all(include_aliases=True)
+        zillow_from_get_all = [
+            c for c in companies_via_get_all if c.company_id == "zillow"
+        ][0]
+        get_all_aliases = getattr(zillow_from_get_all, "_aliases", None)
+
+        # Both should have aliases
+        assert get_aliases is not None, "get() should return aliases"
+        assert get_all_aliases is not None, "get_all() should return aliases"
+
+        # Both should have the same number of aliases
+        assert len(get_aliases) == 2
+        assert len(get_all_aliases) == 2
+
+        # CRITICAL: Both should have the same fields including alias_id
+        # This is what was missing and caused the frontend bug
+        get_fields = set(get_aliases[0].keys())
+        get_all_fields = set(get_all_aliases[0].keys())
+
+        assert get_fields == get_all_fields, (
+            f"get() and get_all() should return the same alias fields. "
+            f"get() has {get_fields}, get_all() has {get_all_fields}"
+        )
+
+        # Verify that alias_id is present in both
+        assert "alias_id" in get_aliases[0], "get() should include alias_id"
+        assert "alias_id" in get_all_aliases[0], "get_all() should include alias_id"
+
+        # Verify all expected fields are present
+        expected_fields = {"alias_id", "alias", "source", "is_active"}
+        assert get_fields == expected_fields
+        assert get_all_fields == expected_fields
+
 
 class TestCompaniesSheetRow:
 
