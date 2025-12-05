@@ -245,7 +245,8 @@ requests.exceptions.MissingSchema: Invalid URL 'www.stiorg.com': No scheme suppl
 These are valuable but not on the critical path to daily use:
 
 - **Additional job sources** (LinkedIn alerts, Slack channels, HN Hiring)
-- **Advanced ML for company fit classification** (Random Forest, synthetic data generation; this was left off as WIP in `company_classifier/`)
+- **Advanced ML for company fit classification** (Random Forest, synthetic data
+  generation; this was left off as WIP in `company_classifier/`). See issue https://github.com/slinkp/job_search_agent/issues/102
 - **Additional contact sources beyond LinkIn** (Recurse connections)
 - **Attachment processing** (PDF/DOC parsing)
 - **Advanced monitoring** (model performance tracking)
