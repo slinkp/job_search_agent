@@ -649,21 +649,26 @@ class JobSearch:
             equities = [entry["equity"] for entry in salary_data if entry["equity"]]
             bonuses = [entry["bonus"] for entry in salary_data if entry["bonus"]]
 
+            # Store compensation in thousands (e.g., 200 for $200k)
             row.total_comp = (
-                decimal.Decimal(int(sum(total_comps) / len(total_comps)))
+                decimal.Decimal(round(sum(total_comps) / len(total_comps) / 1000))
                 if total_comps
                 else None
             )
             row.base = (
-                decimal.Decimal(int(sum(base_salaries) / len(base_salaries)))
+                decimal.Decimal(round(sum(base_salaries) / len(base_salaries) / 1000))
                 if base_salaries
                 else None
             )
             row.rsu = (
-                decimal.Decimal(int(sum(equities) / len(equities))) if equities else None
+                decimal.Decimal(round(sum(equities) / len(equities) / 1000))
+                if equities
+                else None
             )
             row.bonus = (
-                decimal.Decimal(int(sum(bonuses) / len(bonuses))) if bonuses else None
+                decimal.Decimal(round(sum(bonuses) / len(bonuses) / 1000))
+                if bonuses
+                else None
             )
         else:
             logger.warning(f"No salary data found for {row.name}")

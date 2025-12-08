@@ -32,15 +32,16 @@ def is_good_fit(company_info: CompaniesSheetRow) -> bool:
     reasons = []
 
     # 1. Compensation - Target $500k total comp
+    # Note: compensation values are stored in thousands (e.g., 500 for $500k)
     max_score += 10
     if company_info.total_comp:
-        if company_info.total_comp >= 500000:
+        if company_info.total_comp >= 500:
             score += 10
             reasons.append("Excellent compensation (≥$500k)")
-        elif company_info.total_comp >= 400000:
+        elif company_info.total_comp >= 400:
             score += 8
             reasons.append("Very good compensation (≥$400k)")
-        elif company_info.total_comp >= 325000:
+        elif company_info.total_comp >= 325:
             score += 5
             reasons.append("Good compensation (≥$300k)")
         else:

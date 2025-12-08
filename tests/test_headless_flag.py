@@ -106,9 +106,17 @@ def test_no_headless_flag_propagates_to_compensation(monkeypatch):
 
     row = models.CompaniesSheetRow(name="Gusto")
     updated = js.research_compensation(row)
-    # Ensure numeric fields were computed
+    # Ensure numeric fields were computed and stored in thousands
     assert updated.total_comp is not None
     assert updated.base is not None
+    # Values should be in thousands: 210000 average -> 210
+    assert updated.total_comp == 210
+    # Base: 155000 average -> 155
+    assert updated.base == 155
+    # RSU: 45000 average -> 45
+    assert updated.rsu == 45
+    # Bonus: 10000 average -> 10
+    assert updated.bonus == 10
 
 
 def test_no_headless_flag_propagates_to_linkedin(monkeypatch):

@@ -11,7 +11,7 @@ class TestCompanyFitHeuristic:
         """Test a company that should score very highly."""
         company_info = CompaniesSheetRow(
             name="AI Innovations Inc",
-            total_comp=decimal.Decimal("520000"),
+            total_comp=decimal.Decimal("520"),
             remote_policy="Remote-first",
             ai_notes="Leading AI company focused on generative artificial intelligence and machine learning solutions",
         )
@@ -22,7 +22,7 @@ class TestCompanyFitHeuristic:
         """Test a company that should score poorly."""
         company_info = CompaniesSheetRow(
             name="Old Corp",
-            total_comp=decimal.Decimal("150000"),
+            total_comp=decimal.Decimal("150"),
             remote_policy="Office-only",
             ai_notes="Traditional manufacturing company with no technology focus",
         )
@@ -33,7 +33,7 @@ class TestCompanyFitHeuristic:
         """Test a company that should score around the threshold."""
         company_info = CompaniesSheetRow(
             name="Tech Corp",
-            total_comp=decimal.Decimal("350000"),
+            total_comp=decimal.Decimal("350"),
             remote_policy="Hybrid",
             ai_notes="Some AI integration in products",
         )
@@ -58,7 +58,7 @@ class TestCompanyFitHeuristic:
         """Test that companies with good compensation and remote policy score well."""
         company_info = CompaniesSheetRow(
             name="Climate Solutions",
-            total_comp=decimal.Decimal("450000"),
+            total_comp=decimal.Decimal("450"),
             remote_policy="Remote",
             ai_notes="AI for climate change solutions using machine learning",
         )
@@ -70,7 +70,7 @@ class TestCompanyFitHeuristic:
         # Test with many AI keywords (should score 8 points for AI)
         company_info_high_ai = CompaniesSheetRow(
             name="AI Corp",
-            total_comp=decimal.Decimal("400000"),
+            total_comp=decimal.Decimal("400"),
             remote_policy="Remote",
             ai_notes="Generative AI machine learning LLM development",
             notes="Uses artificial intelligence and other AI models extensively",
@@ -79,7 +79,7 @@ class TestCompanyFitHeuristic:
         # Test with minimal AI keywords (should score less for AI)
         company_info_low_ai = CompaniesSheetRow(
             name="Traditional Corp",
-            total_comp=decimal.Decimal("400000"),
+            total_comp=decimal.Decimal("400"),
             remote_policy="Remote",
             ai_notes="Traditional software development",
             notes="No technology focus",
@@ -98,7 +98,7 @@ class TestCompanyFitHeuristic:
         # Test high compensation
         high_comp = CompaniesSheetRow(
             name="Test Corp",
-            total_comp=decimal.Decimal("550000"),
+            total_comp=decimal.Decimal("550"),
             remote_policy="Remote",
             ai_notes="AI company with machine learning",
         )
@@ -106,7 +106,7 @@ class TestCompanyFitHeuristic:
         # Test low compensation
         low_comp = CompaniesSheetRow(
             name="Test Corp",
-            total_comp=decimal.Decimal("180000"),
+            total_comp=decimal.Decimal("180"),
             remote_policy="Remote",
             ai_notes="AI company with machine learning",
         )
@@ -133,7 +133,7 @@ class TestCompanyFitHeuristic:
         for policy in policies:
             company_info = CompaniesSheetRow(
                 name=f"Corp with {policy}",
-                total_comp=decimal.Decimal("400000"),
+                total_comp=decimal.Decimal("400"),
                 remote_policy=policy,
                 ai_notes="AI company with machine learning",
             )
@@ -145,7 +145,7 @@ class TestCompanyFitHeuristic:
         """Test that the method produces expected logging output."""
         company_info = CompaniesSheetRow(
             name="Test Corp",
-            total_comp=decimal.Decimal("400000"),
+            total_comp=decimal.Decimal("400"),
             remote_policy="Remote",
             ai_notes="AI company with machine learning",
         )
@@ -162,17 +162,18 @@ class TestCompanyFitHeuristic:
     def test_compensation_scoring_ranges(self):
         """Test specific compensation scoring ranges."""
         # Updated for new max score of 26 points (10 comp + 8 remote + 8 AI), 70% threshold = 18.2 points
+        # Note: compensation values are in thousands (e.g., 550 = $550k)
         test_cases = [
             (
-                decimal.Decimal("550000"),
+                decimal.Decimal("550"),
                 True,
             ),  # 10 + 8 + 6 = 24 points (92%) - should pass
             (
-                decimal.Decimal("450000"),
+                decimal.Decimal("450"),
                 True,
             ),  # 8 + 8 + 6 = 22 points (85%) - should pass
             (
-                decimal.Decimal("180000"),
+                decimal.Decimal("180"),
                 False,
             ),  # 2 + 8 + 6 = 16 points (62%) - should fail
         ]
@@ -195,7 +196,7 @@ class TestCompanyFitHeuristic:
         # Test with 3+ AI keywords (should score highest - 8 points)
         high_ai = CompaniesSheetRow(
             name="AI Corp",
-            total_comp=decimal.Decimal("400000"),
+            total_comp=decimal.Decimal("400"),
             remote_policy="Remote",
             ai_notes="artificial intelligence machine learning generative AI",
         )
@@ -203,7 +204,7 @@ class TestCompanyFitHeuristic:
         # Test with 1 AI keyword (should score lower - 4 points)
         low_ai = CompaniesSheetRow(
             name="Traditional Corp",
-            total_comp=decimal.Decimal("400000"),
+            total_comp=decimal.Decimal("400"),
             remote_policy="Remote",
             ai_notes="some AI integration",
         )
@@ -211,7 +212,7 @@ class TestCompanyFitHeuristic:
         # Test with no AI keywords (should score lowest - 0 points)
         no_ai = CompaniesSheetRow(
             name="Old Corp",
-            total_comp=decimal.Decimal("400000"),
+            total_comp=decimal.Decimal("400"),
             remote_policy="Remote",
             ai_notes="traditional software development",
         )
@@ -231,7 +232,7 @@ class TestCompanyFitHeuristic:
         for level in ["Staff Engineer", "Senior Engineer", "Junior Engineer"]:
             company_info = CompaniesSheetRow(
                 name="Test Corp",
-                total_comp=decimal.Decimal("400000"),
+                total_comp=decimal.Decimal("400"),
                 remote_policy="Remote",
                 ai_notes="AI machine learning company",
                 level_equiv=level,
