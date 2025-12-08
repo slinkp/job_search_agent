@@ -1,0 +1,9 @@
+---
+description: Disallow cd in terminal commands
+alwaysApply: true
+---
+
+Avoid using `cd` in terminal commands. It is disallowed
+in your sandbox and will fail.
+Assume you are in the root of the project directory.
+If unsure, use `pwd` to check.
