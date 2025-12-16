@@ -149,8 +149,66 @@ class LinkedInSearcher:
             self.page.goto(search_url)
             self._wait()
 
-            # Click the Current company filter button
-            self.page.get_by_role("button", name="Current company filter").click()
+            # Click the Current company filter - try multiple selector variations
+            # LinkedIn changed from a button to a label element
+            company_filter_clicked = False
+
+            # Try direct text-based label selector first (most reliable for current UI)
+            try:
+                print("Trying to find label containing 'Current companies'")
+                element = (
+                    self.page.locator("label").filter(has_text="Current companies").first
+                )
+                element.wait_for(state="visible", timeout=3000)
+                element.click()
+                company_filter_clicked = True
+                print("Successfully clicked 'Current companies' label")
+            except PlaywrightTimeout:
+                print("Label with 'Current companies' not found, trying alternatives")
+
+            # Try other selector variations if first attempt failed
+            if not company_filter_clicked:
+                selector_attempts = [
+                    ("label", "Current companies"),
+                    ("button", "Current company filter. Click to add a filter."),
+                    ("button", "Current company filter"),
+                    ("button", "Current company"),
+                    ("button", "Company"),
+                ]
+
+                for role, name in selector_attempts:
+                    try:
+                        print(f"Trying to find company filter {role} with name: {name}")
+                        element = self.page.get_by_role(role, name=name)
+                        element.wait_for(state="visible", timeout=3000)
+                        element.click()
+                        company_filter_clicked = True
+                        print(f"Successfully clicked company filter {role}: {name}")
+                        break
+                    except PlaywrightTimeout:
+                        print(
+                            f"{role.capitalize()} with name '{name}' not found, trying next variation"
+                        )
+                        continue
+
+            # Final fallback: look for any label containing company-related text
+            if not company_filter_clicked:
+                try:
+                    print("Trying fallback: looking for label containing 'ompan'")
+                    element = self.page.locator("label").filter(has_text="ompan").first
+                    element.wait_for(state="visible", timeout=3000)
+                    element.click()
+                    company_filter_clicked = True
+                    print("Successfully clicked company filter using fallback selector")
+                except PlaywrightTimeout:
+                    print("All selector attempts failed")
+
+            if not company_filter_clicked:
+                print("Could not find company filter button with any known variation")
+                self.screenshot("company_filter_button_not_found")
+                self.dump_html("company_filter_button_not_found", self.page.content())
+                return []
+
             self._wait()
             self.screenshot("after_clicking_company_filter")
 
@@ -163,15 +221,33 @@ class LinkedInSearcher:
 
             print("Waiting for company option to be visible...")
             company_option = None
-            for text in ["Company • Software Development", "Company • "]:
-                company_option = (
-                    self.page.locator("div[role='option']")
-                    .filter(has_text=company)
-                    .filter(has_text=text)
-                    .first
-                )
+
+            # LinkedIn changed from role='option' to role='checkbox' for company list items
+            # Try multiple selector strategies
+            selector_strategies = [
+                # New UI: checkbox role with just company name
+                ("div[role='checkbox']", None),
+                # Fallback: old option role with additional text
+                ("div[role='option']", "Company • Software Development"),
+                ("div[role='option']", "Company • "),
+            ]
+
+            for selector, additional_text in selector_strategies:
                 try:
+                    if additional_text:
+                        company_option = (
+                            self.page.locator(selector)
+                            .filter(has_text=company)
+                            .filter(has_text=additional_text)
+                            .first
+                        )
+                    else:
+                        # Just match by company name for checkbox elements
+                        company_option = (
+                            self.page.locator(selector).filter(has_text=company).first
+                        )
                     company_option.wait_for(state="visible", timeout=5000)
+                    print(f"Found company option using selector: {selector}")
                     break
                 except PlaywrightTimeout:
                     company_option = None
@@ -203,41 +279,98 @@ class LinkedInSearcher:
             self.screenshot("after_clicking_show_results")
 
             print("Waiting for search results...")
-            try:
-                results_container = self.page.locator("div.search-results-container")
-                results_container.wait_for(state="visible", timeout=8000)
-                self.dump_html(
-                    "search_results_container",
-                    results_container.evaluate("el => el.outerHTML"),
-                )
-            except PlaywrightTimeout:
-                self.screenshot("search_results_timeout")
-                self.dump_html("full_page_search_results_timeout", self.page.content())
-                print("Results container missing")
-                return []
+            # LinkedIn changed their structure - try multiple container selectors
+            results_container = None
+
+            # Try different container selectors in order of specificity
+            container_selectors = [
+                ('div[role="main"]', "main role container"),
+                ('div[data-testid="lazy-column"]', "lazy-column container"),
+                ("div.search-results-container", "search-results-container (old)"),
+            ]
+
+            for selector, description in container_selectors:
+                try:
+                    container = self.page.locator(selector).first
+                    container.wait_for(state="visible", timeout=3000)
+                    results_container = container
+                    print(f"Found {description}")
+                    break
+                except PlaywrightTimeout:
+                    continue
+
+            if results_container is None:
+                print("No specific results container found, will search entire page")
+                results_container = self.page
+            else:
+                try:
+                    self.dump_html(
+                        "search_results_container",
+                        results_container.evaluate("el => el.outerHTML"),
+                    )
+                except Exception:
+                    pass
 
             self.screenshot("post_wait")
 
             # Check for no results first
             no_results = self.page.get_by_text("No results found")
-            if no_results.is_visible():
-                print(f"Linkedin found no connections at {company}")
-                return []
+            try:
+                if no_results.is_visible(timeout=1000):
+                    print(f"Linkedin found no connections at {company}")
+                    return []
+            except PlaywrightTimeout:
+                # No "no results" message, which is good - means there are results
+                pass
 
             # First try to get the HTML content of the page to analyze
             self.dump_html("full_page", self.page.content())
 
-            # Get all result cards within search results container
-            results = results_container.get_by_role("list").first.locator("li")
-            count = results.count()
-            print(f"Found {count} result items")
+            # Get all result cards - LinkedIn changed from <li> to <div role="listitem">
+            # Try multiple selector strategies
+            results = None
+            count = 0
 
-            # If we can't get results through the normal way, try a more direct approach
-            if count == 0:
-                # Try to get search results directly by class
-                results = self.page.locator("li.reusable-search__result-container")
+            # Strategy 1: div with role="listitem" inside results container
+            try:
+                results = results_container.locator('div[role="listitem"]')
                 count = results.count()
-                print(f"Found {count} results with direct selector")
+                if count > 0:
+                    print(f"Found {count} result items using div[role='listitem']")
+            except Exception:
+                pass
+
+            # Strategy 2: Try by data attribute
+            if count == 0:
+                try:
+                    results = self.page.locator(
+                        'div[data-view-name="people-search-result"]'
+                    )
+                    count = results.count()
+                    if count > 0:
+                        print(f"Found {count} results with data-view-name selector")
+                except Exception:
+                    pass
+
+            # Strategy 3: Fall back to old li-based selectors
+            if count == 0:
+                try:
+                    results = results_container.get_by_role("list").first.locator("li")
+                    count = results.count()
+                    if count > 0:
+                        print(f"Found {count} result items using old <li> selector")
+                except Exception:
+                    pass
+
+            # Strategy 4: Direct class-based selector
+            if count == 0:
+                try:
+                    results = self.page.locator("li.reusable-search__result-container")
+                    count = results.count()
+                    if count > 0:
+                        print(f"Found {count} results with direct class selector")
+                except Exception:
+                    pass
 
             connections = []
 
@@ -313,11 +446,79 @@ class LinkedInSearcher:
                 except Exception:
                     name = ""
 
-        # Get title with shorter timeout
-        try:
-            title = result.locator("div.t-black.t-normal").first.inner_text(timeout=1000)
-        except Exception:
+        # Get title - LinkedIn changed their class names
+        title = None
+        title_selectors = [
+            # New UI: Look for p tags that likely contain the title
+            # The title is typically the second or third p tag after the name
+            ("p.ff633f4c.e295a86c", "new p tag classes"),
+            # Try finding any p that contains common title patterns
+            ("p", "any p tag"),
+            # Old selector as fallback
+            ("div.t-black.t-normal", "old div selector"),
+        ]
+
+        for selector, description in title_selectors:
+            try:
+                # Get all matching elements and try to find the one with the title
+                # Title usually comes after the name and before location
+                title_elements = result.locator(selector).all()
+                for elem in title_elements:
+                    text = elem.inner_text(timeout=500).strip()
+                    # Title usually contains " at " or ends with job-related words
+                    # Skip if it's the connection degree indicator
+                    if (
+                        text
+                        and " • 1st" not in text
+                        and " • 2nd" not in text
+                        and " • 3rd" not in text
+                    ):
+                        # Simple heuristic: if it contains common job indicators or "at", it's likely the title
+                        if " at " in text or any(
+                            word in text.lower()
+                            for word in [
+                                "engineer",
+                                "manager",
+                                "director",
+                                "developer",
+                                "designer",
+                                "analyst",
+                                "lead",
+                                "specialist",
+                                "coordinator",
+                                "consultant",
+                            ]
+                        ):
+                            title = text
+                            break
+                        # If we haven't found a title yet and this looks like it could be one (not a location)
+                        # Location usually has city/state/country patterns
+                        elif title is None and not any(
+                            word in text
+                            for word in [
+                                ", ",
+                                " Area",
+                                "United States",
+                                "Canada",
+                                "United Kingdom",
+                            ]
+                        ):
+                            title = text
+                if title:
+                    break
+            except Exception:
+                continue
+
+        if title is None:
             title = "Unknown title"
+            if self.debug:
+                print(f"Could not find title for result {i}, dumping HTML for debugging")
+                try:
+                    self.dump_html(
+                        f"unknown_title_result_{i}", result.evaluate("el => el.outerHTML")
+                    )
+                except Exception as e:
+                    print(f"Could not dump HTML: {e}")
 
         # Get profile URL
         profile_url = result.get_by_role("link").first.get_attribute("href")
