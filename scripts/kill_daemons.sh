@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PIDS=$(ps wax | grep research_daemon | grep ython | grep -v grep | cut -d ' ' -f 1)
+PIDS=$(ps wax | grep research_daemon | grep ython | grep -v grep | cut -d ' ' -f 1-2)
 if [ -z "$PIDS" ]; then
 	echo None to kill
 else
