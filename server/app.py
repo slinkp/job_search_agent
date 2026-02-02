@@ -513,6 +513,11 @@ def get_task_status(request):
     )
     logger.info(f"Task result summary: {result_summary}")
 
+    if task["status"].value == "failed":
+        err = task.get("error") or ""
+        err_summary = (str(err)[:800] + "...") if len(str(err)) > 800 else str(err)
+        logger.error(f"Task {task_id} FAILED. error:\n{err_summary}")
+
     if task["status"].value == "completed" and not has_result:
         logger.warning(f"Task {task_id} is completed but has no result data!")
 

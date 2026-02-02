@@ -313,6 +313,27 @@ class EmailResponseGenerator:
         logger.info("...RAG setup complete")
         return rag
 
+    def _is_missing_rag_collection_error(self, exc: Exception) -> bool:
+        """
+        Detect Chroma/chromadb persisted-store corruption where collection metadata is missing.
+
+        In production this often surfaces as:
+          "Error getting collection: Collection [<uuid>] does not exists."
+
+        The ungrammatical phrasing is from a dependency; we match broadly.
+        """
+        msg = str(exc).lower()
+        if "collection" not in msg:
+            return False
+        if "error getting collection" in msg and (
+            "does not exist" in msg or "does not exists" in msg
+        ):
+            return True
+        # Other variants seen across versions/backends
+        if "collection" in msg and ("does not exist" in msg or "does not exists" in msg):
+            return True
+        return False
+
     @disk_cache(CacheStep.GET_MESSAGES)
     def load_previous_replies_to_recruiters(self) -> list[tuple[str, str, str]]:
         logger.info("Fetching my previous replies from mail...")
@@ -326,7 +347,45 @@ class EmailResponseGenerator:
     @disk_cache(CacheStep.REPLY)
     def generate_reply(self, msg: str) -> str:
         logger.info("Generating reply...")
-        result = self.rag.generate_reply(msg)
+        try:
+            result = self.rag.generate_reply(msg)
+        except Exception as e:
+            # If the persisted Chroma store is out of sync, auto-repair and retry once.
+            if self._is_missing_rag_collection_error(e):
+                logger.warning(
+                    "RAG collection missing; will attempt repair+rebuild",
+                    exc_info=True,
+                )
+
+                # Prefer a "strong" repair: remove only Chroma artifacts so we can recreate
+                # a consistent store, even if reset_collection() appears to succeed.
+                try:
+                    repair = getattr(self.rag, "_repair_chroma_persisted_store", None)
+                    if callable(repair):
+                        logger.warning(
+                            "Repairing persisted Chroma store on disk before rebuild"
+                        )
+                        repair()
+                except Exception:
+                    logger.warning(
+                        "Chroma persisted-store repair failed (continuing)",
+                        exc_info=True,
+                    )
+
+                logger.warning(
+                    "Rebuilding RAG data (clear_existing=True) and recreating chain"
+                )
+                self.rag.prepare_data(clear_existing=True)
+                self.rag.setup_chain(
+                    llm_type=self.reply_rag_model, provider=self.provider
+                )
+                try:
+                    result = self.rag.generate_reply(msg)
+                except Exception:
+                    logger.error("RAG retry after rebuild failed", exc_info=True)
+                    raise
+            else:
+                raise
         logger.info("Reply generated")
         return result
 

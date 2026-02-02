@@ -3,6 +3,7 @@ import datetime
 import logging
 import signal
 import time
+import traceback as tb
 from typing import Any, Optional
 
 import libjobsearch
@@ -46,10 +47,16 @@ class TaskStatusContext:
                 logger.info(f"Setting task {self.task_id} to COMPLETED with no result")
                 self.task_mgr.update_task(self.task_id, TaskStatus.COMPLETED)
         else:
-            logger.error(f"Task {self.task_id} failed with error: {str(exc_value)}")
-            self.task_mgr.update_task(
-                self.task_id, TaskStatus.FAILED, error=str(exc_value)
+            # Log full exception details (including traceback) to make diagnosing
+            # background task failures possible from daemon logs.
+            logger.error(
+                f"Task {self.task_id} failed with error: {str(exc_value)}",
+                exc_info=(exc_type, exc_value, traceback),
             )
+            # Persist traceback in the task record so server logs/UI can show it
+            # even when daemon logs aren't available.
+            formatted = "".join(tb.format_exception(exc_type, exc_value, traceback))
+            self.task_mgr.update_task(self.task_id, TaskStatus.FAILED, error=formatted)
 
 
 class ResearchDaemon:

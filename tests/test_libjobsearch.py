@@ -139,6 +139,42 @@ def linkedin_data():
 
 
 @patch("libjobsearch.email_client.GmailRepliesSearcher", autospec=True)
+@patch("libjobsearch.RecruitmentRAG", autospec=True)
+def test_email_responder_repairs_missing_rag_collection_and_retries(
+    mock_rag_class,
+    mock_gmail_searcher_class,
+):
+    mock_gmail = mock_gmail_searcher_class.return_value
+    mock_gmail.authenticate.return_value = None
+    mock_gmail.get_my_replies_to_recruiters.return_value = [("s", "m", "r")]
+
+    rag = mock_rag_class.return_value
+    rag.generate_reply.side_effect = [
+        RuntimeError(
+            "Error getting collection: Collection [2eaeed3e-3772-437d-9ff7-d8ec51dc670e] does not exists."
+        ),
+        "OK",
+    ]
+
+    responder = libjobsearch.EmailResponseGenerator(
+        reply_rag_model="gpt-4o",
+        reply_rag_limit=1,
+        loglevel=logging.INFO,
+        cache_settings=libjobsearch.CacheSettings(no_cache=True),
+        provider=None,
+    )
+
+    out = responder.generate_reply("hello")
+    assert out == "OK"
+
+    # First call happens during responder initialization, second during repair+retry.
+    rag.prepare_data.assert_any_call(clear_existing=False)
+    rag.prepare_data.assert_any_call(clear_existing=True)
+    rag.setup_chain.assert_any_call(llm_type="gpt-4o", provider=None)
+    assert rag.generate_reply.call_count == 2
+
+
+@patch("libjobsearch.email_client.GmailRepliesSearcher", autospec=True)
 def test_send_reply_and_archive(mock_gmail_searcher_class):
     """Test that send_reply_and_archive correctly sends an email and archives it."""
     mock_searcher = mock_gmail_searcher_class.return_value

@@ -1,5 +1,7 @@
 import logging
 import os
+import re
+import shutil
 from typing import List, Tuple
 
 from langchain_chroma import Chroma
@@ -8,8 +10,9 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import OpenAIEmbeddings
-from ai.client_factory import get_chat_client
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from ai.client_factory import get_chat_client
 
 logger = logging.getLogger(__name__)
 
@@ -72,14 +75,40 @@ class RecruitmentRAG:
             embedding_function=self.embeddings,
             persist_directory=DATA_DIR,
         )
-        # Only add the documents to the vectorstore if it's empty
-        has_data = bool(vectorstore.get(limit=1, include=[])["ids"])
-        if has_data and not clear_existing:
-            logger.info(f"Loaded vector store for {collection_name}")
-            return vectorstore
-
         if clear_existing:
-            vectorstore.reset_collection()
+            # When the persisted Chroma store is corrupted or out of sync (issue #108),
+            # treat it as recoverable and rebuild from source messages.
+            try:
+                vectorstore.reset_collection()
+            except Exception:
+                logger.warning(
+                    "Failed to reset Chroma collection; attempting to repair persisted store",
+                    exc_info=True,
+                )
+                self._repair_chroma_persisted_store()
+                vectorstore = Chroma(
+                    collection_name=collection_name,
+                    embedding_function=self.embeddings,
+                    persist_directory=DATA_DIR,
+                )
+                vectorstore.reset_collection()
+        else:
+            # Only add the documents to the vectorstore if it's empty.
+            # Chroma can raise errors like:
+            #   "Error getting collection: Collection [<uuid>] does not exists."
+            # Treat this as a recoverable condition and rebuild from scratch.
+            try:
+                has_data = bool(vectorstore.get(limit=1, include=[])["ids"])
+            except Exception:
+                logger.warning(
+                    "Error reading Chroma collection; rebuilding vector store",
+                    exc_info=True,
+                )
+                return self.make_replies_vector_db(clear_existing=True)
+
+            if has_data:
+                logger.info(f"Loaded vector store for {collection_name}")
+                return vectorstore
 
         documents = []
         for subject, recruiter_message, my_reply in self.messages:
@@ -91,6 +120,52 @@ class RecruitmentRAG:
         split_docs = self.text_splitter.split_documents(documents)
         vectorstore.add_documents(split_docs)
         return vectorstore
+
+    def _repair_chroma_persisted_store(self) -> None:
+        """
+        Best-effort repair of Chroma persistence when the collection metadata is out of sync.
+
+        This only removes Chroma-specific artifacts inside DATA_DIR, leaving unrelated DBs
+        (like companies/tasks) intact.
+        """
+        if not os.path.isdir(DATA_DIR):
+            return
+
+        # Chroma uses a sqlite db plus UUID-ish segment directories for indexes.
+        uuid_dir_re = re.compile(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            re.IGNORECASE,
+        )
+
+        for name in os.listdir(DATA_DIR):
+            path = os.path.join(DATA_DIR, name)
+            if os.path.isfile(path) and name.startswith("chroma.sqlite3"):
+                try:
+                    os.remove(path)
+                except OSError:
+                    logger.warning(f"Failed to remove {path}", exc_info=True)
+                continue
+
+            if os.path.isdir(path) and uuid_dir_re.match(name):
+                # Only delete if it looks like a Chroma index directory.
+                try:
+                    entries = set(os.listdir(path))
+                except OSError:
+                    logger.warning(f"Failed to list {path}", exc_info=True)
+                    continue
+
+                if {
+                    "data_level0.bin",
+                    "header.bin",
+                    "length.bin",
+                    "link_lists.bin",
+                } <= entries:
+                    try:
+                        shutil.rmtree(path)
+                    except OSError:
+                        logger.warning(
+                            f"Failed to remove directory {path}", exc_info=True
+                        )
 
     def prepare_data(self, clear_existing: bool = False):
         self.vectorstore = self.make_replies_vector_db(clear_existing=clear_existing)

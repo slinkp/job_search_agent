@@ -2,6 +2,7 @@ from datetime import date
 from unittest.mock import Mock, patch
 
 import pytest
+from unittest.mock import ANY
 from freezegun import freeze_time
 
 import libjobsearch
@@ -175,9 +176,9 @@ def test_task_status_context_failure(mock_task_manager):
             raise ValueError("Test error")
 
     mock_task_manager.update_task.assert_any_call(task_id, TaskStatus.RUNNING)
-    mock_task_manager.update_task.assert_called_with(
-        task_id, TaskStatus.FAILED, error="Test error"
-    )
+    mock_task_manager.update_task.assert_called_with(task_id, TaskStatus.FAILED, error=ANY)
+    err = mock_task_manager.update_task.call_args.kwargs.get("error", "")
+    assert "Test error" in err
 
 
 def test_process_next_task_no_tasks(daemon):
