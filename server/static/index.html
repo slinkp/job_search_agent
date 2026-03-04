@@ -244,8 +244,11 @@
                   <ul>
                     <template x-for="message in company.associated_messages" :key="message.message_id">
                       <li>
-                        <a href="#" @click.prevent="navigateToMessage(message.message_id)" x-text="message.subject || 'No Subject'"></a>
-                        (<span x-text="new Date(message.date).toLocaleDateString()"></span>)
+                        <a :href="'/?view=daily#' + message.message_id">
+                          <span x-text="message.subject || 'No Subject'"></span>
+                          <span x-text="message.sender ? ' - ' + message.sender : ''"></span>
+                        </a>
+                        (<span x-text="message.date ? new Date(message.date).toLocaleDateString() : 'No Date'"></span>)
                       </li>
                     </template>
                   </ul>

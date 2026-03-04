@@ -1810,6 +1810,57 @@ def test_get_companies_includes_aliases(clean_test_db):
     assert isinstance(company2_aliases, list)
 
 
+def test_get_companies_includes_associated_messages(clean_test_db):
+    """Test that GET /api/companies includes associated messages per company."""
+    repo = clean_test_db
+
+    company = Company(
+        company_id="assoc-company",
+        name="Associated Company",
+        details=CompaniesSheetRow(name="Associated Company"),
+        status=CompanyStatus(),
+    )
+    repo.create(company)
+
+    msg1 = RecruiterMessage(
+        message_id="assoc-msg-1",
+        company_id="assoc-company",
+        subject="First Associated Subject",
+        sender="recruiter1@example.com",
+        date=datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="First associated message body",
+        thread_id="thread-assoc-1",
+    )
+    msg2 = RecruiterMessage(
+        message_id="assoc-msg-2",
+        company_id="assoc-company",
+        subject="Second Associated Subject",
+        sender="recruiter2@example.com",
+        date=datetime.datetime(2024, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc),
+        message="Second associated message body",
+        thread_id="thread-assoc-2",
+    )
+    repo.create_recruiter_message(msg1)
+    repo.create_recruiter_message(msg2)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.params = {"include_all": "true"}
+        response = server.app.get_companies(request)
+
+    assert isinstance(response, list)
+    assert len(response) == 1
+    company_response = response[0]
+    assert "associated_messages" in company_response
+    assert len(company_response["associated_messages"]) == 2
+
+    message_ids = [m["message_id"] for m in company_response["associated_messages"]]
+    assert message_ids == ["assoc-msg-2", "assoc-msg-1"]
+    assert company_response["associated_messages"][0]["subject"] == "Second Associated Subject"
+    assert company_response["associated_messages"][0]["sender"] == "recruiter2@example.com"
+    assert "date" in company_response["associated_messages"][0]
+
+
 def test_create_company_alias_empty_alias(clean_test_db):
     """Test that creating an alias with empty alias field returns 400 error."""
     repo = clean_test_db

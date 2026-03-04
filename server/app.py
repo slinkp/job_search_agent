@@ -112,6 +112,16 @@ def get_company_dict_with_status(
     return company_dict
 
 
+def _serialize_associated_message(message: models.RecruiterMessage) -> dict:
+    """Build compact message payload for company-associated message lists."""
+    return {
+        "message_id": message.message_id,
+        "subject": message.subject,
+        "sender": message.sender,
+        "date": message.date.isoformat() if message.date else None,
+    }
+
+
 @view_config(route_name="company_aliases", renderer="json", request_method="POST")
 def create_company_alias(request) -> dict:
     """Create a new alias for a company."""
@@ -288,6 +298,10 @@ def get_companies(request) -> list[dict]:
                 continue
 
         company_dict = get_company_dict_with_status(company, repo)
+        company_messages = repo.get_recruiter_messages(company.company_id)
+        company_dict["associated_messages"] = [
+            _serialize_associated_message(message) for message in company_messages
+        ]
         company_data.append(company_dict)
 
     # Apply sorting as requested
