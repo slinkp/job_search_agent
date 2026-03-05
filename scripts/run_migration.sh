@@ -24,14 +24,18 @@ DB_PATH="$PROJECT_ROOT/data/companies.db"
 
 show_help() {
     cat <<EOF
-Usage: run_migration.sh <command> <migration_file>
+Usage: run_migration.sh <command> <migration_file> [--dry-run]
 
 Commands:
   migrate   Run the migrate() function from the specified migration
   rollback  Run the rollback() function from the specified migration
 
+Options:
+  --dry-run  For migrate only: pass dry_run=True when supported by migration
+
 Examples:
   run_migration.sh migrate 20251203000000_normalize_compensation_values.py
+  run_migration.sh migrate 20260304170000_backfill_company_archived_status_from_activity.py --dry-run
   run_migration.sh rollback 20251203000000_normalize_compensation_values.py
 
 Tab completion:
@@ -100,6 +104,8 @@ run_migration_main() {
 
     local COMMAND="${1:-}"
     local MIGRATION_FILE="${2:-}"
+    local DRY_RUN_FLAG="${3:-}"
+    local DRY_RUN="false"
 
     if [ -z "$COMMAND" ]; then
         show_help
@@ -115,6 +121,26 @@ run_migration_main() {
 
     if [ -z "$MIGRATION_FILE" ]; then
         echo "Error: Migration file is required" >&2
+        echo ""
+        show_help
+        return 1
+    fi
+
+    if [ -n "$DRY_RUN_FLAG" ]; then
+        if [ "$DRY_RUN_FLAG" != "--dry-run" ]; then
+            echo "Error: Unknown option: $DRY_RUN_FLAG" >&2
+            echo ""
+            show_help
+            return 1
+        fi
+        if [ "$COMMAND" != "migrate" ]; then
+            echo "Error: --dry-run is only valid with 'migrate'" >&2
+            return 1
+        fi
+        DRY_RUN="true"
+    fi
+    if [ $# -gt 3 ]; then
+        echo "Error: Too many arguments" >&2
         echo ""
         show_help
         return 1
@@ -142,6 +168,7 @@ from importlib.util import module_from_spec, spec_from_file_location
 migration_path = Path("$MIGRATION_PATH")
 db_path = "$DB_PATH"
 command = "$COMMAND"
+dry_run = "$DRY_RUN".lower() == "true"
 
 # Load the migration module
 module_name = migration_path.stem
@@ -161,10 +188,25 @@ if not hasattr(module, command):
 # Connect to database and run the migration
 conn = sqlite3.connect(db_path)
 try:
-    print(f"Running {command}() from {migration_path.name}...")
+    print(f"Running {command}() from {migration_path.name} (dry_run={dry_run})...")
     func = getattr(module, command)
-    func(conn)
-    conn.commit()
+    import inspect
+    sig = inspect.signature(func)
+    supports_dry_run = "dry_run" in sig.parameters
+    if dry_run and not supports_dry_run:
+        print(
+            "Warning: --dry-run requested but migration does not accept "
+            "dry_run; running without dry-run."
+        )
+    if supports_dry_run:
+        func(conn, dry_run=dry_run)
+    else:
+        func(conn)
+    if dry_run and supports_dry_run:
+        conn.rollback()
+        print("Dry run mode: rolled back all changes")
+    else:
+        conn.commit()
     print(f"Successfully completed {command} for {migration_path.name}")
 except Exception as e:
     conn.rollback()

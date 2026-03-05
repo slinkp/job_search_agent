@@ -703,13 +703,15 @@ def archive_message_by_id(request):
     repo.create_recruiter_message(message)  # This will update via upsert
 
     archive_all = request.params.get("archive_all", "").lower() == "true"
+    archived_company = False
+    company = repo.get(message.company_id)
 
     if archive_all:
         # Archive the company and all messages for that company
-        company = repo.get(message.company_id)
         if company:
             company.status.archived_at = current_time
             repo.update(company)
+            archived_company = True
         # Archive all messages for the company
         try:
             company_messages = repo.get_recruiter_messages(message.company_id)
@@ -722,9 +724,10 @@ def archive_message_by_id(request):
                 "Failed to archive all messages for company during archive_all"
             )
 
-    # Activity: message archived (company activity tracks last action)
+    # Activity should reflect company archive when company state is archived.
+    activity_label = "company archived" if archived_company else "message archived"
     try:
-        repo.update_activity(message.company_id, current_time, "message archived")
+        repo.update_activity(message.company_id, current_time, activity_label)
     except Exception:
         logger.exception("Failed to update activity for message archived")
 

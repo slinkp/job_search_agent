@@ -250,7 +250,7 @@ def test_archive_message_by_id_success(clean_test_db):
         archived_msg = next(msg for msg in messages if msg.message_id == "msg1")
         assert archived_msg.archived_at is not None
 
-        # Verify company itself is not archived
+        # archive_all defaults to false, so company itself should not be archived
         updated_company = repo.get("test-msg-archive")
         assert updated_company.status.archived_at is None
 
@@ -975,6 +975,46 @@ def test_get_companies_filters_replied_and_archived(clean_test_db):
             assert (
                 name in company_names
             ), f"Expected {name} to be in response when include_all=true"
+
+
+def test_archive_message_by_id_does_not_archive_company_with_other_open_messages(
+    clean_test_db,
+):
+    """Archiving one of many messages should not auto-archive the company."""
+    repo = clean_test_db
+
+    company = Company(
+        company_id="test-partial-archive",
+        name="Test Partial Archive",
+        details=CompaniesSheetRow(name="Test Partial Archive"),
+        status=CompanyStatus(),
+    )
+    msg1 = RecruiterMessage(
+        message_id="partial-m1",
+        company_id="test-partial-archive",
+        subject="One",
+        message="Body one",
+        thread_id="thread-one",
+    )
+    msg2 = RecruiterMessage(
+        message_id="partial-m2",
+        company_id="test-partial-archive",
+        subject="Two",
+        message="Body two",
+        thread_id="thread-two",
+    )
+    repo.create(company)
+    repo.create_recruiter_message(msg1)
+    repo.create_recruiter_message(msg2)
+
+    with patch("models.company_repository", return_value=repo):
+        request = DummyRequest()
+        request.matchdict = {"message_id": "partial-m1"}
+        response = server.app.archive_message_by_id(request)
+
+    assert response["message"] == "Message archived successfully"
+    updated_company = repo.get("test-partial-archive")
+    assert updated_company.status.archived_at is None
 
 
 def test_send_and_archive_message_success(
