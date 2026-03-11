@@ -1,4 +1,5 @@
-from libjobsearch import arg_parser, select_provider_and_model, SONNET_LATEST
+from constants import GPT_MINI_LATEST, SONNET_LATEST
+from libjobsearch import arg_parser, select_provider_and_model
 
 
 def test_defaults_no_flags():
@@ -14,7 +15,7 @@ def test_openrouter_defaults_model():
     args = parser.parse_args(["--provider", "openrouter"])
     provider, model = select_provider_and_model(args)
     assert provider == "openrouter"
-    assert model == "gpt-5"
+    assert model == GPT_MINI_LATEST
 
 
 def test_model_implies_provider_openai():

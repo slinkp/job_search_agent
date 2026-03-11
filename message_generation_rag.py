@@ -13,6 +13,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from ai.client_factory import get_chat_client
+from constants import GPT_MINI_LATEST, HAIKU_LATEST
 
 logger = logging.getLogger(__name__)
 
@@ -187,10 +188,10 @@ class RecruitmentRAG:
             lt = llm_type.lower()
             if lt == "openai":
                 resolved_provider = "openai"
-                model_to_use = "gpt-4o"
+                model_to_use = GPT_MINI_LATEST
             elif lt == "claude":
                 resolved_provider = "anthropic"
-                model_to_use = "claude-3-5-sonnet-20240620"
+                model_to_use = HAIKU_LATEST
             elif lt.startswith("gpt"):
                 resolved_provider = "openai"
             elif lt.startswith("claude"):
@@ -201,7 +202,7 @@ class RecruitmentRAG:
                 )
 
         llm_client = get_chat_client(
-            provider=resolved_provider,
+            provider=resolved_provider,  # type: ignore[arg-type]
             model=model_to_use,
             temperature=TEMPERATURE,
             timeout=TIMEOUT,

@@ -1,4 +1,5 @@
 import message_generation_rag as rag_mod
+from constants import GPT_MINI_LATEST, HAIKU_LATEST
 from message_generation_rag import RecruitmentRAG
 
 
@@ -28,7 +29,7 @@ def test_rag_infers_openai_when_llm_type_openai(monkeypatch):
     rag.setup_chain(llm_type="openai", provider=None)
 
     assert captured["provider"] == "openai"
-    assert captured["model"] == "gpt-4o"
+    assert captured["model"] == GPT_MINI_LATEST
     assert captured["temperature"] == 0.2
     assert captured["timeout"] == 120
     assert rag.generate_reply("x") == "OK"
@@ -50,5 +51,5 @@ def test_rag_infers_anthropic_when_llm_type_claude(monkeypatch):
     rag.setup_chain(llm_type="claude", provider=None)
 
     assert captured["provider"] == "anthropic"
-    assert captured["model"] == "claude-3-5-sonnet-20240620"
+    assert captured["model"] == HAIKU_LATEST
     assert rag.generate_reply("x") == "OK"

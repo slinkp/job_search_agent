@@ -35,9 +35,14 @@ logger = logging.getLogger(__name__)
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-SONNET_LATEST = "claude-sonnet-4-5"
-DEFAULT_RECRUITER_MESSAGES = 500
-
+from constants import (
+    DEFAULT_RECRUITER_MESSAGES,
+    GPT_LATEST,
+    GPT_MINI_LATEST,
+    HAIKU_LATEST,
+    MODEL_CHOICES,
+    SONNET_LATEST,
+)
 
 cache = Cache(os.path.join(HERE, ".cache"))
 
@@ -832,17 +837,7 @@ def arg_parser():
         help="AI model to use",
         action="store",
         default=None,
-        choices=[
-            "gpt-4o",
-            "gpt-4-turbo",
-            "gpt-3.5-turbo",
-            "gpt-5",
-            "gpt-5-mini",
-            "claude-3-5-sonnet-20241022",
-            "claude-3-7-sonnet-20250219",
-            "claude-sonnet-4-20250514",
-            SONNET_LATEST,
-        ],
+        choices=MODEL_CHOICES,
     )
     DEFAULT_RAG_LIMIT = 300
     parser.add_argument(
@@ -925,13 +920,13 @@ def select_provider_and_model(args: argparse.Namespace) -> Tuple[str, str]:
     Determine provider and model defaults based on the parsed args.
 
     Rules:
-    - If neither provider nor model provided: use anthropic + SONNET_LATEST (existing default behavior).
+    - If neither provider nor model provided: use anthropic + HAIKU_LATEST.
     - If only model provided: infer provider from model prefix (claude -> anthropic, gpt -> openai).
-    - If provider=openrouter and model not provided: default model to gpt-5-mini.
+    - If provider=openrouter and model not provided: default model to GPT_MINI_LATEST.
     - If provider provided but model not provided:
-        anthropic -> SONNET_LATEST
-        openai -> gpt-4o
-        openrouter -> gpt-5-mini
+        anthropic -> HAIKU_LATEST
+        openai -> GPT_MINI_LATEST
+        openrouter -> GPT_MINI_LATEST
     - If both provided: respect both.
     """
     provider = getattr(args, "provider", None)
@@ -954,13 +949,13 @@ def select_provider_and_model(args: argparse.Namespace) -> Tuple[str, str]:
         return "openai", model
 
     if provider == "openrouter":
-        return "openrouter", (model or "gpt-5")
+        return "openrouter", (model or GPT_MINI_LATEST)
 
     if provider == "anthropic":
-        return "anthropic", (model or SONNET_LATEST)
+        return "anthropic", (model or HAIKU_LATEST)
 
     if provider == "openai":
-        return "openai", (model or "gpt-5")
+        return "openai", (model or GPT_MINI_LATEST)
 
     raise ValueError(f"Unknown provider: {provider}")
 

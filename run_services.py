@@ -238,8 +238,8 @@ def main():
         if "--model" in getattr(action, "option_strings", []):
             action.help = (
                 "AI model to use. Examples: "
-                "OpenAI: gpt-4o, gpt-4-turbo; "
-                "Anthropic: claude-sonnet-4-0; "
+                "OpenAI: gpt-4, gpt-5.4; "
+                "Anthropic: claude-sonnet-4-6; "
                 "OpenRouter: gpt-5, gpt-5-mini (requires --provider openrouter)"
             )
             break

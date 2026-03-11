@@ -19,6 +19,7 @@ from company_classifier.synthetic_data import (
     LLMCompanyGenerator,
     RandomCompanyGenerator,
 )
+from constants import GPT_MINI_LATEST, MODEL_CHOICES
 
 
 def save_companies_to_csv(
@@ -145,12 +146,8 @@ def parse_args():
     )
     parser.add_argument(
         "--model",
-        choices=[
-            "gpt-4-turbo-preview",  # Latest GPT-4, fastest of the 4 series
-            "gpt-4-0125-preview",  # Similar capabilities, slightly cheaper
-            "gpt-3.5-turbo",  # Much faster and cheaper
-        ],
-        default="gpt-4-turbo-preview",
+        choices=MODEL_CHOICES,
+        default=GPT_MINI_LATEST,
         help="OpenAI model to use for LLM generation. Only applicable when --generator is 'llm' or 'hybrid'.",
     )
     parser.add_argument(

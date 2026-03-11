@@ -7,17 +7,18 @@ import json
 import logging
 import os
 import re
-from typing import Optional, Literal, cast
+from typing import Literal, Optional, cast
 
 import requests
 from bs4 import BeautifulSoup
 from langchain_community.cache import SQLiteCache
 from langchain_core.globals import set_llm_cache
 from langchain_core.language_models import BaseChatModel
-from ai.client_factory import get_chat_client
 from tavily import TavilyClient  # type: ignore[import-untyped]
 
 import models
+from ai.client_factory import get_chat_client
+from constants import GPT_MINI_LATEST, HAIKU_LATEST, MODEL_CHOICES
 from models import CompaniesSheetRow, is_placeholder
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -164,10 +165,10 @@ class TavilyRAGResearchAgent:
     llm: BaseChatModel
 
     def __init__(self, verbose: bool = False, llm: Optional[BaseChatModel] = None):
-        # set up the agent using centralized client factory (default to OpenAI gpt-4)
+        # set up the agent using centralized client factory (default to cost-effective GPT-5 mini)
         self.llm = llm or get_chat_client(
             provider="openai",
-            model="gpt-4",
+            model=GPT_MINI_LATEST,
             temperature=TEMPERATURE,
             timeout=TIMEOUT,
         )
@@ -564,18 +565,8 @@ if __name__ == "__main__":
         "--model",
         help="AI model to use",
         action="store",
-        default=SONNET_LATEST,
-        choices=[
-            "gpt-4o",
-            "gpt-4-turbo",
-            "gpt-3.5-turbo",
-            "gpt-5",
-            "claude-3-5-sonnet-20241022",
-            "claude-3-7-sonnet-20250219",
-            "claude-sonnet-4-20250514",
-            "claude-sonnet-4-5",
-            SONNET_LATEST,
-        ],
+        default=HAIKU_LATEST,
+        choices=MODEL_CHOICES,
     )
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument(

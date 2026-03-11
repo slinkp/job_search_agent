@@ -27,10 +27,11 @@ MODEL_MAPPINGS: Dict[str, Tuple[str, Literal["openai", "anthropic"]]] = {
     # None of these are deprecated as of 2025-07-01.
     "haiku-3": ("claude-3-haiku-20240307", "anthropic"),  # $0.25
     "haiku-3.5": ("claude-3-5-haiku-20241022", "anthropic"),  # $0.80
-    # Sonnet 3.5, 3.7 and 4.0 are same cost.
+    # Sonnet 3.5, 3.7 and 4.x are same cost.
     "sonnet-3.5": ("claude-3-5-sonnet-20241022", "anthropic"),  # $3.00
     "sonnet-3.7": ("claude-3-7-sonnet-20250219", "anthropic"),  # $3.00
-    "sonnet-4": ("claude-sonnet-4-20250514", "anthropic"),  # $3.00
+    "sonnet-4": ("claude-sonnet-4-6", "anthropic"),  # $3.00 latest Sonnet
+    "sonnet-4.6": ("claude-sonnet-4-6", "anthropic"),  # explicit latest Sonnet
     # Opus is WAY more expensive than Sonnet.
     "opus-4": ("claude-opus-4-20250514", "anthropic"),  # $15.00 !!!
     ############################################################
@@ -42,6 +43,8 @@ MODEL_MAPPINGS: Dict[str, Tuple[str, Literal["openai", "anthropic"]]] = {
     "gpt-4.1": ("gpt-4.1-2025-04-14", "openai"),  # $2.00
     # "o3": ("o3-2025-04-16", "openai"),  # $2.00 - requires biometric auth, no thanks
     "gpt-4-turbo": ("gpt-4-turbo-2024-04-09", "openai"),  # $10.00 !!!
+    "gpt-5-mini": ("gpt-5-mini", "openai"),  # latest GPT-5 series
+    "gpt-5.4": ("gpt-5.4", "openai"),  # latest GPT-5 series
 }
 
 # Default batch size for LLM generators

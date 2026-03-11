@@ -1,4 +1,5 @@
 import company_researcher as cr_mod
+from constants import GPT_MINI_LATEST
 
 
 class DummyLLM:
@@ -20,7 +21,7 @@ def test_agent_default_llm_uses_factory(monkeypatch):
     agent = cr_mod.TavilyRAGResearchAgent(verbose=False, llm=None)
     # Ensure factory was used with the default openai/gpt-4 combo
     assert captured["provider"] == "openai"
-    assert captured["model"] == "gpt-4"
+    assert captured["model"] == GPT_MINI_LATEST
     assert captured["temperature"] == 0.7
     assert captured["timeout"] == 120
     # Sanity: the agent uses the returned dummy LLM
