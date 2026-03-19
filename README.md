@@ -20,6 +20,13 @@ pip install -r requirements.txt
 TODO: Document the necessary environment variables you must export.
 I use [direnv](https://direnv.net/) which loads them from an `.envrc` file (not provided)
 
+
+### Stale data cleanup
+
+Run `scripts/data_cleanup.py` to see what directories in `data/` can be removed;
+we often have old versions of the RAG data left around.
+The script can optionally remove them too.
+
 ### OpenRouter support (optional)
 
 Backend-only support for OpenRouter chat models (for example, gpt-5 and gpt-5-mini) is available.
